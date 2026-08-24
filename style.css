@@ -66,6 +66,23 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 #correction-details .correction-item:last-child .correction-value { margin-bottom:0; }
 .correction-extra .correction-value { color:var(--muted); }
 
+.other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
+.other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }
+.other-works-list { display:flex; flex-wrap:wrap; gap:12px; }
+.other-work-card { width:108px; text-align:center; }
+.other-work-card img { width:100%; height:90px; object-fit:cover; border-radius:4px; display:block; margin-bottom:6px; background:#1b1c1e; }
+.other-work-caption { font-family:Arial,sans-serif; font-size:.7rem; line-height:1.3; color:var(--muted); margin:0; }
+.other-work-caption strong { color:var(--ink); font-weight:700; }
+.other-work-caption em { font-style:italic; }
+
+/* Quand des œuvres du même peintre s'affichent en dessous, on réduit l'image et la fiche
+   corrigées pour laisser de la place, y compris sur grand écran. */
+body.has-other-works .artwork-card { min-height:360px; }
+body.has-other-works .artwork-card img { max-height:420px; }
+body.has-other-works .correction-value { font-size:1.02rem; margin-bottom:10px; }
+body.has-other-works .answer-result { font-size:.95rem; }
+body.has-other-works .correction-label { font-size:.76rem; }
+
 .navigation { display:flex; justify-content:space-between; gap:10px; margin-top:16px; }
 .nav-button { flex:1; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; border-radius:4px; border:1px solid var(--border); background:transparent; color:var(--ink); padding:9px 10px; font-family:Arial,sans-serif; font-size:.88rem; font-weight:700; transition:background .15s; }
 .nav-button:hover:not(:disabled) { background:#f7f2ea; }
@@ -102,4 +119,9 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
   body.is-corrected .answer-result { font-size:.95rem; }
   body.is-corrected .navigation { margin-top:10px; }
   body.is-corrected .nav-button { padding:7px 8px; }
+  body.has-other-works.is-corrected .artwork-card { min-height:20vh; }
+  body.has-other-works.is-corrected .artwork-card img { max-height:18vh; }
+  .other-works { margin-top:14px; padding-top:10px; }
+  .other-work-card { width:84px; }
+  .other-work-card img { height:70px; }
 }

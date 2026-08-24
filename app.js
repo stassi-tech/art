@@ -273,6 +273,7 @@ function showPanel(name) {
 
 function renderQuestion() {
   clearAdvanceTimers(); // pas d'avance automatique différée qui tomberait sur la mauvaise question
+  document.body.classList.remove('has-other-works'); // repart d'un état propre à chaque question
   const question = state.questions[state.index]; const answer = answerFor(state.index);
   const modeLabel = state.mode === 'review' ? 'Révision des erreurs — ' : '';
   $('question-count').textContent = `${modeLabel}Question ${state.index + 1} sur ${state.questions.length}`;
@@ -348,6 +349,28 @@ function renderCorrection(answer, question) {
       <strong class="correction-value">${value}</strong>
     </div>`;
   }).join('');
+
+  // Pour les quiz où un même peintre a plusieurs œuvres (ex. niveau 200 œuvres), on montre les
+  // autres pour aider à les mémoriser ensemble. Recherche sur l'ensemble du quiz chargé, pas
+  // seulement les questions déjà vues.
+  const otherWorks = state.fullQuestions.filter((otherQuestion) => otherQuestion !== question && keyName(otherQuestion.artist) === keyName(question.artist));
+  const otherWorksBox = $('other-works');
+  if (otherWorks.length) {
+    $('other-works-list').innerHTML = otherWorks.map((otherQuestion) => {
+      const source = imageSource(otherQuestion.image);
+      const titleValue = formatCorrectionValue('title', otherQuestion.title);
+      return `<div class="other-work-card">
+        <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
+             onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
+        <p class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}</p>
+      </div>`;
+    }).join('');
+    otherWorksBox.classList.remove('hidden');
+    document.body.classList.add('has-other-works');
+  } else {
+    otherWorksBox.classList.add('hidden');
+    document.body.classList.remove('has-other-works');
+  }
 }
 function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
 
