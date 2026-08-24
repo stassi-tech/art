@@ -459,7 +459,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé. Vérifiez votre connexion Internet et rechargez la page.');
     const allRows = [];
     for (const century of centuries) {
-      const url = `Quiz/peinture-${century}-niveau${level}.xlsx`;
+      const url = `quizzes/peinture-${century}-niveau${level}.xlsx`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Fichier introuvable pour le ${CENTURY_LABELS[century]} à ce niveau (${url}).`);
       const buffer = await response.arrayBuffer();
