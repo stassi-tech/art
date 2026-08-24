@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Révision d'histoire de l'art</title>
+    <link rel="stylesheet" href="style.css?v=9" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <img class="sidebar-illustration" src="assets/accueil.jpg" alt="" aria-hidden="true" />
+        <p class="illustration-caption">Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</p>
+      </aside>
+
+      <main class="main-content">
+        <section id="welcome-panel" class="welcome-panel">
+          <p class="intro-banner">Cette application vous propose d'identifier des œuvres d'art. Choisissez votre art, votre siècle, vos rubriques et votre niveau, puis lancez le quiz.</p>
+
+          <div class="quiz-selectors">
+            <button type="button" class="selector-button" id="open-art">
+              🎨 Choisis ton art
+              <span class="selector-summary" id="summary-art">Peinture</span>
+            </button>
+            <button type="button" class="selector-button" id="open-century">
+              🏛️ Choisis ton siècle
+              <span class="selector-summary" id="summary-century">Aucun siècle choisi</span>
+            </button>
+            <button type="button" class="selector-button" id="open-rubriques">
+              📝 Choisis tes rubriques
+              <span class="selector-summary" id="summary-rubriques">Aucune rubrique choisie</span>
+            </button>
+            <button type="button" class="selector-button" id="open-level">
+              ⭐ Choisis ton niveau
+              <span class="selector-summary" id="summary-level">Aucun niveau choisi</span>
+            </button>
+          </div>
+
+          <button id="launch-quiz-button" class="primary-button" type="button">Lancer le quiz</button>
+          <p id="launch-feedback" class="hint hidden"></p>
+
+          <p class="hint"><label class="link-label" for="excel-file">Ou importer un fichier Excel manuellement</label><input id="excel-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" /></p>
+          <p class="copyright-notice">© 2026 Stéphane Tassi. Contenu original — reproduction ou réutilisation de la sélection sans autorisation interdite.</p>
+        </section>
+
+        <div class="modal-overlay hidden" id="modal-art">
+          <div class="modal-box">
+            <h3>Choisis ton art</h3>
+            <label class="rubrique-option">
+              <input type="checkbox" id="art-peinture" checked />
+              <span>Peinture</span>
+            </label>
+            <label class="rubrique-option disabled">
+              <input type="checkbox" id="art-sculpture" disabled />
+              <span>Sculpture (bientôt disponible)</span>
+            </label>
+            <button type="button" class="primary-button modal-close" data-modal="modal-art">Valider</button>
+          </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="modal-century">
+          <div class="modal-box">
+            <h3>Choisis ton siècle</h3>
+            <label class="rubrique-option">
+              <input type="checkbox" id="century-17e" />
+              <span>17e siècle</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="checkbox" id="century-18e" />
+              <span>18e siècle</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="checkbox" id="century-19e" />
+              <span>19e siècle</span>
+            </label>
+            <p class="modal-hint">Cocher plusieurs siècles mélange aléatoirement leurs œuvres dans un même quiz.</p>
+            <button type="button" class="primary-button modal-close" data-modal="modal-century">Valider</button>
+          </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="modal-rubriques">
+          <div class="modal-box">
+            <h3>Choisis tes rubriques</h3>
+            <p class="modal-hint">La correction affichera toujours les 4 informations, mais seules les rubriques cochées sont notées.</p>
+            <label class="rubrique-option">
+              <input type="checkbox" id="rubrique-artist" />
+              <span>Artiste</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="checkbox" id="rubrique-title" />
+              <span>Titre de l'œuvre</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="checkbox" id="rubrique-date" />
+              <span>Date de création</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="checkbox" id="rubrique-location" />
+              <span>Lieu de conservation</span>
+            </label>
+            <button type="button" class="primary-button modal-close" data-modal="modal-rubriques">Valider</button>
+          </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="modal-level">
+          <div class="modal-box">
+            <h3>Choisis ton niveau</h3>
+            <label class="rubrique-option">
+              <input type="radio" name="niveau" id="level-1" value="1" />
+              <span>Niveau 1 — 30 peintres / 30 œuvres</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="radio" name="niveau" id="level-2" value="2" />
+              <span>Niveau 2 — 60 peintres / 60 œuvres</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="radio" name="niveau" id="level-3" value="3" />
+              <span>Niveau 3 — 60 peintres / 200 œuvres</span>
+            </label>
+            <button type="button" class="primary-button modal-close" data-modal="modal-level">Valider</button>
+          </div>
+        </div>
+
+        <section id="quiz-panel" class="quiz-panel hidden" aria-live="polite">
+          <div class="progress-row">
+            <span id="question-count">Question 1 sur 1</span>
+            <span id="score-summary">0 / 0 réponse correcte</span>
+          </div>
+          <div class="progress-track"><div id="progress-bar" class="progress-bar"></div></div>
+
+          <div class="quiz-grid">
+            <figure class="artwork-card">
+              <img id="artwork-image" alt="Œuvre à identifier" />
+              <figcaption id="image-message" class="image-message hidden"></figcaption>
+            </figure>
+
+            <section class="answer-card" aria-label="Vos réponses">
+              <form id="answer-form">
+                <button type="button" id="mic-global" class="mic-global-button hidden" aria-label="Dicter la réponse au champ sélectionné">🎤 Appuyez pour dicter</button>
+                <p id="mic-hint" class="mic-hint hidden">Pour dicter, attendez que la ligne passe en jaune. Il est possible d'épeler et de corriger par le clavier.</p>
+                <label>Artiste
+                  <input id="artist-input" name="artist" autocomplete="off" />
+                </label>
+                <label>Titre de l'œuvre
+                  <input id="title-input" name="title" autocomplete="off" />
+                </label>
+                <label>Date de création
+                  <input id="date-input" name="date" autocomplete="off" />
+                </label>
+                <label>Lieu de conservation
+                  <input id="location-input" name="location" autocomplete="off" />
+                </label>
+                <button id="check-button" class="primary-button" type="submit">Valider ma réponse</button>
+              </form>
+
+              <div id="correction" class="correction hidden">
+                <div id="correction-details"></div>
+              </div>
+
+              <nav class="navigation" aria-label="Navigation du quiz">
+                <button id="previous-button" class="nav-button" type="button">← Précédente</button>
+                <button id="next-button" class="nav-button" type="button">Suivante →</button>
+              </nav>
+            </section>
+          </div>
+        </section>
+
+        <section id="results-panel" class="results-panel hidden">
+          <p class="eyebrow">QUIZ TERMINÉ</p>
+          <h2>Votre score : <span id="final-score"></span></h2>
+          <p id="final-message"></p>
+          <div class="results-actions">
+            <button id="review-button" class="primary-button" type="button">Revoir les réponses</button>
+            <button id="review-errors-button" class="secondary-button hidden" type="button">Revoir les questions ratées</button>
+            <button id="restart-full-button" class="secondary-button hidden" type="button">Reprendre le quiz complet</button>
+          </div>
+          <div class="export-actions">
+            <button id="export-copy-button" class="secondary-button" type="button">Copier les résultats</button>
+            <button id="export-download-button" class="secondary-button" type="button">Télécharger les résultats (.txt)</button>
+          </div>
+          <p id="export-feedback" class="export-feedback hidden"></p>
+        </section>
+      </main>
+    </div>
+    <script src="app.js?v=9"></script>
+  </body>
+</html>
