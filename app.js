@@ -364,7 +364,17 @@ function renderCorrection(answer, question) {
   // Pour les quiz où un même peintre a plusieurs œuvres (ex. niveau 200 œuvres), on montre les
   // autres pour aider à les mémoriser ensemble. Recherche sur l'ensemble du quiz chargé, pas
   // seulement les questions déjà vues.
-  const otherWorks = state.fullQuestions.filter((otherQuestion) => otherQuestion !== question && keyName(otherQuestion.artist) === keyName(question.artist));
+  const otherWorks = state.fullQuestions
+    .filter((otherQuestion) => otherQuestion !== question && keyName(otherQuestion.artist) === keyName(question.artist))
+    .sort((a, b) => {
+      // Tri chronologique ascendant, à partir de la première année détectable dans la date.
+      // Les dates sans année exploitable sont placées à la fin.
+      const yearA = yearsOf(a.date)[0]; const yearB = yearsOf(b.date)[0];
+      if (yearA == null && yearB == null) return 0;
+      if (yearA == null) return 1;
+      if (yearB == null) return -1;
+      return yearA - yearB;
+    });
   const otherWorksBox = $('other-works');
   if (!otherWorks.length) {
     otherWorksBox.classList.add('hidden');
