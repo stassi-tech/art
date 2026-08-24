@@ -271,6 +271,19 @@ function showPanel(name) {
   $('sidebar').classList.toggle('hidden', name !== 'welcome');
 }
 
+function displayArtworkImage(work, altText) {
+  const image = $('artwork-image'); const message = $('image-message'); const source = imageSource(work.image);
+  image.dataset.originalSource = source; image.dataset.proxyTried = 'false'; image.src = source; image.alt = altText; message.classList.add('hidden');
+  image.onerror = () => {
+    if (image.dataset.proxyTried === 'false' && /^https?:/i.test(image.dataset.originalSource)) {
+      image.dataset.proxyTried = 'true';
+      image.src = `https://images.weserv.nl/?url=${encodeURIComponent(image.dataset.originalSource)}&w=1200`;
+      return;
+    }
+    message.textContent = `L'image n'a pas pu être chargée. Vérifiez le nom de fichier ou l'URL dans la ligne ${work.row} du fichier.`;
+    message.classList.remove('hidden');
+  };
+}
 function renderQuestion() {
   clearAdvanceTimers(); // pas d'avance automatique différée qui tomberait sur la mauvaise question
   document.body.classList.remove('has-other-works'); // repart d'un état propre à chaque question
@@ -280,17 +293,7 @@ function renderQuestion() {
   $('progress-bar').style.width = `${((state.index + 1) / state.questions.length) * 100}%`;
   const possible = checkedQuestions() * activeFields().length;
   $('score-summary').textContent = `${totalCorrect()} / ${possible} point${totalCorrect() > 1 ? 's' : ''}`;
-  const image = $('artwork-image'); const message = $('image-message'); const source = imageSource(question.image);
-  image.dataset.originalSource = source; image.dataset.proxyTried = 'false'; image.src = source; image.alt = `Œuvre ${state.index + 1}`; message.classList.add('hidden');
-  image.onerror = () => {
-    if (image.dataset.proxyTried === 'false' && /^https?:/i.test(image.dataset.originalSource)) {
-      image.dataset.proxyTried = 'true';
-      image.src = `https://images.weserv.nl/?url=${encodeURIComponent(image.dataset.originalSource)}&w=1200`;
-      return;
-    }
-    message.textContent = `L'image n'a pas pu être chargée. Vérifiez le nom de fichier ou l'URL dans la ligne ${question.row} du fichier.`;
-    message.classList.remove('hidden');
-  };
+  displayArtworkImage(question, `Œuvre ${state.index + 1}`);
   allFields.forEach(({ key, input }) => {
     const wrapper = $(input).closest('label');
     const active = state.selectedFieldKeys.includes(key);
@@ -332,45 +335,64 @@ function formatCorrectionValue(key, rawValue) {
   if (key === 'title') return `<em>${escapeHtml(rawValue)}</em>`;
   return escapeHtml(rawValue);
 }
-function renderCorrection(answer, question) {
+let correctionMainWork = null; // œuvre actuellement affichée en grand dans la correction (question testée, ou une « autre œuvre » cliquée)
+function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
+  const isTestedWork = displayedWork === testedQuestion;
+  displayArtworkImage(displayedWork, isTestedWork ? `Œuvre ${state.index + 1}` : `Autre œuvre du même peintre : ${displayedWork.title}`);
   $('correction-details').innerHTML = allFields.map(({ key, label }) => {
-    const tested = state.selectedFieldKeys.includes(key);
-    const value = formatCorrectionValue(key, question[key]);
+    const value = formatCorrectionValue(key, displayedWork[key]);
+    // Une « autre œuvre » cliquée n'a pas été répondue par l'utilisateur : on l'affiche
+    // uniquement à titre d'information, sans notation ✓/✕.
+    const tested = isTestedWork && state.selectedFieldKeys.includes(key);
     if (!tested) {
-      // Rubrique non cochée : affichée à titre d'information complète, sans notation ✓/✕.
       return `<div class="correction-item correction-extra">
-        <span class="correction-label">${label}</span><span class="answer-result info">info</span>
+        <span class="correction-label">${label}${isTestedWork ? ' (info)' : ''}</span><span class="answer-result info">info</span>
         <strong class="correction-value">${value}</strong>
       </div>`;
     }
-    const correct = isMatch(answer[key], question[key], key);
+    const correct = isMatch(answer[key], displayedWork[key], key);
     return `<div class="correction-item">
       <span class="correction-label">${label}</span><span class="answer-result ${correct ? 'correct' : 'incorrect'}">${correct ? 'Correct' : 'À réviser'}</span>
       <strong class="correction-value">${value}</strong>
     </div>`;
   }).join('');
+}
+function renderCorrection(answer, question) {
+  correctionMainWork = question;
+  renderCorrectionDetails(question, question, answer);
 
   // Pour les quiz où un même peintre a plusieurs œuvres (ex. niveau 200 œuvres), on montre les
   // autres pour aider à les mémoriser ensemble. Recherche sur l'ensemble du quiz chargé, pas
   // seulement les questions déjà vues.
   const otherWorks = state.fullQuestions.filter((otherQuestion) => otherQuestion !== question && keyName(otherQuestion.artist) === keyName(question.artist));
   const otherWorksBox = $('other-works');
-  if (otherWorks.length) {
-    $('other-works-list').innerHTML = otherWorks.map((otherQuestion) => {
-      const source = imageSource(otherQuestion.image);
-      const titleValue = formatCorrectionValue('title', otherQuestion.title);
-      return `<div class="other-work-card">
-        <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
-             onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
-        <p class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}</p>
-      </div>`;
-    }).join('');
-    otherWorksBox.classList.remove('hidden');
-    document.body.classList.add('has-other-works');
-  } else {
+  if (!otherWorks.length) {
     otherWorksBox.classList.add('hidden');
     document.body.classList.remove('has-other-works');
+    return;
   }
+  $('other-works-list').innerHTML = otherWorks.map((otherQuestion, index) => {
+    const source = imageSource(otherQuestion.image);
+    const titleValue = formatCorrectionValue('title', otherQuestion.title);
+    return `<button type="button" class="other-work-card" data-index="${index}">
+      <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
+           onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
+      <span class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}</span>
+    </button>`;
+  }).join('');
+  otherWorksBox.querySelectorAll('.other-work-card').forEach((button) => {
+    button.addEventListener('click', () => {
+      const work = otherWorks[Number(button.dataset.index)];
+      const showingThisOne = correctionMainWork === work;
+      const target = showingThisOne ? question : work; // recliquer sur la même œuvre revient à la question testée
+      correctionMainWork = target;
+      renderCorrectionDetails(question, target, answer);
+      otherWorksBox.querySelectorAll('.other-work-card').forEach((b) => b.classList.remove('active'));
+      if (!showingThisOne) button.classList.add('active');
+    });
+  });
+  otherWorksBox.classList.remove('hidden');
+  document.body.classList.add('has-other-works');
 }
 function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
 
