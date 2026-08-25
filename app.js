@@ -473,8 +473,9 @@ $('excel-file').addEventListener('change', async (event) => {
 });
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
+const ART_LABELS = { peinture: 'Peinture', sculpture: 'Sculpture' };
 const CENTURY_LABELS = { '17e': '17e siècle', '18e': '18e siècle', '19e': '19e siècle' };
-const LEVEL_LABELS = { '1': 'Niveau 1 — 30 peintres / 30 œuvres', '2': 'Niveau 2 — 60 peintres / 60 œuvres', '3': 'Niveau 3 — 60 peintres / 200 œuvres' };
+const LEVEL_LABELS = { '1': 'Niveau 1 — 30 artistes / 30 œuvres', '2': 'Niveau 2 — 60 artistes / 60 œuvres', '3': 'Niveau 3 — 60 artistes / 200 œuvres' };
 function openModal(id) { $(id).classList.remove('hidden'); }
 function closeModal(id) { $(id).classList.add('hidden'); }
 document.querySelectorAll('.modal-close').forEach((button) => {
@@ -488,9 +489,12 @@ $('open-century')?.addEventListener('click', () => openModal('modal-century'));
 $('open-rubriques')?.addEventListener('click', () => openModal('modal-rubriques'));
 $('open-level')?.addEventListener('click', () => openModal('modal-level'));
 
+function selectedArts() { return ['peinture', 'sculpture'].filter((art) => $(`art-${art}`).checked); }
 function selectedCenturies() { return ['17e', '18e', '19e'].filter((century) => $(`century-${century}`).checked); }
 function selectedLevel() { const checked = document.querySelector('input[name="niveau"]:checked'); return checked ? checked.value : null; }
 function updateSelectorSummaries() {
+  const arts = selectedArts();
+  $('summary-art').textContent = arts.length ? arts.map((a) => ART_LABELS[a]).join(', ') : 'Aucun art choisi';
   const centuries = selectedCenturies();
   $('summary-century').textContent = centuries.length ? centuries.map((c) => CENTURY_LABELS[c]).join(', ') : 'Aucun siècle choisi';
   const rubriques = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.label);
@@ -501,11 +505,13 @@ function updateSelectorSummaries() {
 updateSelectorSummaries();
 
 $('launch-quiz-button')?.addEventListener('click', async () => {
+  const arts = selectedArts();
   const centuries = selectedCenturies();
   const level = selectedLevel();
   const chosenKeys = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.key);
   const feedback = $('launch-feedback');
   feedback.classList.remove('hidden');
+  if (!arts.length) { feedback.textContent = 'Choisis au moins un art (« Choisis ton art »).'; return; }
   if (!centuries.length) { feedback.textContent = 'Choisis au moins un siècle (« Choisis ton siècle »).'; return; }
   if (!level) { feedback.textContent = 'Choisis un niveau (« Choisis ton niveau »).'; return; }
   if (!chosenKeys.length) { feedback.textContent = 'Choisis au moins une rubrique à réviser (« Choisis tes rubriques »).'; return; }
@@ -513,14 +519,16 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé. Vérifiez votre connexion Internet et rechargez la page.');
     const allRows = [];
-    for (const century of centuries) {
-      const url = `quizzes/peinture-${century}-niveau${level}.xlsx`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Fichier introuvable pour le ${CENTURY_LABELS[century]} à ce niveau (${url}).`);
-      const buffer = await response.arrayBuffer();
-      const book = XLSX.read(buffer, { type: 'array' });
-      const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
-      allRows.push(...normaliseRows(rows));
+    for (const art of arts) {
+      for (const century of centuries) {
+        const url = `quizzes/${art}-${century}-niveau${level}.xlsx`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Fichier introuvable pour ${ART_LABELS[art]} — ${CENTURY_LABELS[century]} à ce niveau (${url}).`);
+        const buffer = await response.arrayBuffer();
+        const book = XLSX.read(buffer, { type: 'array' });
+        const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
+        allRows.push(...normaliseRows(rows));
+      }
     }
     if (!allRows.length) throw new Error('Aucune question trouvée dans les fichiers sélectionnés.');
     state.selectedFieldKeys = chosenKeys;
