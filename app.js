@@ -474,7 +474,7 @@ $('excel-file').addEventListener('change', async (event) => {
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
 const ART_LABELS = { peinture: 'Peinture', sculpture: 'Sculpture' };
-const CENTURY_LABELS = { '17e': '17e siècle', '18e': '18e siècle', '19e': '19e siècle' };
+const CENTURY_LABELS = { '14e': '14e siècle', '15e': '15e siècle', '16e': '16e siècle', '17e': '17e siècle', '18e': '18e siècle', '19e': '19e siècle', '20e': '20e siècle' };
 const LEVEL_LABELS = { '1': 'Niveau 1 — 30 artistes / 30 œuvres', '2': 'Niveau 2 — 60 artistes / 60 œuvres', '3': 'Niveau 3 — 60 artistes / 200 œuvres' };
 function openModal(id) { $(id).classList.remove('hidden'); }
 function closeModal(id) { $(id).classList.add('hidden'); }
@@ -490,7 +490,7 @@ $('open-rubriques')?.addEventListener('click', () => openModal('modal-rubriques'
 $('open-level')?.addEventListener('click', () => openModal('modal-level'));
 
 function selectedArts() { return ['peinture', 'sculpture'].filter((art) => $(`art-${art}`).checked); }
-function selectedCenturies() { return ['17e', '18e', '19e'].filter((century) => $(`century-${century}`).checked); }
+function selectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((century) => $(`century-${century}`).checked); }
 function selectedLevel() { const checked = document.querySelector('input[name="niveau"]:checked'); return checked ? checked.value : null; }
 function updateSelectorSummaries() {
   const arts = selectedArts();
@@ -523,7 +523,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
       for (const century of centuries) {
         const url = `quizzes/${art}-${century}-niveau${level}.xlsx`;
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`Fichier introuvable pour ${ART_LABELS[art]} — ${CENTURY_LABELS[century]} à ce niveau (${url}).`);
+        if (!response.ok) throw new Error('Ce site est en construction. Le quiz sera bientôt disponible.');
         const buffer = await response.arrayBuffer();
         const book = XLSX.read(buffer, { type: 'array' });
         const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
@@ -538,7 +538,8 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     state.answers = []; state.index = 0;
     showPanel('quiz'); renderQuestion();
   } catch (error) {
-    feedback.textContent = `Erreur : ${error.message}`;
+    // Le message « site en construction » se suffit à lui-même, sans préfixe « Erreur : ».
+    feedback.textContent = error.message === 'Ce site est en construction. Le quiz sera bientôt disponible.' ? error.message : `Erreur : ${error.message}`;
   }
 });
 function finalizeCurrentAnswer() {

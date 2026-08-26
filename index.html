@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=14" />
+    <link rel="stylesheet" href="style.css?v=15" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   </head>
   <body>
@@ -63,6 +63,18 @@
           <div class="modal-box">
             <h3>Choisis ton siècle</h3>
             <label class="rubrique-option">
+              <input type="checkbox" id="century-14e" />
+              <span>14e siècle</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="checkbox" id="century-15e" />
+              <span>15e siècle</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="checkbox" id="century-16e" />
+              <span>16e siècle</span>
+            </label>
+            <label class="rubrique-option">
               <input type="checkbox" id="century-17e" />
               <span>17e siècle</span>
             </label>
@@ -73,6 +85,10 @@
             <label class="rubrique-option">
               <input type="checkbox" id="century-19e" />
               <span>19e siècle</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="checkbox" id="century-20e" />
+              <span>20e siècle</span>
             </label>
             <p class="modal-hint">Cocher plusieurs siècles mélange aléatoirement leurs œuvres dans un même quiz.</p>
             <button type="button" class="primary-button modal-close" data-modal="modal-century">Valider</button>
@@ -187,6 +203,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=14"></script>
+    <script src="app.js?v=15"></script>
   </body>
 </html>
