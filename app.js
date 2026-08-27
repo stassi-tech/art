@@ -151,6 +151,8 @@ async function saveCurrentScore() {
       quizLabel: config.label || 'Quiz',
       quizLevel: config.level || '',
       quizSignature: config.signature || config.label || 'quiz',
+      quizArts: config.arts || [],
+      quizCenturies: config.centuries || [],
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     feedback.textContent = 'Score enregistré !';
@@ -191,37 +193,75 @@ async function loadAccountPage() {
     const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores')
       .orderBy('createdAt', 'asc').get(); // ordre chronologique croissant : pratique pour calculer l'évolution
     if (snapshot.empty) { emptyMsg.classList.remove('hidden'); return; }
-    // Regroupe les scores par configuration de quiz identique (même art + siècle + niveau).
-    const groups = new Map();
+
+    // Regroupe d'abord par niveau (un tableau croisé par niveau).
+    const levelGroups = new Map(); // niveau -> liste des scores (docs Firestore)
     snapshot.docs.forEach((doc) => {
       const d = doc.data();
-      const key = d.quizSignature || d.quizLabel || 'quiz';
-      if (!groups.has(key)) groups.set(key, { label: d.quizLabel || 'Quiz', level: d.quizLevel || '', entries: [] });
-      groups.get(key).entries.push(d);
+      const level = d.quizLevel || 'Autre';
+      if (!levelGroups.has(level)) levelGroups.set(level, []);
+      levelGroups.get(level).push(d);
     });
-    groupsBox.innerHTML = Array.from(groups.values()).map((group) => {
-      const rows = group.entries.map((entry, index) => {
-        const date = entry.createdAt ? entry.createdAt.toDate().toLocaleDateString('fr-FR') : '—';
-        const previous = index > 0 ? group.entries[index - 1] : null;
-        let evolution = '';
-        if (previous) {
-          const diff = entry.percent - previous.percent;
-          if (diff > 0) evolution = `<span class="evolution-up">▲ +${diff} pts</span>`;
-          else if (diff < 0) evolution = `<span class="evolution-down">▼ ${diff} pts</span>`;
-          else evolution = `<span class="evolution-flat">= stable</span>`;
-        }
-        return `<tr>
-          <td>${date}</td>
-          <td>${entry.correct} / ${entry.possible} (${entry.percent} %)</td>
-          <td>${evolution}</td>
-        </tr>`;
+
+    groupsBox.innerHTML = Array.from(levelGroups.entries()).map(([level, docs]) => {
+      // Colonnes = contenus distincts rencontrés pour ce niveau (identifiés par leur signature
+      // exacte art+siècles), dans l'ordre de première apparition.
+      const contentOrder = [];
+      docs.forEach((d) => { const sig = d.quizSignature || d.quizLabel || 'quiz'; if (!contentOrder.includes(sig)) contentOrder.push(sig); });
+
+      // Une ligne par date calendaire ; s'il y a plusieurs essais le même jour pour un même
+      // contenu, seul le dernier de la journée est affiché (simplification raisonnable).
+      const cellByDateAndContent = new Map();
+      const dateKeys = [];
+      docs.forEach((d) => {
+        const dateObj = d.createdAt ? d.createdAt.toDate() : new Date();
+        const dateKey = dateObj.toISOString().slice(0, 10);
+        const sig = d.quizSignature || d.quizLabel || 'quiz';
+        if (!dateKeys.includes(dateKey)) dateKeys.push(dateKey);
+        cellByDateAndContent.set(`${dateKey}|${sig}`, d);
+      });
+      dateKeys.sort();
+
+      // Évolution : comparée à la dernière valeur rencontrée pour cette même colonne de contenu,
+      // en suivant les dates dans l'ordre chronologique (les lignes vides pour ce contenu sont ignorées).
+      const lastPercentByContent = {};
+      // Chaque contenu occupe 4 colonnes : Peinture (siècles) / Sculpture (siècles) / Score / Évolution.
+      const headerContentRow = contentOrder.map(() => '<th colspan="2">Contenu</th><th rowspan="2">Score</th><th rowspan="2">Évolution</th>').join('');
+      const headerSubRow = contentOrder.map(() => '<th>Peinture</th><th>Sculpture</th>').join('');
+      const bodyRows = dateKeys.map((dateKey) => {
+        const dateLabel = new Date(dateKey + 'T00:00:00').toLocaleDateString('fr-FR');
+        const cells = contentOrder.map((sig) => {
+          const entry = cellByDateAndContent.get(`${dateKey}|${sig}`);
+          if (!entry) return '<td></td><td></td><td></td><td></td>';
+          const arts = entry.quizArts || [];
+          const centuriesText = (entry.quizCenturies || []).join(', ');
+          const peintureText = arts.includes('Peinture') ? centuriesText : '';
+          const sculptureText = arts.includes('Sculpture') ? centuriesText : '';
+          const scoreText = `${entry.correct} / ${entry.possible} (${entry.percent} %)`;
+          let evolutionHtml = '';
+          if (lastPercentByContent[sig] !== undefined) {
+            const diff = entry.percent - lastPercentByContent[sig];
+            evolutionHtml = diff > 0 ? `<span class="evolution-up">▲ +${diff} pts</span>`
+              : diff < 0 ? `<span class="evolution-down">▼ ${diff} pts</span>`
+              : `<span class="evolution-flat">= stable</span>`;
+          }
+          lastPercentByContent[sig] = entry.percent;
+          return `<td>${escapeHtml(peintureText)}</td><td>${escapeHtml(sculptureText)}</td><td>${scoreText}</td><td>${evolutionHtml}</td>`;
+        }).join('');
+        return `<tr><td>${dateLabel}</td>${cells}</tr>`;
       }).join('');
+
       return `<div class="account-group">
-        <h3>${escapeHtml(group.label)} — ${escapeHtml(group.level)}</h3>
+        <h3>${escapeHtml(level)}</h3>
+        <div class="account-table-scroll">
         <table class="account-table">
-          <thead><tr><th>Date</th><th>Score</th><th>Évolution</th></tr></thead>
-          <tbody>${rows}</tbody>
+          <thead>
+            <tr><th rowspan="2">Date</th>${headerContentRow}</tr>
+            <tr>${headerSubRow}</tr>
+          </thead>
+          <tbody>${bodyRows}</tbody>
         </table>
+        </div>
       </div>`;
     }).join('');
   } catch (error) {

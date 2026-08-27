@@ -32,7 +32,8 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .account-panel { text-align:left; }
 .account-group { margin-top:24px; }
 .account-group h3 { font-size:1rem; margin-bottom:10px; color:var(--ink); }
-.account-table { width:100%; border-collapse:collapse; font-family:Arial,sans-serif; font-size:.88rem; }
+.account-table-scroll { overflow-x:auto; }
+.account-table { width:100%; min-width:600px; border-collapse:collapse; font-family:Arial,sans-serif; font-size:.85rem; white-space:nowrap; }
 .account-table th { text-align:left; padding:8px 10px; border-bottom:2px solid var(--border); color:var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.03em; }
 .account-table td { padding:8px 10px; border-bottom:1px solid var(--border); color:var(--ink); }
 .evolution-up { color:var(--ok); font-weight:700; }
