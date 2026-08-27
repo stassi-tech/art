@@ -35,21 +35,26 @@ function updateAccountBar() {
   const statusEl = $('account-status');
   const loginBtn = $('account-login-button');
   const logoutBtn = $('account-logout-button');
+  const pageBtn = $('account-page-button');
   if (!statusEl) return;
   if (!firebaseReady) {
     statusEl.textContent = "Comptes non configurés pour l'instant";
     loginBtn.classList.add('hidden');
     logoutBtn.classList.add('hidden');
+    pageBtn.classList.add('hidden');
     return;
   }
   if (currentUser) {
     statusEl.textContent = `Connecté : ${currentUser.email}`;
     loginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
+    pageBtn.classList.remove('hidden');
   } else {
     statusEl.textContent = 'Non connecté';
     loginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
+    pageBtn.classList.add('hidden');
+    if (!$('account-panel')?.classList.contains('hidden')) showPanel('welcome'); // déconnecté pendant qu'on consultait « Mon compte »
   }
   // La page de résultats peut déjà être affichée : on synchronise ses boutons aussi.
   updateScoreSaveUi();
@@ -136,12 +141,16 @@ async function saveCurrentScore() {
   const correct = totalCorrect();
   const possible = state.questions.length * activeFields().length;
   const percent = possible ? Math.round((correct / possible) * 100) : 0;
+  const config = state.quizConfig || { label: 'Quiz' };
   feedback.classList.remove('hidden');
   feedback.textContent = 'Enregistrement…';
   try {
     await db.collection('users').doc(currentUser.uid).collection('scores').add({
       correct, possible, percent,
       questionCount: state.questions.length,
+      quizLabel: config.label || 'Quiz',
+      quizLevel: config.level || '',
+      quizSignature: config.signature || config.label || 'quiz',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     feedback.textContent = 'Score enregistré !';
@@ -163,13 +172,66 @@ async function loadMyScores() {
     list.innerHTML = snapshot.docs.map((doc) => {
       const d = doc.data();
       const date = d.createdAt ? d.createdAt.toDate().toLocaleDateString('fr-FR') : '';
-      return `<li>${date} — ${d.correct} / ${d.possible} (${d.percent} %)</li>`;
+      return `<li>${date} — ${d.quizLabel || 'Quiz'} (${d.quizLevel || ''}) — ${d.correct} / ${d.possible} (${d.percent} %)</li>`;
     }).join('');
     box.classList.remove('hidden');
   } catch (error) {
     box.classList.add('hidden');
   }
 }
+
+// --- Page « Mon compte » : historique complet, groupé par type de quiz, avec évolution ---
+async function loadAccountPage() {
+  const groupsBox = $('account-page-groups');
+  const emptyMsg = $('account-page-empty');
+  if (!firebaseReady || !currentUser) return;
+  groupsBox.innerHTML = '';
+  emptyMsg.classList.add('hidden');
+  try {
+    const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores')
+      .orderBy('createdAt', 'asc').get(); // ordre chronologique croissant : pratique pour calculer l'évolution
+    if (snapshot.empty) { emptyMsg.classList.remove('hidden'); return; }
+    // Regroupe les scores par configuration de quiz identique (même art + siècle + niveau).
+    const groups = new Map();
+    snapshot.docs.forEach((doc) => {
+      const d = doc.data();
+      const key = d.quizSignature || d.quizLabel || 'quiz';
+      if (!groups.has(key)) groups.set(key, { label: d.quizLabel || 'Quiz', level: d.quizLevel || '', entries: [] });
+      groups.get(key).entries.push(d);
+    });
+    groupsBox.innerHTML = Array.from(groups.values()).map((group) => {
+      const rows = group.entries.map((entry, index) => {
+        const date = entry.createdAt ? entry.createdAt.toDate().toLocaleDateString('fr-FR') : '—';
+        const previous = index > 0 ? group.entries[index - 1] : null;
+        let evolution = '';
+        if (previous) {
+          const diff = entry.percent - previous.percent;
+          if (diff > 0) evolution = `<span class="evolution-up">▲ +${diff} pts</span>`;
+          else if (diff < 0) evolution = `<span class="evolution-down">▼ ${diff} pts</span>`;
+          else evolution = `<span class="evolution-flat">= stable</span>`;
+        }
+        return `<tr>
+          <td>${date}</td>
+          <td>${entry.correct} / ${entry.possible} (${entry.percent} %)</td>
+          <td>${evolution}</td>
+        </tr>`;
+      }).join('');
+      return `<div class="account-group">
+        <h3>${escapeHtml(group.label)} — ${escapeHtml(group.level)}</h3>
+        <table class="account-table">
+          <thead><tr><th>Date</th><th>Score</th><th>Évolution</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+  } catch (error) {
+    groupsBox.innerHTML = '';
+    emptyMsg.textContent = "Impossible de charger l'historique pour le moment.";
+    emptyMsg.classList.remove('hidden');
+  }
+}
+$('account-page-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+$('account-page-back-button')?.addEventListener('click', () => showPanel('welcome'));
 
 const allFields = [
   { key: 'artist', label: 'Artiste', input: 'artist-input', checkbox: 'rubrique-artist' },
@@ -426,11 +488,12 @@ function selectedRubriquesLabel() {
   return labels.join(', ');
 }
 function showPanel(name) {
-  // name: 'welcome' | 'quiz' | 'results' — centralise l'affichage des panneaux et de la barre
-  // latérale (titre + import), visible uniquement sur la page d'accueil.
+  // name: 'welcome' | 'quiz' | 'results' | 'account' — centralise l'affichage des panneaux et de
+  // la barre latérale (titre + import), visible uniquement sur la page d'accueil.
   $('welcome-panel').classList.toggle('hidden', name !== 'welcome');
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
+  $('account-panel')?.classList.toggle('hidden', name !== 'account');
   $('sidebar').classList.toggle('hidden', name !== 'welcome');
 }
 
@@ -633,6 +696,7 @@ $('excel-file').addEventListener('change', async (event) => {
     state.fullQuestions = shuffleQuestions(questions);
     state.questions = state.fullQuestions;
     state.answers = []; state.index = 0;
+    state.quizConfig = { label: 'Import manuel' };
     showPanel('quiz'); renderQuestion();
   } catch (error) { alert(`Import impossible : ${error.message}`); }
   event.target.value = '';
@@ -723,9 +787,11 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     // Si le total récolté (avec repli inclus) n'atteint pas la cible du niveau demandé, on
     // rétrograde automatiquement vers un niveau que le contenu disponible permet d'honorer.
     let targetCount = LEVEL_QUESTION_COUNTS[level] || allRows.length;
+    let effectiveLevel = level;
     if (allRows.length < targetCount) {
       if (level === '3' && allRows.length >= LEVEL_QUESTION_COUNTS['2']) {
         targetCount = LEVEL_QUESTION_COUNTS['2'];
+        effectiveLevel = '2';
         alert('Pas assez de questions disponibles pour un niveau 3 complet (120 questions). Un quiz de niveau 2 (60 questions) a été généré automatiquement.');
       } else {
         targetCount = allRows.length;
@@ -738,6 +804,15 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     state.fullQuestions = shuffled.slice(0, targetCount);
     state.questions = state.fullQuestions;
     state.answers = []; state.index = 0;
+    // Conserve la configuration du quiz (art, siècle, niveau effectif) pour l'historique des scores.
+    const effectiveLevelLabel = LEVEL_LABELS[effectiveLevel] || `${targetCount} questions`;
+    state.quizConfig = {
+      arts: arts.map((a) => ART_LABELS[a]),
+      centuries: centuries.map((c) => CENTURY_LABELS[c]),
+      level: effectiveLevelLabel,
+      label: `${arts.map((a) => ART_LABELS[a]).join(' + ')} · ${centuries.map((c) => CENTURY_LABELS[c]).join(', ')}`,
+      signature: `${arts.slice().sort().join(',')}|${centuries.slice().sort().join(',')}|${effectiveLevel}`,
+    };
     showPanel('quiz'); renderQuestion();
   } catch (error) {
     // Le message « site en construction » se suffit à lui-même, sans préfixe « Erreur : ».

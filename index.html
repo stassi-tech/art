@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=20" />
+    <link rel="stylesheet" href="style.css?v=21" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -22,6 +22,7 @@
           <div id="account-bar" class="account-bar">
             <span id="account-status">Non connecté</span>
             <button type="button" id="account-login-button" class="link-label">Se connecter / Créer un compte</button>
+            <button type="button" id="account-page-button" class="link-label hidden">Mon compte</button>
             <button type="button" id="account-logout-button" class="link-label hidden">Se déconnecter</button>
           </div>
 
@@ -245,8 +246,16 @@
             <ul id="my-scores-list"></ul>
           </div>
         </section>
+
+        <section id="account-panel" class="results-panel account-panel hidden">
+          <p class="eyebrow">MON COMPTE</p>
+          <h2>Historique de mes scores</h2>
+          <p id="account-page-empty" class="hint hidden">Tu n'as pas encore de score enregistré. Termine un quiz et clique sur « Enregistrer ce score » pour commencer ton historique.</p>
+          <div id="account-page-groups"></div>
+          <button type="button" id="account-page-back-button" class="secondary-button">← Retour à l'accueil</button>
+        </section>
       </main>
     </div>
-    <script src="app.js?v=20"></script>
+    <script src="app.js?v=21"></script>
   </body>
 </html>

@@ -28,6 +28,17 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .my-scores-box { margin-top:22px; padding-top:16px; border-top:1px solid var(--border); text-align:left; }
 .my-scores-box h3 { font-size:.95rem; margin-bottom:8px; }
 .my-scores-box ul { list-style:none; padding:0; margin:0; font-family:Arial,sans-serif; font-size:.88rem; color:var(--muted); display:grid; gap:4px; }
+
+.account-panel { text-align:left; }
+.account-group { margin-top:24px; }
+.account-group h3 { font-size:1rem; margin-bottom:10px; color:var(--ink); }
+.account-table { width:100%; border-collapse:collapse; font-family:Arial,sans-serif; font-size:.88rem; }
+.account-table th { text-align:left; padding:8px 10px; border-bottom:2px solid var(--border); color:var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.03em; }
+.account-table td { padding:8px 10px; border-bottom:1px solid var(--border); color:var(--ink); }
+.evolution-up { color:var(--ok); font-weight:700; }
+.evolution-down { color:var(--wrong); font-weight:700; }
+.evolution-flat { color:var(--muted); }
+#account-page-back-button { margin-top:24px; }
 .copyright-notice { margin:28px auto 0; padding-top:16px; border-top:1px solid var(--border); font-family:Arial,sans-serif; font-size:.78rem; color:var(--muted); line-height:1.4; }
 
 .rubriques-fieldset { margin:0 0 6px; padding:18px 20px; border:1px solid var(--border); border-radius:6px; text-align:left; background:rgba(255,255,255,.5); }
