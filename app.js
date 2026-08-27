@@ -812,7 +812,9 @@ function showResults() {
   $('auto-save-status')?.classList.add('hidden');
   // Sauvegarde automatique du score, une seule fois par quiz terminé (pas à chaque re-rendu
   // de la page de résultats, par exemple après une révision des erreurs).
-  if (firebaseReady && currentUser && !state.currentScoreSaved) {
+  // Seul un quiz complet (pas une reprise des questions ratées) compte comme un essai à
+  // enregistrer dans l'historique — sinon les statistiques et l'évolution seraient faussées.
+  if (firebaseReady && currentUser && state.mode === 'normal' && !state.currentScoreSaved) {
     state.currentScoreSaved = true;
     saveCurrentScore();
   }
