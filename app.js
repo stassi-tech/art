@@ -196,6 +196,21 @@ async function loadMyScores() {
 }
 
 // --- Page « Mon compte » : historique complet, groupé par type de quiz, avec évolution ---
+async function fetchScoreLevelGroups() {
+  if (!firebaseReady || !currentUser) return null;
+  const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores')
+    .orderBy('createdAt', 'asc').get(); // ordre chronologique croissant : pratique pour calculer l'évolution
+  if (snapshot.empty) return new Map();
+  const levelGroups = new Map(); // niveau -> liste des scores (docs Firestore)
+  snapshot.docs.forEach((doc) => {
+    const d = { id: doc.id, ...doc.data() };
+    const level = d.quizLevel || 'Autre';
+    if (!levelGroups.has(level)) levelGroups.set(level, []);
+    levelGroups.get(level).push(d);
+  });
+  lastAccountLevelGroups = levelGroups; // conservé pour le téléchargement, sans refaire de requête
+  return levelGroups;
+}
 async function loadAccountPage() {
   const groupsBox = $('account-page-groups');
   const emptyMsg = $('account-page-empty');
@@ -205,19 +220,8 @@ async function loadAccountPage() {
   emptyMsg.classList.add('hidden');
   downloadButton?.classList.add('hidden');
   try {
-    const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores')
-      .orderBy('createdAt', 'asc').get(); // ordre chronologique croissant : pratique pour calculer l'évolution
-    if (snapshot.empty) { emptyMsg.classList.remove('hidden'); return; }
-
-    // Regroupe d'abord par niveau (un tableau croisé par niveau).
-    const levelGroups = new Map(); // niveau -> liste des scores (docs Firestore)
-    snapshot.docs.forEach((doc) => {
-      const d = { id: doc.id, ...doc.data() };
-      const level = d.quizLevel || 'Autre';
-      if (!levelGroups.has(level)) levelGroups.set(level, []);
-      levelGroups.get(level).push(d);
-    });
-    lastAccountLevelGroups = levelGroups; // conservé pour le téléchargement, sans refaire de requête
+    const levelGroups = await fetchScoreLevelGroups();
+    if (!levelGroups || !levelGroups.size) { emptyMsg.classList.remove('hidden'); return; }
 
     groupsBox.innerHTML = Array.from(levelGroups.entries()).map(([level, docs]) => {
       // Colonnes = contenus distincts rencontrés pour ce niveau (identifiés par leur signature
@@ -302,6 +306,16 @@ const RUBRIQUE_COLUMNS = [
 ];
 function centuryKeyOf(label) { return String(label).trim().split(' ')[0]; } // "16e siècle" -> "16e"
 function levelNumberOf(label) { const m = String(label).match(/Niveau (\d)/); return m ? m[1] : null; }
+function centerAllCells(sheet) {
+  // Centre horizontalement toutes les cellules remplies. Comme pour les couleurs, la version
+  // gratuite de la bibliothèque Excel utilisée ici peut ignorer cette mise en forme selon le
+  // logiciel qui ouvre le fichier ensuite — à vérifier après téléchargement.
+  Object.keys(sheet).forEach((key) => {
+    if (key.startsWith('!')) return;
+    const cell = sheet[key];
+    cell.s = { ...(cell.s || {}), alignment: { horizontal: 'center', vertical: 'center' } };
+  });
+}
 function downloadAccountTable() {
   if (!lastAccountLevelGroups || !window.XLSX) return;
   const allDocs = Array.from(lastAccountLevelGroups.values()).flat()
@@ -329,7 +343,7 @@ function downloadAccountTable() {
       row.push(rubriques.some((r) => match(r)) ? 'X' : '');
     });
     [1, 2, 3].forEach((n) => row.push(levelNum === String(n) ? 'X' : ''));
-    row.push(Math.round((d.percent || 0)) / 100);
+    row.push(`${Math.round(d.percent || 0)}%`);
     return row;
   });
   const sheet1 = XLSX.utils.aoa_to_sheet([header1, header2, header3, ...detailRows]);
@@ -341,6 +355,7 @@ function downloadAccountTable() {
     { s: { r: 1, c: 8 }, e: { r: 1, c: 14 } }, // sculpture
   ];
   sheet1['!cols'] = [{ wch: 12 }, ...Array(21).fill({ wch: 6 }), { wch: 9 }];
+  centerAllCells(sheet1);
   XLSX.utils.book_append_sheet(workbook, sheet1, 'Détail');
 
   // --- Feuille 2 : bilan des moyennes par contenu (art x siècle), avec évolution ---
@@ -393,6 +408,7 @@ function downloadAccountTable() {
     { s: { r: 1, c: 8 }, e: { r: 1, c: 14 } },
   ];
   sheet2['!cols'] = [{ wch: 16 }, ...Array(14).fill({ wch: 9 })];
+  centerAllCells(sheet2);
   XLSX.utils.book_append_sheet(workbook, sheet2, 'Bilan');
 
   const stamp = new Date().toISOString().slice(0, 10);
@@ -1063,4 +1079,18 @@ $('restart-full-button').addEventListener('click', () => {
   state.index = 0;
   showPanel('quiz'); renderQuestion();
 });
-$('view-all-scores-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+$('view-all-scores-button')?.addEventListener('click', async () => {
+  const button = $('view-all-scores-button');
+  const originalText = button.textContent;
+  button.disabled = true; button.textContent = 'Préparation du fichier…';
+  try {
+    if (!lastAccountLevelGroups) await fetchScoreLevelGroups();
+    if (!lastAccountLevelGroups || !lastAccountLevelGroups.size) {
+      alert('Aucun score enregistré pour le moment. Termine un quiz et enregistre ton score pour commencer ton historique.');
+      return;
+    }
+    downloadAccountTable();
+  } finally {
+    button.disabled = false; button.textContent = originalText;
+  }
+});
