@@ -142,6 +142,17 @@ async function saveCurrentScore() {
   const possible = state.questions.length * activeFields().length;
   const percent = possible ? Math.round((correct / possible) * 100) : 0;
   const config = state.quizConfig || { label: 'Quiz' };
+  // Détail par rubrique (Artiste / Titre / Date / Lieu), nécessaire pour le bilan téléchargeable.
+  const perField = {};
+  activeFields().forEach(({ key }) => { perField[key] = { correct: 0, possible: 0 }; });
+  state.questions.forEach((question, index) => {
+    const answer = state.answers[index];
+    if (!answer?.checked) return;
+    activeFields().forEach(({ key }) => {
+      perField[key].possible += 1;
+      if (isMatch(answer[key], question[key], key)) perField[key].correct += 1;
+    });
+  });
   feedback.classList.remove('hidden');
   feedback.textContent = 'Enregistrement…';
   try {
@@ -154,6 +165,7 @@ async function saveCurrentScore() {
       quizArts: config.arts || [],
       quizCenturies: config.centuries || [],
       quizRubriques: config.rubriques || [],
+      perField,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     feedback.textContent = 'Score enregistré !';
@@ -280,48 +292,109 @@ async function loadAccountPage() {
   }
 }
 let lastAccountLevelGroups = null;
+const CENTURY_KEYS = ['14e', '15e', '16e', '17e', '18e', '19e', '20e'];
+const ART_KEYS = ['peinture', 'sculpture'];
+const RUBRIQUE_COLUMNS = [
+  { label: 'Artiste', match: (r) => r.startsWith('Artiste') },
+  { label: 'Titre', match: (r) => r.startsWith('Titre') },
+  { label: 'Date', match: (r) => r.startsWith('Date') },
+  { label: 'Lieu', match: (r) => r.startsWith('Lieu') },
+];
+function centuryKeyOf(label) { return String(label).trim().split(' ')[0]; } // "16e siècle" -> "16e"
+function levelNumberOf(label) { const m = String(label).match(/Niveau (\d)/); return m ? m[1] : null; }
 function downloadAccountTable() {
   if (!lastAccountLevelGroups || !window.XLSX) return;
+  const allDocs = Array.from(lastAccountLevelGroups.values()).flat()
+    .slice()
+    .sort((a, b) => (a.createdAt?.toDate?.() || 0) - (b.createdAt?.toDate?.() || 0));
   const workbook = XLSX.utils.book_new();
-  lastAccountLevelGroups.forEach((docs, level) => {
-    const contentOrder = [];
-    docs.forEach((d) => { const sig = d.quizSignature || d.quizLabel || 'quiz'; if (!contentOrder.includes(sig)) contentOrder.push(sig); });
-    const cellByDateAndContent = new Map();
-    const dateKeys = [];
-    docs.forEach((d) => {
-      const dateObj = d.createdAt ? d.createdAt.toDate() : new Date();
-      const dateKey = dateObj.toISOString().slice(0, 10);
-      const sig = d.quizSignature || d.quizLabel || 'quiz';
-      if (!dateKeys.includes(dateKey)) dateKeys.push(dateKey);
-      cellByDateAndContent.set(`${dateKey}|${sig}`, d);
-    });
-    dateKeys.sort();
-    // Deux lignes d'en-tête, comme le tableau affiché à l'écran.
-    const headerRow1 = ['Date']; const headerRow2 = [''];
-    contentOrder.forEach(() => { headerRow1.push('Contenu', '', 'Score', 'Évolution'); headerRow2.push('Peinture', 'Sculpture', '', ''); });
-    const lastPercentByContent = {};
-    const dataRows = dateKeys.map((dateKey) => {
-      const row = [new Date(dateKey + 'T00:00:00').toLocaleDateString('fr-FR')];
-      contentOrder.forEach((sig) => {
-        const entry = cellByDateAndContent.get(`${dateKey}|${sig}`);
-        if (!entry) { row.push('', '', '', ''); return; }
-        const arts = entry.quizArts || [];
-        const centuriesText = (entry.quizCenturies || []).join(', ');
-        const rubriquesText = (entry.quizRubriques || []).join(', ');
-        row.push(
-          arts.includes('Peinture') ? centuriesText : '',
-          arts.includes('Sculpture') ? centuriesText : '',
-          `${entry.correct} / ${entry.possible} (${entry.percent} %)${rubriquesText ? ' — ' + rubriquesText : ''}`,
-          lastPercentByContent[sig] !== undefined ? `${entry.percent - lastPercentByContent[sig] > 0 ? '+' : ''}${entry.percent - lastPercentByContent[sig]} pts` : ''
-        );
-        lastPercentByContent[sig] = entry.percent;
+
+  // --- Feuille 1 : détail de chaque quiz joué, une ligne par date ---
+  const header1 = ['DATE', 'ARTS', ...Array(13).fill(''), 'RUBRIQUES', '', '', '', 'NIVEAU', '', '', 'SCORE'];
+  const header2 = ['', 'peinture', ...Array(6).fill(''), 'sculpture', ...Array(6).fill(''), 'Artiste', 'Titre', 'Date', 'Lieu', 1, 2, 3, ''];
+  const header3 = ['', ...CENTURY_KEYS, ...CENTURY_KEYS, '', '', '', '', '', '', '', ''];
+  const detailRows = allDocs.map((d) => {
+    const dateLabel = d.createdAt ? d.createdAt.toDate().toLocaleDateString('fr-FR') : '';
+    const arts = (d.quizArts || []).map((a) => a.toLowerCase());
+    const centuries = (d.quizCenturies || []).map(centuryKeyOf);
+    const rubriques = d.quizRubriques || [];
+    const levelNum = levelNumberOf(d.quizLevel || '');
+    const row = [dateLabel];
+    ART_KEYS.forEach((art) => {
+      CENTURY_KEYS.forEach((century) => {
+        row.push(arts.includes(art) && centuries.includes(century) ? 'X' : '');
       });
-      return row;
     });
-    const sheet = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows]);
-    const sheetName = level.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Niveau';
-    XLSX.utils.book_append_sheet(workbook, sheet, sheetName);
+    RUBRIQUE_COLUMNS.forEach(({ match }) => {
+      row.push(rubriques.some((r) => match(r)) ? 'X' : '');
+    });
+    [1, 2, 3].forEach((n) => row.push(levelNum === String(n) ? 'X' : ''));
+    row.push(Math.round((d.percent || 0)) / 100);
+    return row;
   });
+  const sheet1 = XLSX.utils.aoa_to_sheet([header1, header2, header3, ...detailRows]);
+  sheet1['!merges'] = [
+    { s: { r: 0, c: 1 }, e: { r: 0, c: 14 } }, // ARTS
+    { s: { r: 0, c: 15 }, e: { r: 0, c: 18 } }, // RUBRIQUES
+    { s: { r: 0, c: 19 }, e: { r: 0, c: 21 } }, // NIVEAU
+    { s: { r: 1, c: 1 }, e: { r: 1, c: 7 } }, // peinture
+    { s: { r: 1, c: 8 }, e: { r: 1, c: 14 } }, // sculpture
+  ];
+  sheet1['!cols'] = [{ wch: 12 }, ...Array(21).fill({ wch: 6 }), { wch: 9 }];
+  XLSX.utils.book_append_sheet(workbook, sheet1, 'Détail');
+
+  // --- Feuille 2 : bilan des moyennes par contenu (art x siècle), avec évolution ---
+  function matchingDocs(art, century) {
+    return allDocs.filter((d) => (d.quizArts || []).map((a) => a.toLowerCase()).includes(art)
+      && (d.quizCenturies || []).map(centuryKeyOf).includes(century));
+  }
+  function trendArrow(values) {
+    // Compare la dernière valeur à la moyenne des précédentes : ▲ progression, ▼ recul, = stable.
+    if (values.length < 2) return '';
+    const last = values[values.length - 1];
+    const previousAvg = values.slice(0, -1).reduce((s, v) => s + v, 0) / (values.length - 1);
+    if (last > previousAvg) return ' ▲';
+    if (last < previousAvg) return ' ▼';
+    return ' =';
+  }
+  function overallCell(art, century) {
+    const docs = matchingDocs(art, century);
+    if (!docs.length) return '';
+    const values = docs.map((d) => d.percent || 0);
+    const avg = Math.round(values.reduce((s, v) => s + v, 0) / values.length);
+    return `${avg}%${trendArrow(values)}`;
+  }
+  function fieldCell(art, century, fieldKey) {
+    const docs = matchingDocs(art, century).filter((d) => d.perField?.[fieldKey]?.possible);
+    if (!docs.length) return '';
+    const values = docs.map((d) => Math.round((d.perField[fieldKey].correct / d.perField[fieldKey].possible) * 100));
+    const avg = Math.round(values.reduce((s, v) => s + v, 0) / values.length);
+    return `${avg}%${trendArrow(values)}`;
+  }
+  const bHeader1 = ['BILAN DE RÉUSSITE (moyennes des scores)'];
+  const bHeader2 = ['RUBRIQUES', 'peinture', '', '', '', '', '', '', 'sculpture', '', '', '', '', '', ''];
+  const bHeader3 = ['', ...CENTURY_KEYS, ...CENTURY_KEYS];
+  const overallRow = ['TOUTES RUBRIQUES'];
+  ART_KEYS.forEach((art) => CENTURY_KEYS.forEach((century) => overallRow.push(overallCell(art, century))));
+  const fieldRows = [
+    { label: 'ARTISTE', key: 'artist' },
+    { label: 'TITRE', key: 'title' },
+    { label: 'DATE', key: 'date' },
+    { label: 'LIEU', key: 'location' },
+  ].map(({ label, key }) => {
+    const row = [label];
+    ART_KEYS.forEach((art) => CENTURY_KEYS.forEach((century) => row.push(fieldCell(art, century, key))));
+    return row;
+  });
+  const sheet2 = XLSX.utils.aoa_to_sheet([bHeader1, bHeader2, bHeader3, overallRow, ...fieldRows]);
+  sheet2['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 14 } },
+    { s: { r: 1, c: 1 }, e: { r: 1, c: 7 } },
+    { s: { r: 1, c: 8 }, e: { r: 1, c: 14 } },
+  ];
+  sheet2['!cols'] = [{ wch: 16 }, ...Array(14).fill({ wch: 9 })];
+  XLSX.utils.book_append_sheet(workbook, sheet2, 'Bilan');
+
   const stamp = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(workbook, `mes-scores-quiz-art-${stamp}.xlsx`);
 }
