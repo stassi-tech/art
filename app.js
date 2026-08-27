@@ -153,6 +153,7 @@ async function saveCurrentScore() {
       quizSignature: config.signature || config.label || 'quiz',
       quizArts: config.arts || [],
       quizCenturies: config.centuries || [],
+      quizRubriques: config.rubriques || [],
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     feedback.textContent = 'Score enregistré !';
@@ -197,7 +198,7 @@ async function loadAccountPage() {
     // Regroupe d'abord par niveau (un tableau croisé par niveau).
     const levelGroups = new Map(); // niveau -> liste des scores (docs Firestore)
     snapshot.docs.forEach((doc) => {
-      const d = doc.data();
+      const d = { id: doc.id, ...doc.data() };
       const level = d.quizLevel || 'Autre';
       if (!levelGroups.has(level)) levelGroups.set(level, []);
       levelGroups.get(level).push(d);
@@ -237,7 +238,8 @@ async function loadAccountPage() {
           const centuriesText = (entry.quizCenturies || []).join(', ');
           const peintureText = arts.includes('Peinture') ? centuriesText : '';
           const sculptureText = arts.includes('Sculpture') ? centuriesText : '';
-          const scoreText = `${entry.correct} / ${entry.possible} (${entry.percent} %)`;
+          const rubriquesText = (entry.quizRubriques || []).join(', ');
+          const scoreText = `${entry.correct} / ${entry.possible} (${entry.percent} %)${rubriquesText ? `<br><span class="rubriques-tested">${escapeHtml(rubriquesText)}</span>` : ''} <button type="button" class="delete-score-button" data-doc-id="${entry.id}" title="Supprimer ce résultat">✕</button>`;
           let evolutionHtml = '';
           if (lastPercentByContent[sig] !== undefined) {
             const diff = entry.percent - lastPercentByContent[sig];
@@ -264,10 +266,23 @@ async function loadAccountPage() {
         </div>
       </div>`;
     }).join('');
+    groupsBox.querySelectorAll('.delete-score-button').forEach((button) => {
+      button.addEventListener('click', () => deleteScore(button.dataset.docId));
+    });
   } catch (error) {
     groupsBox.innerHTML = '';
     emptyMsg.textContent = "Impossible de charger l'historique pour le moment.";
     emptyMsg.classList.remove('hidden');
+  }
+}
+async function deleteScore(docId) {
+  if (!firebaseReady || !currentUser || !docId) return;
+  if (!confirm('Supprimer définitivement ce résultat de quiz ?')) return;
+  try {
+    await db.collection('users').doc(currentUser.uid).collection('scores').doc(docId).delete();
+    loadAccountPage();
+  } catch (error) {
+    alert('Impossible de supprimer ce résultat pour le moment.');
   }
 }
 $('account-page-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
@@ -736,7 +751,7 @@ $('excel-file').addEventListener('change', async (event) => {
     state.fullQuestions = shuffleQuestions(questions);
     state.questions = state.fullQuestions;
     state.answers = []; state.index = 0;
-    state.quizConfig = { label: 'Import manuel' };
+    state.quizConfig = { label: 'Import manuel', level: 'Autre', rubriques: chosenKeys.map((key) => allFields.find((f) => f.key === key)?.label || key) };
     showPanel('quiz'); renderQuestion();
   } catch (error) { alert(`Import impossible : ${error.message}`); }
   event.target.value = '';
@@ -844,14 +859,18 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     state.fullQuestions = shuffled.slice(0, targetCount);
     state.questions = state.fullQuestions;
     state.answers = []; state.index = 0;
-    // Conserve la configuration du quiz (art, siècle, niveau effectif) pour l'historique des scores.
+    // Conserve la configuration du quiz (art, siècle, niveau effectif, rubriques testées) pour
+    // l'historique des scores : deux quiz avec des rubriques différentes n'ont pas la même
+    // difficulté et ne doivent donc pas partager la même colonne d'évolution.
     const effectiveLevelLabel = LEVEL_LABELS[effectiveLevel] || `${targetCount} questions`;
+    const rubriqueLabels = chosenKeys.map((key) => allFields.find((f) => f.key === key)?.label || key);
     state.quizConfig = {
       arts: arts.map((a) => ART_LABELS[a]),
       centuries: centuries.map((c) => CENTURY_LABELS[c]),
       level: effectiveLevelLabel,
-      label: `${arts.map((a) => ART_LABELS[a]).join(' + ')} · ${centuries.map((c) => CENTURY_LABELS[c]).join(', ')}`,
-      signature: `${arts.slice().sort().join(',')}|${centuries.slice().sort().join(',')}|${effectiveLevel}`,
+      rubriques: rubriqueLabels,
+      label: `${arts.map((a) => ART_LABELS[a]).join(' + ')} · ${centuries.map((c) => CENTURY_LABELS[c]).join(', ')} · ${rubriqueLabels.join(', ')}`,
+      signature: `${arts.slice().sort().join(',')}|${centuries.slice().sort().join(',')}|${effectiveLevel}|${chosenKeys.slice().sort().join(',')}`,
     };
     showPanel('quiz'); renderQuestion();
   } catch (error) {
