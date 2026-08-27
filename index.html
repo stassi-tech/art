@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=25" />
+    <link rel="stylesheet" href="style.css?v=26" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -230,10 +230,8 @@
             <button id="restart-full-button" class="secondary-button hidden" type="button">Reprendre le quiz complet</button>
           </div>
           <div class="export-actions">
-            <button id="export-copy-button" class="secondary-button" type="button">Copier les résultats</button>
-            <button id="export-download-button" class="secondary-button" type="button">Télécharger les résultats (.txt)</button>
+            <button id="view-all-scores-button" class="secondary-button hidden" type="button">Voir tous mes scores</button>
           </div>
-          <p id="export-feedback" class="export-feedback hidden"></p>
 
           <div id="score-save-box" class="score-save-box">
             <button id="save-score-button" class="secondary-button hidden" type="button">Enregistrer ce score sur mon compte</button>
@@ -252,10 +250,13 @@
           <h2>Historique de mes scores</h2>
           <p id="account-page-empty" class="hint hidden">Tu n'as pas encore de score enregistré. Termine un quiz et clique sur « Enregistrer ce score » pour commencer ton historique.</p>
           <div id="account-page-groups"></div>
-          <button type="button" id="account-page-back-button" class="secondary-button">← Retour à l'accueil</button>
+          <div class="account-page-actions">
+            <button type="button" id="account-page-download-button" class="secondary-button hidden">Télécharger mon tableau de scores (.xlsx)</button>
+            <button type="button" id="account-page-back-button" class="secondary-button">← Retour à l'accueil</button>
+          </div>
         </section>
       </main>
     </div>
-    <script src="app.js?v=25"></script>
+    <script src="app.js?v=26"></script>
   </body>
 </html>

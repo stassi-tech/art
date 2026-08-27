@@ -187,9 +187,11 @@ async function loadMyScores() {
 async function loadAccountPage() {
   const groupsBox = $('account-page-groups');
   const emptyMsg = $('account-page-empty');
+  const downloadButton = $('account-page-download-button');
   if (!firebaseReady || !currentUser) return;
   groupsBox.innerHTML = '';
   emptyMsg.classList.add('hidden');
+  downloadButton?.classList.add('hidden');
   try {
     const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores')
       .orderBy('createdAt', 'asc').get(); // ordre chronologique croissant : pratique pour calculer l'évolution
@@ -203,6 +205,7 @@ async function loadAccountPage() {
       if (!levelGroups.has(level)) levelGroups.set(level, []);
       levelGroups.get(level).push(d);
     });
+    lastAccountLevelGroups = levelGroups; // conservé pour le téléchargement, sans refaire de requête
 
     groupsBox.innerHTML = Array.from(levelGroups.entries()).map(([level, docs]) => {
       // Colonnes = contenus distincts rencontrés pour ce niveau (identifiés par leur signature
@@ -269,12 +272,60 @@ async function loadAccountPage() {
     groupsBox.querySelectorAll('.delete-score-button').forEach((button) => {
       button.addEventListener('click', () => deleteScore(button.dataset.docId));
     });
+    downloadButton?.classList.remove('hidden');
   } catch (error) {
     groupsBox.innerHTML = '';
     emptyMsg.textContent = "Impossible de charger l'historique pour le moment.";
     emptyMsg.classList.remove('hidden');
   }
 }
+let lastAccountLevelGroups = null;
+function downloadAccountTable() {
+  if (!lastAccountLevelGroups || !window.XLSX) return;
+  const workbook = XLSX.utils.book_new();
+  lastAccountLevelGroups.forEach((docs, level) => {
+    const contentOrder = [];
+    docs.forEach((d) => { const sig = d.quizSignature || d.quizLabel || 'quiz'; if (!contentOrder.includes(sig)) contentOrder.push(sig); });
+    const cellByDateAndContent = new Map();
+    const dateKeys = [];
+    docs.forEach((d) => {
+      const dateObj = d.createdAt ? d.createdAt.toDate() : new Date();
+      const dateKey = dateObj.toISOString().slice(0, 10);
+      const sig = d.quizSignature || d.quizLabel || 'quiz';
+      if (!dateKeys.includes(dateKey)) dateKeys.push(dateKey);
+      cellByDateAndContent.set(`${dateKey}|${sig}`, d);
+    });
+    dateKeys.sort();
+    // Deux lignes d'en-tête, comme le tableau affiché à l'écran.
+    const headerRow1 = ['Date']; const headerRow2 = [''];
+    contentOrder.forEach(() => { headerRow1.push('Contenu', '', 'Score', 'Évolution'); headerRow2.push('Peinture', 'Sculpture', '', ''); });
+    const lastPercentByContent = {};
+    const dataRows = dateKeys.map((dateKey) => {
+      const row = [new Date(dateKey + 'T00:00:00').toLocaleDateString('fr-FR')];
+      contentOrder.forEach((sig) => {
+        const entry = cellByDateAndContent.get(`${dateKey}|${sig}`);
+        if (!entry) { row.push('', '', '', ''); return; }
+        const arts = entry.quizArts || [];
+        const centuriesText = (entry.quizCenturies || []).join(', ');
+        const rubriquesText = (entry.quizRubriques || []).join(', ');
+        row.push(
+          arts.includes('Peinture') ? centuriesText : '',
+          arts.includes('Sculpture') ? centuriesText : '',
+          `${entry.correct} / ${entry.possible} (${entry.percent} %)${rubriquesText ? ' — ' + rubriquesText : ''}`,
+          lastPercentByContent[sig] !== undefined ? `${entry.percent - lastPercentByContent[sig] > 0 ? '+' : ''}${entry.percent - lastPercentByContent[sig]} pts` : ''
+        );
+        lastPercentByContent[sig] = entry.percent;
+      });
+      return row;
+    });
+    const sheet = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...dataRows]);
+    const sheetName = level.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Niveau';
+    XLSX.utils.book_append_sheet(workbook, sheet, sheetName);
+  });
+  const stamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(workbook, `mes-scores-quiz-art-${stamp}.xlsx`);
+}
+$('account-page-download-button')?.addEventListener('click', downloadAccountTable);
 async function deleteScore(docId) {
   if (!firebaseReady || !currentUser || !docId) return;
   if (!confirm('Supprimer définitivement ce résultat de quiz ?')) return;
@@ -705,7 +756,7 @@ function showResults() {
     reviewButton.classList.add('hidden');
   }
   $('restart-full-button').classList.toggle('hidden', state.mode !== 'review' || state.fullQuestions.length === state.questions.length);
-  $('export-feedback').classList.add('hidden');
+  $('view-all-scores-button')?.classList.toggle('hidden', !firebaseReady || !currentUser);
   $('save-score-feedback').classList.add('hidden');
   updateScoreSaveUi();
   loadMyScores();
@@ -923,23 +974,4 @@ $('restart-full-button').addEventListener('click', () => {
   state.index = 0;
   showPanel('quiz'); renderQuestion();
 });
-$('export-copy-button').addEventListener('click', async () => {
-  const text = buildExportText();
-  try {
-    await navigator.clipboard.writeText(text);
-    $('export-feedback').textContent = 'Résultats copiés dans le presse-papiers.';
-  } catch (error) {
-    $('export-feedback').textContent = "Impossible de copier automatiquement : sélectionnez et copiez le texte téléchargé.";
-  }
-  $('export-feedback').classList.remove('hidden');
-});
-$('export-download-button').addEventListener('click', () => {
-  const text = buildExportText();
-  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  const stamp = new Date().toISOString().slice(0, 10);
-  link.href = url; link.download = `quiz-art-resultats-${stamp}.txt`;
-  document.body.appendChild(link); link.click(); document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-});
+$('view-all-scores-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
