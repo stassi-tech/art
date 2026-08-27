@@ -192,68 +192,38 @@ async function loadAccountPage() {
     const levelGroups = await fetchScoreLevelGroups();
     if (!levelGroups || !levelGroups.size) { emptyMsg.classList.remove('hidden'); return; }
 
-    groupsBox.innerHTML = Array.from(levelGroups.entries()).map(([level, docs]) => {
-      // Colonnes = contenus distincts rencontrés pour ce niveau (identifiés par leur signature
-      // exacte art+siècles), dans l'ordre de première apparition.
-      const contentOrder = [];
-      docs.forEach((d) => { const sig = d.quizSignature || d.quizLabel || 'quiz'; if (!contentOrder.includes(sig)) contentOrder.push(sig); });
+    // Liste chronologique de tous les scores, tous niveaux confondus, une ligne par quiz.
+    const allDocs = Array.from(levelGroups.values()).flat()
+      .slice()
+      .sort((a, b) => (a.createdAt?.toDate?.() || 0) - (b.createdAt?.toDate?.() || 0));
 
-      // Une ligne par date calendaire ; s'il y a plusieurs essais le même jour pour un même
-      // contenu, seul le dernier de la journée est affiché (simplification raisonnable).
-      const cellByDateAndContent = new Map();
-      const dateKeys = [];
-      docs.forEach((d) => {
-        const dateObj = d.createdAt ? d.createdAt.toDate() : new Date();
-        const dateKey = dateObj.toISOString().slice(0, 10);
-        const sig = d.quizSignature || d.quizLabel || 'quiz';
-        if (!dateKeys.includes(dateKey)) dateKeys.push(dateKey);
-        cellByDateAndContent.set(`${dateKey}|${sig}`, d);
-      });
-      dateKeys.sort();
-
-      // Évolution : comparée à la dernière valeur rencontrée pour cette même colonne de contenu,
-      // en suivant les dates dans l'ordre chronologique (les lignes vides pour ce contenu sont ignorées).
-      const lastPercentByContent = {};
-      // Chaque contenu occupe 4 colonnes : Peinture (siècles) / Sculpture (siècles) / Score / Évolution.
-      const headerContentRow = contentOrder.map(() => '<th colspan="2">Contenu</th><th rowspan="2">Score</th><th rowspan="2">Évolution</th>').join('');
-      const headerSubRow = contentOrder.map(() => '<th>Peinture</th><th>Sculpture</th>').join('');
-      const bodyRows = dateKeys.map((dateKey) => {
-        const dateLabel = new Date(dateKey + 'T00:00:00').toLocaleDateString('fr-FR');
-        const cells = contentOrder.map((sig) => {
-          const entry = cellByDateAndContent.get(`${dateKey}|${sig}`);
-          if (!entry) return '<td></td><td></td><td></td><td></td>';
-          const arts = entry.quizArts || [];
-          const centuriesText = (entry.quizCenturies || []).join(', ');
-          const peintureText = arts.includes('Peinture') ? centuriesText : '';
-          const sculptureText = arts.includes('Sculpture') ? centuriesText : '';
-          const rubriquesText = (entry.quizRubriques || []).join(', ');
-          const scoreText = `${entry.correct} / ${entry.possible} (${entry.percent} %)${rubriquesText ? `<br><span class="rubriques-tested">${escapeHtml(rubriquesText)}</span>` : ''} <button type="button" class="delete-score-button" data-doc-id="${entry.id}" title="Éliminer ce résultat" aria-label="Éliminer ce résultat">✕</button>`;
-          let evolutionHtml = '';
-          if (lastPercentByContent[sig] !== undefined) {
-            const diff = entry.percent - lastPercentByContent[sig];
-            evolutionHtml = diff > 0 ? `<span class="evolution-up">▲ +${diff} pts</span>`
-              : diff < 0 ? `<span class="evolution-down">▼ ${diff} pts</span>`
-              : `<span class="evolution-flat">= stable</span>`;
-          }
-          lastPercentByContent[sig] = entry.percent;
-          return `<td>${escapeHtml(peintureText)}</td><td>${escapeHtml(sculptureText)}</td><td>${scoreText}</td><td>${evolutionHtml}</td>`;
-        }).join('');
-        return `<tr><td>${dateLabel}</td>${cells}</tr>`;
-      }).join('');
-
-      return `<div class="account-group">
-        <h3>${escapeHtml(level)}</h3>
-        <div class="account-table-scroll">
-        <table class="account-table">
-          <thead>
-            <tr><th rowspan="2">Date</th>${headerContentRow}</tr>
-            <tr>${headerSubRow}</tr>
-          </thead>
-          <tbody>${bodyRows}</tbody>
-        </table>
-        </div>
+    // Évolution : comparée à la dernière valeur rencontrée pour un contenu identique (même
+    // signature art + siècles + niveau + rubriques), en suivant l'ordre chronologique.
+    const lastPercentBySignature = {};
+    const lines = allDocs.map((entry) => {
+      const dateLabel = entry.createdAt ? entry.createdAt.toDate().toLocaleDateString('fr-FR') : '';
+      const levelNum = levelNumberOf(entry.quizLevel || '');
+      const arts = (entry.quizArts || []).map((a) => (a === 'Peinture' ? 'Peint.' : a === 'Sculpture' ? 'Sculp.' : a));
+      const centuriesText = (entry.quizCenturies || []).join(', ');
+      const contentLabel = [arts.join(' + '), centuriesText].filter(Boolean).join(' ');
+      const rubriquesText = (entry.quizRubriques || []).join(', ');
+      const sig = entry.quizSignature || entry.quizLabel || 'quiz';
+      let evolutionHtml = '';
+      if (lastPercentBySignature[sig] !== undefined) {
+        const diff = entry.percent - lastPercentBySignature[sig];
+        evolutionHtml = diff > 0 ? ` <span class="evolution-up">▲ +${diff} pts</span>`
+          : diff < 0 ? ` <span class="evolution-down">▼ ${diff} pts</span>`
+          : ` <span class="evolution-flat">= stable</span>`;
+      }
+      lastPercentBySignature[sig] = entry.percent;
+      return `<div class="score-line">
+        <span class="score-line-main">${escapeHtml(dateLabel)} — ${levelNum ? `Niveau ${levelNum}` : 'Niveau ?'} — ${escapeHtml(contentLabel)} : <strong>${entry.correct} / ${entry.possible} (${entry.percent} %)</strong>${evolutionHtml}</span>
+        <span class="rubriques-tested">${escapeHtml(rubriquesText)}</span>
+        <button type="button" class="delete-score-button" data-doc-id="${entry.id}" title="Éliminer ce résultat" aria-label="Éliminer ce résultat">✕</button>
       </div>`;
-    }).join('');
+    });
+    // Le plus récent en premier, plus naturel à lire.
+    groupsBox.innerHTML = lines.reverse().join('');
     groupsBox.querySelectorAll('.delete-score-button').forEach((button) => {
       button.addEventListener('click', () => deleteScore(button.dataset.docId));
     });

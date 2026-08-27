@@ -30,13 +30,9 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .my-scores-box ul { list-style:none; padding:0; margin:0; font-family:Arial,sans-serif; font-size:.88rem; color:var(--muted); display:grid; gap:4px; }
 
 .account-panel { text-align:left; }
-.account-group { margin-top:24px; }
-.account-group h3 { font-size:1rem; margin-bottom:10px; color:var(--ink); }
-.account-table-scroll { overflow-x:auto; }
-.account-table { width:100%; min-width:600px; border-collapse:collapse; font-family:Arial,sans-serif; font-size:.85rem; white-space:nowrap; }
-.account-table th { text-align:left; padding:8px 10px; border-bottom:2px solid var(--border); color:var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.03em; }
-.account-table td { padding:8px 10px; border-bottom:1px solid var(--border); color:var(--ink); }
-.rubriques-tested { font-size:.74rem; color:var(--muted); font-weight:400; }
+.score-line { padding:12px 0; border-bottom:1px solid var(--border); font-family:Arial,sans-serif; font-size:.92rem; color:var(--ink); display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; }
+.score-line-main { flex:1 1 auto; }
+.rubriques-tested { font-size:.74rem; color:var(--muted); font-weight:400; flex:1 1 100%; }
 .delete-score-button { border:none; background:none; color:var(--wrong); cursor:pointer; font-size:1rem; padding:2px 5px; margin-left:4px; border-radius:50%; line-height:1; }
 .delete-score-button:hover { background:rgba(197,79,56,.15); }
 .evolution-up { color:var(--ok); font-weight:700; }
