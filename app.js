@@ -227,7 +227,7 @@ async function loadAccountPage() {
           const peintureText = arts.includes('Peinture') ? centuriesText : '';
           const sculptureText = arts.includes('Sculpture') ? centuriesText : '';
           const rubriquesText = (entry.quizRubriques || []).join(', ');
-          const scoreText = `${entry.correct} / ${entry.possible} (${entry.percent} %)${rubriquesText ? `<br><span class="rubriques-tested">${escapeHtml(rubriquesText)}</span>` : ''} <button type="button" class="delete-score-button" data-doc-id="${entry.id}" title="Éliminer ce résultat" aria-label="Éliminer ce résultat">●</button>`;
+          const scoreText = `${entry.correct} / ${entry.possible} (${entry.percent} %)${rubriquesText ? `<br><span class="rubriques-tested">${escapeHtml(rubriquesText)}</span>` : ''} <button type="button" class="delete-score-button" data-doc-id="${entry.id}" title="Éliminer ce résultat" aria-label="Éliminer ce résultat">✕</button>`;
           let evolutionHtml = '';
           if (lastPercentByContent[sig] !== undefined) {
             const diff = entry.percent - lastPercentByContent[sig];
