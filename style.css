@@ -37,8 +37,8 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .account-table th { text-align:left; padding:8px 10px; border-bottom:2px solid var(--border); color:var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.03em; }
 .account-table td { padding:8px 10px; border-bottom:1px solid var(--border); color:var(--ink); }
 .rubriques-tested { font-size:.74rem; color:var(--muted); font-weight:400; }
-.delete-score-button { border:none; background:none; color:var(--wrong); cursor:pointer; font-size:.85rem; padding:2px 4px; margin-left:4px; border-radius:3px; }
-.delete-score-button:hover { background:rgba(197,79,56,.12); }
+.delete-score-button { border:none; background:none; color:var(--wrong); cursor:pointer; font-size:1rem; padding:2px 5px; margin-left:4px; border-radius:50%; line-height:1; }
+.delete-score-button:hover { background:rgba(197,79,56,.15); }
 .evolution-up { color:var(--ok); font-weight:700; }
 .evolution-down { color:var(--wrong); font-weight:700; }
 .evolution-flat { color:var(--muted); }

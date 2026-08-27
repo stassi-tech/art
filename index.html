@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=30" />
+    <link rel="stylesheet" href="style.css?v=31" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -225,24 +225,15 @@
           <p class="eyebrow">QUIZ TERMINÉ</p>
           <h2>Votre score : <span id="final-score"></span></h2>
           <p id="final-message"></p>
+          <p id="auto-save-status" class="hint hidden"></p>
           <div class="results-actions">
             <button id="review-button" class="primary-button" type="button">Revoir les réponses</button>
             <button id="review-errors-button" class="secondary-button hidden" type="button">Revoir les questions ratées</button>
             <button id="restart-full-button" class="secondary-button hidden" type="button">Reprendre le quiz complet</button>
           </div>
           <div class="export-actions">
-            <button id="view-all-scores-button" class="secondary-button hidden" type="button">Télécharger mes résultats</button>
-          </div>
-
-          <div id="score-save-box" class="score-save-box">
-            <button id="save-score-button" class="secondary-button hidden" type="button">Enregistrer ce score sur mon compte</button>
-            <p id="save-score-feedback" class="hint hidden"></p>
-            <p id="save-score-login-hint" class="hint hidden">Connecte-toi pour enregistrer et retrouver tes scores.</p>
-          </div>
-
-          <div id="my-scores-box" class="my-scores-box hidden">
-            <h3>Mes derniers scores</h3>
-            <ul id="my-scores-list"></ul>
+            <button id="view-my-results-button" class="secondary-button hidden" type="button">Voir mes résultats</button>
+            <button id="download-my-report-button" class="secondary-button hidden" type="button">Télécharger mon bilan</button>
           </div>
         </section>
 
@@ -258,6 +249,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=30"></script>
+    <script src="app.js?v=31"></script>
   </body>
 </html>

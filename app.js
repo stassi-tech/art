@@ -56,8 +56,9 @@ function updateAccountBar() {
     pageBtn.classList.add('hidden');
     if (!$('account-panel')?.classList.contains('hidden')) showPanel('welcome'); // déconnecté pendant qu'on consultait « Mon compte »
   }
-  // La page de résultats peut déjà être affichée : on synchronise ses boutons aussi.
-  updateScoreSaveUi();
+  // La page de résultats affiche « Voir mes résultats » / « Télécharger mon bilan » selon la connexion.
+  $('view-my-results-button')?.classList.toggle('hidden', !firebaseReady || !currentUser);
+  $('download-my-report-button')?.classList.toggle('hidden', !firebaseReady || !currentUser);
 }
 
 function setAccountMode(mode) {
@@ -126,18 +127,9 @@ function firebaseAuthErrorMessage(error) {
   return map[error.code] || 'Une erreur est survenue. Réessayez.';
 }
 
-function updateScoreSaveUi() {
-  const saveButton = $('save-score-button');
-  const loginHint = $('save-score-login-hint');
-  if (!saveButton) return;
-  if (!firebaseReady) { saveButton.classList.add('hidden'); loginHint.classList.add('hidden'); return; }
-  if (currentUser) { saveButton.classList.remove('hidden'); loginHint.classList.add('hidden'); }
-  else { saveButton.classList.add('hidden'); loginHint.classList.remove('hidden'); }
-}
-
 async function saveCurrentScore() {
   if (!firebaseReady || !currentUser) return;
-  const feedback = $('save-score-feedback');
+  const statusEl = $('auto-save-status');
   const correct = totalCorrect();
   const possible = state.questions.length * activeFields().length;
   const percent = possible ? Math.round((correct / possible) * 100) : 0;
@@ -153,8 +145,6 @@ async function saveCurrentScore() {
       if (isMatch(answer[key], question[key], key)) perField[key].correct += 1;
     });
   });
-  feedback.classList.remove('hidden');
-  feedback.textContent = 'Enregistrement…';
   try {
     await db.collection('users').doc(currentUser.uid).collection('scores').add({
       correct, possible, percent,
@@ -168,30 +158,9 @@ async function saveCurrentScore() {
       perField,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    feedback.textContent = 'Score enregistré !';
-    $('save-score-button').classList.add('hidden');
-    loadMyScores();
+    if (statusEl) { statusEl.textContent = 'Score enregistré automatiquement sur ton compte.'; statusEl.classList.remove('hidden'); }
   } catch (error) {
-    feedback.textContent = "Impossible d'enregistrer le score pour le moment.";
-  }
-}
-$('save-score-button')?.addEventListener('click', saveCurrentScore);
-
-async function loadMyScores() {
-  const box = $('my-scores-box'); const list = $('my-scores-list');
-  if (!firebaseReady || !currentUser) { box.classList.add('hidden'); return; }
-  try {
-    const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores')
-      .orderBy('createdAt', 'desc').limit(5).get();
-    if (snapshot.empty) { box.classList.add('hidden'); return; }
-    list.innerHTML = snapshot.docs.map((doc) => {
-      const d = doc.data();
-      const date = d.createdAt ? d.createdAt.toDate().toLocaleDateString('fr-FR') : '';
-      return `<li>${date} — ${d.quizLabel || 'Quiz'} (${d.quizLevel || ''}) — ${d.correct} / ${d.possible} (${d.percent} %)</li>`;
-    }).join('');
-    box.classList.remove('hidden');
-  } catch (error) {
-    box.classList.add('hidden');
+    if (statusEl) { statusEl.textContent = "Le score n'a pas pu être enregistré automatiquement."; statusEl.classList.remove('hidden'); }
   }
 }
 
@@ -258,7 +227,7 @@ async function loadAccountPage() {
           const peintureText = arts.includes('Peinture') ? centuriesText : '';
           const sculptureText = arts.includes('Sculpture') ? centuriesText : '';
           const rubriquesText = (entry.quizRubriques || []).join(', ');
-          const scoreText = `${entry.correct} / ${entry.possible} (${entry.percent} %)${rubriquesText ? `<br><span class="rubriques-tested">${escapeHtml(rubriquesText)}</span>` : ''} <button type="button" class="delete-score-button" data-doc-id="${entry.id}" title="Supprimer ce résultat">✕</button>`;
+          const scoreText = `${entry.correct} / ${entry.possible} (${entry.percent} %)${rubriquesText ? `<br><span class="rubriques-tested">${escapeHtml(rubriquesText)}</span>` : ''} <button type="button" class="delete-score-button" data-doc-id="${entry.id}" title="Éliminer ce résultat" aria-label="Éliminer ce résultat">●</button>`;
           let evolutionHtml = '';
           if (lastPercentByContent[sig] !== undefined) {
             const diff = entry.percent - lastPercentByContent[sig];
@@ -861,10 +830,15 @@ function showResults() {
     reviewButton.classList.add('hidden');
   }
   $('restart-full-button').classList.toggle('hidden', state.mode !== 'review' || state.fullQuestions.length === state.questions.length);
-  $('view-all-scores-button')?.classList.toggle('hidden', !firebaseReady || !currentUser);
-  $('save-score-feedback').classList.add('hidden');
-  updateScoreSaveUi();
-  loadMyScores();
+  $('view-my-results-button')?.classList.toggle('hidden', !firebaseReady || !currentUser);
+  $('download-my-report-button')?.classList.toggle('hidden', !firebaseReady || !currentUser);
+  $('auto-save-status')?.classList.add('hidden');
+  // Sauvegarde automatique du score, une seule fois par quiz terminé (pas à chaque re-rendu
+  // de la page de résultats, par exemple après une révision des erreurs).
+  if (firebaseReady && currentUser && !state.currentScoreSaved) {
+    state.currentScoreSaved = true;
+    saveCurrentScore();
+  }
 }
 
 function buildExportText() {
@@ -907,6 +881,7 @@ $('excel-file').addEventListener('change', async (event) => {
     state.fullQuestions = shuffleQuestions(questions);
     state.questions = state.fullQuestions;
     state.answers = []; state.index = 0;
+    state.currentScoreSaved = false;
     state.quizConfig = { label: 'Import manuel', level: 'Autre', rubriques: chosenKeys.map((key) => allFields.find((f) => f.key === key)?.label || key) };
     showPanel('quiz'); renderQuestion();
   } catch (error) { alert(`Import impossible : ${error.message}`); }
@@ -1015,6 +990,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     state.fullQuestions = shuffled.slice(0, targetCount);
     state.questions = state.fullQuestions;
     state.answers = []; state.index = 0;
+    state.currentScoreSaved = false;
     // Conserve la configuration du quiz (art, siècle, niveau effectif, rubriques testées) pour
     // l'historique des scores : deux quiz avec des rubriques différentes n'ont pas la même
     // difficulté et ne doivent donc pas partager la même colonne d'évolution.
@@ -1070,6 +1046,7 @@ $('review-errors-button').addEventListener('click', () => {
   state.questions = missed;
   state.answers = [];
   state.index = 0;
+  state.currentScoreSaved = false;
   showPanel('quiz'); renderQuestion();
 });
 $('restart-full-button').addEventListener('click', () => {
@@ -1077,16 +1054,18 @@ $('restart-full-button').addEventListener('click', () => {
   state.questions = state.fullQuestions;
   state.answers = [];
   state.index = 0;
+  state.currentScoreSaved = false;
   showPanel('quiz'); renderQuestion();
 });
-$('view-all-scores-button')?.addEventListener('click', async () => {
-  const button = $('view-all-scores-button');
+$('view-my-results-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+$('download-my-report-button')?.addEventListener('click', async () => {
+  const button = $('download-my-report-button');
   const originalText = button.textContent;
   button.disabled = true; button.textContent = 'Préparation du fichier…';
   try {
     if (!lastAccountLevelGroups) await fetchScoreLevelGroups();
     if (!lastAccountLevelGroups || !lastAccountLevelGroups.size) {
-      alert('Aucun score enregistré pour le moment. Termine un quiz et enregistre ton score pour commencer ton historique.');
+      alert('Aucun score enregistré pour le moment. Termine un quiz pour commencer ton historique.');
       return;
     }
     downloadAccountTable();
