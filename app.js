@@ -603,6 +603,14 @@ function showPanel(name) {
   $('sidebar').classList.toggle('hidden', name !== 'welcome');
 }
 
+function commonsFilePageUrl(imageUrl) {
+  // Reconstruit l'adresse de la page Commons (avec les crédits complets) à partir de l'URL
+  // d'image stockée dans le fichier Excel, qu'il s'agisse du fichier original ou d'une miniature
+  // (.../thumb/x/xx/Nom_du_fichier.jpg/1280px-Nom_du_fichier.jpg).
+  const match = imageUrl.match(/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+?)(?:\/\d+px-[^/]+)?(?:\?.*)?$/i);
+  if (!match) return null;
+  return `https://commons.wikimedia.org/wiki/File:${match[1]}`;
+}
 function displayArtworkImage(work, altText) {
   const image = $('artwork-image'); const message = $('image-message'); const source = imageSource(work.image);
   image.dataset.originalSource = source; image.dataset.proxyTried = 'false'; image.src = source; image.alt = altText; message.classList.add('hidden');
@@ -615,6 +623,12 @@ function displayArtworkImage(work, altText) {
     message.textContent = `L'image n'a pas pu être chargée. Vérifiez le nom de fichier ou l'URL dans la ligne ${work.row} du fichier.`;
     message.classList.remove('hidden');
   };
+  const sourceLink = $('artwork-source-link');
+  const commonsUrl = commonsFilePageUrl(source);
+  if (sourceLink) {
+    if (commonsUrl) { sourceLink.href = commonsUrl; sourceLink.classList.remove('hidden'); }
+    else sourceLink.classList.add('hidden');
+  }
 }
 function renderQuestion() {
   clearAdvanceTimers(); // pas d'avance automatique différée qui tomberait sur la mauvaise question

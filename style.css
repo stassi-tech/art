@@ -69,6 +69,8 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .artwork-card { position:relative; min-height:640px; margin:0; padding:22px; background:#1b1c1e; display:flex; align-items:center; justify-content:center; transition:min-height .2s; }
 .artwork-card img { display:block; max-width:100%; max-height:820px; width:auto; height:auto; object-fit:contain; }
 .image-message { position:absolute; inset:auto 20px 20px; color:white; background:rgba(20,20,20,.8); padding:12px; font-family:Arial,sans-serif; font-size:.9rem; }
+.artwork-source-link { position:absolute; right:12px; bottom:10px; color:rgba(255,255,255,.75); background:rgba(20,20,20,.55); padding:4px 9px; border-radius:4px; font-family:Arial,sans-serif; font-size:.7rem; text-decoration:none; }
+.artwork-source-link:hover { color:#fff; background:rgba(20,20,20,.8); }
 .answer-card { padding:30px 26px; }.answer-card h2 { margin-bottom:7px; font-size:1.3rem; }.answer-card form { display:grid; gap:14px; }.answer-card label { display:grid; gap:6px; font-family:Arial,sans-serif; font-size:.82rem; font-weight:700; }.answer-card input { width:100%; padding:10px; color:var(--ink); border:1px solid #cfc8bc; border-radius:4px; background:#fff; transition:background .15s, border-color .15s; }.answer-card input:focus { outline:2px solid #df947f; border-color:var(--accent); }.answer-card input:disabled { background:#f4f1eb; }
 .answer-card label.field-target input:not(:disabled) { background:#fdeb8f; border-color:var(--accent); }
 

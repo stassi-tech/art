@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=26" />
+    <link rel="stylesheet" href="style.css?v=27" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -51,7 +51,7 @@
           <p id="launch-feedback" class="hint hidden"></p>
 
           <p class="hint"><label class="link-label" for="excel-file">Ou importer un fichier Excel manuellement</label><input id="excel-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" /></p>
-          <p class="copyright-notice">© 2026 Stéphane Tassi. Contenu original — reproduction ou réutilisation de la sélection sans autorisation interdite.</p>
+          <p class="copyright-notice">© 2026 Stéphane Tassi. Contenu original — reproduction ou réutilisation de la sélection sans autorisation interdite.<br>Les images sont issues de Wikimedia Commons et sont utilisées sous leurs licences respectives (domaine public ou Creative Commons selon les fichiers). Cliquez sur une image pour accéder à sa page source et à ses crédits complets.</p>
         </section>
 
         <div class="modal-overlay hidden" id="modal-art">
@@ -183,6 +183,7 @@
             <figure class="artwork-card">
               <img id="artwork-image" alt="Œuvre à identifier" />
               <figcaption id="image-message" class="image-message hidden"></figcaption>
+              <a id="artwork-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
             </figure>
 
             <section class="answer-card" aria-label="Vos réponses">
@@ -257,6 +258,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=26"></script>
+    <script src="app.js?v=27"></script>
   </body>
 </html>
