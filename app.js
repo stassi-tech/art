@@ -200,7 +200,7 @@ async function loadAccountPage() {
     // Évolution : comparée à la dernière valeur rencontrée pour un contenu identique (même
     // signature art + siècles + niveau + rubriques), en suivant l'ordre chronologique.
     const lastPercentBySignature = {};
-    const lines = allDocs.map((entry) => {
+    const rows = allDocs.map((entry) => {
       const dateLabel = entry.createdAt ? entry.createdAt.toDate().toLocaleDateString('fr-FR') : '';
       const levelNum = levelNumberOf(entry.quizLevel || '');
       const arts = (entry.quizArts || []).map((a) => (a === 'Peinture' ? 'Peint.' : a === 'Sculpture' ? 'Sculp.' : a));
@@ -211,19 +211,26 @@ async function loadAccountPage() {
       let evolutionHtml = '';
       if (lastPercentBySignature[sig] !== undefined) {
         const diff = entry.percent - lastPercentBySignature[sig];
-        evolutionHtml = diff > 0 ? ` <span class="evolution-up">▲ +${diff} pts</span>`
-          : diff < 0 ? ` <span class="evolution-down">▼ ${diff} pts</span>`
-          : ` <span class="evolution-flat">= stable</span>`;
+        evolutionHtml = diff > 0 ? `<span class="evolution-up">▲ +${diff} pts</span>`
+          : diff < 0 ? `<span class="evolution-down">▼ ${diff} pts</span>`
+          : `<span class="evolution-flat">= stable</span>`;
       }
       lastPercentBySignature[sig] = entry.percent;
-      return `<div class="score-line">
-        <span class="score-line-main">${escapeHtml(dateLabel)} — ${levelNum ? `Niveau ${levelNum}` : 'Niveau ?'} — ${escapeHtml(contentLabel)} : <strong>${entry.correct} / ${entry.possible} (${entry.percent} %)</strong>${evolutionHtml}</span>
-        <span class="rubriques-tested">${escapeHtml(rubriquesText)}</span>
-        <button type="button" class="delete-score-button" data-doc-id="${entry.id}" title="Éliminer ce résultat" aria-label="Éliminer ce résultat">✕</button>
-      </div>`;
+      return `<tr>
+        <td>${escapeHtml(dateLabel)}</td>
+        <td class="col-contenu">${escapeHtml(contentLabel)}</td>
+        <td>${levelNum ? `Niveau ${levelNum}` : '—'}</td>
+        <td class="rubriques-tested">${escapeHtml(rubriquesText)}</td>
+        <td><strong>${entry.correct} / ${entry.possible} (${entry.percent} %)</strong></td>
+        <td>${evolutionHtml}</td>
+        <td><button type="button" class="delete-score-button" data-doc-id="${entry.id}" title="Éliminer ce résultat" aria-label="Éliminer ce résultat">✕</button></td>
+      </tr>`;
     });
     // Le plus récent en premier, plus naturel à lire.
-    groupsBox.innerHTML = lines.reverse().join('');
+    groupsBox.innerHTML = `<div class="account-table-scroll"><table class="account-table">
+      <thead><tr><th>Date</th><th class="col-contenu">Contenu</th><th>Niveau</th><th>Rubriques</th><th>Score</th><th>Évolution</th><th></th></tr></thead>
+      <tbody>${rows.slice().reverse().join('')}</tbody>
+    </table></div>`;
     groupsBox.querySelectorAll('.delete-score-button').forEach((button) => {
       button.addEventListener('click', () => deleteScore(button.dataset.docId));
     });
