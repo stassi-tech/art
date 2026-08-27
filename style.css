@@ -20,6 +20,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intro-banner { background:#f3e6c9; color:var(--ink); padding:20px 24px; border-radius:6px; font-family:Arial,sans-serif; font-size:1.05rem; font-weight:700; line-height:1.6; text-align:justify; margin-bottom:24px; }
 .account-bar { display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-bottom:14px; font-family:Arial,sans-serif; font-size:.85rem; color:var(--muted); }
 .account-error { color:var(--wrong); font-family:Arial,sans-serif; font-size:.85rem; margin:6px 0 0; }
+.account-notice { color:var(--ok); font-family:Arial,sans-serif; font-size:.85rem; margin:6px 0 0; line-height:1.4; }
 #account-form { display:flex; flex-direction:column; gap:12px; }
 #account-form label { display:flex; flex-direction:column; gap:5px; font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:var(--ink); text-align:left; }
 #account-form input { padding:10px; border:1px solid #cfc8bc; border-radius:4px; font-size:1rem; }

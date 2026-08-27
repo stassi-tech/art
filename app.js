@@ -61,6 +61,8 @@ function setAccountMode(mode) {
   $('account-submit-button').textContent = mode === 'login' ? 'Se connecter' : 'Créer mon compte';
   $('account-toggle-mode').textContent = mode === 'login' ? 'Pas encore de compte ? Crée-en un' : 'Déjà un compte ? Connecte-toi';
   $('account-error').classList.add('hidden');
+  $('account-notice').classList.add('hidden');
+  $('account-forgot-row').classList.toggle('hidden', mode !== 'login'); // pas de sens en mode inscription
   $('account-password').setAttribute('autocomplete', mode === 'login' ? 'current-password' : 'new-password');
 }
 
@@ -68,12 +70,30 @@ if (firebaseReady) {
   $('account-login-button')?.addEventListener('click', () => { setAccountMode('login'); openModal('modal-account'); });
   $('account-logout-button')?.addEventListener('click', () => auth.signOut());
   $('account-toggle-mode')?.addEventListener('click', () => setAccountMode(accountMode === 'login' ? 'register' : 'login'));
+  $('account-forgot-button')?.addEventListener('click', async () => {
+    const email = $('account-email').value.trim();
+    const errorEl = $('account-error'); const noticeEl = $('account-notice');
+    errorEl.classList.add('hidden'); noticeEl.classList.add('hidden');
+    if (!email) {
+      errorEl.textContent = "Indique d'abord ton adresse e-mail dans le champ ci-dessus, puis reclique sur « Mot de passe oublié ? ».";
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    try {
+      await auth.sendPasswordResetEmail(email);
+      noticeEl.textContent = `Un e-mail de réinitialisation a été envoyé à ${email}. Vérifie ta boîte de réception (et les spams).`;
+      noticeEl.classList.remove('hidden');
+    } catch (error) {
+      errorEl.textContent = firebaseAuthErrorMessage(error);
+      errorEl.classList.remove('hidden');
+    }
+  });
   $('account-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const email = $('account-email').value.trim();
     const password = $('account-password').value;
-    const errorEl = $('account-error');
-    errorEl.classList.add('hidden');
+    const errorEl = $('account-error'); const noticeEl = $('account-notice');
+    errorEl.classList.add('hidden'); noticeEl.classList.add('hidden');
     try {
       if (accountMode === 'login') await auth.signInWithEmailAndPassword(email, password);
       else await auth.createUserWithEmailAndPassword(email, password);
