@@ -475,7 +475,7 @@ $('excel-file').addEventListener('change', async (event) => {
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
 const ART_LABELS = { peinture: 'Peinture', sculpture: 'Sculpture' };
 const CENTURY_LABELS = { '14e': '14e siècle', '15e': '15e siècle', '16e': '16e siècle', '17e': '17e siècle', '18e': '18e siècle', '19e': '19e siècle', '20e': '20e siècle' };
-const LEVEL_LABELS = { '1': 'Niveau 1 — 30 artistes / 30 œuvres', '2': 'Niveau 2 — 60 artistes / 60 œuvres', '3': 'Niveau 3 — 60 artistes / 200 œuvres' };
+const LEVEL_LABELS = { '1': 'Niveau 1 — 30 questions', '2': 'Niveau 2 — 60 questions', '3': 'Niveau 3 — 120 questions' };
 function openModal(id) { $(id).classList.remove('hidden'); }
 function closeModal(id) { $(id).classList.add('hidden'); }
 document.querySelectorAll('.modal-close').forEach((button) => {
@@ -504,6 +504,8 @@ function updateSelectorSummaries() {
 }
 updateSelectorSummaries();
 
+const LEVEL_QUESTION_COUNTS = { '1': 30, '2': 60, '3': 120 };
+
 $('launch-quiz-button')?.addEventListener('click', async () => {
   const arts = selectedArts();
   const centuries = selectedCenturies();
@@ -519,21 +521,33 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé. Vérifiez votre connexion Internet et rechargez la page.');
     const allRows = [];
+    const missing = []; // combinaisons art/siècle indisponibles : on les signale sans bloquer le quiz
     for (const art of arts) {
       for (const century of centuries) {
         const url = `quizzes/${art}-${century}-niveau${level}.xlsx`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Ce site est en construction. Le quiz sera bientôt disponible.');
-        const buffer = await response.arrayBuffer();
-        const book = XLSX.read(buffer, { type: 'array' });
-        const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
-        allRows.push(...normaliseRows(rows));
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error('fichier introuvable');
+          const buffer = await response.arrayBuffer();
+          const book = XLSX.read(buffer, { type: 'array' });
+          const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
+          allRows.push(...normaliseRows(rows));
+        } catch (error) {
+          missing.push(`${ART_LABELS[art]} — ${CENTURY_LABELS[century]}`);
+        }
       }
     }
-    if (!allRows.length) throw new Error('Aucune question trouvée dans les fichiers sélectionnés.');
+    if (!allRows.length) throw new Error('Ce site est en construction. Le quiz sera bientôt disponible.');
+    if (missing.length) {
+      alert(`Ce site est en construction pour : ${missing.join(', ')}. Le quiz continue avec les autres choix disponibles.`);
+    }
+    // Le niveau fixe le nombre de questions du quiz (30/60/120), même si plusieurs arts ou
+    // siècles combinés fournissent davantage de questions au total : on mélange puis on limite.
+    const targetCount = LEVEL_QUESTION_COUNTS[level] || allRows.length;
+    const shuffled = shuffleQuestions(allRows);
     state.selectedFieldKeys = chosenKeys;
     state.mode = 'normal';
-    state.fullQuestions = shuffleQuestions(allRows);
+    state.fullQuestions = shuffled.slice(0, targetCount);
     state.questions = state.fullQuestions;
     state.answers = []; state.index = 0;
     showPanel('quiz'); renderQuestion();
