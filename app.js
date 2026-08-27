@@ -506,6 +506,16 @@ updateSelectorSummaries();
 
 const LEVEL_QUESTION_COUNTS = { '1': 30, '2': 60, '3': 120 };
 
+async function fetchQuizRows(art, century, level) {
+  const url = `quizzes/${art}-${century}-niveau${level}.xlsx`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('fichier introuvable');
+  const buffer = await response.arrayBuffer();
+  const book = XLSX.read(buffer, { type: 'array' });
+  const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
+  return normaliseRows(rows);
+}
+
 $('launch-quiz-button')?.addEventListener('click', async () => {
   const arts = selectedArts();
   const centuries = selectedCenturies();
@@ -521,20 +531,21 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé. Vérifiez votre connexion Internet et rechargez la page.');
     const allRows = [];
-    const missing = []; // combinaisons art/siècle indisponibles : on les signale sans bloquer le quiz
+    const missing = []; // combinaisons art/siècle sans aucun fichier (à aucun niveau) : signalées, sans bloquer le quiz
+    // Pour un niveau 3 demandé, on se rabat sur le niveau 2 puis le niveau 1 d'un même siècle
+    // si le fichier niveau 3 n'existe pas, plutôt que d'écarter ce siècle du quiz.
+    const fallbackLevels = level === '3' ? ['3', '2', '1'] : [level];
     for (const art of arts) {
       for (const century of centuries) {
-        const url = `quizzes/${art}-${century}-niveau${level}.xlsx`;
-        try {
-          const response = await fetch(url);
-          if (!response.ok) throw new Error('fichier introuvable');
-          const buffer = await response.arrayBuffer();
-          const book = XLSX.read(buffer, { type: 'array' });
-          const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
-          allRows.push(...normaliseRows(rows));
-        } catch (error) {
-          missing.push(`${ART_LABELS[art]} — ${CENTURY_LABELS[century]}`);
+        let found = false;
+        for (const tryLevel of fallbackLevels) {
+          try {
+            allRows.push(...(await fetchQuizRows(art, century, tryLevel)));
+            found = true;
+            break; // premier niveau disponible pour cette combinaison : on s'arrête là
+          } catch (error) { /* on tente le niveau de repli suivant */ }
         }
+        if (!found) missing.push(`${ART_LABELS[art]} — ${CENTURY_LABELS[century]}`);
       }
     }
     if (!allRows.length) throw new Error('Ce site est en construction. Le quiz sera bientôt disponible.');
@@ -543,7 +554,18 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     }
     // Le niveau fixe le nombre de questions du quiz (30/60/120), même si plusieurs arts ou
     // siècles combinés fournissent davantage de questions au total : on mélange puis on limite.
-    const targetCount = LEVEL_QUESTION_COUNTS[level] || allRows.length;
+    // Si le total récolté (avec repli inclus) n'atteint pas la cible du niveau demandé, on
+    // rétrograde automatiquement vers un niveau que le contenu disponible permet d'honorer.
+    let targetCount = LEVEL_QUESTION_COUNTS[level] || allRows.length;
+    if (allRows.length < targetCount) {
+      if (level === '3' && allRows.length >= LEVEL_QUESTION_COUNTS['2']) {
+        targetCount = LEVEL_QUESTION_COUNTS['2'];
+        alert('Pas assez de questions disponibles pour un niveau 3 complet (120 questions). Un quiz de niveau 2 (60 questions) a été généré automatiquement.');
+      } else {
+        targetCount = allRows.length;
+        alert(`Pas assez de questions disponibles pour le niveau demandé. Le quiz démarre avec les ${allRows.length} questions disponibles.`);
+      }
+    }
     const shuffled = shuffleQuestions(allRows);
     state.selectedFieldKeys = chosenKeys;
     state.mode = 'normal';
