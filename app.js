@@ -611,7 +611,7 @@ function commonsFilePageUrl(imageUrl) {
   if (!match) return null;
   return `https://commons.wikimedia.org/wiki/File:${match[1]}`;
 }
-function displayArtworkImage(work, altText) {
+function displayArtworkImage(work, altText, showSourceLink = false) {
   const image = $('artwork-image'); const message = $('image-message'); const source = imageSource(work.image);
   image.dataset.originalSource = source; image.dataset.proxyTried = 'false'; image.src = source; image.alt = altText; message.classList.add('hidden');
   image.onerror = () => {
@@ -624,7 +624,9 @@ function displayArtworkImage(work, altText) {
     message.classList.remove('hidden');
   };
   const sourceLink = $('artwork-source-link');
-  const commonsUrl = commonsFilePageUrl(source);
+  // Le lien vers la page Commons révèle le titre et l'auteur de l'œuvre : on ne l'affiche
+  // qu'une fois la réponse validée (page de correction), jamais pendant la question elle-même.
+  const commonsUrl = showSourceLink ? commonsFilePageUrl(source) : null;
   if (sourceLink) {
     if (commonsUrl) { sourceLink.href = commonsUrl; sourceLink.classList.remove('hidden'); }
     else sourceLink.classList.add('hidden');
@@ -639,7 +641,7 @@ function renderQuestion() {
   $('progress-bar').style.width = `${((state.index + 1) / state.questions.length) * 100}%`;
   const possible = checkedQuestions() * activeFields().length;
   $('score-summary').textContent = `${totalCorrect()} / ${possible} point${totalCorrect() > 1 ? 's' : ''}`;
-  displayArtworkImage(question, `Œuvre ${state.index + 1}`);
+  displayArtworkImage(question, `Œuvre ${state.index + 1}`, answer.checked);
   allFields.forEach(({ key, input }) => {
     const wrapper = $(input).closest('label');
     const active = state.selectedFieldKeys.includes(key);
@@ -684,7 +686,7 @@ function formatCorrectionValue(key, rawValue) {
 let correctionMainWork = null; // œuvre actuellement affichée en grand dans la correction (question testée, ou une « autre œuvre » cliquée)
 function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
   const isTestedWork = displayedWork === testedQuestion;
-  displayArtworkImage(displayedWork, isTestedWork ? `Œuvre ${state.index + 1}` : `Autre œuvre du même peintre : ${displayedWork.title}`);
+  displayArtworkImage(displayedWork, isTestedWork ? `Œuvre ${state.index + 1}` : `Autre œuvre du même peintre : ${displayedWork.title}`, true);
   $('correction-details').innerHTML = allFields.map(({ key, label }) => {
     const value = formatCorrectionValue(key, displayedWork[key]);
     // Une « autre œuvre » cliquée n'a pas été répondue par l'utilisateur : on l'affiche
