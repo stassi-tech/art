@@ -18,6 +18,15 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 
 .welcome-panel,.results-panel { max-width:none; width:100%; margin:0 auto; padding:52px 46px; text-align:center; background:rgba(255,253,249,.86); border:1px solid var(--border); box-shadow:0 16px 35px rgba(54,45,31,.08); border-radius:8px; }.welcome-panel p { color:var(--muted); line-height:1.5; font-size:1.02rem; }.hint { margin:23px auto 0; font-size:1rem; }
 .intro-banner { background:#f3e6c9; color:var(--ink); padding:20px 24px; border-radius:6px; font-family:Arial,sans-serif; font-size:1.05rem; font-weight:700; line-height:1.6; text-align:justify; margin-bottom:24px; }
+.account-bar { display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-bottom:14px; font-family:Arial,sans-serif; font-size:.85rem; color:var(--muted); }
+.account-error { color:var(--wrong); font-family:Arial,sans-serif; font-size:.85rem; margin:6px 0 0; }
+#account-form { display:flex; flex-direction:column; gap:12px; }
+#account-form label { display:flex; flex-direction:column; gap:5px; font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:var(--ink); text-align:left; }
+#account-form input { padding:10px; border:1px solid #cfc8bc; border-radius:4px; font-size:1rem; }
+.score-save-box { margin-top:18px; }
+.my-scores-box { margin-top:22px; padding-top:16px; border-top:1px solid var(--border); text-align:left; }
+.my-scores-box h3 { font-size:.95rem; margin-bottom:8px; }
+.my-scores-box ul { list-style:none; padding:0; margin:0; font-family:Arial,sans-serif; font-size:.88rem; color:var(--muted); display:grid; gap:4px; }
 .copyright-notice { margin:28px auto 0; padding-top:16px; border-top:1px solid var(--border); font-family:Arial,sans-serif; font-size:.78rem; color:var(--muted); line-height:1.4; }
 
 .rubriques-fieldset { margin:0 0 6px; padding:18px 20px; border:1px solid var(--border); border-radius:6px; text-align:left; background:rgba(255,255,255,.5); }

@@ -8,6 +8,149 @@ const state = {
   mode: 'normal', // 'normal' | 'review'
   fullQuestions: [], // toutes les questions du fichier importé (pour revenir après une révision)
 };
+
+// --- Authentification et sauvegarde des scores (Firebase) ---
+// ⚠️ Remplacez les valeurs ci-dessous par la configuration de VOTRE projet Firebase
+// (Console Firebase → Paramètres du projet → Vos applications → configuration SDK).
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCIc15-0fy_OziKdcOHAv-CYxOku9iFX94",
+  authDomain: "quiz-art-7378d.firebaseapp.com",
+  projectId: "quiz-art-7378d",
+  storageBucket: "quiz-art-7378d.firebasestorage.app",
+  messagingSenderId: "489975323244",
+  appId: "1:489975323244:web:d7070100f3a0e63cec9649",
+};
+let auth = null;
+let db = null;
+let currentUser = null;
+let accountMode = 'login'; // 'login' | 'register'
+const firebaseReady = FIREBASE_CONFIG.apiKey !== "VOTRE_API_KEY" && typeof firebase !== 'undefined';
+if (firebaseReady) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  auth = firebase.auth();
+  db = firebase.firestore();
+}
+
+function updateAccountBar() {
+  const statusEl = $('account-status');
+  const loginBtn = $('account-login-button');
+  const logoutBtn = $('account-logout-button');
+  if (!statusEl) return;
+  if (!firebaseReady) {
+    statusEl.textContent = "Comptes non configurés pour l'instant";
+    loginBtn.classList.add('hidden');
+    logoutBtn.classList.add('hidden');
+    return;
+  }
+  if (currentUser) {
+    statusEl.textContent = `Connecté : ${currentUser.email}`;
+    loginBtn.classList.add('hidden');
+    logoutBtn.classList.remove('hidden');
+  } else {
+    statusEl.textContent = 'Non connecté';
+    loginBtn.classList.remove('hidden');
+    logoutBtn.classList.add('hidden');
+  }
+  // La page de résultats peut déjà être affichée : on synchronise ses boutons aussi.
+  updateScoreSaveUi();
+}
+
+function setAccountMode(mode) {
+  accountMode = mode;
+  $('account-modal-title').textContent = mode === 'login' ? 'Se connecter' : 'Créer un compte';
+  $('account-submit-button').textContent = mode === 'login' ? 'Se connecter' : 'Créer mon compte';
+  $('account-toggle-mode').textContent = mode === 'login' ? 'Pas encore de compte ? Crée-en un' : 'Déjà un compte ? Connecte-toi';
+  $('account-error').classList.add('hidden');
+  $('account-password').setAttribute('autocomplete', mode === 'login' ? 'current-password' : 'new-password');
+}
+
+if (firebaseReady) {
+  $('account-login-button')?.addEventListener('click', () => { setAccountMode('login'); openModal('modal-account'); });
+  $('account-logout-button')?.addEventListener('click', () => auth.signOut());
+  $('account-toggle-mode')?.addEventListener('click', () => setAccountMode(accountMode === 'login' ? 'register' : 'login'));
+  $('account-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const email = $('account-email').value.trim();
+    const password = $('account-password').value;
+    const errorEl = $('account-error');
+    errorEl.classList.add('hidden');
+    try {
+      if (accountMode === 'login') await auth.signInWithEmailAndPassword(email, password);
+      else await auth.createUserWithEmailAndPassword(email, password);
+      $('account-form').reset();
+      $('modal-account').classList.add('hidden');
+    } catch (error) {
+      errorEl.textContent = firebaseAuthErrorMessage(error);
+      errorEl.classList.remove('hidden');
+    }
+  });
+  auth.onAuthStateChanged((user) => { currentUser = user; updateAccountBar(); });
+} else {
+  updateAccountBar();
+}
+
+function firebaseAuthErrorMessage(error) {
+  const map = {
+    'auth/email-already-in-use': 'Un compte existe déjà avec cette adresse e-mail.',
+    'auth/invalid-email': 'Adresse e-mail invalide.',
+    'auth/weak-password': 'Le mot de passe doit contenir au moins 6 caractères.',
+    'auth/user-not-found': 'Aucun compte ne correspond à cette adresse e-mail.',
+    'auth/wrong-password': 'Mot de passe incorrect.',
+    'auth/invalid-credential': 'E-mail ou mot de passe incorrect.',
+  };
+  return map[error.code] || 'Une erreur est survenue. Réessayez.';
+}
+
+function updateScoreSaveUi() {
+  const saveButton = $('save-score-button');
+  const loginHint = $('save-score-login-hint');
+  if (!saveButton) return;
+  if (!firebaseReady) { saveButton.classList.add('hidden'); loginHint.classList.add('hidden'); return; }
+  if (currentUser) { saveButton.classList.remove('hidden'); loginHint.classList.add('hidden'); }
+  else { saveButton.classList.add('hidden'); loginHint.classList.remove('hidden'); }
+}
+
+async function saveCurrentScore() {
+  if (!firebaseReady || !currentUser) return;
+  const feedback = $('save-score-feedback');
+  const correct = totalCorrect();
+  const possible = state.questions.length * activeFields().length;
+  const percent = possible ? Math.round((correct / possible) * 100) : 0;
+  feedback.classList.remove('hidden');
+  feedback.textContent = 'Enregistrement…';
+  try {
+    await db.collection('users').doc(currentUser.uid).collection('scores').add({
+      correct, possible, percent,
+      questionCount: state.questions.length,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    feedback.textContent = 'Score enregistré !';
+    $('save-score-button').classList.add('hidden');
+    loadMyScores();
+  } catch (error) {
+    feedback.textContent = "Impossible d'enregistrer le score pour le moment.";
+  }
+}
+$('save-score-button')?.addEventListener('click', saveCurrentScore);
+
+async function loadMyScores() {
+  const box = $('my-scores-box'); const list = $('my-scores-list');
+  if (!firebaseReady || !currentUser) { box.classList.add('hidden'); return; }
+  try {
+    const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores')
+      .orderBy('createdAt', 'desc').limit(5).get();
+    if (snapshot.empty) { box.classList.add('hidden'); return; }
+    list.innerHTML = snapshot.docs.map((doc) => {
+      const d = doc.data();
+      const date = d.createdAt ? d.createdAt.toDate().toLocaleDateString('fr-FR') : '';
+      return `<li>${date} — ${d.correct} / ${d.possible} (${d.percent} %)</li>`;
+    }).join('');
+    box.classList.remove('hidden');
+  } catch (error) {
+    box.classList.add('hidden');
+  }
+}
+
 const allFields = [
   { key: 'artist', label: 'Artiste', input: 'artist-input', checkbox: 'rubrique-artist' },
   { key: 'title', label: "Titre de l'œuvre", input: 'title-input', checkbox: 'rubrique-title' },
@@ -425,6 +568,9 @@ function showResults() {
   }
   $('restart-full-button').classList.toggle('hidden', state.mode !== 'review' || state.fullQuestions.length === state.questions.length);
   $('export-feedback').classList.add('hidden');
+  $('save-score-feedback').classList.add('hidden');
+  updateScoreSaveUi();
+  loadMyScores();
 }
 
 function buildExportText() {

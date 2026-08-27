@@ -4,8 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=17" />
+    <link rel="stylesheet" href="style.css?v=19" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -16,6 +19,12 @@
 
       <main class="main-content">
         <section id="welcome-panel" class="welcome-panel">
+          <div id="account-bar" class="account-bar">
+            <span id="account-status">Non connecté</span>
+            <button type="button" id="account-login-button" class="link-label">Se connecter / Créer un compte</button>
+            <button type="button" id="account-logout-button" class="link-label hidden">Se déconnecter</button>
+          </div>
+
           <p class="intro-banner">Cette application vous propose d'identifier des œuvres d'art. Choisissez votre art, votre siècle, vos rubriques et votre niveau, puis lancez le quiz.</p>
 
           <div class="quiz-selectors">
@@ -138,6 +147,26 @@
           </div>
         </div>
 
+        <div class="modal-overlay hidden" id="modal-account">
+          <div class="modal-box">
+            <h3 id="account-modal-title">Se connecter</h3>
+            <form id="account-form">
+              <label>Adresse e-mail
+                <input id="account-email" type="email" autocomplete="email" required />
+              </label>
+              <label>Mot de passe
+                <input id="account-password" type="password" autocomplete="current-password" required minlength="6" />
+              </label>
+              <p id="account-error" class="account-error hidden"></p>
+              <button type="submit" class="primary-button" id="account-submit-button">Se connecter</button>
+            </form>
+            <p class="modal-hint">
+              <button type="button" id="account-toggle-mode" class="link-label">Pas encore de compte ? Crée-en un</button>
+            </p>
+            <button type="button" class="secondary-button modal-close" data-modal="modal-account">Fermer</button>
+          </div>
+        </div>
+
         <section id="quiz-panel" class="quiz-panel hidden" aria-live="polite">
           <div class="progress-row">
             <span id="question-count">Question 1 sur 1</span>
@@ -200,9 +229,20 @@
             <button id="export-download-button" class="secondary-button" type="button">Télécharger les résultats (.txt)</button>
           </div>
           <p id="export-feedback" class="export-feedback hidden"></p>
+
+          <div id="score-save-box" class="score-save-box">
+            <button id="save-score-button" class="secondary-button hidden" type="button">Enregistrer ce score sur mon compte</button>
+            <p id="save-score-feedback" class="hint hidden"></p>
+            <p id="save-score-login-hint" class="hint hidden">Connecte-toi pour enregistrer et retrouver tes scores.</p>
+          </div>
+
+          <div id="my-scores-box" class="my-scores-box hidden">
+            <h3>Mes derniers scores</h3>
+            <ul id="my-scores-list"></ul>
+          </div>
         </section>
       </main>
     </div>
-    <script src="app.js?v=17"></script>
+    <script src="app.js?v=19"></script>
   </body>
 </html>
