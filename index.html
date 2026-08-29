@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=36" />
+    <link rel="stylesheet" href="style.css?v=37" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -102,6 +102,14 @@
             </label>
             <p class="modal-hint">Cocher plusieurs siècles mélange aléatoirement leurs œuvres dans un même quiz.</p>
             <button type="button" class="primary-button modal-close" data-modal="modal-century">Valider</button>
+          </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="modal-century-20e-notice">
+          <div class="modal-box">
+            <h3>À savoir sur le 20e siècle</h3>
+            <p>Pour des raisons de droits de propriété intellectuelle, les artistes morts après 1955 ne sont pas actuellement représentés dans les quiz du 20e siècle. Seuls des artistes suffisamment anciens (dont les œuvres sont dans le domaine public) y figurent.</p>
+            <button type="button" class="primary-button modal-close" data-modal="modal-century-20e-notice">Compris</button>
           </div>
         </div>
 
@@ -250,6 +258,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=36"></script>
+    <script src="app.js?v=37"></script>
   </body>
 </html>

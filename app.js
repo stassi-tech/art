@@ -884,6 +884,16 @@ $('open-century')?.addEventListener('click', () => openModal('modal-century'));
 $('open-rubriques')?.addEventListener('click', () => openModal('modal-rubriques'));
 $('open-level')?.addEventListener('click', () => openModal('modal-level'));
 
+// Avertissement affiché une seule fois par session dès que le 20e siècle est coché : les
+// artistes morts après 1955 ne sont pas représentés, pour des raisons de droits d'auteur.
+let century20eNoticeShown = false;
+$('century-20e')?.addEventListener('change', (event) => {
+  if (event.target.checked && !century20eNoticeShown) {
+    century20eNoticeShown = true;
+    openModal('modal-century-20e-notice');
+  }
+});
+
 function selectedArts() { return ['peinture', 'sculpture'].filter((art) => $(`art-${art}`).checked); }
 function selectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((century) => $(`century-${century}`).checked); }
 function selectedLevel() { const checked = document.querySelector('input[name="niveau"]:checked'); return checked ? checked.value : null; }
