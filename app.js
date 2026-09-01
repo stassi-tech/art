@@ -530,14 +530,62 @@ function normaliseRows(rows) {
     const artistDatesKey = findColumn(row, ['dates artiste', 'dates', 'naissance mort', 'nee morte', 'ne mort', 'annees artiste']);
     const materialsKey = findColumn(row, ['materiaux et technique', 'materiaux', 'technique', 'materials', 'materiau']);
     const dimensionsKey = findColumn(row, ['dimensions', 'taille', 'format', 'dimension']);
+    const nationalityKey = findColumn(row, ['nationalite', 'nationalite artiste', 'pays', 'nationality']);
     return {
       image: String(row[imageKey] || '').trim(), artist: String(row[artistKey] || '').trim(), date: String(row[dateKey] || '').trim(), location: String(row[locationKey] || '').trim(), title: String(row[titleKey] || '').trim(),
       artistDates: artistDatesKey ? String(row[artistDatesKey] || '').trim() : '',
       materials: materialsKey ? String(row[materialsKey] || '').trim() : '',
       dimensions: dimensionsKey ? String(row[dimensionsKey] || '').trim() : '',
+      nationality: nationalityKey ? String(row[nationalityKey] || '').trim() : '',
       row: rowIndex + 2
     };
   }).filter((question) => question.image || question.artist || question.date || question.location || question.title);
+}
+// Colonne optionnelle (I) : nationalité de l'artiste -> petit drapeau affiché à côté des dates sur
+// la fiche de correction. Volontairement large (variantes de genre, gentilés, anciens pays) : mieux
+// vaut couvrir large qu'afficher un drapeau manquant pour une variante orthographique.
+const NATIONALITY_FLAGS = {
+  "francaise": "🇫🇷", "francais": "🇫🇷", "france": "🇫🇷",
+  "italienne": "🇮🇹", "italien": "🇮🇹", "italie": "🇮🇹",
+  "espagnole": "🇪🇸", "espagnol": "🇪🇸", "espagne": "🇪🇸",
+  "catalane": "🇪🇸", "catalan": "🇪🇸",
+  "flamande": "🇧🇪", "flamand": "🇧🇪", "belge": "🇧🇪", "belgique": "🇧🇪",
+  "hollandaise": "🇳🇱", "hollandais": "🇳🇱", "neerlandaise": "🇳🇱", "neerlandais": "🇳🇱", "pays bas": "🇳🇱",
+  "allemande": "🇩🇪", "allemand": "🇩🇪", "allemagne": "🇩🇪",
+  "autrichienne": "🇦🇹", "autrichien": "🇦🇹", "autriche": "🇦🇹",
+  "suisse": "🇨🇭",
+  "anglaise": "🇬🇧", "anglais": "🇬🇧", "britannique": "🇬🇧", "angleterre": "🇬🇧", "ecossaise": "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "ecossais": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  "irlandaise": "🇮🇪", "irlandais": "🇮🇪",
+  "russe": "🇷🇺", "russie": "🇷🇺",
+  "americaine": "🇺🇸", "americain": "🇺🇸", "etats unis": "🇺🇸",
+  "mexicaine": "🇲🇽", "mexicain": "🇲🇽", "mexique": "🇲🇽",
+  "canadienne": "🇨🇦", "canadien": "🇨🇦",
+  "chinoise": "🇨🇳", "chinois": "🇨🇳", "chine": "🇨🇳",
+  "japonaise": "🇯🇵", "japonais": "🇯🇵", "japon": "🇯🇵",
+  "coreenne": "🇰🇷", "coreen": "🇰🇷",
+  "indienne": "🇮🇳", "indien": "🇮🇳",
+  "persane": "🇮🇷", "persan": "🇮🇷", "iranienne": "🇮🇷", "iranien": "🇮🇷",
+  "portugaise": "🇵🇹", "portugais": "🇵🇹", "portugal": "🇵🇹",
+  "danoise": "🇩🇰", "danois": "🇩🇰", "danemark": "🇩🇰",
+  "norvegienne": "🇳🇴", "norvegien": "🇳🇴", "norvege": "🇳🇴",
+  "suedoise": "🇸🇪", "suedois": "🇸🇪", "suede": "🇸🇪",
+  "finlandaise": "🇫🇮", "finlandais": "🇫🇮", "finlande": "🇫🇮",
+  "polonaise": "🇵🇱", "polonais": "🇵🇱", "pologne": "🇵🇱",
+  "tcheque": "🇨🇿", "boheme": "🇨🇿",
+  "hongroise": "🇭🇺", "hongrois": "🇭🇺", "hongrie": "🇭🇺",
+  "grecque": "🇬🇷", "grec": "🇬🇷", "grece": "🇬🇷", "byzantine": "🇬🇷", "byzantin": "🇬🇷",
+  "croate": "🇭🇷", "croatie": "🇭🇷",
+  "ukrainienne": "🇺🇦", "ukrainien": "🇺🇦",
+  "bresilienne": "🇧🇷", "bresilien": "🇧🇷", "bresil": "🇧🇷",
+  "argentine": "🇦🇷",
+};
+function nationalityFlag(rawValue) {
+  const key = keyName(rawValue);
+  if (!key) return '';
+  for (const label of Object.keys(NATIONALITY_FLAGS)) {
+    if (key.includes(label)) return NATIONALITY_FLAGS[label];
+  }
+  return '';
 }
 function answerFor(index) {
   if (!state.answers[index]) state.answers[index] = { artist: '', date: '', location: '', title: '', checked: false };
@@ -731,9 +779,13 @@ function formatCorrectionValue(key, rawValue) {
 }
 function formatArtistWithDates(work) {
   // Dates de naissance/mort affichées en petit à côté du nom, sans rubrique associée (jamais quizzées).
+  // Un petit drapeau (colonne I, optionnelle) s'affiche juste avant les dates si la nationalité est connue.
   const name = escapeHtml(formatArtistName(work.artist));
   const dates = String(work.artistDates || '').trim();
-  return dates ? `${name} <span class="artist-dates">(${escapeHtml(dates)})</span>` : name;
+  const flag = nationalityFlag(work.nationality);
+  if (!dates && !flag) return name;
+  const flagPart = flag ? `${flag} ` : '';
+  return dates ? `${name} <span class="artist-dates">(${flagPart}${escapeHtml(dates)})</span>` : `${name} <span class="artist-dates">${flagPart}</span>`;
 }
 function correctionInfoRow(label, value) {
   return `<div class="correction-item correction-extra">
@@ -893,7 +945,9 @@ $('excel-file').addEventListener('change', async (event) => {
     state.questions = state.fullQuestions;
     state.answers = []; state.index = 0;
     state.currentScoreSaved = false;
-    state.quizConfig = { label: 'Import manuel', level: 'Autre', rubriques: chosenKeys.map((key) => allFields.find((f) => f.key === key)?.label || key) };
+    state.quizConfig = { label: 'Import manuel', level: 'Autre', rubriques: chosenKeys.map((key) => allFields.find((f) => f.key === key)?.label || key), reference: `${questions.length} questions — import manuel` };
+    const refEl = $('quiz-reference');
+    if (refEl) refEl.textContent = state.quizConfig.reference;
     showPanel('quiz'); renderQuestion();
   } catch (error) { alert(`Import impossible : ${error.message}`); }
   event.target.value = '';
@@ -1017,14 +1071,22 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     // difficulté et ne doivent donc pas partager la même colonne d'évolution.
     const effectiveLevelLabel = LEVEL_LABELS[effectiveLevel] || `${targetCount} questions`;
     const rubriqueLabels = chosenKeys.map((key) => allFields.find((f) => f.key === key)?.label || key);
+    // Repère court affiché en haut de l'écran de quiz et de correction, ex. "30 questions sur la
+    // peinture du 18e siècle" — distinct de `label` (utilisé pour l'historique des scores).
+    const artsLower = arts.map((a) => ART_LABELS[a].toLowerCase()).join(' + ');
+    const centuriesText = centuries.map((c) => CENTURY_LABELS[c]).join(', ');
+    const quizReference = `${targetCount} questions sur la ${artsLower} du ${centuriesText}`;
     state.quizConfig = {
       arts: arts.map((a) => ART_LABELS[a]),
       centuries: centuries.map((c) => CENTURY_LABELS[c]),
       level: effectiveLevelLabel,
       rubriques: rubriqueLabels,
       label: `${arts.map((a) => ART_LABELS[a]).join(' + ')} · ${centuries.map((c) => CENTURY_LABELS[c]).join(', ')} · ${rubriqueLabels.join(', ')}`,
+      reference: quizReference,
       signature: `${arts.slice().sort().join(',')}|${centuries.slice().sort().join(',')}|${effectiveLevel}|${chosenKeys.slice().sort().join(',')}`,
     };
+    const refEl = $('quiz-reference');
+    if (refEl) refEl.textContent = quizReference;
     showPanel('quiz'); renderQuestion();
   } catch (error) {
     // Le message « site en construction » se suffit à lui-même, sans préfixe « Erreur : ».
