@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=44" />
+    <link rel="stylesheet" href="style.css?v=46" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -51,11 +51,12 @@
             </button>
           </div>
 
-          <button id="launch-quiz-button" class="primary-button" type="button">Lancer le quiz</button>
+          <div class="quiz-action-row">
+            <button type="button" class="secondary-button" id="open-artist-list">📖 Consulter la liste des artistes</button>
+            <button id="launch-quiz-button" class="primary-button" type="button">Lancer le quiz</button>
+          </div>
           <p id="launch-feedback" class="hint hidden"></p>
 
-          <p class="hint"><button type="button" class="link-label" id="open-artist-list">📖 Consulter la liste des artistes</button></p>
-          <p class="hint"><label class="link-label" for="excel-file">Ou importer un fichier Excel manuellement</label><input id="excel-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" /></p>
           <p class="copyright-notice">© 2026 Stéphane Tassi. Contenu original — reproduction ou réutilisation de la sélection sans autorisation interdite.<br>Les images sont issues de Wikimedia Commons et sont utilisées sous leurs licences respectives (domaine public ou Creative Commons selon les fichiers). Cliquez sur une image pour accéder à sa page source et à ses crédits complets.</p>
         </section>
 
@@ -115,7 +116,11 @@
             <h3>Liste des artistes</h3>
             <p class="modal-hint" id="artist-list-status">Chargement…</p>
             <div id="artist-list-table" class="artist-list-table"></div>
-            <div id="artist-list-stats" class="artist-list-stats"></div>
+            <div class="artist-list-filters">
+              <select id="filter-nationalite"><option value="">Toutes nationalités</option></select>
+              <select id="filter-art"><option value="">Tous arts</option></select>
+              <select id="filter-siecle"><option value="">Tous siècles</option></select>
+            </div>
             <button type="button" class="primary-button modal-close" data-modal="modal-artist-list">Fermer</button>
           </div>
         </div>
@@ -298,6 +303,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=44"></script>
+    <script src="app.js?v=46"></script>
   </body>
 </html>

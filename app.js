@@ -948,7 +948,7 @@ function buildExportText() {
   return lines.join('\n');
 }
 
-$('excel-file').addEventListener('change', async (event) => {
+$('excel-file')?.addEventListener('change', async (event) => {
   const file = event.target.files[0]; if (!file) return;
   const chosenKeys = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.key);
   if (!chosenKeys.length) { alert('Sélectionnez au moins une rubrique à réviser (artiste, date, lieu ou titre).'); event.target.value = ''; return; }
@@ -977,16 +977,26 @@ $('excel-file').addEventListener('change', async (event) => {
 let artistListLoaded = false;
 let artistListRows = [];
 let artistListSort = { col: 'Artiste', dir: 1 };
+let artistListFilters = { nationalite: '', art: '', siecle: '' };
 const ARTIST_LIST_COLS = [
   { key: 'Artiste', label: 'Artiste' },
   { key: 'Nationalité', label: 'Nationalité' },
   { key: 'Art(s)', label: 'Art(s)' },
   { key: 'Siècle(s)', label: 'Siècle(s)' },
 ];
+function filteredArtistListRows() {
+  const { nationalite, art, siecle } = artistListFilters;
+  return artistListRows.filter((r) => {
+    if (nationalite && r['Nationalité'] !== nationalite) return false;
+    if (art && !String(r['Art(s)'] || '').includes(art)) return false;
+    if (siecle && !String(r['Siècle(s)'] || '').includes(siecle)) return false;
+    return true;
+  });
+}
 function renderArtistListTable() {
   const container = $('artist-list-table');
   const { col, dir } = artistListSort;
-  const sorted = artistListRows.slice().sort((a, b) => dir * String(a[col] || '').localeCompare(String(b[col] || ''), 'fr'));
+  const sorted = filteredArtistListRows().sort((a, b) => dir * String(a[col] || '').localeCompare(String(b[col] || ''), 'fr'));
   const html = ['<table class="artist-table"><thead><tr>'];
   ARTIST_LIST_COLS.forEach((c) => {
     const arrow = col === c.key ? (dir === 1 ? ' ▲' : ' ▼') : '';
@@ -1007,65 +1017,42 @@ function renderArtistListTable() {
       renderArtistListTable();
     });
   });
+  const status = $('artist-list-status');
+  const hasFilter = artistListFilters.nationalite || artistListFilters.art || artistListFilters.siecle;
+  status.textContent = hasFilter
+    ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant au filtre (sur ${artistListRows.length} au total).`
+    : `${artistListRows.length} artistes référencés dans les quiz. Clique sur un en-tête de colonne pour trier.`;
 }
-function cellText(sheet, ref) {
-  const cell = sheet[ref];
-  return cell ? String(cell.v) : '';
+function populateArtistListFilters() {
+  const nationalites = [...new Set(artistListRows.map((r) => r['Nationalité']).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+  const arts = [...new Set(artistListRows.flatMap((r) => String(r['Art(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean)))].sort();
+  const siecles = [...new Set(artistListRows.flatMap((r) => String(r['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean)))].sort((a, b) => parseInt(a) - parseInt(b));
+  const fill = (id, values, placeholder) => {
+    const select = $(id);
+    select.innerHTML = `<option value="">${placeholder}</option>` + values.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+  };
+  fill('filter-nationalite', nationalites, 'Toutes nationalités');
+  fill('filter-art', arts, 'Tous arts');
+  fill('filter-siecle', siecles, 'Tous siècles');
 }
-function extractStatTable(sheet, titleRow) {
-  // Lit un des tableaux statistiques du fichier-maître (structure fixe : titre fusionné F:T,
-  // ligne de siècles G/I/K/M/O/Q/S, ligne peinture/sculpture juste en dessous, puis 4 lignes de
-  // zones). titleRow est le numéro de ligne Excel (1-based) du titre.
-  const title = cellText(sheet, `B${titleRow}`);
-  if (!title) return null;
-  const centuryCols = [['G','H'], ['I','J'], ['K','L'], ['M','N'], ['O','P'], ['Q','R'], ['S','T']];
-  const centuries = centuryCols.map(([c]) => cellText(sheet, `${c}${titleRow + 1}`));
-  const zoneRowOffsets = [3, 4, 5, 6];
-  const zoneLabels = zoneRowOffsets.map((off) => cellText(sheet, `F${titleRow + off}`));
-  const rows = zoneRowOffsets.map((off, i) => {
-    const rowRef = titleRow + off;
-    const cells = centuryCols.map(([p, s]) => [cellText(sheet, `${p}${rowRef}`), cellText(sheet, `${s}${rowRef}`)]);
-    return { label: zoneLabels[i], cells };
-  });
-  return { title, centuries, rows };
-}
-function renderStatTableHtml(table) {
-  if (!table) return '';
-  const html = [`<h4 class="stat-table-title">${escapeHtml(table.title)}</h4><table class="artist-table stat-table"><thead><tr><th>Zone</th>`];
-  table.centuries.forEach((c) => html.push(`<th colspan="2">${escapeHtml(c)}e siècle</th>`));
-  html.push('</tr><tr><th></th>');
-  table.centuries.forEach(() => html.push('<th>Peint.</th><th>Sculpt.</th>'));
-  html.push('</tr></thead><tbody>');
-  table.rows.forEach((r) => {
-    html.push(`<tr><td>${escapeHtml(r.label)}</td>`);
-    r.cells.forEach(([p, s]) => html.push(`<td>${escapeHtml(p)}</td><td>${escapeHtml(s)}</td>`));
-    html.push('</tr>');
-  });
-  html.push('</tbody></table>');
-  return html.join('');
-}
+$('filter-nationalite')?.addEventListener('change', (e) => { artistListFilters.nationalite = e.target.value; renderArtistListTable(); });
+$('filter-art')?.addEventListener('change', (e) => { artistListFilters.art = e.target.value; renderArtistListTable(); });
+$('filter-siecle')?.addEventListener('change', (e) => { artistListFilters.siecle = e.target.value; renderArtistListTable(); });
 $('open-artist-list')?.addEventListener('click', async () => {
   openModal('modal-artist-list');
   if (artistListLoaded) return;
   const status = $('artist-list-status');
-  const container = $('artist-list-table');
-  const statsContainer = $('artist-list-stats');
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé.');
     const response = await fetch('quizzes/artistes-nationalites-maitre.xlsx');
     if (!response.ok) throw new Error('fichier introuvable');
     const buffer = await response.arrayBuffer();
     const book = XLSX.read(buffer, { type: 'array' });
-    const sheet = book.Sheets[book.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
     if (!rows.length) throw new Error('liste vide');
     artistListRows = rows;
+    populateArtistListFilters();
     renderArtistListTable();
-    status.textContent = `${rows.length} artistes référencés dans les quiz. Clique sur un en-tête de colonne pour trier.`;
-    if (statsContainer) {
-      const tables = [6, 16, 26].map((titleRow) => extractStatTable(sheet, titleRow)).filter(Boolean);
-      statsContainer.innerHTML = tables.map(renderStatTableHtml).join('');
-    }
     artistListLoaded = true;
   } catch (error) {
     status.textContent = "La liste des artistes n'est pas disponible pour le moment.";

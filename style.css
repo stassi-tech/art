@@ -52,6 +52,9 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .rubrique-option.disabled { opacity:.5; cursor:not-allowed; }
 
 .quiz-selectors { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px; }
+.quiz-action-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:14px; }
+.quiz-action-row .secondary-button { min-height:52px; font-size:.95rem; }
+.quiz-action-row .primary-button { min-height:52px; }
 .selector-button { display:flex; flex-direction:column; align-items:center; gap:10px; padding:26px 20px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; font-family:Arial,sans-serif; font-weight:700; font-size:1.12rem; color:var(--ink); text-align:center; min-height:110px; justify-content:center; transition:background .15s, border-color .15s, transform .15s; }
 .selector-button:hover { background:#f7f2ea; border-color:var(--accent); transform:translateY(-1px); }
 .selector-summary { font-size:.86rem; font-weight:400; color:var(--muted); line-height:1.35; }
@@ -100,10 +103,8 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .artist-table tr:hover td { background:#f7f2ea; }
 .artist-table th.sortable-col { cursor:pointer; user-select:none; }
 .artist-table th.sortable-col:hover { color:var(--accent); }
-.artist-list-stats { margin-top:20px; }
-.stat-table-title { font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--accent); margin:18px 0 8px; }
-.stat-table th, .stat-table td { text-align:center; }
-.stat-table td:first-child, .stat-table th:first-child { text-align:left; }
+.artist-list-filters { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+.artist-list-filters select { flex:1; min-width:140px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--paper); font-family:Arial,sans-serif; font-size:.85rem; color:var(--ink); }
 #correction-details .correction-item:last-child .correction-value { margin-bottom:0; }
 
 .other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
@@ -144,6 +145,7 @@ body.has-other-works .correction-label { font-size:.76rem; }
   .answer-card { padding:18px 16px; }
   .welcome-panel,.results-panel { margin:24px auto; padding:30px 20px; }
   .quiz-selectors { grid-template-columns:1fr; }
+  .quiz-action-row { grid-template-columns:1fr; }
   .modal-box { padding:22px; max-height:90vh; }
   .progress-row { font-size:.76rem; }
   .results-actions,.export-actions { flex-direction:column; }
