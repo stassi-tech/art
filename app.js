@@ -985,6 +985,28 @@ const ARTIST_LIST_COLS = [
   { key: 'Art(s)', label: 'Art(s)' },
   { key: 'Siècle(s)', label: 'Siècle(s)' },
 ];
+function splitArtistName(full) {
+  // Repère la coupure prénom / nom de famille : part de la fin, et tant que le mot est en
+  // MAJUSCULES (ou une particule courante : van, von, de, della...) on l'inclut dans le "nom".
+  // S'arrête au premier mot qui n'est ni l'un ni l'autre. Si rien ne colle dès le premier mot
+  // (formats composés du type "GIAMBOLOGNA (Jean de Bologne)"), on renonce : pas de nom détecté.
+  const tokens = full.split(' ');
+  const connectors = ["van","von","de","della","di","du","le","la","dei","des","d'","af","del","da","les"];
+  let splitIndex = tokens.length;
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const bare = tokens[i].replace(/[()]/g, '');
+    const isUpper = bare.length > 1 && bare === bare.toUpperCase() && bare !== bare.toLowerCase();
+    const isConnector = connectors.includes(tokens[i].toLowerCase());
+    if (isUpper || isConnector) { splitIndex = i; } else { break; }
+  }
+  return { prenom: tokens.slice(0, splitIndex).join(' '), nom: tokens.slice(splitIndex).join(' ') };
+}
+function formatArtistListName(full) {
+  const { prenom, nom } = splitArtistName(full);
+  if (!nom) return escapeHtml(full); // heuristique non concluante : laissé tel quel, sans transformation
+  const prenomPart = prenom ? `${escapeHtml(prenom.toLowerCase())} ` : '';
+  return `${prenomPart}<strong>${escapeHtml(nom)}</strong>`;
+}
 function filteredArtistListRows() {
   if (artistListMode === 'full') return artistListRows;
   const { nationalite, art, siecle } = artistListFilters;
@@ -1008,7 +1030,7 @@ function renderArtistListTable() {
   sorted.forEach((r) => {
     // Nom affiché tel qu'enregistré dans le fichier (prénom en casse normale, nom de famille en
     // majuscules) — pas de mise en majuscules forcée de l'ensemble.
-    html.push(`<tr><td>${escapeHtml(String(r['Artiste'] || ''))}</td><td>${escapeHtml(r['Nationalité'] || '')}</td><td>${escapeHtml(r['Art(s)'] || '')}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
+    html.push(`<tr><td>${formatArtistListName(String(r['Artiste'] || ''))}</td><td>${escapeHtml(r['Nationalité'] || '')}</td><td>${escapeHtml(r['Art(s)'] || '')}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
   });
   html.push('</tbody></table>');
   container.innerHTML = html.join('');
