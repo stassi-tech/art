@@ -1003,7 +1003,10 @@ function splitArtistName(full) {
 }
 function formatArtistListName(full) {
   const { prenom, nom } = splitArtistName(full);
-  if (!nom) return escapeHtml(full); // heuristique non concluante : laissé tel quel, sans transformation
+  // Cas où l'heuristique ne détecte rien (ex. "François Clouet", encore en casse normale dans le
+  // fichier) : on met quand même le nom entier en gras, pour rester cohérent avec toutes les
+  // autres lignes qui, elles, sont déjà en majuscules dans le fichier et ressortent en gras.
+  if (!nom) return `<strong>${escapeHtml(full)}</strong>`;
   const prenomPart = prenom ? `${escapeHtml(prenom.toLowerCase())} ` : '';
   return `${prenomPart}<strong>${escapeHtml(nom)}</strong>`;
 }
