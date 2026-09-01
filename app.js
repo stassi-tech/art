@@ -975,27 +975,97 @@ $('excel-file').addEventListener('change', async (event) => {
 // artiste est ajouté ailleurs. En revanche, ce bouton lit toujours SA version la plus récente
 // publiée dans quizzes/ — pas besoin de retoucher ce code après une mise à jour du fichier.
 let artistListLoaded = false;
+let artistListRows = [];
+let artistListSort = { col: 'Artiste', dir: 1 };
+const ARTIST_LIST_COLS = [
+  { key: 'Artiste', label: 'Artiste' },
+  { key: 'Nationalité', label: 'Nationalité' },
+  { key: 'Art(s)', label: 'Art(s)' },
+  { key: 'Siècle(s)', label: 'Siècle(s)' },
+];
+function renderArtistListTable() {
+  const container = $('artist-list-table');
+  const { col, dir } = artistListSort;
+  const sorted = artistListRows.slice().sort((a, b) => dir * String(a[col] || '').localeCompare(String(b[col] || ''), 'fr'));
+  const html = ['<table class="artist-table"><thead><tr>'];
+  ARTIST_LIST_COLS.forEach((c) => {
+    const arrow = col === c.key ? (dir === 1 ? ' ▲' : ' ▼') : '';
+    html.push(`<th class="sortable-col" data-col="${c.key}">${c.label}${arrow}</th>`);
+  });
+  html.push('</tr></thead><tbody>');
+  sorted.forEach((r) => {
+    // Les noms d'artistes s'affichent en majuscules dans cette liste (demande explicite),
+    // uniquement à l'affichage — la casse d'origine du fichier n'est pas modifiée en mémoire.
+    html.push(`<tr><td>${escapeHtml(String(r['Artiste'] || '').toUpperCase())}</td><td>${escapeHtml(r['Nationalité'] || '')}</td><td>${escapeHtml(r['Art(s)'] || '')}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
+  });
+  html.push('</tbody></table>');
+  container.innerHTML = html.join('');
+  container.querySelectorAll('.sortable-col').forEach((th) => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.col;
+      artistListSort = artistListSort.col === key ? { col: key, dir: -artistListSort.dir } : { col: key, dir: 1 };
+      renderArtistListTable();
+    });
+  });
+}
+function cellText(sheet, ref) {
+  const cell = sheet[ref];
+  return cell ? String(cell.v) : '';
+}
+function extractStatTable(sheet, titleRow) {
+  // Lit un des tableaux statistiques du fichier-maître (structure fixe : titre fusionné F:T,
+  // ligne de siècles G/I/K/M/O/Q/S, ligne peinture/sculpture juste en dessous, puis 4 lignes de
+  // zones). titleRow est le numéro de ligne Excel (1-based) du titre.
+  const title = cellText(sheet, `B${titleRow}`);
+  if (!title) return null;
+  const centuryCols = [['G','H'], ['I','J'], ['K','L'], ['M','N'], ['O','P'], ['Q','R'], ['S','T']];
+  const centuries = centuryCols.map(([c]) => cellText(sheet, `${c}${titleRow + 1}`));
+  const zoneRowOffsets = [3, 4, 5, 6];
+  const zoneLabels = zoneRowOffsets.map((off) => cellText(sheet, `F${titleRow + off}`));
+  const rows = zoneRowOffsets.map((off, i) => {
+    const rowRef = titleRow + off;
+    const cells = centuryCols.map(([p, s]) => [cellText(sheet, `${p}${rowRef}`), cellText(sheet, `${s}${rowRef}`)]);
+    return { label: zoneLabels[i], cells };
+  });
+  return { title, centuries, rows };
+}
+function renderStatTableHtml(table) {
+  if (!table) return '';
+  const html = [`<h4 class="stat-table-title">${escapeHtml(table.title)}</h4><table class="artist-table stat-table"><thead><tr><th>Zone</th>`];
+  table.centuries.forEach((c) => html.push(`<th colspan="2">${escapeHtml(c)}e siècle</th>`));
+  html.push('</tr><tr><th></th>');
+  table.centuries.forEach(() => html.push('<th>Peint.</th><th>Sculpt.</th>'));
+  html.push('</tr></thead><tbody>');
+  table.rows.forEach((r) => {
+    html.push(`<tr><td>${escapeHtml(r.label)}</td>`);
+    r.cells.forEach(([p, s]) => html.push(`<td>${escapeHtml(p)}</td><td>${escapeHtml(s)}</td>`));
+    html.push('</tr>');
+  });
+  html.push('</tbody></table>');
+  return html.join('');
+}
 $('open-artist-list')?.addEventListener('click', async () => {
   openModal('modal-artist-list');
   if (artistListLoaded) return;
   const status = $('artist-list-status');
   const container = $('artist-list-table');
+  const statsContainer = $('artist-list-stats');
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé.');
     const response = await fetch('quizzes/artistes-nationalites-maitre.xlsx');
     if (!response.ok) throw new Error('fichier introuvable');
     const buffer = await response.arrayBuffer();
     const book = XLSX.read(buffer, { type: 'array' });
-    const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
+    const sheet = book.Sheets[book.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
     if (!rows.length) throw new Error('liste vide');
-    const sorted = rows.slice().sort((a, b) => String(a['Artiste'] || '').localeCompare(String(b['Artiste'] || ''), 'fr'));
-    const html = ['<table class="artist-table"><thead><tr><th>Artiste</th><th>Nationalité</th><th>Art(s)</th><th>Siècle(s)</th></tr></thead><tbody>'];
-    sorted.forEach((r) => {
-      html.push(`<tr><td>${escapeHtml(r['Artiste'] || '')}</td><td>${escapeHtml(r['Nationalité'] || '')}</td><td>${escapeHtml(r['Art(s)'] || '')}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
-    });
-    html.push('</tbody></table>');
-    container.innerHTML = html.join('');
-    status.textContent = `${sorted.length} artistes référencés dans les quiz.`;
+    artistListRows = rows;
+    renderArtistListTable();
+    status.textContent = `${rows.length} artistes référencés dans les quiz. Clique sur un en-tête de colonne pour trier.`;
+    if (statsContainer) {
+      const tables = [6, 16, 26].map((titleRow) => extractStatTable(sheet, titleRow)).filter(Boolean);
+      statsContainer.innerHTML = tables.map(renderStatTableHtml).join('');
+    }
     artistListLoaded = true;
   } catch (error) {
     status.textContent = "La liste des artistes n'est pas disponible pour le moment.";
@@ -1102,11 +1172,16 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
   feedback.textContent = 'Chargement du quiz…';
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé. Vérifiez votre connexion Internet et rechargez la page.');
+    const zones = selectedZones();
     const allRows = [];
     const missing = []; // combinaisons art/siècle sans aucun fichier (à aucun niveau) : signalées, sans bloquer le quiz
     // Pour un niveau 3 demandé, on se rabat sur le niveau 2 puis le niveau 1 d'un même siècle
-    // si le fichier niveau 3 n'existe pas, plutôt que d'écarter ce siècle du quiz.
-    const fallbackLevels = level === '3' ? ['3', '2', '1'] : [level];
+    // si le fichier niveau 3 n'existe pas, plutôt que d'écarter ce siècle du quiz. Quand une zone
+    // géographique est choisie, on va systématiquement chercher le niveau le plus large disponible
+    // (les fichiers niveauX contiennent déjà toutes les lignes des niveaux inférieurs) pour avoir
+    // le plus grand vivier possible avant filtrage par zone — sans quoi une zone minoritaire
+    // pourrait manquer d'œuvres alors que d'autres fichiers du même siècle en contiennent.
+    const fallbackLevels = (zones.length || level === '3') ? ['3', '2', '1'] : [level];
     for (const art of arts) {
       for (const century of centuries) {
         let found = false;
@@ -1126,7 +1201,6 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     }
     // Filtre par zone géographique (colonne Nationalité) : les œuvres sans nationalité connue
     // restent incluses dans tous les cas, pour ne pas écarter des fichiers pas encore renseignés.
-    const zones = selectedZones();
     let filteredRows = allRows;
     if (zones.length) {
       filteredRows = allRows.filter((r) => {

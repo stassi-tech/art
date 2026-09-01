@@ -98,6 +98,12 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .artist-table th { position:sticky; top:0; background:var(--paper); text-align:left; padding:8px 10px; border-bottom:2px solid var(--border); font-size:.75rem; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); }
 .artist-table td { padding:6px 10px; border-bottom:1px solid var(--border); }
 .artist-table tr:hover td { background:#f7f2ea; }
+.artist-table th.sortable-col { cursor:pointer; user-select:none; }
+.artist-table th.sortable-col:hover { color:var(--accent); }
+.artist-list-stats { margin-top:20px; }
+.stat-table-title { font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--accent); margin:18px 0 8px; }
+.stat-table th, .stat-table td { text-align:center; }
+.stat-table td:first-child, .stat-table th:first-child { text-align:left; }
 #correction-details .correction-item:last-child .correction-value { margin-bottom:0; }
 
 .other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
