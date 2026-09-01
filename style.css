@@ -94,7 +94,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 #correction-details .correction-item:last-child .correction-value { margin-bottom:0; }
 
 .other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
-.other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }
+.other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }
 .other-works-list { display:flex; flex-wrap:wrap; gap:12px; }
 .other-work-card { width:108px; text-align:center; border:2px solid transparent; border-radius:6px; background:none; padding:4px; cursor:pointer; font:inherit; transition:border-color .15s, background .15s; }
 .other-work-card:hover { background:#f7f2ea; }
