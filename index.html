@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=46" />
+    <link rel="stylesheet" href="style.css?v=47" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -37,10 +37,6 @@
               🏛️ Choisis ton siècle
               <span class="selector-summary" id="summary-century">Aucun siècle choisi</span>
             </button>
-            <button type="button" class="selector-button" id="open-zone">
-              🌍 Choisis ta zone géographique
-              <span class="selector-summary" id="summary-zone">Toutes zones</span>
-            </button>
             <button type="button" class="selector-button" id="open-rubriques">
               📝 Choisis tes rubriques
               <span class="selector-summary" id="summary-rubriques">Aucune rubrique choisie</span>
@@ -52,7 +48,7 @@
           </div>
 
           <div class="quiz-action-row">
-            <button type="button" class="secondary-button" id="open-artist-list">📖 Consulter la liste des artistes</button>
+            <button type="button" class="secondary-button grey-button" id="open-artist-list">📖 Consulter la liste des artistes</button>
             <button id="launch-quiz-button" class="primary-button" type="button">Lancer le quiz</button>
           </div>
           <p id="launch-feedback" class="hint hidden"></p>
@@ -107,27 +103,8 @@
               <span>20e siècle</span>
             </label>
             <p class="modal-hint">Cocher plusieurs siècles mélange aléatoirement leurs œuvres dans un même quiz.</p>
-            <button type="button" class="primary-button modal-close" data-modal="modal-century">Valider</button>
-          </div>
-        </div>
 
-        <div class="modal-overlay hidden" id="modal-artist-list">
-          <div class="modal-box">
-            <h3>Liste des artistes</h3>
-            <p class="modal-hint" id="artist-list-status">Chargement…</p>
-            <div id="artist-list-table" class="artist-list-table"></div>
-            <div class="artist-list-filters">
-              <select id="filter-nationalite"><option value="">Toutes nationalités</option></select>
-              <select id="filter-art"><option value="">Tous arts</option></select>
-              <select id="filter-siecle"><option value="">Tous siècles</option></select>
-            </div>
-            <button type="button" class="primary-button modal-close" data-modal="modal-artist-list">Fermer</button>
-          </div>
-        </div>
-
-        <div class="modal-overlay hidden" id="modal-zone">
-          <div class="modal-box">
-            <h3>Choisis ta zone géographique</h3>
+            <h3 class="modal-subheading">🌍 Zone géographique</h3>
             <label class="rubrique-option">
               <input type="checkbox" id="zone-france" />
               <span>France</span>
@@ -144,8 +121,26 @@
               <input type="checkbox" id="zone-asie" />
               <span>Asie</span>
             </label>
-            <p class="modal-hint">Rien coché = toutes zones confondues. Cocher plusieurs zones les mélange dans un même quiz. Ce filtre s'appuie sur la nationalité renseignée dans les fichiers ; les œuvres sans nationalité connue sont incluses quel que soit le choix.</p>
-            <button type="button" class="primary-button modal-close" data-modal="modal-zone">Valider</button>
+            <p class="modal-hint">Rien coché = toutes zones confondues. Ce filtre s'appuie sur la nationalité renseignée dans les fichiers ; les œuvres sans nationalité connue sont incluses quel que soit le choix.</p>
+            <button type="button" class="primary-button modal-close" data-modal="modal-century">Valider</button>
+          </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="modal-artist-list">
+          <div class="modal-box">
+            <h3>Liste des artistes</h3>
+            <div class="artist-list-mode-row">
+              <button type="button" class="secondary-button" id="artist-list-mode-full">Liste complète</button>
+              <button type="button" class="secondary-button" id="artist-list-mode-filtered">Liste par choix des critères</button>
+            </div>
+            <p class="modal-hint" id="artist-list-status">Chargement…</p>
+            <div id="artist-list-table" class="artist-list-table"></div>
+            <div class="artist-list-filters hidden" id="artist-list-filters">
+              <select id="filter-nationalite"><option value="">Toutes nationalités</option></select>
+              <select id="filter-art"><option value="">Tous arts</option></select>
+              <select id="filter-siecle"><option value="">Tous siècles</option></select>
+            </div>
+            <button type="button" class="primary-button modal-close" data-modal="modal-artist-list">Fermer</button>
           </div>
         </div>
 
@@ -303,6 +298,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=46"></script>
+    <script src="app.js?v=47"></script>
   </body>
 </html>

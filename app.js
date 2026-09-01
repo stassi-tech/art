@@ -978,6 +978,7 @@ let artistListLoaded = false;
 let artistListRows = [];
 let artistListSort = { col: 'Artiste', dir: 1 };
 let artistListFilters = { nationalite: '', art: '', siecle: '' };
+let artistListMode = 'full'; // 'full' = liste complète non filtrée, 'filtered' = avec les 3 menus
 const ARTIST_LIST_COLS = [
   { key: 'Artiste', label: 'Artiste' },
   { key: 'Nationalité', label: 'Nationalité' },
@@ -985,6 +986,7 @@ const ARTIST_LIST_COLS = [
   { key: 'Siècle(s)', label: 'Siècle(s)' },
 ];
 function filteredArtistListRows() {
+  if (artistListMode === 'full') return artistListRows;
   const { nationalite, art, siecle } = artistListFilters;
   return artistListRows.filter((r) => {
     if (nationalite && r['Nationalité'] !== nationalite) return false;
@@ -1004,9 +1006,9 @@ function renderArtistListTable() {
   });
   html.push('</tr></thead><tbody>');
   sorted.forEach((r) => {
-    // Les noms d'artistes s'affichent en majuscules dans cette liste (demande explicite),
-    // uniquement à l'affichage — la casse d'origine du fichier n'est pas modifiée en mémoire.
-    html.push(`<tr><td>${escapeHtml(String(r['Artiste'] || '').toUpperCase())}</td><td>${escapeHtml(r['Nationalité'] || '')}</td><td>${escapeHtml(r['Art(s)'] || '')}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
+    // Nom affiché tel qu'enregistré dans le fichier (prénom en casse normale, nom de famille en
+    // majuscules) — pas de mise en majuscules forcée de l'ensemble.
+    html.push(`<tr><td>${escapeHtml(String(r['Artiste'] || ''))}</td><td>${escapeHtml(r['Nationalité'] || '')}</td><td>${escapeHtml(r['Art(s)'] || '')}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
   });
   html.push('</tbody></table>');
   container.innerHTML = html.join('');
@@ -1018,11 +1020,20 @@ function renderArtistListTable() {
     });
   });
   const status = $('artist-list-status');
-  const hasFilter = artistListFilters.nationalite || artistListFilters.art || artistListFilters.siecle;
+  const hasFilter = artistListMode === 'filtered' && (artistListFilters.nationalite || artistListFilters.art || artistListFilters.siecle);
   status.textContent = hasFilter
     ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant au filtre (sur ${artistListRows.length} au total).`
     : `${artistListRows.length} artistes référencés dans les quiz. Clique sur un en-tête de colonne pour trier.`;
 }
+function setArtistListMode(mode) {
+  artistListMode = mode;
+  $('artist-list-mode-full')?.classList.toggle('active-mode', mode === 'full');
+  $('artist-list-mode-filtered')?.classList.toggle('active-mode', mode === 'filtered');
+  $('artist-list-filters')?.classList.toggle('hidden', mode !== 'filtered');
+  renderArtistListTable();
+}
+$('artist-list-mode-full')?.addEventListener('click', () => setArtistListMode('full'));
+$('artist-list-mode-filtered')?.addEventListener('click', () => setArtistListMode('filtered'));
 function populateArtistListFilters() {
   const nationalites = [...new Set(artistListRows.map((r) => r['Nationalité']).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
   const arts = [...new Set(artistListRows.flatMap((r) => String(r['Art(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean)))].sort();
@@ -1052,7 +1063,7 @@ $('open-artist-list')?.addEventListener('click', async () => {
     if (!rows.length) throw new Error('liste vide');
     artistListRows = rows;
     populateArtistListFilters();
-    renderArtistListTable();
+    setArtistListMode('full');
     artistListLoaded = true;
   } catch (error) {
     status.textContent = "La liste des artistes n'est pas disponible pour le moment.";
@@ -1073,7 +1084,7 @@ document.querySelectorAll('.modal-overlay').forEach((overlay) => {
 });
 $('open-art')?.addEventListener('click', () => openModal('modal-art'));
 $('open-century')?.addEventListener('click', () => openModal('modal-century'));
-$('open-zone')?.addEventListener('click', () => openModal('modal-zone'));
+$('open-zone')?.addEventListener('click', () => openModal('modal-century')); // zone fusionnée dans la modale siècle
 $('open-rubriques')?.addEventListener('click', () => openModal('modal-rubriques'));
 $('open-level')?.addEventListener('click', () => openModal('modal-level'));
 
@@ -1121,9 +1132,12 @@ function updateSelectorSummaries() {
   const arts = selectedArts();
   $('summary-art').textContent = arts.length ? arts.map((a) => ART_LABELS[a]).join(', ') : 'Aucun art choisi';
   const centuries = selectedCenturies();
-  $('summary-century').textContent = centuries.length ? centuries.map((c) => CENTURY_LABELS[c]).join(', ') : 'Aucun siècle choisi';
   const zones = selectedZones();
-  $('summary-zone').textContent = zones.length ? zones.map((z) => ZONE_LABELS[z]).join(', ') : 'Toutes zones';
+  // Zone désormais choisie dans la même modale que le siècle : les deux s'affichent ensemble
+  // dans le résumé du bouton "Choisis ton siècle".
+  const centuryText = centuries.length ? centuries.map((c) => CENTURY_LABELS[c]).join(', ') : 'Aucun siècle choisi';
+  const zoneText = zones.length ? ` · ${zones.map((z) => ZONE_LABELS[z]).join(', ')}` : '';
+  $('summary-century').textContent = centuryText + zoneText;
   const rubriques = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.label);
   $('summary-rubriques').textContent = rubriques.length ? rubriques.join(', ') : 'Aucune rubrique choisie';
   const level = selectedLevel();
