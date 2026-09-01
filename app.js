@@ -759,7 +759,7 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     } else {
       const correct = isMatch(answer[key], displayedWork[key], key);
       html = `<div class="correction-item">
-        <span class="correction-label">${label}</span><span class="answer-result ${correct ? 'correct' : 'incorrect'}">${correct ? 'Correct' : 'À réviser'}</span>
+        <span class="correction-label">${label}</span><span class="answer-result ${correct ? 'correct' : 'incorrect'}">${correct ? 'Exact' : 'À réviser'}</span>
         <strong class="correction-value">${value}</strong>
       </div>`;
     }
