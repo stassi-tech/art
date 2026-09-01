@@ -793,6 +793,18 @@ function correctionInfoRow(label, value) {
     <strong class="correction-value">${escapeHtml(value)}</strong>
   </div>`;
 }
+function formatDimensionsValue(text, art) {
+  // Pour les peintures uniquement (demande explicite) : insère un petit "h" et un petit "l" en
+  // grisé devant respectivement la hauteur et la largeur, quand le texte suit le format standard
+  // "NOMBRE × NOMBRE cm" (ou similaire). Toute autre formulation (diamètre, dimensions
+  // monumentales, non standardisées...) reste affichée telle quelle, sans "h"/"l" inventés.
+  const escaped = escapeHtml(text);
+  if (art !== 'peinture') return escaped;
+  const match = text.match(/^([\d.,]+)\s*(×|x|X)\s*([\d.,]+)(.*)$/);
+  if (!match) return escaped;
+  const [, h, sep, l, rest] = match;
+  return `<span class="dim-hl">h</span> ${escapeHtml(h)} ${sep} <span class="dim-hl">l</span> ${escapeHtml(l)}${escapeHtml(rest)}`;
+}
 let correctionMainWork = null; // œuvre actuellement affichée en grand dans la correction (question testée, ou une « autre œuvre » cliquée)
 function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
   const isTestedWork = displayedWork === testedQuestion;
@@ -819,7 +831,12 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     // juste après la ligne « date de création ».
     if (key === 'date') {
       if (displayedWork.materials) html += correctionInfoRow('Matériaux et technique', displayedWork.materials);
-      if (displayedWork.dimensions) html += correctionInfoRow('Dimensions', displayedWork.dimensions);
+      if (displayedWork.dimensions) {
+        html += `<div class="correction-item correction-extra">
+          <span class="correction-label">Dimensions</span>
+          <strong class="correction-value">${formatDimensionsValue(displayedWork.dimensions, displayedWork.art)}</strong>
+        </div>`;
+      }
     }
     return html;
   }).join('');
@@ -953,6 +970,38 @@ $('excel-file').addEventListener('change', async (event) => {
   event.target.value = '';
 });
 
+// --- Liste des artistes (fichier-maître consultable, indépendant du quiz en cours) ---
+// Ce fichier est statique comme les autres : il ne se régénère pas tout seul quand un nouvel
+// artiste est ajouté ailleurs. En revanche, ce bouton lit toujours SA version la plus récente
+// publiée dans quizzes/ — pas besoin de retoucher ce code après une mise à jour du fichier.
+let artistListLoaded = false;
+$('open-artist-list')?.addEventListener('click', async () => {
+  openModal('modal-artist-list');
+  if (artistListLoaded) return;
+  const status = $('artist-list-status');
+  const container = $('artist-list-table');
+  try {
+    if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé.');
+    const response = await fetch('quizzes/artistes-nationalites-maitre.xlsx');
+    if (!response.ok) throw new Error('fichier introuvable');
+    const buffer = await response.arrayBuffer();
+    const book = XLSX.read(buffer, { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
+    if (!rows.length) throw new Error('liste vide');
+    const sorted = rows.slice().sort((a, b) => String(a['Artiste'] || '').localeCompare(String(b['Artiste'] || ''), 'fr'));
+    const html = ['<table class="artist-table"><thead><tr><th>Artiste</th><th>Nationalité</th><th>Art(s)</th><th>Siècle(s)</th></tr></thead><tbody>'];
+    sorted.forEach((r) => {
+      html.push(`<tr><td>${escapeHtml(r['Artiste'] || '')}</td><td>${escapeHtml(r['Nationalité'] || '')}</td><td>${escapeHtml(r['Art(s)'] || '')}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
+    });
+    html.push('</tbody></table>');
+    container.innerHTML = html.join('');
+    status.textContent = `${sorted.length} artistes référencés dans les quiz.`;
+    artistListLoaded = true;
+  } catch (error) {
+    status.textContent = "La liste des artistes n'est pas disponible pour le moment.";
+  }
+});
+
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
 const ART_LABELS = { peinture: 'Peinture', sculpture: 'Sculpture' };
 const CENTURY_LABELS = { '14e': '14e siècle', '15e': '15e siècle', '16e': '16e siècle', '17e': '17e siècle', '18e': '18e siècle', '19e': '19e siècle', '20e': '20e siècle' };
@@ -967,6 +1016,7 @@ document.querySelectorAll('.modal-overlay').forEach((overlay) => {
 });
 $('open-art')?.addEventListener('click', () => openModal('modal-art'));
 $('open-century')?.addEventListener('click', () => openModal('modal-century'));
+$('open-zone')?.addEventListener('click', () => openModal('modal-zone'));
 $('open-rubriques')?.addEventListener('click', () => openModal('modal-rubriques'));
 $('open-level')?.addEventListener('click', () => openModal('modal-level'));
 
@@ -982,12 +1032,41 @@ $('century-20e')?.addEventListener('change', (event) => {
 
 function selectedArts() { return ['peinture', 'sculpture'].filter((art) => $(`art-${art}`).checked); }
 function selectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((century) => $(`century-${century}`).checked); }
+function selectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((zone) => $(`zone-${zone}`)?.checked); }
+const ZONE_LABELS = { france: 'France', europe: "Autres pays d'Europe", amerique: 'Amérique', asie: 'Asie' };
+// Zone géographique déduite de la nationalité (colonne I, texte libre) : rattachement par
+// sous-chaîne, dans le même esprit que NATIONALITY_FLAGS. "france" est à part des autres pays
+// européens, comme demandé (un joueur peut vouloir réviser "France" seule vs "reste de l'Europe").
+const ZONE_BY_NATIONALITY_KEYWORD = {
+  france: ['francaise', 'francais'],
+  europe: [
+    'italienne', 'italien', 'espagnole', 'espagnol', 'catalane', 'catalan', 'flamande', 'flamand',
+    'belge', 'hollandaise', 'hollandais', 'neerlandaise', 'neerlandais', 'allemande', 'allemand',
+    'autrichienne', 'autrichien', 'suisse', 'anglaise', 'anglais', 'britannique', 'ecossaise',
+    'ecossais', 'irlandaise', 'irlandais', 'russe', 'portugaise', 'portugais', 'danoise', 'danois',
+    'norvegienne', 'norvegien', 'suedoise', 'suedois', 'finlandaise', 'finlandais', 'polonaise',
+    'polonais', 'tcheque', 'boheme', 'hongroise', 'hongrois', 'grecque', 'grec', 'byzantine',
+    'byzantin', 'croate', 'ukrainienne', 'ukrainien', 'bulgare', 'bielorusse', 'maltaise', 'suedoise',
+  ],
+  amerique: ['americaine', 'americain', 'mexicaine', 'mexicain', 'canadienne', 'canadien', 'bresilienne', 'bresilien', 'argentine'],
+  asie: ['chinoise', 'chinois', 'japonaise', 'japonais', 'coreenne', 'coreen', 'indienne', 'indien', 'persane', 'persan', 'iranienne', 'iranien'],
+};
+function zoneOfNationality(rawValue) {
+  const key = keyName(rawValue);
+  if (!key) return null;
+  for (const zone of Object.keys(ZONE_BY_NATIONALITY_KEYWORD)) {
+    if (ZONE_BY_NATIONALITY_KEYWORD[zone].some((kw) => key.includes(kw))) return zone;
+  }
+  return null;
+}
 function selectedLevel() { const checked = document.querySelector('input[name="niveau"]:checked'); return checked ? checked.value : null; }
 function updateSelectorSummaries() {
   const arts = selectedArts();
   $('summary-art').textContent = arts.length ? arts.map((a) => ART_LABELS[a]).join(', ') : 'Aucun art choisi';
   const centuries = selectedCenturies();
   $('summary-century').textContent = centuries.length ? centuries.map((c) => CENTURY_LABELS[c]).join(', ') : 'Aucun siècle choisi';
+  const zones = selectedZones();
+  $('summary-zone').textContent = zones.length ? zones.map((z) => ZONE_LABELS[z]).join(', ') : 'Toutes zones';
   const rubriques = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.label);
   $('summary-rubriques').textContent = rubriques.length ? rubriques.join(', ') : 'Aucune rubrique choisie';
   const level = selectedLevel();
@@ -1004,7 +1083,9 @@ async function fetchQuizRows(art, century, level) {
   const buffer = await response.arrayBuffer();
   const book = XLSX.read(buffer, { type: 'array' });
   const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
-  return normaliseRows(rows);
+  // Marque chaque ligne avec son art d'origine (connu au moment du fetch) : utile ensuite pour
+  // n'afficher "h"/"l" devant les dimensions que pour les peintures sur la page de correction.
+  return normaliseRows(rows).map((q) => ({ ...q, art }));
 }
 
 $('launch-quiz-button')?.addEventListener('click', async () => {
@@ -1043,23 +1124,37 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     if (missing.length) {
       alert(`Ce site est en construction pour : ${missing.join(', ')}. Le quiz continue avec les autres choix disponibles.`);
     }
+    // Filtre par zone géographique (colonne Nationalité) : les œuvres sans nationalité connue
+    // restent incluses dans tous les cas, pour ne pas écarter des fichiers pas encore renseignés.
+    const zones = selectedZones();
+    let filteredRows = allRows;
+    if (zones.length) {
+      filteredRows = allRows.filter((r) => {
+        const z = zoneOfNationality(r.nationality);
+        return !z || zones.includes(z);
+      });
+      if (!filteredRows.length) {
+        feedback.textContent = 'Aucune œuvre disponible pour cette combinaison siècle(s) / zone(s). Essaie une autre zone.';
+        return;
+      }
+    }
     // Le niveau fixe le nombre de questions du quiz (30/60/120), même si plusieurs arts ou
     // siècles combinés fournissent davantage de questions au total : on mélange puis on limite.
     // Si le total récolté (avec repli inclus) n'atteint pas la cible du niveau demandé, on
     // rétrograde automatiquement vers un niveau que le contenu disponible permet d'honorer.
-    let targetCount = LEVEL_QUESTION_COUNTS[level] || allRows.length;
+    let targetCount = LEVEL_QUESTION_COUNTS[level] || filteredRows.length;
     let effectiveLevel = level;
-    if (allRows.length < targetCount) {
-      if (level === '3' && allRows.length >= LEVEL_QUESTION_COUNTS['2']) {
+    if (filteredRows.length < targetCount) {
+      if (level === '3' && filteredRows.length >= LEVEL_QUESTION_COUNTS['2']) {
         targetCount = LEVEL_QUESTION_COUNTS['2'];
         effectiveLevel = '2';
         alert('Pas assez de questions disponibles pour un niveau 3 complet (120 questions). Un quiz de niveau 2 (60 questions) a été généré automatiquement.');
       } else {
-        targetCount = allRows.length;
-        alert(`Pas assez de questions disponibles pour le niveau demandé. Le quiz démarre avec les ${allRows.length} questions disponibles.`);
+        targetCount = filteredRows.length;
+        alert(`Pas assez de questions disponibles pour le niveau demandé. Le quiz démarre avec les ${filteredRows.length} questions disponibles.`);
       }
     }
-    const shuffled = shuffleQuestions(allRows);
+    const shuffled = shuffleQuestions(filteredRows);
     state.selectedFieldKeys = chosenKeys;
     state.mode = 'normal';
     state.fullQuestions = shuffled.slice(0, targetCount);
@@ -1075,7 +1170,8 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     // peinture du 18e siècle" — distinct de `label` (utilisé pour l'historique des scores).
     const artsLower = arts.map((a) => ART_LABELS[a].toLowerCase()).join(' + ');
     const centuriesText = centuries.map((c) => CENTURY_LABELS[c]).join(', ');
-    const quizReference = `${targetCount} questions sur la ${artsLower} du ${centuriesText}`;
+    const zoneText = zones.length ? ` (${zones.map((z) => ZONE_LABELS[z]).join(', ')})` : '';
+    const quizReference = `${targetCount} questions sur la ${artsLower} du ${centuriesText}${zoneText}`;
     state.quizConfig = {
       arts: arts.map((a) => ART_LABELS[a]),
       centuries: centuries.map((c) => CENTURY_LABELS[c]),
