@@ -525,7 +525,18 @@ function normaliseRows(rows) {
     const locationKey = findColumn(row, ['lieu de conservation', 'lieu', 'conservation', 'musee', 'musée', 'location']);
     const titleKey = findColumn(row, ["titre de l oeuvre", 'titre oeuvre', 'titre', 'title', 'œuvre', 'oeuvre']);
     if (!imageKey || !artistKey || !dateKey || !locationKey || !titleKey) throw new Error("Les cinq en-têtes requis sont : image, artiste, date de création, lieu de conservation, titre de l'œuvre.");
-    return { image: String(row[imageKey] || '').trim(), artist: String(row[artistKey] || '').trim(), date: String(row[dateKey] || '').trim(), location: String(row[locationKey] || '').trim(), title: String(row[titleKey] || '').trim(), row: rowIndex + 2 };
+    // Trois colonnes optionnelles supplémentaires (F, G, H) : purement informatives sur la page de
+    // correction, jamais quizzables (pas de rubrique associée). Absentes -> simplement pas affichées.
+    const artistDatesKey = findColumn(row, ['dates artiste', 'dates', 'naissance mort', 'nee morte', 'ne mort', 'annees artiste']);
+    const materialsKey = findColumn(row, ['materiaux et technique', 'materiaux', 'technique', 'materials', 'materiau']);
+    const dimensionsKey = findColumn(row, ['dimensions', 'taille', 'format', 'dimension']);
+    return {
+      image: String(row[imageKey] || '').trim(), artist: String(row[artistKey] || '').trim(), date: String(row[dateKey] || '').trim(), location: String(row[locationKey] || '').trim(), title: String(row[titleKey] || '').trim(),
+      artistDates: artistDatesKey ? String(row[artistDatesKey] || '').trim() : '',
+      materials: materialsKey ? String(row[materialsKey] || '').trim() : '',
+      dimensions: dimensionsKey ? String(row[dimensionsKey] || '').trim() : '',
+      row: rowIndex + 2
+    };
   }).filter((question) => question.image || question.artist || question.date || question.location || question.title);
 }
 function answerFor(index) {
@@ -718,26 +729,47 @@ function formatCorrectionValue(key, rawValue) {
   if (key === 'title') return `<em>${escapeHtml(rawValue)}</em>`;
   return escapeHtml(rawValue);
 }
+function formatArtistWithDates(work) {
+  // Dates de naissance/mort affichées en petit à côté du nom, sans rubrique associée (jamais quizzées).
+  const name = escapeHtml(formatArtistName(work.artist));
+  const dates = String(work.artistDates || '').trim();
+  return dates ? `${name} <span class="artist-dates">(${escapeHtml(dates)})</span>` : name;
+}
+function correctionInfoRow(label, value) {
+  return `<div class="correction-item correction-extra">
+    <span class="correction-label">${label}</span><span class="answer-result info">info</span>
+    <strong class="correction-value">${escapeHtml(value)}</strong>
+  </div>`;
+}
 let correctionMainWork = null; // œuvre actuellement affichée en grand dans la correction (question testée, ou une « autre œuvre » cliquée)
 function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
   const isTestedWork = displayedWork === testedQuestion;
   displayArtworkImage(displayedWork, isTestedWork ? `Œuvre ${state.index + 1}` : `Autre œuvre du même peintre : ${displayedWork.title}`, true);
   $('correction-details').innerHTML = allFields.map(({ key, label }) => {
-    const value = formatCorrectionValue(key, displayedWork[key]);
+    const value = key === 'artist' ? formatArtistWithDates(displayedWork) : formatCorrectionValue(key, displayedWork[key]);
     // Une « autre œuvre » cliquée n'a pas été répondue par l'utilisateur : on l'affiche
     // uniquement à titre d'information, sans notation ✓/✕.
     const tested = isTestedWork && state.selectedFieldKeys.includes(key);
+    let html;
     if (!tested) {
-      return `<div class="correction-item correction-extra">
+      html = `<div class="correction-item correction-extra">
         <span class="correction-label">${label}${isTestedWork ? ' (info)' : ''}</span><span class="answer-result info">info</span>
         <strong class="correction-value">${value}</strong>
       </div>`;
+    } else {
+      const correct = isMatch(answer[key], displayedWork[key], key);
+      html = `<div class="correction-item">
+        <span class="correction-label">${label}</span><span class="answer-result ${correct ? 'correct' : 'incorrect'}">${correct ? 'Correct' : 'À réviser'}</span>
+        <strong class="correction-value">${value}</strong>
+      </div>`;
     }
-    const correct = isMatch(answer[key], displayedWork[key], key);
-    return `<div class="correction-item">
-      <span class="correction-label">${label}</span><span class="answer-result ${correct ? 'correct' : 'incorrect'}">${correct ? 'Correct' : 'À réviser'}</span>
-      <strong class="correction-value">${value}</strong>
-    </div>`;
+    // Matériaux/technique et dimensions : toujours purement informatifs, jamais quizzés, affichés
+    // juste après la ligne « date de création ».
+    if (key === 'date') {
+      if (displayedWork.materials) html += correctionInfoRow('Matériaux et technique', displayedWork.materials);
+      if (displayedWork.dimensions) html += correctionInfoRow('Dimensions', displayedWork.dimensions);
+    }
+    return html;
   }).join('');
 }
 function renderCorrection(answer, question) {
