@@ -737,7 +737,7 @@ function formatArtistWithDates(work) {
 }
 function correctionInfoRow(label, value) {
   return `<div class="correction-item correction-extra">
-    <span class="correction-label">${label}</span><span class="answer-result info">info</span>
+    <span class="correction-label">${label}</span>
     <strong class="correction-value">${escapeHtml(value)}</strong>
   </div>`;
 }
@@ -753,7 +753,7 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     let html;
     if (!tested) {
       html = `<div class="correction-item correction-extra">
-        <span class="correction-label">${label}${isTestedWork ? ' (info)' : ''}</span><span class="answer-result info">info</span>
+        <span class="correction-label">${label}</span>
         <strong class="correction-value">${value}</strong>
       </div>`;
     } else {

@@ -87,7 +87,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .answer-result { grid-column:2; justify-self:end; font-size:1.05rem; font-weight:700; font-family:Arial,sans-serif; }
 .answer-result.info { color:var(--muted); font-weight:400; text-transform:uppercase; font-size:.72rem; letter-spacing:.03em; }
 .correct { color:var(--ok); } .incorrect { color:var(--wrong); }
-.correction-label { grid-column:1; font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:var(--ink); text-transform:uppercase; letter-spacing:.03em; }
+.correction-label { grid-column:1; font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.03em; }
 .correction-value { grid-column:1 / -1; font-size:1.2rem; font-weight:700; color:var(--ink); line-height:1.2; margin-bottom:14px; }
 .correction-value em { font-style:italic; }
 .artist-dates { font-size:.75em; font-weight:400; color:var(--muted); }
@@ -105,10 +105,8 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .other-work-caption strong { color:var(--ink); font-weight:700; }
 .other-work-caption em { font-style:italic; }
 
-/* Quand des œuvres du même peintre s'affichent en dessous, on réduit l'image et la fiche
-   corrigées pour laisser de la place, y compris sur grand écran. */
-body.has-other-works .artwork-card { min-height:360px; }
-body.has-other-works .artwork-card img { max-height:420px; }
+/* Quand des œuvres du même peintre s'affichent en dessous, on réduit la fiche corrigée (texte)
+   pour laisser de la place, mais pas l'image de l'œuvre elle-même sur grand écran. */
 body.has-other-works .correction-value { font-size:1.02rem; margin-bottom:10px; }
 body.has-other-works .answer-result { font-size:.95rem; }
 body.has-other-works .correction-label { font-size:.76rem; }
@@ -151,6 +149,8 @@ body.has-other-works .correction-label { font-size:.76rem; }
   body.is-corrected .nav-button { padding:7px 8px; }
   body.has-other-works.is-corrected .artwork-card { min-height:20vh; }
   body.has-other-works.is-corrected .artwork-card img { max-height:18vh; }
+  body.has-other-works .artwork-card { min-height:360px; }
+  body.has-other-works .artwork-card img { max-height:420px; }
   .other-works { margin-top:14px; padding-top:10px; }
   .other-work-card { width:84px; }
   .other-work-card img { height:70px; }
