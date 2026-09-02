@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=55" />
+    <link rel="stylesheet" href="style.css?v=56" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -153,6 +153,14 @@
             <p>Vous choisissez : l'<strong>art</strong> (peinture et/ou sculpture), le <strong>siècle</strong> (et, si vous le souhaitez, une zone géographique), les <strong>rubriques</strong> sur lesquelles vous voulez être noté (artiste, titre, date de création, lieu de conservation), le <strong>nombre de questions</strong> et le <strong>niveau</strong> (le réservoir d'œuvres utilisé : le niveau 2 inclut le niveau 1, le niveau 3 inclut les niveaux 1 et 2).</p>
             <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les 4 informations, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d'orthographe, surnoms, titres en langue d'origine) sont tolérées dans une certaine mesure.</p>
             <p>À la fin du quiz, votre score s'affiche et s'enregistre automatiquement si vous êtes connecté à votre compte.</p>
+
+            <h3 class="modal-subheading">Comment les niveaux 1, 2, 3 sont-ils établis ? (méthode — version provisoire)</h3>
+            <p>Le niveau 1 rassemble les artistes les plus universellement connus d'un siècle donné ; le niveau 2 élargit à des artistes célèbres mais plus spécialisés ; le niveau 3 descend vers des artistes moins connus du grand public, plus intéressants pour un amateur averti. Établir cette hiérarchie de façon vraiment objective est difficile — voici la démarche suivie, avec ses limites assumées.</p>
+            <p><strong>Aucun critère unique n'est satisfaisant seul.</strong> Le nombre d'œuvres conservées en institution favorise les artistes prolifiques mais mineurs, et pénalise au contraire des figures majeures au corpus réduit (Léonard de Vinci ne compte qu'une quinzaine à une vingtaine de peintures attribuées avec certitude). Le volume de documentation disponible sur Wikimedia Commons — qui a en pratique le plus influencé les choix faits jusqu'ici pour des raisons d'accessibilité des images — surreprésente nettement l'Europe de l'Ouest par rapport au reste du monde, sans rapport avec la célébrité réelle des artistes qui y sont moins documentés.</p>
+            <p><strong>Une piste plus solide : croiser les sources culturelles.</strong> Une étude académique (Frahm, El-Zant, Georgeot &amp; Shepelyansky, « Interactions and influence of world painters from the reduced Google matrix of Wikipedia networks », 2018) a précisément mesuré l'importance des peintres en comparant leur position dans sept éditions linguistiques de Wikipédia (anglaise, française, allemande, russe...), révélant que le classement diffère sensiblement d'une langue — donc d'une culture — à l'autre. C'est l'esprit de ce qu'on cherche à faire ici à plus petite échelle : demander « qui sont les grands peintres » à des sources issues de zones culturelles différentes (IA entraînées dans différentes langues, encyclopédies, manuels de référence de différents pays) et ne retenir en niveau 1 que ce qui converge largement entre elles, plutôt que de se fier à une seule tradition (occidentale) de désignation des « grands maîtres ».</p>
+            <p>Dans un genre voisin mais différent, le projet <em>The Most Wanted Paintings</em> de Komar &amp; Melamid (années 1990) avait sondé le goût du grand public dans une quinzaine de pays, dont la Russie — une démarche sur les préférences populaires plutôt que sur la notoriété des artistes, mais qui illustre que ce type d'enquête comparative internationale existe bel et bien.</p>
+            <p><strong>Piste complémentaire à l'étude — la couverture de la production.</strong> Pour chaque artiste retenu, on pourrait déterminer le nombre total d'œuvres qui lui sont attribuées et la part de « chefs-d'œuvre » reconnus dans cette production, puis appliquer un coefficient selon le niveau : un artiste de niveau 1 au corpus réduit (Léonard et sa vingtaine de tableaux) pourrait être couvert à 100 % dans nos fichiers, tandis qu'un artiste de niveau 3, plus prolifique mais moins central, n'y figurerait qu'à hauteur de ses œuvres les plus marquantes (par exemple 10 % de sa production). C'est une piste encore théorique, qui reste à affiner et à appliquer systématiquement.</p>
+            <p class="modal-hint">Cette méthode continuera d'évoluer. Les biais connus (surreprésentation de l'Europe de l'Ouest, angles morts sur l'Asie, l'Afrique, les Amériques précolombiennes...) seront progressivement corrigés au fur et à mesure des vérifications croisées.</p>
             <button type="button" class="primary-button modal-close" data-modal="modal-fonctionnement">Fermer</button>
           </div>
         </div>
@@ -374,6 +382,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=55"></script>
+    <script src="app.js?v=56"></script>
   </body>
 </html>
