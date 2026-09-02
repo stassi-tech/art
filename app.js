@@ -65,7 +65,7 @@ function setAccountMode(mode) {
   accountMode = mode;
   $('account-modal-title').textContent = mode === 'login' ? 'Se connecter' : 'Créer un compte';
   $('account-submit-button').textContent = mode === 'login' ? 'Se connecter' : 'Créer mon compte';
-  $('account-toggle-mode').textContent = mode === 'login' ? 'Pas encore de compte ? Crée-en un' : 'Déjà un compte ? Connecte-toi';
+  $('account-toggle-mode').textContent = mode === 'login' ? 'Pas encore de compte ? Créez-en un' : 'Déjà un compte ? Connectez-vous';
   $('account-error').classList.add('hidden');
   $('account-notice').classList.add('hidden');
   $('account-forgot-row').classList.toggle('hidden', mode !== 'login'); // pas de sens en mode inscription
@@ -81,13 +81,13 @@ if (firebaseReady) {
     const errorEl = $('account-error'); const noticeEl = $('account-notice');
     errorEl.classList.add('hidden'); noticeEl.classList.add('hidden');
     if (!email) {
-      errorEl.textContent = "Indique d'abord ton adresse e-mail dans le champ ci-dessus, puis reclique sur « Mot de passe oublié ? ».";
+      errorEl.textContent = "Indiquez d'abord votre adresse e-mail dans le champ ci-dessus, puis recliquez sur « Mot de passe oublié ? ».";
       errorEl.classList.remove('hidden');
       return;
     }
     try {
       await auth.sendPasswordResetEmail(email);
-      noticeEl.textContent = `Un e-mail de réinitialisation a été envoyé à ${email}. Vérifie ta boîte de réception (et les spams).`;
+      noticeEl.textContent = `Un e-mail de réinitialisation a été envoyé à ${email}. Vérifiez votre boîte de réception (et les spams).`;
       noticeEl.classList.remove('hidden');
     } catch (error) {
       errorEl.textContent = firebaseAuthErrorMessage(error);
@@ -158,7 +158,7 @@ async function saveCurrentScore() {
       perField,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    if (statusEl) { statusEl.textContent = 'Score enregistré automatiquement sur ton compte.'; statusEl.classList.remove('hidden'); }
+    if (statusEl) { statusEl.textContent = 'Score enregistré automatiquement sur votre compte.'; statusEl.classList.remove('hidden'); }
   } catch (error) {
     if (statusEl) { statusEl.textContent = "Le score n'a pas pu être enregistré automatiquement."; statusEl.classList.remove('hidden'); }
   }
@@ -1176,7 +1176,7 @@ function renderArtistListTable() {
   const hasFilter = artistListMode === 'filtered' && (artistListFilters.nationalite || artistListFilters.art || artistListFilters.siecle);
   status.textContent = hasFilter
     ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant au filtre (sur ${artistListRows.length} au total).`
-    : `${artistListRows.length} artistes référencés dans les quiz. Clique sur un en-tête de colonne pour trier.`;
+    : `${artistListRows.length} artistes référencés dans les quiz. Cliquez sur un en-tête de colonne pour trier.`;
 }
 function setArtistListMode(mode) {
   artistListMode = mode;
@@ -1202,7 +1202,8 @@ function populateArtistListFilters() {
 $('filter-nationalite')?.addEventListener('change', (e) => { artistListFilters.nationalite = e.target.value; renderArtistListTable(); });
 $('filter-art')?.addEventListener('change', (e) => { artistListFilters.art = e.target.value; renderArtistListTable(); });
 $('filter-siecle')?.addEventListener('change', (e) => { artistListFilters.siecle = e.target.value; renderArtistListTable(); });
-$('open-artist-list')?.addEventListener('click', async () => {
+$('menu-item-artistes')?.addEventListener('click', async () => {
+  closeHamburgerMenu();
   openModal('modal-artist-list');
   if (artistListLoaded) return;
   const status = $('artist-list-status');
@@ -1222,6 +1223,21 @@ $('open-artist-list')?.addEventListener('click', async () => {
     status.textContent = "La liste des artistes n'est pas disponible pour le moment.";
   }
 });
+
+// --- Menu hamburger (☰), en haut à gauche, présent sur toutes les pages ---
+function closeHamburgerMenu() { $('hamburger-menu')?.classList.add('hidden'); }
+$('hamburger-button')?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  $('hamburger-menu')?.classList.toggle('hidden');
+});
+document.addEventListener('click', (event) => {
+  const wrap = document.querySelector('.hamburger-wrap');
+  if (wrap && !wrap.contains(event.target)) closeHamburgerMenu();
+});
+$('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-fonctionnement'); });
+$('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
+$('back-home-from-quiz')?.addEventListener('click', () => showPanel('welcome'));
+$('back-home-from-results')?.addEventListener('click', () => showPanel('welcome'));
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
 const ART_LABELS = { peinture: 'Peinture', sculpture: 'Sculpture' };
@@ -1323,7 +1339,7 @@ function updateSelectorSummaries() {
   const centuries = selectedCenturies();
   const zones = selectedZones();
   // Zone désormais choisie dans la même modale que le siècle : les deux s'affichent ensemble
-  // dans le résumé du bouton "Choisis ton siècle".
+  // dans le résumé du bouton "Choisissez votre siècle".
   const centuryText = centuries.length ? centuries.map((c) => CENTURY_LABELS[c]).join(', ') : 'Aucun siècle choisi';
   const zoneText = zones.length ? ` · ${zones.map((z) => ZONE_LABELS[z]).join(', ')}` : '';
   $('summary-century').textContent = centuryText + zoneText;
@@ -1357,10 +1373,10 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
   const chosenKeys = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.key);
   const feedback = $('launch-feedback');
   feedback.classList.remove('hidden');
-  if (!arts.length) { feedback.textContent = 'Choisis au moins un art (« Choisis ton art »).'; return; }
-  if (!centuries.length) { feedback.textContent = 'Choisis au moins un siècle (« Choisis ton siècle »).'; return; }
-  if (!level) { feedback.textContent = 'Choisis un niveau (« Choisis ton niveau »).'; return; }
-  if (!chosenKeys.length) { feedback.textContent = 'Choisis au moins une rubrique à réviser (« Choisis tes rubriques »).'; return; }
+  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art (« Choisissez votre art »).'; return; }
+  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle (« Choisissez votre siècle »).'; return; }
+  if (!level) { feedback.textContent = 'Choisissez un niveau (« Choisissez votre niveau »).'; return; }
+  if (!chosenKeys.length) { feedback.textContent = 'Choisissez au moins une rubrique à réviser (« Choisissez vos rubriques »).'; return; }
   feedback.textContent = 'Chargement du quiz…';
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé. Vérifiez votre connexion Internet et rechargez la page.');
@@ -1395,7 +1411,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
         return !z || zones.includes(z);
       });
       if (!filteredRows.length) {
-        feedback.textContent = 'Aucune œuvre disponible pour cette combinaison siècle(s) / zone(s). Essaie une autre zone.';
+        feedback.textContent = 'Aucune œuvre disponible pour cette combinaison siècle(s) / zone(s). Essayez une autre zone.';
         return;
       }
     }
@@ -1497,7 +1513,7 @@ $('download-my-report-button')?.addEventListener('click', async () => {
   try {
     if (!lastAccountLevelGroups) await fetchScoreLevelGroups();
     if (!lastAccountLevelGroups || !lastAccountLevelGroups.size) {
-      alert('Aucun score enregistré pour le moment. Termine un quiz pour commencer ton historique.');
+      alert('Aucun score enregistré pour le moment. Terminez un quiz pour commencer votre historique.');
       return;
     }
     downloadAccountTable();

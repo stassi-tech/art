@@ -4,13 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=54" />
+    <link rel="stylesheet" href="style.css?v=55" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   </head>
   <body>
+    <div class="hamburger-wrap">
+      <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button">☰</button>
+      <div class="hamburger-menu hidden" id="hamburger-menu">
+        <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Le fonctionnement des quiz</button>
+        <button type="button" class="hamburger-item" id="menu-item-artistes">📖 La liste des artistes</button>
+        <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
+      </div>
+    </div>
     <div class="app-shell">
       <aside class="sidebar" id="sidebar">
         <img class="sidebar-illustration" src="assets/accueil.jpg" alt="" aria-hidden="true" />
@@ -30,36 +38,35 @@
 
           <div class="quiz-selectors hidden" id="quiz-selectors-grid">
             <button type="button" class="selector-button hidden" id="open-art">
-              🎨 Choisis ton art
+              🎨 Choisissez votre art
               <span class="selector-summary" id="summary-art">Aucun art choisi</span>
             </button>
             <button type="button" class="selector-button hidden" id="open-century">
-              🏛️ Choisis ton siècle et ta zone géographique
+              🏛️ Choisissez votre siècle et votre zone géographique
               <span class="selector-summary" id="summary-century">Aucun siècle choisi</span>
             </button>
             <button type="button" class="selector-button hidden" id="open-rubriques">
-              📝 Choisis tes rubriques
+              📝 Choisissez vos rubriques
               <span class="selector-summary" id="summary-rubriques">Aucune rubrique choisie</span>
             </button>
             <button type="button" class="selector-button hidden" id="open-level">
-              ⭐ Choisis ton niveau et ton nombre de questions
+              ⭐ Choisissez votre niveau et votre nombre de questions
               <span class="selector-summary" id="summary-level">Aucun niveau choisi</span>
             </button>
           </div>
 
-          <button type="button" class="primary-button" id="select-choices" style="width:100%; margin-bottom:20px;">🎯 Sélectionne tes choix</button>
+          <button type="button" class="primary-button" id="select-choices" style="width:100%; margin-bottom:20px;">🎯 Sélectionnez vos choix</button>
 
           <div class="quiz-summary hidden" id="quiz-summary">
-            <h3 class="modal-subheading" style="margin-top:0">Récapitulatif de ton quiz</h3>
-            <div class="summary-line"><span id="recap-art">—</span><button type="button" class="link-label" data-modal="modal-art">Modifier</button></div>
-            <div class="summary-line"><span id="recap-century">—</span><button type="button" class="link-label" data-modal="modal-century">Modifier</button></div>
-            <div class="summary-line"><span id="recap-rubriques">—</span><button type="button" class="link-label" data-modal="modal-rubriques">Modifier</button></div>
-            <div class="summary-line"><span id="recap-level">—</span><button type="button" class="link-label" data-modal="modal-level">Modifier</button></div>
+            <h3 class="modal-subheading" style="margin-top:0">Récapitulatif de votre quiz</h3>
+            <div class="summary-line"><span id="recap-art">—</span><button type="button" class="link-label" data-modal="modal-art">Modifiez</button></div>
+            <div class="summary-line"><span id="recap-century">—</span><button type="button" class="link-label" data-modal="modal-century">Modifiez</button></div>
+            <div class="summary-line"><span id="recap-rubriques">—</span><button type="button" class="link-label" data-modal="modal-rubriques">Modifiez</button></div>
+            <div class="summary-line"><span id="recap-level">—</span><button type="button" class="link-label" data-modal="modal-level">Modifiez</button></div>
           </div>
 
-          <div class="quiz-action-row">
-            <button type="button" class="secondary-button grey-button" id="open-artist-list">📖 Consulter la liste des artistes</button>
-            <button id="launch-quiz-button" class="primary-button" type="button">Lancer le quiz</button>
+          <div class="quiz-action-row quiz-action-row-single">
+            <button id="launch-quiz-button" class="primary-button" type="button">Lancez le quiz</button>
           </div>
           <p id="launch-feedback" class="hint hidden"></p>
 
@@ -68,7 +75,7 @@
 
         <div class="modal-overlay hidden" id="modal-art">
           <div class="modal-box">
-            <h3>Choisis ton art</h3>
+            <h3>Choisissez votre art</h3>
             <label class="rubrique-option">
               <input type="checkbox" id="art-peinture" />
               <span>Peinture</span>
@@ -83,7 +90,7 @@
 
         <div class="modal-overlay hidden" id="modal-century">
           <div class="modal-box">
-            <h3>Choisis ton siècle</h3>
+            <h3>Choisissez votre siècle</h3>
             <label class="rubrique-option">
               <input type="checkbox" id="century-14e" />
               <span>14e siècle</span>
@@ -139,6 +146,27 @@
           </div>
         </div>
 
+        <div class="modal-overlay hidden" id="modal-fonctionnement">
+          <div class="modal-box">
+            <h3>Le fonctionnement des quiz</h3>
+            <p>Chaque quiz vous présente une série d'œuvres d'art à identifier, une par une, à partir de leur image.</p>
+            <p>Vous choisissez : l'<strong>art</strong> (peinture et/ou sculpture), le <strong>siècle</strong> (et, si vous le souhaitez, une zone géographique), les <strong>rubriques</strong> sur lesquelles vous voulez être noté (artiste, titre, date de création, lieu de conservation), le <strong>nombre de questions</strong> et le <strong>niveau</strong> (le réservoir d'œuvres utilisé : le niveau 2 inclut le niveau 1, le niveau 3 inclut les niveaux 1 et 2).</p>
+            <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les 4 informations, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d'orthographe, surnoms, titres en langue d'origine) sont tolérées dans une certaine mesure.</p>
+            <p>À la fin du quiz, votre score s'affiche et s'enregistre automatiquement si vous êtes connecté à votre compte.</p>
+            <button type="button" class="primary-button modal-close" data-modal="modal-fonctionnement">Fermer</button>
+          </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="modal-contact">
+          <div class="modal-box">
+            <h3>Contact</h3>
+            <p>Pour toute question, suggestion ou signalement d'erreur, vous pouvez écrire à l'adresse suivante :</p>
+            <p><a href="mailto:votre-adresse@exemple.com" class="link-label">votre-adresse@exemple.com</a></p>
+            <p class="modal-hint">Adresse personnelle temporaire — à remplacer par la vôtre.</p>
+            <button type="button" class="primary-button modal-close" data-modal="modal-contact">Fermer</button>
+          </div>
+        </div>
+
         <div class="modal-overlay hidden" id="modal-artist-list">
           <div class="modal-box">
             <h3>Liste des artistes</h3>
@@ -167,7 +195,7 @@
 
         <div class="modal-overlay hidden" id="modal-rubriques">
           <div class="modal-box">
-            <h3>Choisis tes rubriques</h3>
+            <h3>Choisissez vos rubriques</h3>
             <p class="modal-hint">La correction affichera toujours les 4 informations, mais seules les rubriques cochées sont notées.</p>
             <label class="rubrique-option">
               <input type="checkbox" id="rubrique-artist" />
@@ -194,8 +222,8 @@
 
         <div class="modal-overlay hidden" id="modal-level">
           <div class="modal-box">
-            <h3>Choisis ton niveau et ton nombre de questions</h3>
-            <p class="modal-hint">Le niveau détermine le réservoir d'œuvres utilisé (niveau 2 inclut le niveau 1, niveau 3 inclut les niveaux 1 et 2). Le nombre de questions est indépendant : tu peux par exemple piocher 30 questions dans le niveau 3.</p>
+            <h3>Choisissez votre niveau et votre nombre de questions</h3>
+            <p class="modal-hint">Le niveau détermine le réservoir d'œuvres utilisé (niveau 2 inclut le niveau 1, niveau 3 inclut les niveaux 1 et 2). Le nombre de questions est indépendant : vous pouvez par exemple piocher 30 questions dans le niveau 3.</p>
             <label class="rubrique-option">
               <input type="radio" name="niveau" id="level-1" value="1" />
               <span>Niveau 1</span>
@@ -266,6 +294,7 @@
         </div>
 
         <section id="quiz-panel" class="quiz-panel hidden" aria-live="polite">
+          <button type="button" class="link-label back-home-link" id="back-home-from-quiz">← Retour à l'accueil</button>
           <p id="quiz-reference" class="quiz-reference"></p>
           <div class="progress-row">
             <span id="question-count">Question 1 sur 1</span>
@@ -316,6 +345,7 @@
         </section>
 
         <section id="results-panel" class="results-panel hidden">
+          <button type="button" class="link-label back-home-link" id="back-home-from-results">← Retour à l'accueil</button>
           <p class="eyebrow">QUIZ TERMINÉ</p>
           <h2>Votre score : <span id="final-score"></span></h2>
           <p id="final-message"></p>
@@ -334,16 +364,16 @@
         <section id="account-panel" class="results-panel account-panel hidden">
           <p class="eyebrow">MON COMPTE</p>
           <h2>Historique de mes scores</h2>
-          <p id="account-page-empty" class="hint hidden">Tu n'as pas encore de score enregistré. Termine un quiz : ton score s'enregistrera automatiquement et apparaîtra ici.</p>
+          <p id="account-page-empty" class="hint hidden">Vous n'avez pas encore de score enregistré. Terminez un quiz : votre score s'enregistrera automatiquement et apparaîtra ici.</p>
           <div id="account-page-groups"></div>
           <div class="account-page-actions">
             <button type="button" id="account-page-download-button" class="secondary-button hidden">Télécharger mon bilan</button>
             <button type="button" id="account-page-back-button" class="secondary-button">← Retour à l'accueil</button>
           </div>
-          <p class="hint account-page-footnote">Chaque score s'enregistre automatiquement à la fin d'un quiz. Clique sur la croix rouge (✕) à côté d'un résultat pour l'éliminer définitivement de ton historique.</p>
+          <p class="hint account-page-footnote">Chaque score s'enregistre automatiquement à la fin d'un quiz. Cliquez sur la croix rouge (✕) à côté d'un résultat pour l'éliminer définitivement de votre historique.</p>
         </section>
       </main>
     </div>
-    <script src="app.js?v=54"></script>
+    <script src="app.js?v=55"></script>
   </body>
 </html>

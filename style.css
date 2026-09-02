@@ -55,7 +55,14 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .quiz-action-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:14px; }
 .quiz-action-row .secondary-button { min-height:52px; font-size:.95rem; }
 .quiz-action-row .primary-button { min-height:52px; }
-.grey-button { background:#e4ded2 !important; border-color:#e4ded2 !important; color:var(--ink) !important; }
+.hamburger-wrap { position:fixed; top:16px; left:16px; z-index:200; }
+.hamburger-button { width:44px; height:44px; border-radius:8px; border:1px solid var(--border); background:var(--paper); font-size:1.3rem; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+.hamburger-button:hover { background:#f7f2ea; }
+.hamburger-menu { position:absolute; top:52px; left:0; background:var(--paper); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 30px rgba(0,0,0,.18); min-width:240px; padding:8px; }
+.hamburger-item { display:block; width:100%; text-align:left; padding:12px 14px; border-radius:6px; border:0; background:transparent; cursor:pointer; font-family:Arial,sans-serif; font-size:.92rem; color:var(--ink); }
+.hamburger-item:hover { background:#f7f2ea; }
+.back-home-link { display:inline-block; margin-bottom:14px; }
+.quiz-action-row-single { grid-template-columns:1fr; }
 .grey-button:hover { background:#d8d0c0 !important; }
 .modal-nav-row { display:flex; gap:10px; margin-top:20px; }
 .modal-nav-row .secondary-button, .modal-nav-row .primary-button { flex:1; margin-top:0; }
