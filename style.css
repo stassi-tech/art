@@ -57,6 +57,12 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .quiz-action-row .primary-button { min-height:52px; }
 .grey-button { background:#e4ded2 !important; border-color:#e4ded2 !important; color:var(--ink) !important; }
 .grey-button:hover { background:#d8d0c0 !important; }
+.modal-nav-row { display:flex; gap:10px; margin-top:20px; }
+.modal-nav-row .secondary-button, .modal-nav-row .primary-button { flex:1; margin-top:0; }
+.quiz-summary { border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:20px; background:#fff; }
+.summary-line { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-family:Arial,sans-serif; font-size:.92rem; }
+.summary-line:last-child { border-bottom:none; }
+.summary-line .link-label { flex-shrink:0; }
 .modal-subheading { margin:20px 0 12px; font-size:1.05rem; border-top:1px solid var(--border); padding-top:16px; }
 .artist-list-mode-row { display:flex; gap:10px; margin-bottom:14px; }
 .artist-list-mode-row .secondary-button { flex:1; }

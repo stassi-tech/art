@@ -1098,9 +1098,34 @@ $('open-artist-list')?.addEventListener('click', async () => {
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
 const ART_LABELS = { peinture: 'Peinture', sculpture: 'Sculpture' };
 const CENTURY_LABELS = { '14e': '14e siècle', '15e': '15e siècle', '16e': '16e siècle', '17e': '17e siècle', '18e': '18e siècle', '19e': '19e siècle', '20e': '20e siècle' };
-const LEVEL_LABELS = { '1': 'Niveau 1 — 30 questions', '2': 'Niveau 2 — 60 questions', '3': 'Niveau 3 — 120 questions' };
+const LEVEL_LABELS = { '1': 'Niveau 1', '2': 'Niveau 2', '3': 'Niveau 3' };
 function openModal(id) { $(id).classList.remove('hidden'); }
 function closeModal(id) { $(id).classList.add('hidden'); }
+// Parcours guidé : les 4 fenêtres de choix s'enchaînent automatiquement (Suivant / Précédent),
+// pour ne rien oublier. Un clic "Modifier" depuis le récapitulatif final ouvre directement la
+// fenêtre concernée sans relancer toute la chaîne.
+const MODAL_CHAIN = ['modal-art', 'modal-century', 'modal-rubriques', 'modal-level'];
+function goToModal(fromId, toId) { closeModal(fromId); updateSelectorSummaries(); openModal(toId); }
+$('art-next')?.addEventListener('click', () => goToModal('modal-art', 'modal-century'));
+$('century-prev')?.addEventListener('click', () => goToModal('modal-century', 'modal-art'));
+$('century-next')?.addEventListener('click', () => goToModal('modal-century', 'modal-rubriques'));
+$('rubriques-prev')?.addEventListener('click', () => goToModal('modal-rubriques', 'modal-century'));
+$('rubriques-next')?.addEventListener('click', () => goToModal('modal-rubriques', 'modal-level'));
+$('level-prev')?.addEventListener('click', () => goToModal('modal-level', 'modal-rubriques'));
+$('level-finish')?.addEventListener('click', () => { updateSelectorSummaries(); showQuizSummary(); });
+function showQuizSummary() {
+  $('quiz-selectors-grid')?.classList.add('hidden');
+  $('quiz-summary')?.classList.remove('hidden');
+  $('recap-art').textContent = `🎨 Art : ${$('summary-art').textContent}`;
+  $('recap-century').textContent = `🏛️ Siècle et zone : ${$('summary-century').textContent}`;
+  $('recap-rubriques').textContent = `📝 Rubriques : ${$('summary-rubriques').textContent}`;
+  $('recap-level').textContent = `⭐ Niveau et questions : ${$('summary-level').textContent}`;
+}
+// Les liens "Modifier" du récapitulatif ouvrent directement la fenêtre concernée, sans relancer
+// toute la chaîne — pratique pour une petite correction ponctuelle.
+document.querySelectorAll('#quiz-summary .link-label').forEach((button) => {
+  button.addEventListener('click', () => openModal(button.dataset.modal));
+});
 document.querySelectorAll('.modal-close').forEach((button) => {
   button.addEventListener('click', () => { closeModal(button.dataset.modal); updateSelectorSummaries(); });
 });
@@ -1153,6 +1178,7 @@ function zoneOfNationality(rawValue) {
   return null;
 }
 function selectedLevel() { const checked = document.querySelector('input[name="niveau"]:checked'); return checked ? checked.value : null; }
+function selectedQuestionCount() { const checked = document.querySelector('input[name="nb-questions"]:checked'); return checked ? checked.value : '30'; }
 function updateSelectorSummaries() {
   const arts = selectedArts();
   $('summary-art').textContent = arts.length ? arts.map((a) => ART_LABELS[a]).join(', ') : 'Aucun art choisi';
@@ -1166,7 +1192,9 @@ function updateSelectorSummaries() {
   const rubriques = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.label);
   $('summary-rubriques').textContent = rubriques.length ? rubriques.join(', ') : 'Aucune rubrique choisie';
   const level = selectedLevel();
-  $('summary-level').textContent = level ? LEVEL_LABELS[level] : 'Aucun niveau choisi';
+  const count = selectedQuestionCount();
+  const countText = count === 'max' ? 'maximum disponible' : `${count} questions`;
+  $('summary-level').textContent = level ? `${LEVEL_LABELS[level]} — ${countText}` : 'Aucun niveau choisi';
 }
 updateSelectorSummaries();
 
@@ -1238,21 +1266,14 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
         return;
       }
     }
-    // Le niveau fixe le nombre de questions du quiz (30/60/120), même si plusieurs arts ou
-    // siècles combinés fournissent davantage de questions au total : on mélange puis on limite.
-    // Si le total récolté (avec repli inclus) n'atteint pas la cible du niveau demandé, on
-    // rétrograde automatiquement vers un niveau que le contenu disponible permet d'honorer.
-    let targetCount = LEVEL_QUESTION_COUNTS[level] || filteredRows.length;
-    let effectiveLevel = level;
+    // Le niveau détermine désormais uniquement le RÉSERVOIR d'œuvres utilisé (fetchQuizRows
+    // a déjà remonté au niveau le plus large disponible plus haut). Le NOMBRE de questions est
+    // choisi indépendamment (ex. 30 questions piochées dans un réservoir de niveau 3).
+    const requestedCount = selectedQuestionCount();
+    let targetCount = requestedCount === 'max' ? filteredRows.length : parseInt(requestedCount, 10);
     if (filteredRows.length < targetCount) {
-      if (level === '3' && filteredRows.length >= LEVEL_QUESTION_COUNTS['2']) {
-        targetCount = LEVEL_QUESTION_COUNTS['2'];
-        effectiveLevel = '2';
-        alert('Pas assez de questions disponibles pour un niveau 3 complet (120 questions). Un quiz de niveau 2 (60 questions) a été généré automatiquement.');
-      } else {
-        targetCount = filteredRows.length;
-        alert(`Pas assez de questions disponibles pour le niveau demandé. Le quiz démarre avec les ${filteredRows.length} questions disponibles.`);
-      }
+      targetCount = filteredRows.length;
+      alert(`Pas assez de questions disponibles pour ce choix. Le quiz démarre avec les ${filteredRows.length} questions disponibles.`);
     }
     const shuffled = shuffleQuestions(filteredRows);
     state.selectedFieldKeys = chosenKeys;
@@ -1261,10 +1282,10 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     state.questions = state.fullQuestions;
     state.answers = []; state.index = 0;
     state.currentScoreSaved = false;
-    // Conserve la configuration du quiz (art, siècle, niveau effectif, rubriques testées) pour
-    // l'historique des scores : deux quiz avec des rubriques différentes n'ont pas la même
-    // difficulté et ne doivent donc pas partager la même colonne d'évolution.
-    const effectiveLevelLabel = LEVEL_LABELS[effectiveLevel] || `${targetCount} questions`;
+    // Conserve la configuration du quiz (art, siècle, niveau, nombre de questions, rubriques
+    // testées) pour l'historique des scores : deux quiz avec des rubriques différentes n'ont pas
+    // la même difficulté et ne doivent donc pas partager la même colonne d'évolution.
+    const effectiveLevelLabel = `${LEVEL_LABELS[level] || 'Niveau'} — ${targetCount} questions`;
     const rubriqueLabels = chosenKeys.map((key) => allFields.find((f) => f.key === key)?.label || key);
     // Repère court affiché en haut de l'écran de quiz et de correction, ex. "30 questions sur la
     // peinture du 18e siècle" — distinct de `label` (utilisé pour l'historique des scores).
@@ -1279,7 +1300,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
       rubriques: rubriqueLabels,
       label: `${arts.map((a) => ART_LABELS[a]).join(' + ')} · ${centuries.map((c) => CENTURY_LABELS[c]).join(', ')} · ${rubriqueLabels.join(', ')}`,
       reference: quizReference,
-      signature: `${arts.slice().sort().join(',')}|${centuries.slice().sort().join(',')}|${effectiveLevel}|${chosenKeys.slice().sort().join(',')}`,
+      signature: `${arts.slice().sort().join(',')}|${centuries.slice().sort().join(',')}|${level}-${targetCount}|${chosenKeys.slice().sort().join(',')}`,
     };
     const refEl = $('quiz-reference');
     if (refEl) refEl.textContent = quizReference;

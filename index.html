@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=50" />
+    <link rel="stylesheet" href="style.css?v=51" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -28,10 +28,10 @@
 
           <p class="intro-banner">Cette application vous propose d'identifier des œuvres d'art à travers des images publiées sur le site collaboratif Wikimedia Commons, en retrouvant leur créateur, titre, date de création et lieu de conservation. Choisissez votre art, votre siècle, vos rubriques et votre niveau, puis lancez le quiz. Bon travail de culture et de mémoire!</p>
 
-          <div class="quiz-selectors">
+          <div class="quiz-selectors" id="quiz-selectors-grid">
             <button type="button" class="selector-button" id="open-art">
               🎨 Choisis ton art
-              <span class="selector-summary" id="summary-art">Peinture</span>
+              <span class="selector-summary" id="summary-art">Aucun art choisi</span>
             </button>
             <button type="button" class="selector-button" id="open-century">
               🏛️ Choisis ton siècle et ta zone géographique
@@ -42,9 +42,17 @@
               <span class="selector-summary" id="summary-rubriques">Aucune rubrique choisie</span>
             </button>
             <button type="button" class="selector-button" id="open-level">
-              ⭐ Choisis ton niveau
+              ⭐ Choisis ton niveau et ton nombre de questions
               <span class="selector-summary" id="summary-level">Aucun niveau choisi</span>
             </button>
+          </div>
+
+          <div class="quiz-summary hidden" id="quiz-summary">
+            <h3 class="modal-subheading" style="margin-top:0">Récapitulatif de ton quiz</h3>
+            <div class="summary-line"><span id="recap-art">—</span><button type="button" class="link-label" data-modal="modal-art">Modifier</button></div>
+            <div class="summary-line"><span id="recap-century">—</span><button type="button" class="link-label" data-modal="modal-century">Modifier</button></div>
+            <div class="summary-line"><span id="recap-rubriques">—</span><button type="button" class="link-label" data-modal="modal-rubriques">Modifier</button></div>
+            <div class="summary-line"><span id="recap-level">—</span><button type="button" class="link-label" data-modal="modal-level">Modifier</button></div>
           </div>
 
           <div class="quiz-action-row">
@@ -60,14 +68,14 @@
           <div class="modal-box">
             <h3>Choisis ton art</h3>
             <label class="rubrique-option">
-              <input type="checkbox" id="art-peinture" checked />
+              <input type="checkbox" id="art-peinture" />
               <span>Peinture</span>
             </label>
             <label class="rubrique-option">
               <input type="checkbox" id="art-sculpture" />
               <span>Sculpture</span>
             </label>
-            <button type="button" class="primary-button modal-close" data-modal="modal-art">Valider</button>
+            <button type="button" class="primary-button" id="art-next" data-modal="modal-art">Suivant →</button>
           </div>
         </div>
 
@@ -122,7 +130,10 @@
               <span>Asie</span>
             </label>
             <p class="modal-hint">Rien coché = toutes zones confondues. Ce filtre s'appuie sur la nationalité renseignée dans les fichiers ; les œuvres sans nationalité connue sont incluses quel que soit le choix.</p>
-            <button type="button" class="primary-button modal-close" data-modal="modal-century">Valider</button>
+            <div class="modal-nav-row">
+              <button type="button" class="secondary-button" id="century-prev" data-modal="modal-century">← Précédent</button>
+              <button type="button" class="primary-button" id="century-next" data-modal="modal-century">Suivant →</button>
+            </div>
           </div>
         </div>
 
@@ -172,26 +183,59 @@
               <input type="checkbox" id="rubrique-location" />
               <span>Lieu de conservation</span>
             </label>
-            <button type="button" class="primary-button modal-close" data-modal="modal-rubriques">Valider</button>
+            <div class="modal-nav-row">
+              <button type="button" class="secondary-button" id="rubriques-prev" data-modal="modal-rubriques">← Précédent</button>
+              <button type="button" class="primary-button" id="rubriques-next" data-modal="modal-rubriques">Suivant →</button>
+            </div>
           </div>
         </div>
 
         <div class="modal-overlay hidden" id="modal-level">
           <div class="modal-box">
-            <h3>Choisis ton niveau</h3>
+            <h3>Choisis ton niveau et ton nombre de questions</h3>
+            <p class="modal-hint">Le niveau détermine le réservoir d'œuvres utilisé (niveau 2 inclut le niveau 1, niveau 3 inclut les niveaux 1 et 2). Le nombre de questions est indépendant : tu peux par exemple piocher 30 questions dans le niveau 3.</p>
             <label class="rubrique-option">
               <input type="radio" name="niveau" id="level-1" value="1" />
-              <span>Niveau 1 — 30 questions</span>
+              <span>Niveau 1</span>
             </label>
             <label class="rubrique-option">
               <input type="radio" name="niveau" id="level-2" value="2" />
-              <span>Niveau 2 — 60 questions</span>
+              <span>Niveau 2</span>
             </label>
             <label class="rubrique-option">
               <input type="radio" name="niveau" id="level-3" value="3" />
-              <span>Niveau 3 — 120 questions</span>
+              <span>Niveau 3</span>
             </label>
-            <button type="button" class="primary-button modal-close" data-modal="modal-level">Valider</button>
+
+            <h3 class="modal-subheading">🔢 Nombre de questions</h3>
+            <label class="rubrique-option">
+              <input type="radio" name="nb-questions" id="count-10" value="10" />
+              <span>10 questions</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="radio" name="nb-questions" id="count-20" value="20" />
+              <span>20 questions</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="radio" name="nb-questions" id="count-30" value="30" checked />
+              <span>30 questions</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="radio" name="nb-questions" id="count-60" value="60" />
+              <span>60 questions</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="radio" name="nb-questions" id="count-120" value="120" />
+              <span>120 questions</span>
+            </label>
+            <label class="rubrique-option">
+              <input type="radio" name="nb-questions" id="count-max" value="max" />
+              <span>Maximum disponible</span>
+            </label>
+            <div class="modal-nav-row">
+              <button type="button" class="secondary-button" id="level-prev" data-modal="modal-level">← Précédent</button>
+              <button type="button" class="primary-button modal-close" id="level-finish" data-modal="modal-level">Voir le récapitulatif</button>
+            </div>
           </div>
         </div>
 
@@ -298,6 +342,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=50"></script>
+    <script src="app.js?v=51"></script>
   </body>
 </html>
