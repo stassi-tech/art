@@ -1241,6 +1241,7 @@ function goToModal(fromId, toId) {
   if (editingFromSummary) { editingFromSummary = false; showQuizSummary(); return; }
   openModal(toId);
 }
+$('select-choices')?.addEventListener('click', () => openModal('modal-art'));
 $('art-next')?.addEventListener('click', () => goToModal('modal-art', 'modal-century'));
 $('century-prev')?.addEventListener('click', () => goToModal('modal-century', 'modal-art'));
 $('century-next')?.addEventListener('click', () => goToModal('modal-century', 'modal-rubriques'));
@@ -1250,6 +1251,7 @@ $('level-prev')?.addEventListener('click', () => goToModal('modal-level', 'modal
 $('level-finish')?.addEventListener('click', () => { editingFromSummary = false; updateSelectorSummaries(); showQuizSummary(); });
 function showQuizSummary() {
   $('quiz-selectors-grid')?.classList.add('hidden');
+  $('select-choices')?.classList.add('hidden');
   $('quiz-summary')?.classList.remove('hidden');
   $('recap-art').textContent = `🎨 Art : ${$('summary-art').textContent}`;
   $('recap-century').textContent = `🏛️ Siècle et zone : ${$('summary-century').textContent}`;

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=53" />
+    <link rel="stylesheet" href="style.css?v=54" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -28,24 +28,26 @@
 
           <p class="intro-banner">Cette application vous propose d'identifier des œuvres d'art à travers des images publiées sur le site collaboratif Wikimedia Commons, en retrouvant leur créateur, titre, date de création et lieu de conservation. Choisissez votre art, votre siècle, vos rubriques, le nombre de questions et le niveau que vous souhaitez, puis lancez le quiz. Bon travail de culture et de mémoire!</p>
 
-          <div class="quiz-selectors" id="quiz-selectors-grid">
-            <button type="button" class="selector-button" id="open-art">
+          <div class="quiz-selectors hidden" id="quiz-selectors-grid">
+            <button type="button" class="selector-button hidden" id="open-art">
               🎨 Choisis ton art
               <span class="selector-summary" id="summary-art">Aucun art choisi</span>
             </button>
-            <button type="button" class="selector-button" id="open-century">
+            <button type="button" class="selector-button hidden" id="open-century">
               🏛️ Choisis ton siècle et ta zone géographique
               <span class="selector-summary" id="summary-century">Aucun siècle choisi</span>
             </button>
-            <button type="button" class="selector-button" id="open-rubriques">
+            <button type="button" class="selector-button hidden" id="open-rubriques">
               📝 Choisis tes rubriques
               <span class="selector-summary" id="summary-rubriques">Aucune rubrique choisie</span>
             </button>
-            <button type="button" class="selector-button" id="open-level">
+            <button type="button" class="selector-button hidden" id="open-level">
               ⭐ Choisis ton niveau et ton nombre de questions
               <span class="selector-summary" id="summary-level">Aucun niveau choisi</span>
             </button>
           </div>
+
+          <button type="button" class="primary-button" id="select-choices" style="width:100%; margin-bottom:20px;">🎯 Sélectionne tes choix</button>
 
           <div class="quiz-summary hidden" id="quiz-summary">
             <h3 class="modal-subheading" style="margin-top:0">Récapitulatif de ton quiz</h3>
@@ -342,6 +344,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=53"></script>
+    <script src="app.js?v=54"></script>
   </body>
 </html>
