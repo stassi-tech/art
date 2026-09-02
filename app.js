@@ -142,7 +142,7 @@ async function saveCurrentScore() {
     if (!answer?.checked) return;
     activeFields().forEach(({ key }) => {
       perField[key].possible += 1;
-      if (isMatch(answer[key], question[key], key)) perField[key].correct += 1;
+      if (isMatchAny(answer[key], question, key)) perField[key].correct += 1;
     });
   });
   try {
@@ -520,23 +520,115 @@ function findColumn(row, names) {
 function normaliseRows(rows) {
   return rows.map((row, rowIndex) => {
     const imageKey = findColumn(row, ['image', 'url image', 'image url', 'lien image', 'visuel']);
-    const artistKey = findColumn(row, ['artiste', 'nom artiste', 'artist', 'auteur']);
+    if (!imageKey) throw new Error("La colonne « image » est introuvable dans ce fichier.");
+
+    // --- Identité de l'artiste : nouvelle structure (Prénom/Patronyme/Surnom) si présente,
+    // sinon on retombe sur l'ancienne colonne unique « Artiste » pour rester compatible avec
+    // d'anciens fichiers pas encore convertis.
+    const prenomKey = findColumn(row, ['prenom']);
+    const patronymeKey = findColumn(row, ['patronyme']);
+    const surnomFrKey = findColumn(row, ['surnom francais', 'surnom']);
+    const surnomOrigKey = findColumn(row, ["surnom langue d origine", 'surnom original', 'surnom origine']);
+    const prenom = prenomKey ? String(row[prenomKey] || '').trim() : '';
+    const patronyme = patronymeKey ? String(row[patronymeKey] || '').trim() : '';
+    const surnomFr = surnomFrKey ? String(row[surnomFrKey] || '').trim() : '';
+    const surnomOrig = surnomOrigKey ? String(row[surnomOrigKey] || '').trim() : '';
+    let artist;
+    if (prenomKey || patronymeKey || surnomFrKey) {
+      artist = [prenom, patronyme].filter(Boolean).join(' ') || surnomFr;
+    } else {
+      const legacyArtistKey = findColumn(row, ['artiste', 'nom artiste', 'artist', 'auteur']);
+      if (!legacyArtistKey) throw new Error("Ni « Prénom/Patronyme », ni « Artiste » n'ont été trouvés dans ce fichier.");
+      artist = String(row[legacyArtistKey] || '').trim();
+    }
+
+    // --- Dates de naissance/mort : nouvelle structure à deux colonnes si présente, sinon ancienne
+    // colonne combinée « dates artiste ». Règle : si l'une des deux dates manque, on n'affiche
+    // rien plutôt qu'une date incomplète.
+    const naissanceKey = findColumn(row, ['date de naissance', 'naissance']);
+    const mortKey = findColumn(row, ['date de mort', 'mort', 'deces', 'décès']);
+    let artistDates = '';
+    if (naissanceKey || mortKey) {
+      const naissance = naissanceKey ? String(row[naissanceKey] || '').trim() : '';
+      const mort = mortKey ? String(row[mortKey] || '').trim() : '';
+      if (naissance && mort) artistDates = `${naissance}-${mort}`;
+    } else {
+      const legacyDatesKey = findColumn(row, ['dates artiste', 'dates', 'naissance mort', 'nee morte', 'ne mort', 'annees artiste']);
+      artistDates = legacyDatesKey ? String(row[legacyDatesKey] || '').trim() : '';
+    }
+
     const dateKey = findColumn(row, ['date de creation', 'date creation', 'date', 'annee', 'année']);
-    const locationKey = findColumn(row, ['lieu de conservation', 'lieu', 'conservation', 'musee', 'musée', 'location']);
-    const titleKey = findColumn(row, ["titre de l oeuvre", 'titre oeuvre', 'titre', 'title', 'œuvre', 'oeuvre']);
-    if (!imageKey || !artistKey || !dateKey || !locationKey || !titleKey) throw new Error("Les cinq en-têtes requis sont : image, artiste, date de création, lieu de conservation, titre de l'œuvre.");
-    // Trois colonnes optionnelles supplémentaires (F, G, H) : purement informatives sur la page de
-    // correction, jamais quizzables (pas de rubrique associée). Absentes -> simplement pas affichées.
-    const artistDatesKey = findColumn(row, ['dates artiste', 'dates', 'naissance mort', 'nee morte', 'ne mort', 'annees artiste']);
+    if (!dateKey) throw new Error("La colonne « date de création » est introuvable dans ce fichier.");
+
+    // --- Lieu : nouvelle structure Ville/Lieu précis/Sous-lieu si présente, sinon ancienne
+    // colonne unique « lieu de conservation ». Affichage : Sous-lieu, Lieu précis, Ville.
+    const villeKey = findColumn(row, ['ville']);
+    const lieuPrecisKey = findColumn(row, ['lieu precis']);
+    const sousLieuKey = findColumn(row, ['sous lieu']);
+    let location;
+    if (villeKey || lieuPrecisKey) {
+      const ville = villeKey ? String(row[villeKey] || '').trim() : '';
+      const lieuPrecis = lieuPrecisKey ? String(row[lieuPrecisKey] || '').trim() : '';
+      const sousLieu = sousLieuKey ? String(row[sousLieuKey] || '').trim() : '';
+      location = [sousLieu, lieuPrecis, ville].filter(Boolean).join(', ');
+    } else {
+      const legacyLocationKey = findColumn(row, ['lieu de conservation', 'lieu', 'conservation', 'musee', 'musée', 'location']);
+      if (!legacyLocationKey) throw new Error("Ni « Ville/Lieu précis », ni « Lieu de conservation » n'ont été trouvés dans ce fichier.");
+      location = String(row[legacyLocationKey] || '').trim();
+    }
+
+    // --- Titre : nouvelle structure Titre (français) + Cycle + Titre (langue d'origine), sinon
+    // ancienne colonne unique « titre de l'œuvre ». Les guillemets déjà présents dans le fichier
+    // (convention d'affichage du tableau) sont retirés ici : l'appli les rajoute elle-même.
+    const stripQuotes = (s) => String(s || '').trim().replace(/^["«]\s*/, '').replace(/\s*["»]$/, '');
+    const titreFrKey = findColumn(row, ['titre francais']);
+    const cycleKey = findColumn(row, ['cycle']);
+    const titreOrigKey = findColumn(row, ["titre langue d origine", 'titre original', 'titre origine']);
+    let title, cycle = '', titleOriginal = '';
+    if (titreFrKey) {
+      title = stripQuotes(row[titreFrKey]);
+      cycle = cycleKey ? stripQuotes(row[cycleKey]) : '';
+      titleOriginal = titreOrigKey ? stripQuotes(row[titreOrigKey]) : '';
+    } else {
+      const legacyTitleKey = findColumn(row, ["titre de l oeuvre", 'titre oeuvre', 'titre', 'title', 'œuvre', 'oeuvre']);
+      if (!legacyTitleKey) throw new Error("Ni « Titre (français) », ni « Titre de l'œuvre » n'ont été trouvés dans ce fichier.");
+      title = stripQuotes(row[legacyTitleKey]);
+    }
+
     const materialsKey = findColumn(row, ['materiaux et technique', 'materiaux', 'technique', 'materials', 'materiau']);
-    const dimensionsKey = findColumn(row, ['dimensions', 'taille', 'format', 'dimension']);
+    const materials = materialsKey ? String(row[materialsKey] || '').trim() : '';
+
+    // --- Dimensions : nouvelle structure Hauteur/Longueur/Profondeur si présente, sinon ancienne
+    // colonne unique « dimensions » (repliée dans hauteur/longueur via une expression régulière).
+    const hauteurKey = findColumn(row, ['hauteur']);
+    const longueurKey = findColumn(row, ['longueur']);
+    const profondeurKey = findColumn(row, ['profondeur']);
+    let hauteur = '', longueur = '', profondeur = '';
+    if (hauteurKey || longueurKey || profondeurKey) {
+      hauteur = hauteurKey ? String(row[hauteurKey] || '').trim() : '';
+      longueur = longueurKey ? String(row[longueurKey] || '').trim() : '';
+      profondeur = profondeurKey ? String(row[profondeurKey] || '').trim() : '';
+    } else {
+      const legacyDimensionsKey = findColumn(row, ['dimensions', 'taille', 'format', 'dimension']);
+      const legacyDims = legacyDimensionsKey ? String(row[legacyDimensionsKey] || '').trim() : '';
+      const match = legacyDims.match(/^(?:environ |c\.)?([\d.,]+)\s*(?:×|x|X)\s*([\d.,]+)\s*(cm|m)?/);
+      if (match) {
+        const approx = /environ|^c\./.test(legacyDims) ? 'c.' : '';
+        const unit = match[3] || 'cm';
+        hauteur = `${approx}${match[1]} ${unit}`;
+        longueur = `${approx}${match[2]} ${unit}`;
+      }
+    }
+
     const nationalityKey = findColumn(row, ['nationalite', 'nationalite artiste', 'pays', 'nationality']);
+    const nationality = nationalityKey ? String(row[nationalityKey] || '').trim() : '';
+    const niveauKey = findColumn(row, ['niveau']);
+    const niveau = niveauKey ? (parseInt(row[niveauKey], 10) || 1) : 1;
+
     return {
-      image: String(row[imageKey] || '').trim(), artist: String(row[artistKey] || '').trim(), date: String(row[dateKey] || '').trim(), location: String(row[locationKey] || '').trim(), title: String(row[titleKey] || '').trim(),
-      artistDates: artistDatesKey ? String(row[artistDatesKey] || '').trim() : '',
-      materials: materialsKey ? String(row[materialsKey] || '').trim() : '',
-      dimensions: dimensionsKey ? String(row[dimensionsKey] || '').trim() : '',
-      nationality: nationalityKey ? String(row[nationalityKey] || '').trim() : '',
+      image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
+      date: String(row[dateKey] || '').trim(), location, title, cycle, titleOriginal,
+      artistDates, materials, hauteur, longueur, profondeur, nationality, niveau,
       row: rowIndex + 2
     };
   }).filter((question) => question.image || question.artist || question.date || question.location || question.title);
@@ -666,7 +758,22 @@ function isMatch(actual, expected, fieldKey) {
   }
   return false;
 }
-function correctCount(answer, question) { return activeFields().reduce((count, field) => count + Number(isMatch(answer[field.key], question[field.key], field.key)), 0); }
+function acceptableValues(question, key) {
+  // Pour l'artiste et le titre, plusieurs réponses sont valables : nom complet, surnom (français
+  // ou langue d'origine), titre français ou langue d'origine. Les autres rubriques n'ont qu'une
+  // seule valeur attendue.
+  if (key === 'artist') {
+    return [question.artist, question.surnomFr, question.surnomOrig].filter(Boolean);
+  }
+  if (key === 'title') {
+    return [question.title, question.titleOriginal].filter(Boolean);
+  }
+  return [question[key]];
+}
+function isMatchAny(actual, question, fieldKey) {
+  return acceptableValues(question, fieldKey).some((expected) => isMatch(actual, expected, fieldKey));
+}
+function correctCount(answer, question) { return activeFields().reduce((count, field) => count + Number(isMatchAny(answer[field.key], question, field.key)), 0); }
 function isFullyCorrect(answer, question) { return answer?.checked && correctCount(answer, question) === activeFields().length; }
 function totalCorrect() { return state.questions.reduce((total, question, index) => total + (state.answers[index]?.checked ? correctCount(state.answers[index], question) : 0), 0); }
 function checkedQuestions() { return state.answers.filter((answer) => answer?.checked).length; }
@@ -777,10 +884,22 @@ function formatCorrectionValue(key, rawValue) {
   if (key === 'title') return `<em>${escapeHtml(rawValue)}</em>`;
   return escapeHtml(rawValue);
 }
+function formatArtistDisplayName(work) {
+  // Prénom NOM (nom de famille en majuscules) ; si un surnom (français) existe, on l'ajoute
+  // en italique entre guillemets : « Prénom NOM, dit "Surnom" ». Pour les mononymes sans nom
+  // civil connu (Donatello, Masaccio...), seul le surnom s'affiche, sans virgule ni "dit".
+  const civilName = [work.prenom, work.patronyme].filter(Boolean).join(' ');
+  const displayName = civilName ? formatArtistName(civilName) : '';
+  if (displayName && work.surnomFr) {
+    return `${escapeHtml(displayName)}, dit <em>"${escapeHtml(work.surnomFr)}"</em>`;
+  }
+  if (work.surnomFr) return `<em>"${escapeHtml(work.surnomFr)}"</em>`;
+  return escapeHtml(displayName || work.artist || '');
+}
 function formatArtistWithDates(work) {
   // Dates de naissance/mort affichées en petit à côté du nom, sans rubrique associée (jamais quizzées).
   // Un petit drapeau (colonne I, optionnelle) s'affiche juste avant les dates si la nationalité est connue.
-  const name = escapeHtml(formatArtistName(work.artist));
+  const name = formatArtistDisplayName(work);
   const dates = String(work.artistDates || '').trim();
   const flag = nationalityFlag(work.nationality);
   if (!dates && !flag) return name;
@@ -793,24 +912,32 @@ function correctionInfoRow(label, value) {
     <strong class="correction-value">${escapeHtml(value)}</strong>
   </div>`;
 }
-function formatDimensionsValue(text, art) {
-  // Pour les peintures uniquement (demande explicite) : insère un petit "h" et un petit "l" en
-  // grisé devant respectivement la hauteur et la largeur, quand le texte suit le format standard
-  // "NOMBRE × NOMBRE cm" (ou similaire). Toute autre formulation (diamètre, dimensions
-  // monumentales, non standardisées...) reste affichée telle quelle, sans "h"/"l" inventés.
-  const escaped = escapeHtml(text);
-  if (art !== 'peinture') return escaped;
-  const match = text.match(/^([\d.,]+)\s*(×|x|X)\s*([\d.,]+)(.*)$/);
-  if (!match) return escaped;
-  const [, h, sep, l, rest] = match;
-  return `<span class="dim-hl">h</span> ${escapeHtml(h)} ${sep} <span class="dim-hl">l</span> ${escapeHtml(l)}${escapeHtml(rest)}`;
+function formatTitleWithCycle(work) {
+  // Titre entre guillemets et en italique ; si l'œuvre est extraite d'un cycle (ex. un
+  // manuscrit ou une série de fresques), on ajoute « extrait du "Cycle" », lui aussi en italique.
+  const titlePart = `<em>"${escapeHtml(work.title)}"</em>`;
+  if (!work.cycle) return titlePart;
+  return `${titlePart}, extrait du <em>"${escapeHtml(work.cycle)}"</em>`;
+}
+function formatDimensionsDisplay(work) {
+  // Hauteur/Longueur/Profondeur viennent directement de colonnes séparées : chacune, quand elle
+  // est renseignée, est précédée d'un petit "h"/"l"/"p" en grisé. Rien n'est affiché pour une
+  // dimension non précisée plutôt que d'inventer une valeur.
+  const parts = [];
+  if (work.hauteur) parts.push(`<span class="dim-hl">h</span> ${escapeHtml(work.hauteur)}`);
+  if (work.longueur) parts.push(`<span class="dim-hl">l</span> ${escapeHtml(work.longueur)}`);
+  if (work.profondeur) parts.push(`<span class="dim-hl">p</span> ${escapeHtml(work.profondeur)}`);
+  return parts.join(' × ');
 }
 let correctionMainWork = null; // œuvre actuellement affichée en grand dans la correction (question testée, ou une « autre œuvre » cliquée)
 function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
   const isTestedWork = displayedWork === testedQuestion;
   displayArtworkImage(displayedWork, isTestedWork ? `Œuvre ${state.index + 1}` : `Autre œuvre du même peintre : ${displayedWork.title}`, true);
   $('correction-details').innerHTML = allFields.map(({ key, label }) => {
-    const value = key === 'artist' ? formatArtistWithDates(displayedWork) : formatCorrectionValue(key, displayedWork[key]);
+    let value;
+    if (key === 'artist') value = formatArtistWithDates(displayedWork);
+    else if (key === 'title') value = formatTitleWithCycle(displayedWork);
+    else value = formatCorrectionValue(key, displayedWork[key]);
     // Une « autre œuvre » cliquée n'a pas été répondue par l'utilisateur : on l'affiche
     // uniquement à titre d'information, sans notation ✓/✕.
     const tested = isTestedWork && state.selectedFieldKeys.includes(key);
@@ -821,7 +948,7 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
         <strong class="correction-value">${value}</strong>
       </div>`;
     } else {
-      const correct = isMatch(answer[key], displayedWork[key], key);
+      const correct = isMatchAny(answer[key], displayedWork, key);
       html = `<div class="correction-item">
         <span class="correction-label">${label}</span><span class="answer-result ${correct ? 'correct' : 'incorrect'}">${correct ? 'Exact' : 'À réviser'}</span>
         <strong class="correction-value">${value}</strong>
@@ -831,10 +958,11 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     // juste après la ligne « date de création ».
     if (key === 'date') {
       if (displayedWork.materials) html += correctionInfoRow('Matériaux et technique', displayedWork.materials);
-      if (displayedWork.dimensions) {
+      const dims = formatDimensionsDisplay(displayedWork);
+      if (dims) {
         html += `<div class="correction-item correction-extra">
           <span class="correction-label">Dimensions</span>
-          <strong class="correction-value">${formatDimensionsValue(displayedWork.dimensions, displayedWork.art)}</strong>
+          <strong class="correction-value">${dims}</strong>
         </div>`;
       }
     }
@@ -941,7 +1069,7 @@ function buildExportText() {
     lines.push('');
     lines.push(`${index + 1}. ${question.title || '(titre non renseigné)'} — ${question.artist || '(artiste non renseigné)'} [${score}/${activeFields().length}]`);
     activeFields().forEach(({ key, label }) => {
-      const ok = isMatch(answer[key], question[key], key);
+      const ok = isMatchAny(answer[key], question, key);
       lines.push(`   - ${label} : ${ok ? 'correct' : 'à revoir'} (réponse attendue : ${question[key]})`);
     });
   });
@@ -1102,17 +1230,24 @@ const LEVEL_LABELS = { '1': 'Niveau 1', '2': 'Niveau 2', '3': 'Niveau 3' };
 function openModal(id) { $(id).classList.remove('hidden'); }
 function closeModal(id) { $(id).classList.add('hidden'); }
 // Parcours guidé : les 4 fenêtres de choix s'enchaînent automatiquement (Suivant / Précédent),
-// pour ne rien oublier. Un clic "Modifier" depuis le récapitulatif final ouvre directement la
-// fenêtre concernée sans relancer toute la chaîne.
-const MODAL_CHAIN = ['modal-art', 'modal-century', 'modal-rubriques', 'modal-level'];
-function goToModal(fromId, toId) { closeModal(fromId); updateSelectorSummaries(); openModal(toId); }
+// pour ne rien oublier. Mais si on arrive dans une fenêtre via "Modifier" depuis le récapitulatif
+// final, on ne veut PAS relancer toute la chaîne (art → siècle → rubriques → niveau) : un clic sur
+// Suivant/Précédent doit alors revenir directement au récapitulatif. `editingFromSummary` retient
+// ce contexte le temps d'une seule fenêtre.
+let editingFromSummary = false;
+function goToModal(fromId, toId) {
+  closeModal(fromId);
+  updateSelectorSummaries();
+  if (editingFromSummary) { editingFromSummary = false; showQuizSummary(); return; }
+  openModal(toId);
+}
 $('art-next')?.addEventListener('click', () => goToModal('modal-art', 'modal-century'));
 $('century-prev')?.addEventListener('click', () => goToModal('modal-century', 'modal-art'));
 $('century-next')?.addEventListener('click', () => goToModal('modal-century', 'modal-rubriques'));
 $('rubriques-prev')?.addEventListener('click', () => goToModal('modal-rubriques', 'modal-century'));
 $('rubriques-next')?.addEventListener('click', () => goToModal('modal-rubriques', 'modal-level'));
 $('level-prev')?.addEventListener('click', () => goToModal('modal-level', 'modal-rubriques'));
-$('level-finish')?.addEventListener('click', () => { updateSelectorSummaries(); showQuizSummary(); });
+$('level-finish')?.addEventListener('click', () => { editingFromSummary = false; updateSelectorSummaries(); showQuizSummary(); });
 function showQuizSummary() {
   $('quiz-selectors-grid')?.classList.add('hidden');
   $('quiz-summary')?.classList.remove('hidden');
@@ -1121,10 +1256,11 @@ function showQuizSummary() {
   $('recap-rubriques').textContent = `📝 Rubriques : ${$('summary-rubriques').textContent}`;
   $('recap-level').textContent = `⭐ Niveau et questions : ${$('summary-level').textContent}`;
 }
-// Les liens "Modifier" du récapitulatif ouvrent directement la fenêtre concernée, sans relancer
-// toute la chaîne — pratique pour une petite correction ponctuelle.
+// Les liens "Modifier" du récapitulatif ouvrent directement la fenêtre concernée. Peu importe où
+// elle se trouve dans la chaîne : le drapeau ci-dessus fait qu'on revient droit au récapitulatif
+// ensuite, sans repasser par les autres fenêtres.
 document.querySelectorAll('#quiz-summary .link-label').forEach((button) => {
-  button.addEventListener('click', () => openModal(button.dataset.modal));
+  button.addEventListener('click', () => { editingFromSummary = true; openModal(button.dataset.modal); });
 });
 document.querySelectorAll('.modal-close').forEach((button) => {
   button.addEventListener('click', () => { closeModal(button.dataset.modal); updateSelectorSummaries(); });
@@ -1200,15 +1336,15 @@ updateSelectorSummaries();
 
 const LEVEL_QUESTION_COUNTS = { '1': 30, '2': 60, '3': 120 };
 
-async function fetchQuizRows(art, century, level) {
-  const url = `quizzes/${art}-${century}-niveau${level}.xlsx`;
+async function fetchQuizRows(art, century) {
+  // Un seul fichier par (art, siècle) désormais : le filtrage par niveau se fait côté appli via
+  // la colonne "Niveau" de chaque ligne (voir plus bas), plus de suffixe "-niveauX" dans l'URL.
+  const url = `quizzes/${art}-${century}.xlsx`;
   const response = await fetch(url);
   if (!response.ok) throw new Error('fichier introuvable');
   const buffer = await response.arrayBuffer();
   const book = XLSX.read(buffer, { type: 'array' });
   const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
-  // Marque chaque ligne avec son art d'origine (connu au moment du fetch) : utile ensuite pour
-  // n'afficher "h"/"l" devant les dimensions que pour les peintures sur la page de correction.
   return normaliseRows(rows).map((q) => ({ ...q, art }));
 }
 
@@ -1228,36 +1364,31 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé. Vérifiez votre connexion Internet et rechargez la page.');
     const zones = selectedZones();
     const allRows = [];
-    const missing = []; // combinaisons art/siècle sans aucun fichier (à aucun niveau) : signalées, sans bloquer le quiz
-    // Pour un niveau 3 demandé, on se rabat sur le niveau 2 puis le niveau 1 d'un même siècle
-    // si le fichier niveau 3 n'existe pas, plutôt que d'écarter ce siècle du quiz. Quand une zone
-    // géographique est choisie, on va systématiquement chercher le niveau le plus large disponible
-    // (les fichiers niveauX contiennent déjà toutes les lignes des niveaux inférieurs) pour avoir
-    // le plus grand vivier possible avant filtrage par zone — sans quoi une zone minoritaire
-    // pourrait manquer d'œuvres alors que d'autres fichiers du même siècle en contiennent.
-    const fallbackLevels = (zones.length || level === '3') ? ['3', '2', '1'] : [level];
+    const missing = []; // combinaisons art/siècle sans fichier du tout : signalées, sans bloquer le quiz
+    // Un seul fichier par (art, siècle) désormais ; le niveau ne détermine plus quel fichier
+    // charger, seulement quelles lignes en garder (colonne "Niveau", filtrage cumulatif juste
+    // après). Les niveaux supérieurs incluent déjà les niveaux inférieurs dans le fichier.
     for (const art of arts) {
       for (const century of centuries) {
-        let found = false;
-        for (const tryLevel of fallbackLevels) {
-          try {
-            allRows.push(...(await fetchQuizRows(art, century, tryLevel)));
-            found = true;
-            break; // premier niveau disponible pour cette combinaison : on s'arrête là
-          } catch (error) { /* on tente le niveau de repli suivant */ }
+        try {
+          allRows.push(...(await fetchQuizRows(art, century)));
+        } catch (error) {
+          missing.push(`${ART_LABELS[art]} — ${CENTURY_LABELS[century]}`);
         }
-        if (!found) missing.push(`${ART_LABELS[art]} — ${CENTURY_LABELS[century]}`);
       }
     }
     if (!allRows.length) throw new Error('Ce site est en construction. Le quiz sera bientôt disponible.');
     if (missing.length) {
       alert(`Ce site est en construction pour : ${missing.join(', ')}. Le quiz continue avec les autres choix disponibles.`);
     }
+    // Filtre par niveau (cumulatif) : le niveau 2 inclut les œuvres marquées niveau 1, etc.
+    let levelFilteredRows = allRows.filter((r) => (r.niveau || 1) <= parseInt(level, 10));
+    if (!levelFilteredRows.length) levelFilteredRows = allRows; // filet de sécurité si la colonne Niveau est absente/mal renseignée
     // Filtre par zone géographique (colonne Nationalité) : les œuvres sans nationalité connue
     // restent incluses dans tous les cas, pour ne pas écarter des fichiers pas encore renseignés.
-    let filteredRows = allRows;
+    let filteredRows = levelFilteredRows;
     if (zones.length) {
-      filteredRows = allRows.filter((r) => {
+      filteredRows = levelFilteredRows.filter((r) => {
         const z = zoneOfNationality(r.nationality);
         return !z || zones.includes(z);
       });
@@ -1266,9 +1397,8 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
         return;
       }
     }
-    // Le niveau détermine désormais uniquement le RÉSERVOIR d'œuvres utilisé (fetchQuizRows
-    // a déjà remonté au niveau le plus large disponible plus haut). Le NOMBRE de questions est
-    // choisi indépendamment (ex. 30 questions piochées dans un réservoir de niveau 3).
+    // Le nombre de questions est choisi indépendamment du niveau (ex. 30 questions piochées
+    // dans un réservoir de niveau 3).
     const requestedCount = selectedQuestionCount();
     let targetCount = requestedCount === 'max' ? filteredRows.length : parseInt(requestedCount, 10);
     if (filteredRows.length < targetCount) {
