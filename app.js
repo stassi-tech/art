@@ -979,8 +979,12 @@ function renderCorrection(answer, question) {
   const otherWorks = state.fullQuestions
     .filter((otherQuestion) => otherQuestion !== question && keyName(otherQuestion.artist) === keyName(question.artist))
     .sort((a, b) => {
-      // Tri chronologique ascendant, à partir de la première année détectable dans la date.
-      // Les dates sans année exploitable sont placées à la fin.
+      // Tri par niveau croissant d'abord (les œuvres les plus célèbres de l'artiste en tête),
+      // puis chronologique ascendant au sein d'un même niveau, à partir de la première année
+      // détectable dans la date. Les dates sans année exploitable sont placées à la fin de leur
+      // groupe de niveau.
+      const levelA = a.niveau || 1; const levelB = b.niveau || 1;
+      if (levelA !== levelB) return levelA - levelB;
       const yearA = yearsOf(a.date)[0]; const yearB = yearsOf(b.date)[0];
       if (yearA == null && yearB == null) return 0;
       if (yearA == null) return 1;
@@ -993,10 +997,18 @@ function renderCorrection(answer, question) {
     document.body.classList.remove('has-other-works');
     return;
   }
+  let previousLevel = null;
   $('other-works-list').innerHTML = otherWorks.map((otherQuestion, index) => {
     const source = imageSource(otherQuestion.image);
     const titleValue = formatCorrectionValue('title', otherQuestion.title);
-    return `<button type="button" class="other-work-card" data-index="${index}">
+    const level = otherQuestion.niveau || 1;
+    // Ligne de séparation dès que le niveau change par rapport à la carte précédente, pour
+    // regrouper visuellement les œuvres par notoriété au sein d'un même artiste.
+    const separator = (previousLevel !== null && level !== previousLevel)
+      ? `<div class="other-works-separator" role="separator"><span>${escapeHtml(LEVEL_LABELS[String(level)] || `Niveau ${level}`)}</span></div>`
+      : '';
+    previousLevel = level;
+    return `${separator}<button type="button" class="other-work-card" data-index="${index}">
       <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
            onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
       <span class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}</span>

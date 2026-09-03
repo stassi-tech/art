@@ -136,6 +136,9 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .other-work-caption { display:block; font-family:Arial,sans-serif; font-size:.7rem; line-height:1.3; color:var(--muted); margin:0; }
 .other-work-caption strong { color:var(--ink); font-weight:700; }
 .other-work-caption em { font-style:italic; }
+.other-works-separator { width:100%; display:flex; align-items:center; gap:8px; margin:2px 0; }
+.other-works-separator::before, .other-works-separator::after { content:""; flex:1; height:1px; background:var(--border); }
+.other-works-separator span { font-family:Arial,sans-serif; font-size:.68rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap; }
 
 /* Quand des œuvres du même peintre s'affichent en dessous, on réduit la fiche corrigée (texte)
    pour laisser de la place, mais pas l'image de l'œuvre elle-même sur grand écran. */
