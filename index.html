@@ -34,7 +34,7 @@
             <button type="button" id="account-logout-button" class="link-label hidden">Se déconnecter</button>
           </div>
 
-          <p class="intro-banner">Cette application vous propose d'identifier des œuvres d'art à travers des images publiées sur le site collaboratif Wikimedia Commons, en retrouvant leur créateur, titre, date de création et lieu de conservation. Choisissez votre art, votre siècle, vos rubriques, le nombre de questions et le niveau que vous souhaitez, puis lancez le quiz. Bon travail de culture et de mémoire!</p>
+          <p class="intro-banner">Cette application vous propose d'identifier des œuvres d'art, peintures, sculptures, à travers des images publiées sur le site collaboratif Wikimedia Commons, en retrouvant leur créateur, titre, date de création et lieu de conservation. Choisissez votre art, votre siècle, vos rubriques, le nombre de questions et le niveau que vous souhaitez, puis lancez le quiz. Bon travail de culture et de mémoire!</p>
 
           <div class="quiz-selectors hidden" id="quiz-selectors-grid">
             <button type="button" class="selector-button hidden" id="open-art">
@@ -70,7 +70,7 @@
           </div>
           <p id="launch-feedback" class="hint hidden"></p>
 
-          <p class="copyright-notice">© 2026 Stéphane Tassi. Contenu original — reproduction ou réutilisation de la sélection sans autorisation interdite.<br>Les images sont issues de Wikimedia Commons et sont utilisées sous leurs licences respectives (domaine public ou Creative Commons selon les fichiers). Cliquez sur une image pour accéder à sa page source et à ses crédits complets.</p>
+          <p class="copyright-notice">© 2026 Stéphane Tassi. Contenu original — reproduction ou réutilisation de la sélection sans autorisation interdite.<br>Site à but non commercial, sans publicité, proposé à titre personnel et éducatif.<br>Les images sont issues de Wikimedia Commons et sont utilisées sous leurs licences respectives (domaine public ou Creative Commons selon les fichiers). Cliquez sur une image pour accéder à sa page source et à ses crédits complets.</p>
         </section>
 
         <div class="modal-overlay hidden" id="modal-art">
@@ -150,7 +150,7 @@
           <div class="modal-box">
             <h3>Le fonctionnement des quiz</h3>
             <p>Chaque quiz vous présente une série d'œuvres d'art à identifier, une par une, à partir de leur image.</p>
-            <p>Vous choisissez : l'<strong>art</strong> (peinture et/ou sculpture), le <strong>siècle</strong> (et, si vous le souhaitez, une zone géographique), les <strong>rubriques</strong> sur lesquelles vous voulez être noté (artiste, titre, date de création, lieu de conservation), le <strong>nombre de questions</strong> et le <strong>niveau</strong> (le réservoir d'œuvres utilisé : le niveau 2 inclut le niveau 1, le niveau 3 inclut les niveaux 1 et 2).</p>
+            <p>Vous choisissez : l'<strong>art</strong> (peinture et/ou sculpture), le <strong>siècle</strong> (et, si vous le souhaitez, une zone géographique), les <strong>rubriques</strong> sur lesquelles vous voulez être noté (artiste, titre, date de création, lieu de conservation), le <strong>nombre de questions</strong> et le <strong>niveau</strong> (chaque niveau est un réservoir d'œuvres distinct et indépendant des autres ; si vous souhaitez mélanger plusieurs niveaux, sélectionnez-les conjointement).</p>
             <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les 4 informations, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d'orthographe, surnoms, titres en langue d'origine) sont tolérées dans une certaine mesure.</p>
             <p>À la fin du quiz, votre score s'affiche et s'enregistre automatiquement si vous êtes connecté à votre compte.</p>
 
@@ -169,7 +169,7 @@
           <div class="modal-box">
             <h3>Contact</h3>
             <p>Pour toute question, suggestion ou signalement d'erreur, vous pouvez écrire à l'adresse suivante :</p>
-            <p><a href="stephane.tassi@gmail.com" class="link-label">stephane.tassi@gmail.com</a></p>
+            <p><a href="mailto:votre-adresse@exemple.com" class="link-label">votre-adresse@exemple.com</a></p>
             <p class="modal-hint">Adresse personnelle temporaire — à remplacer par la vôtre.</p>
             <button type="button" class="primary-button modal-close" data-modal="modal-contact">Fermer</button>
           </div>
@@ -231,17 +231,17 @@
         <div class="modal-overlay hidden" id="modal-level">
           <div class="modal-box">
             <h3>Choisissez votre niveau et votre nombre de questions</h3>
-            <p class="modal-hint">Le niveau détermine le réservoir d'œuvres utilisé (niveau 2 inclut le niveau 1, niveau 3 inclut les niveaux 1 et 2). Le nombre de questions est indépendant : vous pouvez par exemple piocher 30 questions dans le niveau 3.</p>
+            <p class="modal-hint">Chaque niveau est indépendant : le niveau 1 réunit les œuvres les plus connues, le niveau 2 des œuvres moins connues, le niveau 3 les plus rares — sans chevauchement entre eux. Pour mélanger plusieurs niveaux, sélectionnez-les conjointement. Le nombre de questions est indépendant : vous pouvez par exemple piocher 30 questions dans le niveau 3.</p>
             <label class="rubrique-option">
-              <input type="radio" name="niveau" id="level-1" value="1" />
+              <input type="checkbox" id="level-1" value="1" />
               <span>Niveau 1</span>
             </label>
             <label class="rubrique-option">
-              <input type="radio" name="niveau" id="level-2" value="2" />
+              <input type="checkbox" id="level-2" value="2" />
               <span>Niveau 2</span>
             </label>
             <label class="rubrique-option">
-              <input type="radio" name="niveau" id="level-3" value="3" />
+              <input type="checkbox" id="level-3" value="3" />
               <span>Niveau 3</span>
             </label>
 

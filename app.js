@@ -1331,7 +1331,7 @@ function zoneOfNationality(rawValue) {
   }
   return null;
 }
-function selectedLevel() { const checked = document.querySelector('input[name="niveau"]:checked'); return checked ? checked.value : null; }
+function selectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`level-${lvl}`).checked); }
 function selectedQuestionCount() { const checked = document.querySelector('input[name="nb-questions"]:checked'); return checked ? checked.value : '30'; }
 function updateSelectorSummaries() {
   const arts = selectedArts();
@@ -1345,10 +1345,11 @@ function updateSelectorSummaries() {
   $('summary-century').textContent = centuryText + zoneText;
   const rubriques = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.label);
   $('summary-rubriques').textContent = rubriques.length ? rubriques.join(', ') : 'Aucune rubrique choisie';
-  const level = selectedLevel();
+  const levels = selectedLevels();
   const count = selectedQuestionCount();
   const countText = count === 'max' ? 'maximum disponible' : `${count} questions`;
-  $('summary-level').textContent = level ? `${LEVEL_LABELS[level]} — ${countText}` : 'Aucun niveau choisi';
+  const levelsText = levels.length ? levels.map((lvl) => LEVEL_LABELS[lvl]).join(' + ') : '';
+  $('summary-level').textContent = levels.length ? `${levelsText} — ${countText}` : 'Aucun niveau choisi';
 }
 updateSelectorSummaries();
 
@@ -1369,13 +1370,13 @@ async function fetchQuizRows(art, century) {
 $('launch-quiz-button')?.addEventListener('click', async () => {
   const arts = selectedArts();
   const centuries = selectedCenturies();
-  const level = selectedLevel();
+  const levels = selectedLevels();
   const chosenKeys = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.key);
   const feedback = $('launch-feedback');
   feedback.classList.remove('hidden');
   if (!arts.length) { feedback.textContent = 'Choisissez au moins un art (« Choisissez votre art »).'; return; }
   if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle (« Choisissez votre siècle »).'; return; }
-  if (!level) { feedback.textContent = 'Choisissez un niveau (« Choisissez votre niveau »).'; return; }
+  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau (« Choisissez votre niveau »).'; return; }
   if (!chosenKeys.length) { feedback.textContent = 'Choisissez au moins une rubrique à réviser (« Choisissez vos rubriques »).'; return; }
   feedback.textContent = 'Chargement du quiz…';
   try {
@@ -1384,8 +1385,9 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     const allRows = [];
     const missing = []; // combinaisons art/siècle sans fichier du tout : signalées, sans bloquer le quiz
     // Un seul fichier par (art, siècle) désormais ; le niveau ne détermine plus quel fichier
-    // charger, seulement quelles lignes en garder (colonne "Niveau", filtrage cumulatif juste
-    // après). Les niveaux supérieurs incluent déjà les niveaux inférieurs dans le fichier.
+    // charger, seulement quelles lignes en garder (colonne "Niveau", filtrage exact juste après).
+    // Chaque niveau est un réservoir indépendant ; les mélanger suppose de sélectionner
+    // plusieurs niveaux conjointement dans l'interface.
     for (const art of arts) {
       for (const century of centuries) {
         try {
@@ -1399,8 +1401,8 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     if (missing.length) {
       alert(`Ce site est en construction pour : ${missing.join(', ')}. Le quiz continue avec les autres choix disponibles.`);
     }
-    // Filtre par niveau (cumulatif) : le niveau 2 inclut les œuvres marquées niveau 1, etc.
-    let levelFilteredRows = allRows.filter((r) => (r.niveau || 1) <= parseInt(level, 10));
+    // Filtre par niveau (indépendant) : seules les œuvres des niveaux sélectionnés sont gardées.
+    let levelFilteredRows = allRows.filter((r) => levels.includes(String(r.niveau || 1)));
     if (!levelFilteredRows.length) levelFilteredRows = allRows; // filet de sécurité si la colonne Niveau est absente/mal renseignée
     // Filtre par zone géographique (colonne Nationalité) : les œuvres sans nationalité connue
     // restent incluses dans tous les cas, pour ne pas écarter des fichiers pas encore renseignés.
@@ -1433,7 +1435,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     // Conserve la configuration du quiz (art, siècle, niveau, nombre de questions, rubriques
     // testées) pour l'historique des scores : deux quiz avec des rubriques différentes n'ont pas
     // la même difficulté et ne doivent donc pas partager la même colonne d'évolution.
-    const effectiveLevelLabel = `${LEVEL_LABELS[level] || 'Niveau'} — ${targetCount} questions`;
+    const effectiveLevelLabel = `${levels.map((lvl) => LEVEL_LABELS[lvl]).join(' + ') || 'Niveau'} — ${targetCount} questions`;
     const rubriqueLabels = chosenKeys.map((key) => allFields.find((f) => f.key === key)?.label || key);
     // Repère court affiché en haut de l'écran de quiz et de correction, ex. "30 questions sur la
     // peinture du 18e siècle" — distinct de `label` (utilisé pour l'historique des scores).
@@ -1448,7 +1450,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
       rubriques: rubriqueLabels,
       label: `${arts.map((a) => ART_LABELS[a]).join(' + ')} · ${centuries.map((c) => CENTURY_LABELS[c]).join(', ')} · ${rubriqueLabels.join(', ')}`,
       reference: quizReference,
-      signature: `${arts.slice().sort().join(',')}|${centuries.slice().sort().join(',')}|${level}-${targetCount}|${chosenKeys.slice().sort().join(',')}`,
+      signature: `${arts.slice().sort().join(',')}|${centuries.slice().sort().join(',')}|${levels.slice().sort().join('+')}-${targetCount}|${chosenKeys.slice().sort().join(',')}`,
     };
     const refEl = $('quiz-reference');
     if (refEl) refEl.textContent = quizReference;
