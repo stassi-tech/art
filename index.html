@@ -148,8 +148,10 @@
           <div class="modal-box">
             <h3>Le fonctionnement des quiz</h3>
             <p>Vous choisissez : l'<strong>art</strong> (peinture et/ou sculpture), le <strong>siècle</strong> (et, si vous le souhaitez, une zone géographique), les <strong>rubriques</strong> sur lesquelles vous voulez être noté (artiste, titre, date de création, lieu de conservation), le <strong>nombre de questions</strong> et le <strong>niveau</strong> (chaque niveau est un réservoir d'œuvres distinct et indépendant des autres ; si vous souhaitez mélanger plusieurs niveaux, sélectionnez-les conjointement).</p>
+            <p>Le niveau reflète en général la notoriété de l'<strong>artiste</strong> dans son ensemble, pas celle de chaque œuvre individuellement. Il arrive qu'une œuvre isolée soit bien plus (ou moins) célèbre que le reste de la production du même artiste : dans ces cas, elle est reclassée à son propre niveau, indépendamment de celui de l'artiste. C'est une estimation, pas une science exacte — si un classement vous semble discutable, c'est probablement voulu plutôt qu'une erreur.</p>
             <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les 4 informations, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d'orthographe, surnoms, titres en langue d'origine) sont tolérées dans une certaine mesure.</p>
             <p>Un bouton micro (🎤) permet de dicter votre réponse au champ sélectionné (via les boutons Artiste/Titre/Date/Lieu, qui n'ouvrent pas le clavier). Pour l'artiste, dictez le prénom complet plutôt que le seul nom de famille : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » seul, souvent retranscrit en « monnaie ».</p>
+            <p>Bon travail de mémoire et de culture !</p>
             <button type="button" class="primary-button modal-close" data-modal="modal-fonctionnement">Fermer</button>
           </div>
         </div>
@@ -243,9 +245,9 @@
             <section class="answer-card" aria-label="Vos réponses">
               <div class="mic-nav-row">
                 <button type="button" id="mic-global" class="mic-icon-button hidden" aria-label="Dicter la réponse au champ sélectionné">🎤</button>
-                <button type="button" id="previous-button-overlay" class="nav-bottom-button" aria-label="Question précédente">←</button>
+                <button type="button" id="previous-button-overlay" class="nav-arrow-button" aria-label="Question précédente">←</button>
                 <button id="check-button" class="primary-button" type="submit" form="answer-form">Valider</button>
-                <button type="button" id="next-button-overlay" class="nav-bottom-button" aria-label="Question suivante">→</button>
+                <button type="button" id="next-button-overlay" class="nav-arrow-button" aria-label="Question suivante">→</button>
               </div>
               <div class="mic-wrap">
                 <div class="mic-tooltip hidden" id="mic-tooltip">
@@ -300,7 +302,6 @@
         </div>
 
         <section id="results-panel" class="results-panel hidden">
-          <button type="button" class="link-label back-home-link" id="back-home-from-results">← Retour à l'accueil</button>
           <p class="eyebrow">QUIZ TERMINÉ</p>
           <h2>Votre score : <span id="final-score"></span></h2>
           <p id="final-message"></p>

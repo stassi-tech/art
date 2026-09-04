@@ -366,7 +366,6 @@ function downloadAccountTable() {
 $('account-page-download-button')?.addEventListener('click', downloadAccountTable);
 async function deleteScore(docId) {
   if (!firebaseReady || !currentUser || !docId) return;
-  if (!confirm('Supprimer définitivement ce résultat de quiz ?')) return;
   try {
     await db.collection('users').doc(currentUser.uid).collection('scores').doc(docId).delete();
     loadAccountPage();
@@ -734,6 +733,14 @@ function isMatch(actual, expected, fieldKey) {
   }
   // Accepte un élément significatif de la réponse attendue : « Monet » ou « Orsay ».
   if (answer.length >= 3 && (target.includes(answer) || answer.includes(target))) return true;
+  // Artiste : le prénom n'est pas pris en compte du tout — seul le nom de famille (dernier mot)
+  // compte, avec la même tolérance orthographique qu'ailleurs. « Dominique Ingres » ou
+  // « Ingres » valident donc tous deux pour « Jean-Auguste-Dominique Ingres ».
+  if (fieldKey === 'artist') {
+    const targetLastWord = target.split(' ').filter(Boolean).pop();
+    const answerLastWord = answer.split(' ').filter(Boolean).pop();
+    if (targetLastWord && answerLastWord && targetLastWord.length >= 3 && isCloseEnough(answerLastWord, targetLastWord)) return true;
+  }
   // Tolérance orthographique sur la réponse complète (accents, lettre en trop/en moins, inversion).
   if (isCloseEnough(answer, target)) return true;
   const targetWords = target.split(' ').filter(Boolean);
@@ -1018,12 +1025,10 @@ function renderOtherWorksPanel() {
   list.innerHTML = otherWorks.map((otherQuestion, index) => {
     const source = imageSource(otherQuestion.image);
     const titleValue = formatCorrectionValue('title', otherQuestion.title);
-    const level = otherQuestion.niveau || 1;
-    const levelLabel = LEVEL_LABELS[String(level)] || `Niveau ${level}`;
     return `<button type="button" class="other-work-card-big" data-index="${index}">
       <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
            onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
-      <span class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}<br><span class="other-work-level">${escapeHtml(levelLabel)}</span></span>
+      <span class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}</span>
     </button>`;
   }).join('');
   // Clic sur une vignette : ouvre l'image en grand dans la visionneuse, avec juste un bouton
@@ -1293,7 +1298,6 @@ $('menu-item-handedness')?.addEventListener('click', () => {
 $('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
 $('other-works-back-button')?.addEventListener('click', () => showPanel('quiz'));
 $('other-works-next-button')?.addEventListener('click', () => { showPanel('quiz'); goToNextOrResults(); });
-$('back-home-from-results')?.addEventListener('click', () => showPanel('welcome'));
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
 const ART_LABELS = { peinture: 'Peinture', sculpture: 'Sculpture' };
@@ -1318,9 +1322,9 @@ const BG_MOSAIC_FILES = [
   'Jean-Baptiste Greuze - A Girl with a Dead Canary - Google Art Project.jpg',
   'Jean-Honoré Fragonard - Denis Diderot (Fanciful Figure) - WGA8064.jpg',
   'William Hogarth - The Shrimp Girl - WGA11467.jpg',
-  'Canaletto - The Stonemason\'s Yard.jpg',
   'Aubrey Beardsley - The Climax.jpg',
-  'Vincenzo Foppa - The Adoration of the Kings - WGA7999.jpg',
+  'Michelangelos David.jpg',
+  'Venus de Milo Louvre.jpg',
 ];
 function initBackgroundMosaic() {
   const container = $('bg-mosaic');

@@ -148,12 +148,15 @@ body.lefty .hamburger-menu { right:auto; left:0; }
 .field-label-button:hover { background:#f7f2ea; border-color:var(--accent); }
 .field-label-button.field-target-active { background:#fdeb8f; border-color:var(--accent); }
 body.lefty .field-row { flex-direction:row-reverse; }
-.mic-nav-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.mic-nav-row { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+.mic-nav-row .primary-button { flex:1; }
+.mic-nav-row .nav-arrow-button { flex:0 0 auto; width:38px; height:38px; border-radius:50%; border:1px solid var(--accent); background:var(--accent); color:#fff; font-size:1rem; font-weight:700; cursor:pointer; transition:background .15s; }
+.mic-nav-row .nav-arrow-button:hover:not(:disabled) { background:var(--accent-dark); }
+.mic-nav-row .nav-arrow-button:disabled { opacity:.35; cursor:not-allowed; }
 .mic-icon-button { flex-shrink:0; width:44px; height:44px; border-radius:50%; border:1px solid #cfc8bc; background:#fff; color:var(--ink); cursor:pointer; font-size:1.1rem; transition:background .15s, border-color .15s; }
 .mic-icon-button:hover:not(:disabled) { background:#f7f2ea; border-color:var(--accent); }
 .mic-icon-button:disabled { cursor:not-allowed; opacity:.4; }
 .mic-icon-button.listening { background:var(--accent); border-color:var(--accent); color:#fff; animation:mic-pulse 1.1s ease-in-out infinite; }
-.mic-nav-row .nav-bottom-button, .mic-nav-row .primary-button { flex:1; }
 .mic-wrap { position:relative; }
 .mic-tooltip { margin:-2px 0 10px; padding:12px 14px; background:var(--ink); color:#fff; border-radius:6px; font-family:Arial,sans-serif; font-size:.8rem; line-height:1.45; }
 .mic-tooltip p { margin:0 0 10px; color:#fff; }
@@ -223,7 +226,6 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
   .other-works-panel-list.count-5-8 { grid-template-columns:repeat(4, 1fr); }
   .other-works-panel-list.count-9plus { grid-template-columns:repeat(5, 1fr); }
 }
-.other-work-level { display:block; margin-top:2px; font-weight:700; color:var(--accent); text-transform:uppercase; font-size:.68rem; letter-spacing:.03em; }
 .image-lightbox { position:fixed; inset:0; z-index:300; background:rgba(10,10,10,.96); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
 .image-lightbox .quiz-topbar { position:absolute; top:12px; right:12px; margin:0; }
 .image-lightbox img { max-width:92vw; max-height:78vh; object-fit:contain; border-radius:4px; cursor:pointer; }
@@ -316,8 +318,9 @@ body.has-other-works .correction-label { font-size:.76rem; }
   .nav-bottom-button { padding:9px 6px; font-size:.8rem; }
   .field-label-button { min-width:52px; font-size:.75rem; }
   .mic-icon-button { width:36px; height:36px; font-size:.95rem; }
-  .mic-nav-row { flex-wrap:wrap; }
-  .mic-nav-row .nav-bottom-button, .mic-nav-row .primary-button { flex:1 1 40%; font-size:.78rem; padding:8px 4px; }
+  .mic-nav-row { gap:4px; }
+  .mic-nav-row .nav-arrow-button { width:32px; height:32px; font-size:.85rem; }
+  .mic-nav-row .primary-button { padding:8px 10px; font-size:.82rem; }
   .quiz-bottom-bar .primary-button { padding:9px 16px; font-size:.9rem; }
   .other-works-toggle { margin-top:10px; padding:10px; font-size:.85rem; }
   .other-works-panel { padding:20px 16px; margin:14px auto; }
