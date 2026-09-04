@@ -1,11 +1,10 @@
 :root { --ink:#24313f; --muted:#65707d; --paper:#fffdf9; --canvas:#f1eee7; --accent:#c54f38; --accent-dark:#a7402c; --border:#ded8cc; --ok:#15734b; --wrong:#b3392d; }
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
-.bg-mosaic { position:fixed; inset:0; z-index:0; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; pointer-events:none; }
-.bg-tile { position:relative; overflow:hidden; pointer-events:auto; }
+.bg-mosaic { position:fixed; inset:0; z-index:-1; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; }
+.bg-tile { position:relative; overflow:hidden; background:#c9c1ae; }
 .bg-tile img { width:100%; height:100%; object-fit:cover; display:block; filter:blur(6px) grayscale(.3); opacity:.45; transform:scale(1.15); transition:filter .35s, opacity .35s, transform .35s; }
-.bg-tile:hover img { filter:blur(0) grayscale(0); opacity:1; transform:scale(1.3); z-index:1; position:relative; }
-.app-shell, .hamburger-wrap { position:relative; z-index:1; }
+.bg-tile:hover img { filter:blur(0) grayscale(0); opacity:1; transform:scale(1.3); }
 button, input { font:inherit; }
 
 .app-shell { width:min(1600px, calc(100% - 32px)); margin:0 auto; padding:20px 0 30px; display:flex; align-items:stretch; gap:26px; min-height:100vh; }

@@ -1314,28 +1314,28 @@ function goToModal(fromId, toId) {
 // Fond décoratif de la page d'accueil : 15 œuvres célèbres, floutées et assourdies par défaut,
 // nettes et agrandies au survol. Purement décoratif (aria-hidden), tolère les échecs de chargement.
 const BG_MOSAIC_FILES = [
-  'Mona_Lisa,_by_Leonardo_da_Vinci,_from_C2RMF_retouched.jpg',
-  'Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg',
-  'Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg',
-  'Edvard_Munch,_1893,_The_Scream,_oil,_tempera_and_pastel_on_cardboard,_91_x_73_cm,_National_Gallery_of_Norway.jpg',
-  'Eugène_Delacroix_-_La_liberté_guidant_le_peuple.jpg',
-  'Meisje_met_de_parel.jpg',
-  'JEAN_LOUIS_THEODORE_GERICAULT_-_La_Balsa_de_la_Medusa_(Museo_del_Louvre,_1818-19).jpg',
-  'Monet_-_Impression,_Sunrise.jpg',
-  'The_Kiss_-_Gustav_Klimt_-_Google_Cultural_Institute.jpg',
-  'The_Nightwatch_by_Rembrandt.jpg',
-  'Claude_Monet_038.jpg',
-  'Grant_Wood_-_American_Gothic_-_Google_Art_Project.jpg',
-  'Van_Eyck_-_Arnolfini_Portrait.jpg',
-  'Da_Vinci_Vitruve_Luc_Viatour.jpg',
-  'Whistlers_Mother_high_res.jpg',
+  'Great Wave off Kanagawa2.jpg',
+  'The Fighting Temeraire, JMW Turner, National Gallery.jpg',
+  'Aivazovsky, Ivan - The Ninth Wave.jpg',
+  'Winslow Homer - The Gulf Stream.jpg',
+  'Ferdinand Hodler - Die Nacht (1889-90).jpg',
+  'Albert Bierstadt - The Rocky Mountains, Lander\'s Peak.jpg',
+  'Alma-Tadema - The Roses of Heliogabalus.jpg',
+  'Alfons Mucha - 1894 - Gismonda.jpg',
+  'Le Ballon Valloton Orsay.jpg',
+  'Jean-Baptiste Greuze - A Girl with a Dead Canary - Google Art Project.jpg',
+  'Jean-Honoré Fragonard - Denis Diderot (Fanciful Figure) - WGA8064.jpg',
+  'William Hogarth - The Shrimp Girl - WGA11467.jpg',
+  'Canaletto - The Stonemason\'s Yard.jpg',
+  'Aubrey Beardsley - The Climax.jpg',
+  'Vincenzo Foppa - The Adoration of the Kings - WGA7999.jpg',
 ];
 function initBackgroundMosaic() {
   const container = $('bg-mosaic');
   if (!container) return;
   container.innerHTML = BG_MOSAIC_FILES.map((filename) => {
     const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
-    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" onerror="this.closest('.bg-tile').style.display='none'" /></div>`;
+    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" /></div>`;
   }).join('');
 }
 initBackgroundMosaic();
