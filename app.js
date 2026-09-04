@@ -449,7 +449,8 @@ function startDictation() {
     if (!target) return;
     const last = event.results[event.results.length - 1];
     $(target.input).value = last[0].transcript.trim();
-    scheduleAutoAdvance(target.key);
+    // Plus d'avancement automatique vers le champ suivant après la dictée (cf. plus bas) : on
+    // reste sur le champ dicté, la personne clique elle-même sur la rubrique suivante.
   });
   recognition.addEventListener('end', () => {
     if (manualStopRequested || activeRecognition !== recognition) return;
@@ -481,31 +482,14 @@ if (voiceSupported) {
     $(input).addEventListener('focus', () => setFocusedField(key));
   });
 }
-// Passage automatique au champ suivant : si un texte est inscrit (au clavier ou dicté au micro)
-// et qu'il n'est plus modifié pendant 2 secondes, le curseur avance tout seul vers la rubrique suivante.
-const advanceTimers = {};
-function clearAdvanceTimers() {
-  Object.values(advanceTimers).forEach(clearTimeout);
-  Object.keys(advanceTimers).forEach((key) => delete advanceTimers[key]);
-}
-function scheduleAutoAdvance(key) {
-  if (advanceTimers[key]) clearTimeout(advanceTimers[key]);
-  const field = allFields.find((f) => f.key === key);
-  if (!field) return;
-  const value = $(field.input).value.trim();
-  if (!value) return;
-  advanceTimers[key] = setTimeout(() => {
-    delete advanceTimers[key];
-    const fields = activeFields();
-    const currentIndex = fields.findIndex((f) => f.key === key);
-    const next = fields[currentIndex + 1];
-    if (next) setFocusedField(next.key, { focusInput: !micIsListening }); // le micro suit sans rouvrir le clavier
-  }, 2000);
-}
+// Ancien passage automatique au champ suivant retiré (cf. ci-dessous) : la personne clique
+// elle-même sur la rubrique suivante avant de dicter ou taper, à son propre rythme.
 allFields.forEach(({ key, input }) => {
   $(input).addEventListener('input', () => {
     if (micIsListening) stopActiveDictation(); // taper manuellement arrête la dictée continue
-    scheduleAutoAdvance(key);
+    // Plus d'avancement automatique vers le champ suivant : plusieurs testeurs trouvaient le
+    // défilement de page involontaire pendant la dictée anxiogène. On clique désormais soi-même
+    // sur la rubrique suivante avant de parler, à son propre rythme.
   });
 });
 
@@ -836,15 +820,15 @@ function displayArtworkImage(work, altText, showSourceLink = false) {
   }
 }
 function renderQuestion() {
-  clearAdvanceTimers(); // pas d'avance automatique différée qui tomberait sur la mauvaise question
   document.body.classList.remove('has-other-works'); // repart d'un état propre à chaque question
   const question = state.questions[state.index]; const answer = answerFor(state.index);
   const modeLabel = state.mode === 'review' ? 'Révision des erreurs — ' : '';
-  $('question-count').textContent = `${modeLabel}Question ${state.index + 1} sur ${state.questions.length}`;
+  $('quiz-reference').textContent = `${state.quizConfig?.reference || ''} — ${modeLabel}Q. ${state.index + 1}/${state.questions.length}`;
   $('progress-bar').style.width = `${((state.index + 1) / state.questions.length) * 100}%`;
   const possible = checkedQuestions() * activeFields().length;
   $('score-summary').textContent = `${totalCorrect()} / ${possible} point${totalCorrect() > 1 ? 's' : ''}`;
   displayArtworkImage(question, `Œuvre ${state.index + 1}`, answer.checked);
+  document.body.classList.toggle('four-fields', state.selectedFieldKeys.length >= 4);
   allFields.forEach(({ key, input }) => {
     const wrapper = $(input).closest('label');
     const active = state.selectedFieldKeys.includes(key);
@@ -869,8 +853,8 @@ function renderQuestion() {
     // défilée là où on s'était arrêté sur la question précédente.
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  $('previous-button').disabled = state.index === 0;
-  $('next-button').textContent = state.index === state.questions.length - 1 ? 'Voir le score' : 'Suivante →';
+  $('previous-button-overlay').disabled = state.index === 0;
+  $('next-button-overlay').textContent = state.index === state.questions.length - 1 ? 'Voir le score' : 'Suivante →';
 }
 function formatArtistName(name) {
   // Convention des légendes muséales : prénom normal, nom de famille en MAJUSCULES
@@ -1246,7 +1230,7 @@ $('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerM
 $('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
 $('back-home-from-quiz')?.addEventListener('click', () => showPanel('welcome'));
 $('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
-$('back-from-other-works')?.addEventListener('click', () => showPanel('quiz'));
+$('other-works-next-button')?.addEventListener('click', () => { showPanel('quiz'); goToNextOrResults(); });
 $('back-home-from-results')?.addEventListener('click', () => showPanel('welcome'));
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
@@ -1494,11 +1478,11 @@ $('answer-form').addEventListener('submit', (event) => {
   finalizeCurrentAnswer(); // note la réponse même si on ne clique jamais sur « Suivante »
   renderQuestion(); // affiche la correction ; on attend le clic sur « Suivante »
 });
-$('previous-button').addEventListener('click', () => {
+$('previous-button-overlay').addEventListener('click', () => {
   if (!answerFor(state.index).checked) saveInputs(); // ne pas écraser une réponse déjà validée (champs vidés depuis)
   if (state.index > 0) { state.index--; renderQuestion(); }
 });
-$('next-button').addEventListener('click', goToNextOrResults);
+$('next-button-overlay').addEventListener('click', goToNextOrResults);
 $('review-button').addEventListener('click', () => {
   // Reprendre depuis le début le même jeu de questions (normal ou révision en cours)
   showPanel('quiz'); state.index = 0; renderQuestion();
