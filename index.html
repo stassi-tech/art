@@ -306,6 +306,7 @@
         <section id="quiz-panel" class="quiz-panel hidden" aria-live="polite">
           <div class="quiz-topbar" id="quiz-topbar">
             <button type="button" class="home-icon-button" id="back-home-from-quiz" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
+            <button type="button" id="fullscreen-toggle" class="home-icon-button" aria-label="Basculer le mode plein écran (masque le bandeau du haut)" title="Plein écran">⛶</button>
           </div>
           <div class="progress-row" id="quiz-progress-row">
             <span id="quiz-reference" class="quiz-reference"></span>
@@ -316,7 +317,6 @@
           <div class="quiz-grid">
             <figure class="artwork-card">
               <img id="artwork-image" alt="Œuvre à identifier" />
-              <button type="button" id="fullscreen-toggle" class="fullscreen-toggle-button" aria-label="Basculer le mode plein écran (masque le bandeau du haut)" title="Plein écran">⛶</button>
               <figcaption id="image-message" class="image-message hidden"></figcaption>
               <a id="artwork-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
             </figure>
@@ -337,16 +337,9 @@
                   <input id="date-input" name="date" autocomplete="off" placeholder="Date de création" aria-label="Date de création" />
                   <button type="button" class="field-label-button" data-field="date">Date</button>
                 </div>
-                <div class="field-nav-flank">
-                  <button type="button" id="previous-button-overlay" class="nav-flank-button" aria-label="Question précédente">←</button>
-                  <div class="field-row field-location" data-field="location">
-                    <input id="location-input" name="location" autocomplete="off" placeholder="Lieu de conservation" aria-label="Lieu de conservation" />
-                    <button type="button" class="field-label-button" data-field="location">Lieu</button>
-                  </div>
-                  <button type="button" id="next-button-overlay" class="nav-flank-button" aria-label="Question suivante">→</button>
-                </div>
-                <div class="answer-submit-row">
-                  <button id="check-button" class="primary-button" type="submit">Valider</button>
+                <div class="field-row" data-field="location">
+                  <input id="location-input" name="location" autocomplete="off" placeholder="Lieu de conservation" aria-label="Lieu de conservation" />
+                  <button type="button" class="field-label-button" data-field="location">Lieu</button>
                 </div>
               </form>
 
@@ -355,6 +348,12 @@
                 <div id="other-works" class="other-works hidden">
                   <button type="button" id="show-other-works-button" class="secondary-button other-works-toggle">Voir les autres œuvres du même peintre</button>
                 </div>
+              </div>
+
+              <div class="quiz-bottom-bar">
+                <button type="button" id="previous-button-overlay" class="nav-bottom-button" aria-label="Question précédente">← Précédente</button>
+                <button id="check-button" class="primary-button" type="submit" form="answer-form">Valider</button>
+                <button type="button" id="next-button-overlay" class="nav-bottom-button" aria-label="Question suivante">Suivante →</button>
               </div>
             </section>
           </div>
