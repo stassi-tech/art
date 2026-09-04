@@ -126,6 +126,20 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .artist-list-filters select { flex:1; min-width:140px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--paper); font-family:Arial,sans-serif; font-size:.85rem; color:var(--ink); }
 #correction-details .correction-item:last-child .correction-value { margin-bottom:0; }
 
+.field-with-submit { display:grid; gap:6px; }
+.field-submit-row { display:flex; gap:8px; align-items:stretch; }
+.field-submit-row input { flex:1; min-width:0; }
+.field-submit-row .primary-button { flex-shrink:0; padding:10px 18px; }
+.other-works-toggle { width:100%; margin-top:14px; }
+.other-works-panel { max-width:900px; margin:24px auto; padding:30px 26px; }
+.other-works-panel h2 { margin:6px 0 18px; font-size:1.25rem; }
+.other-works-panel-list { display:flex; flex-wrap:wrap; gap:18px; }
+.other-works-panel-list .other-work-card-big { width:220px; text-align:center; border:2px solid transparent; border-radius:8px; background:none; padding:8px; cursor:default; font:inherit; }
+.other-works-panel-list .other-work-card-big img { width:100%; height:200px; object-fit:cover; border-radius:6px; display:block; margin-bottom:10px; background:#1b1c1e; }
+.other-works-panel-list .other-work-card-big .other-work-caption { font-family:Arial,sans-serif; font-size:.9rem; }
+.other-works-panel-separator { width:100%; display:flex; align-items:center; gap:8px; margin:8px 0; }
+.other-works-panel-separator::before, .other-works-panel-separator::after { content:""; flex:1; height:1px; background:var(--border); }
+.other-works-panel-separator span { font-family:Arial,sans-serif; font-size:.75rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap; }
 .other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
 .other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }
 .other-works-list { display:flex; flex-wrap:wrap; gap:12px; }
@@ -190,4 +204,16 @@ body.has-other-works .correction-label { font-size:.76rem; }
   .other-works { margin-top:14px; padding-top:10px; }
   .other-work-card { width:84px; }
   .other-work-card img { height:70px; }
+
+  /* Formulaire de réponse resserré : objectif zéro défilement même avec les 4 champs actifs. */
+  .answer-card form { gap:10px; }
+  .answer-card label { gap:3px; font-size:.76rem; }
+  .answer-card input { padding:8px; }
+  .mic-global-button { padding:8px; font-size:.85rem; }
+  .mic-hint { font-size:.72rem; margin-bottom:4px; }
+  .field-submit-row .primary-button { padding:8px 14px; font-size:.9rem; }
+  .other-works-toggle { margin-top:10px; padding:10px; font-size:.85rem; }
+  .other-works-panel { padding:20px 16px; margin:14px auto; }
+  .other-works-panel-list .other-work-card-big { width:44%; }
+  .other-works-panel-list .other-work-card-big img { height:140px; }
 }

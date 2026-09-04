@@ -330,26 +330,33 @@
                 <label>Date de création
                   <input id="date-input" name="date" autocomplete="off" />
                 </label>
-                <label>Lieu de conservation
-                  <input id="location-input" name="location" autocomplete="off" />
+                <label class="field-with-submit">Lieu de conservation
+                  <div class="field-submit-row">
+                    <input id="location-input" name="location" autocomplete="off" />
+                    <button id="check-button" class="primary-button" type="submit">Valider</button>
+                  </div>
                 </label>
-                <button id="check-button" class="primary-button" type="submit">Valider ma réponse</button>
               </form>
-
-              <div id="correction" class="correction hidden">
-                <div id="correction-details"></div>
-                <div id="other-works" class="other-works hidden">
-                  <h4 class="other-works-title">Autres œuvres du même peintre présentes dans le quiz</h4>
-                  <div id="other-works-list" class="other-works-list"></div>
-                </div>
-              </div>
 
               <nav class="navigation" aria-label="Navigation du quiz">
                 <button id="previous-button" class="nav-button" type="button">← Précédente</button>
                 <button id="next-button" class="nav-button" type="button">Suivante →</button>
               </nav>
+
+              <div id="correction" class="correction hidden">
+                <div id="correction-details"></div>
+                <div id="other-works" class="other-works hidden">
+                  <button type="button" id="show-other-works-button" class="secondary-button other-works-toggle">Voir les autres œuvres du même peintre</button>
+                </div>
+              </div>
             </section>
           </div>
+        </section>
+
+        <section id="other-works-panel" class="other-works-panel hidden">
+          <button type="button" class="link-label back-home-link" id="back-from-other-works">← Retour à la correction</button>
+          <h2 id="other-works-panel-title">Autres œuvres du même peintre</h2>
+          <div id="other-works-panel-list" class="other-works-panel-list"></div>
         </section>
 
         <section id="results-panel" class="results-panel hidden">

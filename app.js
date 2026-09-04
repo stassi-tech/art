@@ -750,7 +750,9 @@ function isMatch(actual, expected, fieldKey) {
   // Réponse en un mot avec une faute (ex. « Monnet » pour « Claude Monet »).
   if (answerWords.length === 1 && targetWords.some((word) => word.length >= 4 && isCloseEnough(answer, word))) return true;
   // Réponse partielle en plusieurs mots avec une faute (ex. « Van Googh » pour « Vincent van Gogh »).
-  if (answerWords.length > 1 && answerWords.length < targetWords.length) {
+  // Limité à un seul mot manquant : une réponse à « Jean-Auguste-Dominique Ingres » ne doit pas
+  // valider avec juste « Dominique Ingres », qui tronque le prénom composé sans le dire.
+  if (answerWords.length > 1 && answerWords.length < targetWords.length && answerWords.length >= targetWords.length - 1) {
     for (let start = 0; start <= targetWords.length - answerWords.length; start += 1) {
       const windowText = targetWords.slice(start, start + answerWords.length).join(' ');
       if (isCloseEnough(answer, windowText)) return true;
@@ -795,12 +797,13 @@ function selectedRubriquesLabel() {
   return labels.join(', ');
 }
 function showPanel(name) {
-  // name: 'welcome' | 'quiz' | 'results' | 'account' — centralise l'affichage des panneaux et de
-  // la barre latérale (titre + import), visible uniquement sur la page d'accueil.
+  // name: 'welcome' | 'quiz' | 'results' | 'account' | 'other-works' — centralise l'affichage des
+  // panneaux et de la barre latérale (titre + import), visible uniquement sur la page d'accueil.
   $('welcome-panel').classList.toggle('hidden', name !== 'welcome');
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
   $('account-panel')?.classList.toggle('hidden', name !== 'account');
+  $('other-works-panel')?.classList.toggle('hidden', name !== 'other-works');
   $('sidebar').classList.toggle('hidden', name !== 'welcome');
 }
 
@@ -992,41 +995,35 @@ function renderCorrection(answer, question) {
       return yearA - yearB;
     });
   const otherWorksBox = $('other-works');
+  // Les autres œuvres ne s'affichent plus automatiquement en ligne : le bloc ne montre qu'un
+  // bouton (« Voir les autres œuvres… »), et le détail (images plus grandes, triées et
+  // regroupées par niveau) s'ouvre dans une page dédiée sur demande — cf. #other-works-panel.
+  state.currentOtherWorks = otherWorks;
   if (!otherWorks.length) {
     otherWorksBox.classList.add('hidden');
     document.body.classList.remove('has-other-works');
     return;
   }
+  otherWorksBox.classList.remove('hidden');
+  document.body.classList.add('has-other-works');
+}
+function renderOtherWorksPanel() {
+  const otherWorks = state.currentOtherWorks || [];
   let previousLevel = null;
-  $('other-works-list').innerHTML = otherWorks.map((otherQuestion, index) => {
+  $('other-works-panel-list').innerHTML = otherWorks.map((otherQuestion) => {
     const source = imageSource(otherQuestion.image);
     const titleValue = formatCorrectionValue('title', otherQuestion.title);
     const level = otherQuestion.niveau || 1;
-    // Ligne de séparation dès que le niveau change par rapport à la carte précédente, pour
-    // regrouper visuellement les œuvres par notoriété au sein d'un même artiste.
     const separator = (previousLevel !== null && level !== previousLevel)
-      ? `<div class="other-works-separator" role="separator"><span>${escapeHtml(LEVEL_LABELS[String(level)] || `Niveau ${level}`)}</span></div>`
+      ? `<div class="other-works-panel-separator" role="separator"><span>${escapeHtml(LEVEL_LABELS[String(level)] || `Niveau ${level}`)}</span></div>`
       : '';
     previousLevel = level;
-    return `${separator}<button type="button" class="other-work-card" data-index="${index}">
+    return `${separator}<div class="other-work-card-big">
       <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
            onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
       <span class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}</span>
-    </button>`;
+    </div>`;
   }).join('');
-  otherWorksBox.querySelectorAll('.other-work-card').forEach((button) => {
-    button.addEventListener('click', () => {
-      const work = otherWorks[Number(button.dataset.index)];
-      const showingThisOne = correctionMainWork === work;
-      const target = showingThisOne ? question : work; // recliquer sur la même œuvre revient à la question testée
-      correctionMainWork = target;
-      renderCorrectionDetails(question, target, answer);
-      otherWorksBox.querySelectorAll('.other-work-card').forEach((b) => b.classList.remove('active'));
-      if (!showingThisOne) button.classList.add('active');
-    });
-  });
-  otherWorksBox.classList.remove('hidden');
-  document.body.classList.add('has-other-works');
 }
 function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
 
@@ -1249,11 +1246,15 @@ document.addEventListener('click', (event) => {
 $('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-fonctionnement'); });
 $('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
 $('back-home-from-quiz')?.addEventListener('click', () => showPanel('welcome'));
+$('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
+$('back-from-other-works')?.addEventListener('click', () => showPanel('quiz'));
 $('back-home-from-results')?.addEventListener('click', () => showPanel('welcome'));
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
 const ART_LABELS = { peinture: 'Peinture', sculpture: 'Sculpture' };
+const ART_ABBR = { peinture: 'Peint.', sculpture: 'Sculpt.' };
 const CENTURY_LABELS = { '14e': '14e siècle', '15e': '15e siècle', '16e': '16e siècle', '17e': '17e siècle', '18e': '18e siècle', '19e': '19e siècle', '20e': '20e siècle' };
+const ZONE_ABBR = { france: 'Fr.', europe: 'Europe', amerique: 'Amér.', asie: 'Asie' };
 const LEVEL_LABELS = { '1': 'Niveau 1', '2': 'Niveau 2', '3': 'Niveau 3' };
 function openModal(id) { $(id).classList.remove('hidden'); }
 function closeModal(id) { $(id).classList.add('hidden'); }
@@ -1449,12 +1450,14 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     // la même difficulté et ne doivent donc pas partager la même colonne d'évolution.
     const effectiveLevelLabel = `${levels.map((lvl) => LEVEL_LABELS[lvl]).join(' + ') || 'Niveau'} — ${targetCount} questions`;
     const rubriqueLabels = chosenKeys.map((key) => allFields.find((f) => f.key === key)?.label || key);
-    // Repère court affiché en haut de l'écran de quiz et de correction, ex. "30 questions sur la
-    // peinture du 18e siècle" — distinct de `label` (utilisé pour l'historique des scores).
-    const artsLower = arts.map((a) => ART_LABELS[a].toLowerCase()).join(' + ');
-    const centuriesText = centuries.map((c) => CENTURY_LABELS[c]).join(', ');
-    const zoneText = zones.length ? ` (${zones.map((z) => ZONE_LABELS[z]).join(', ')})` : '';
-    const quizReference = `${targetCount} questions sur la ${artsLower} du ${centuriesText}${zoneText}`;
+    // Repère court affiché en haut de l'écran de quiz et de correction. Volontairement abrégé et
+    // SANS le nombre de questions (déjà visible via la barre de progression) pour gagner de la
+    // place à l'écran, notamment sur mobile : ex. "Peint. · 19e (Fr.) · Niveau 1".
+    const artsAbbr = arts.map((a) => ART_ABBR[a]).join(' + ');
+    const centuriesAbbr = centuries.map((c) => c.toUpperCase()).join('+');
+    const zoneAbbr = zones.length ? ` (${zones.map((z) => ZONE_ABBR[z]).join(', ')})` : '';
+    const levelAbbr = levels.map((lvl) => `Niveau ${lvl}`).join('+');
+    const quizReference = `${artsAbbr} · ${centuriesAbbr}${zoneAbbr} · ${levelAbbr}`;
     state.quizConfig = {
       arts: arts.map((a) => ART_LABELS[a]),
       centuries: centuries.map((c) => CENTURY_LABELS[c]),
