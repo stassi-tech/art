@@ -1291,12 +1291,7 @@ $('menu-item-handedness')?.addEventListener('click', () => {
   closeHamburgerMenu();
 });
 $('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
-$('other-works-next-button')?.addEventListener('click', () => { showPanel('quiz'); goToNextOrResults(); });
-$('other-works-previous-button')?.addEventListener('click', () => {
-  showPanel('quiz');
-  if (!answerFor(state.index).checked) saveInputs();
-  if (state.index > 0) { state.index--; renderQuestion(); }
-});
+$('other-works-back-button')?.addEventListener('click', () => showPanel('quiz'));
 $('back-home-from-results')?.addEventListener('click', () => showPanel('welcome'));
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
@@ -1395,14 +1390,25 @@ document.querySelectorAll('.modal-overlay').forEach((overlay) => {
   overlay.addEventListener('click', (event) => { if (event.target === overlay) { overlay.classList.add('hidden'); updateSelectorSummaries(); } });
 });
 
-// Avertissement affiché une seule fois par session dès que le 20e siècle est coché : les
-// artistes morts après 1955 ne sont pas représentés, pour des raisons de droits d'auteur.
+// Avertissement affiché une fois (par session, ou définitivement si « Ne plus afficher » a été
+// coché — mémorisé sur l'appareil) dès que le 20e siècle est coché.
 let century20eNoticeShown = false;
 $('century-20e')?.addEventListener('change', (event) => {
-  if (event.target.checked && !century20eNoticeShown) {
+  if (event.target.checked && !century20eNoticeShown && localStorage.getItem('century20eNoticeDismissed') !== 'true') {
     century20eNoticeShown = true;
     openModal('modal-century-20e-notice');
   }
+});
+$('century-20e-notice-close')?.addEventListener('click', () => {
+  if ($('century-20e-notice-dismiss')?.checked) localStorage.setItem('century20eNoticeDismissed', 'true');
+});
+// Réinitialise tous les pop-up explicatifs « Ne plus afficher » (micro, avertissement 20e siècle…).
+$('menu-item-reset-popups')?.addEventListener('click', () => {
+  localStorage.removeItem('micTooltipDismissed');
+  localStorage.removeItem('century20eNoticeDismissed');
+  $('mic-tooltip')?.classList.remove('hidden');
+  closeHamburgerMenu();
+  alert('Les pop-up explicatifs réapparaîtront à nouveau.');
 });
 
 function selectedArts() { return ['peinture', 'sculpture'].filter((art) => $(`art-${art}`).checked); }
@@ -1594,6 +1600,10 @@ $('previous-button-overlay').addEventListener('click', () => {
 });
 $('next-button-overlay').addEventListener('click', goToNextOrResults);
 $('lightbox-close-button')?.addEventListener('click', () => $('image-lightbox').classList.add('hidden'));
+// Recliquer sur l'image (ou le fond) referme aussi la visionneuse : plus fiable que le seul
+// bouton ✕, notamment sur mobile.
+$('lightbox-image')?.addEventListener('click', () => $('image-lightbox').classList.add('hidden'));
+$('image-lightbox')?.addEventListener('click', (event) => { if (event.target.id === 'image-lightbox') $('image-lightbox').classList.add('hidden'); });
 $('review-button').addEventListener('click', () => {
   // Reprendre depuis le début le même jeu de questions (normal ou révision en cours)
   showPanel('quiz'); state.index = 0; renderQuestion();

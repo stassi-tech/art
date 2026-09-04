@@ -21,6 +21,7 @@
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 La liste des artistes</button>
         <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
         <button type="button" class="hamburger-item" id="menu-item-handedness">✋ Boutons de champ : droite (droitier)</button>
+        <button type="button" class="hamburger-item" id="menu-item-reset-popups">🔔 Réafficher les pop-up explicatifs</button>
       </div>
     </div>
     <div class="app-shell">
@@ -191,7 +192,8 @@
           <div class="modal-box">
             <h3>À savoir sur le 20e siècle</h3>
             <p>Pour des raisons de droits de propriété intellectuelle, les artistes morts après 1955 ne sont pas actuellement représentés dans les quiz du 20e siècle. Seuls des artistes suffisamment anciens (dont les œuvres sont dans le domaine public) y figurent.</p>
-            <button type="button" class="primary-button modal-close" data-modal="modal-century-20e-notice">Compris</button>
+            <label class="rubrique-option"><input type="checkbox" id="century-20e-notice-dismiss" /><span>Ne plus afficher ce message</span></label>
+            <button type="button" class="primary-button modal-close" id="century-20e-notice-close" data-modal="modal-century-20e-notice">Compris</button>
           </div>
         </div>
 
@@ -280,8 +282,7 @@
 
         <section id="other-works-panel" class="other-works-panel hidden">
           <div class="quiz-bottom-bar">
-            <button type="button" id="other-works-previous-button" class="nav-bottom-button" aria-label="Question précédente">← Précédente</button>
-            <button type="button" id="other-works-next-button" class="nav-bottom-button" aria-label="Question suivante">Suivante →</button>
+            <button type="button" id="other-works-back-button" class="global-topbar-button" aria-label="Retour au questionnaire" title="Retour au questionnaire">↩</button>
           </div>
           <div id="other-works-panel-list" class="other-works-panel-list"></div>
         </section>
