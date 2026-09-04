@@ -60,6 +60,141 @@
           <p class="copyright-notice">© 2026 Stéphane Tassi — <button type="button" class="link-label copyright-more-link" id="open-mentions-legales">mentions légales</button></p>
         </section>
 
+        <section id="training-hub-panel" class="welcome-panel hidden">
+          <div class="quiz-topbar">
+            <button type="button" id="training-hub-home-button" class="home-icon-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
+          </div>
+
+          <p class="eyebrow home-eyebrow">Peinture &amp; sculpture — 14e au 20e siècle</p>
+          <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
+
+          <figure class="home-illustration">
+            <img src="assets/accueil.jpg" alt="" />
+            <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
+          </figure>
+
+          <p class="intro-banner">Choisissez un exercice d'entraînement à la mémoire. Chacun porte sur un échantillon d'œuvres que vous filtrez vous-même (art, siècle, niveau), sans notation.</p>
+
+          <div class="training-exercise-grid">
+            <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="label">Imprégnation</span></button>
+            <button type="button" class="home-mode-button training-soon" id="open-training-intrus"><span class="label">Intrus</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+            <button type="button" class="home-mode-button training-soon" id="open-training-reconstitution"><span class="label">Reconstitution</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+            <button type="button" class="home-mode-button training-soon" id="open-training-enigme"><span class="label">Énigme</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+            <button type="button" class="home-mode-button training-soon" id="open-training-vraifaux"><span class="label">Vrai/Faux</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+            <button type="button" class="home-mode-button training-soon" id="open-training-famille"><span class="label">Famille</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+          </div>
+        </section>
+
+        <section id="impregnation-setup-panel" class="welcome-panel hidden">
+          <div class="quiz-topbar">
+            <button type="button" id="impregnation-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          </div>
+          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.15rem;">Configurer l'exercice d'imprégnation</h2></div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="imp-toggle-art">🎨 Choisissez votre art</button>
+            <div class="accordion-body hidden" id="imp-body-art">
+              <label class="rubrique-option"><input type="checkbox" id="imp-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-art-sculpture" /><span>Sculpture</span></label>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="imp-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
+            <div class="accordion-body hidden" id="imp-body-century">
+              <div class="accordion-columns">
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-century-14e" /><span>14e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-century-15e" /><span>15e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-century-16e" /><span>16e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-century-17e" /><span>17e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-century-18e" /><span>18e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-century-19e" checked /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-century-20e" /><span>20e siècle</span></label>
+                </div>
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-zone-france" /><span>France</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-zone-europe" /><span>Autres pays d'Europe</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-zone-amerique" /><span>Amérique</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-zone-asie" /><span>Asie</span></label>
+                </div>
+              </div>
+              <p class="modal-hint">Rien coché en zone = toutes zones confondues.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="imp-toggle-level">⭐ Choisissez votre niveau</button>
+            <div class="accordion-body hidden" id="imp-body-level">
+              <label class="rubrique-option"><input type="checkbox" id="imp-level-1" checked /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-level-2" /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-level-3" /><span>Niveau 3</span></label>
+              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="imp-toggle-rubriques">📝 Rubriques</button>
+            <div class="accordion-body hidden" id="imp-body-rubriques">
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-artist" checked /><span>Auteur</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-title" checked /><span>Titre</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-date" checked /><span>Date</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-materiaux" /><span>Matériau</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-dimensions" /><span>Dimensions</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-location" checked /><span>Lieu</span></label>
+            </div>
+          </div>
+
+          <div class="opt-row">
+            <span>Avancement d'une œuvre à l'autre :</span>
+            <select id="imp-opt-advance">
+              <option value="auto">Défilement automatique</option>
+              <option value="manual">Clic personnel</option>
+            </select>
+          </div>
+          <div class="opt-row" id="imp-delay-row">
+            <span>Délai avant le défilement :</span>
+            <select id="imp-opt-delay">
+              <option value="2000">2 s</option>
+              <option value="3000" selected>3 s</option>
+              <option value="5000">5 s</option>
+            </select>
+          </div>
+          <div class="opt-row">
+            <label><input type="checkbox" id="imp-opt-audio" checked /> Lecture audio</label>
+            <select id="imp-opt-voice"><option value="">Chargement des voix…</option></select>
+          </div>
+
+          <button type="button" class="primary-button" id="imp-start-button" style="width:100%">Commencer</button>
+          <p id="imp-setup-feedback" class="hint hidden"></p>
+        </section>
+
+        <section id="impregnation-panel" class="quiz-panel hidden">
+          <div class="progress-row" id="imp-progress-row">
+            <span id="imp-progress-label">Œuvre 1 / 10</span>
+          </div>
+          <div class="progress-track"><div class="progress-bar" id="imp-progress-bar"></div></div>
+          <div class="quiz-grid">
+            <div class="artwork-column">
+              <figure class="artwork-card">
+                <img id="imp-stage-img" alt="Œuvre" />
+              </figure>
+            </div>
+            <section class="answer-card" aria-label="Rubriques">
+              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Rubriques</h2>
+              <div class="correction-details" id="imp-correction-details"></div>
+              <div class="mic-nav-row" style="margin-top:auto;padding-top:20px;">
+                <button type="button" id="imp-prev-button" class="nav-arrow-button" aria-label="Précédent">←</button>
+                <button type="button" id="imp-pause-button" class="nav-arrow-button" aria-label="Pause">⏸</button>
+                <button type="button" id="imp-next-button" class="nav-arrow-button" aria-label="Suivant">→</button>
+              </div>
+              <button type="button" class="link-label" id="imp-exit-link" style="display:block;text-align:center;margin-top:14px;">Quitter l'exercice</button>
+            </section>
+          </div>
+        </section>
+
         <section id="quiz-setup-panel" class="welcome-panel hidden">
           <figure class="home-illustration">
             <img src="assets/accueil.jpg" alt="" />

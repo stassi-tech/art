@@ -795,10 +795,13 @@ function selectedRubriquesLabel() {
   return labels.join(', ');
 }
 function showPanel(name) {
-  // name: 'welcome' | 'quiz-setup' | 'quiz' | 'results' | 'account' | 'other-works' — centralise
-  // l'affichage des panneaux et de la barre latérale (titre + import), visible uniquement sur la
-  // page d'accueil.
+  // name: 'welcome' | 'training-hub' | 'impregnation-setup' | 'impregnation' | 'quiz-setup' |
+  // 'quiz' | 'results' | 'account' | 'other-works' — centralise l'affichage des panneaux et de
+  // la barre latérale (titre + import), visible uniquement sur la page d'accueil.
   $('welcome-panel').classList.toggle('hidden', name !== 'welcome');
+  $('training-hub-panel')?.classList.toggle('hidden', name !== 'training-hub');
+  $('impregnation-setup-panel')?.classList.toggle('hidden', name !== 'impregnation-setup');
+  $('impregnation-panel')?.classList.toggle('hidden', name !== 'impregnation');
   $('quiz-setup-panel')?.classList.toggle('hidden', name !== 'quiz-setup');
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
@@ -1407,9 +1410,155 @@ $('load-saved-choice-button')?.addEventListener('click', () => {
 });
 // Info-bulle CSS (survol/focus) plutôt qu'une alerte bloquante ; sur mobile (pas de survol), un
 // tap bascule son affichage.
-$('open-training')?.addEventListener('click', (event) => {
-  event.currentTarget.classList.toggle('show-tooltip');
+$('open-training')?.addEventListener('click', () => showPanel('training-hub'));
+$('training-hub-home-button')?.addEventListener('click', () => showPanel('welcome'));
+document.querySelectorAll('.training-soon').forEach((btn) => {
+  btn.addEventListener('click', (event) => event.currentTarget.classList.toggle('show-tooltip'));
 });
+
+// ============================================================
+// MODULE IMPRÉGNATION — réutilise fetchQuizRows/ART_LABELS/CENTURY_LABELS/zoneOfNationality déjà
+// définis pour le quiz ; sélection propre (préfixe imp-), mécanique d'écriture progressive
+// synchronisée à la voix de synthèse, sans notation.
+// ============================================================
+$('open-impregnation-setup')?.addEventListener('click', () => { showPanel('impregnation-setup'); populateImpVoices(); });
+$('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
+
+const IMP_ACCORDIONS = ['imp-toggle-art:imp-body-art', 'imp-toggle-century:imp-body-century', 'imp-toggle-level:imp-body-level', 'imp-toggle-rubriques:imp-body-rubriques'];
+IMP_ACCORDIONS.forEach((pair) => {
+  const [toggleId, bodyId] = pair.split(':');
+  $(toggleId)?.addEventListener('click', () => {
+    const opening = $(bodyId).classList.contains('hidden');
+    IMP_ACCORDIONS.forEach((p) => $(p.split(':')[1])?.classList.add('hidden'));
+    if (opening) $(bodyId).classList.remove('hidden');
+  });
+});
+
+$('imp-opt-advance')?.addEventListener('change', () => {
+  $('imp-delay-row').style.display = $('imp-opt-advance').value === 'manual' ? 'none' : 'flex';
+});
+
+function populateImpVoices() {
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  const select = $('imp-opt-voice');
+  if (!select) return;
+  select.innerHTML = voices.length
+    ? voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('')
+    : '<option value="">Voix par défaut du système</option>';
+}
+speechSynthesis.onvoiceschanged = populateImpVoices;
+
+function impSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`imp-art-${a}`)?.checked); }
+function impSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`imp-century-${c}`)?.checked); }
+function impSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`imp-zone-${z}`)?.checked); }
+function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
+
+let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impAdvanceMode = 'auto', impSelectedVoice = null;
+
+function impClearTimers() { impTimers.forEach(clearTimeout); impTimers = []; }
+function impSpeak(text) {
+  if (!impAudioOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'fr-FR'; u.rate = 0.95;
+  if (impSelectedVoice) u.voice = impSelectedVoice;
+  speechSynthesis.speak(u);
+}
+
+$('imp-start-button')?.addEventListener('click', async () => {
+  const arts = impSelectedArts();
+  const centuries = impSelectedCenturies();
+  const levels = impSelectedLevels();
+  const feedback = $('imp-setup-feedback');
+  feedback.classList.remove('hidden');
+  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
+  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
+  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
+  feedback.textContent = 'Chargement des œuvres…';
+  try {
+    const zones = impSelectedZones();
+    let allRows = [];
+    for (const art of arts) {
+      for (const century of centuries) {
+        try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+      }
+    }
+    if (!allRows.length) { feedback.textContent = "Aucune œuvre disponible pour ce choix."; return; }
+    let pool = allRows.filter((r) => levels.includes(String(r.niveau || 1)));
+    if (!pool.length) pool = allRows;
+    if (zones.length) {
+      const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
+      if (zoned.length) pool = zoned;
+    }
+    // Mélange, sans limitation de nombre : tout l'échantillon correspondant au choix.
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    IMP_SESSION = pool;
+    impAdvanceMode = $('imp-opt-advance').value;
+    impAudioOn = $('imp-opt-audio').checked;
+    impDelayMs = Number($('imp-opt-delay').value);
+    const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+    impSelectedVoice = voices[$('imp-opt-voice').value] || null;
+    impIndex = 0;
+    showPanel('impregnation');
+    impShowCurrent();
+  } catch (error) {
+    feedback.textContent = `Erreur : ${error.message}`;
+  }
+});
+
+function impScheduleAdvance(ms) {
+  if (impAdvanceMode !== 'auto') return;
+  impTimers.push(setTimeout(() => { if (!impPaused && impIndex < IMP_SESSION.length - 1) { impIndex++; impShowCurrent(); } }, ms));
+}
+
+function impShowCurrent() {
+  impClearTimers();
+  speechSynthesis.cancel();
+  impPaused = false;
+  $('imp-pause-button').textContent = '⏸';
+  const work = IMP_SESSION[impIndex];
+  $('imp-progress-label').textContent = `Œuvre ${impIndex + 1} / ${IMP_SESSION.length}`;
+  $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
+  $('imp-stage-img').src = imageSource(work.image);
+
+  const dims = [work.hauteur, work.longueur].filter(Boolean).join(' × ');
+  const fields = [
+    { key: 'artist', label: 'Auteur', value: work.artist, on: $('imp-field-artist').checked },
+    { key: 'title', label: 'Titre de l\u2019œuvre', value: `« ${work.title} »`, on: $('imp-field-title').checked },
+    { key: 'date', label: 'Date', value: work.date, on: $('imp-field-date').checked },
+    { key: 'materiaux', label: 'Matériau', value: work.materials, on: $('imp-field-materiaux').checked && work.materials },
+    { key: 'dimensions', label: 'Dimensions', value: dims, on: $('imp-field-dimensions').checked && dims },
+    { key: 'location', label: 'Lieu', value: work.location, on: $('imp-field-location').checked },
+  ].filter((f) => f.on);
+
+  $('imp-correction-details').innerHTML = fields.map((f) =>
+    `<span class="correction-label">${f.label}</span><span class="correction-value" id="imp-val-${f.key}"></span>`
+  ).join('');
+
+  const refText = fields.map((f) => f.value).join(' — ') || work.artist;
+  impSpeak(refText);
+
+  const STAGGER = impDelayMs;
+  fields.forEach((f, i) => {
+    impTimers.push(setTimeout(() => {
+      const el = $(`imp-val-${f.key}`);
+      if (el) { el.textContent = f.value; el.classList.add('written'); }
+    }, 400 + i * STAGGER));
+  });
+
+  const totalWriteTime = 400 + fields.length * STAGGER;
+  impScheduleAdvance(totalWriteTime + 4000);
+}
+
+$('imp-pause-button')?.addEventListener('click', () => {
+  impPaused = !impPaused;
+  $('imp-pause-button').textContent = impPaused ? '▶' : '⏸';
+  if (impPaused) { impClearTimers(); speechSynthesis.cancel(); } else impShowCurrent();
+});
+$('imp-prev-button')?.addEventListener('click', () => { if (impIndex > 0) { impIndex--; impShowCurrent(); } });
+$('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSION.length - 1) { impIndex++; impShowCurrent(); } });
+
 document.querySelectorAll('.modal-close').forEach((button) => {
   button.addEventListener('click', () => { closeModal(button.dataset.modal); updateSelectorSummaries(); });
 });
