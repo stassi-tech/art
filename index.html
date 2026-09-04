@@ -12,8 +12,10 @@
   </head>
   <body>
     <div class="bg-mosaic" aria-hidden="true" id="bg-mosaic"></div>
-    <div class="hamburger-wrap">
-      <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button">☰</button>
+    <div class="hamburger-wrap" id="global-topbar">
+      <button type="button" id="global-home-button" class="global-topbar-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
+      <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
+      <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
       <div class="hamburger-menu hidden" id="hamburger-menu">
         <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Le fonctionnement des quiz</button>
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 La liste des artistes</button>
@@ -49,7 +51,6 @@
             </button>
             <button type="button" class="home-mode-button" id="open-quiz-setup">
               <span class="label">Quiz</span>
-              <span class="desc">Identification où vous pourrez vous autoévaluer</span>
             </button>
           </div>
 
@@ -57,27 +58,22 @@
         </section>
 
         <section id="quiz-setup-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" class="home-icon-button" id="back-home-from-quiz-setup" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
-            <button type="button" id="quiz-setup-fullscreen-toggle" class="home-icon-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
-          </div>
-
           <figure class="home-illustration">
             <img src="assets/accueil.jpg" alt="" />
             <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
           </figure>
 
-          <button type="button" class="primary-button" id="select-choices" style="width:100%; margin-bottom:14px;">🎯 Sélectionnez vos choix</button>
-
-          <div class="choices-panel hidden" id="choices-panel">
-            <fieldset class="choices-group">
-              <legend title="Type d'œuvres proposées dans le quiz">🎨 Art</legend>
+          <div class="accordion-group" id="accordion-art">
+            <button type="button" class="accordion-toggle" id="toggle-art">🎨 Choisissez votre art</button>
+            <div class="accordion-body hidden" id="body-art">
               <label class="rubrique-option"><input type="checkbox" id="art-peinture" /><span title="Tableaux, fresques, retables…">Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="art-sculpture" /><span title="Statues, bustes, bas-reliefs…">Sculpture</span></label>
-            </fieldset>
+            </div>
+          </div>
 
-            <fieldset class="choices-group">
-              <legend title="Période(s) de création des œuvres">🏛️ Siècle</legend>
+          <div class="accordion-group" id="accordion-century">
+            <button type="button" class="accordion-toggle" id="toggle-century">🏛️ Choisissez votre siècle et votre zone géographique</button>
+            <div class="accordion-body hidden" id="body-century">
               <label class="rubrique-option"><input type="checkbox" id="century-14e" /><span title="Œuvres créées entre 1301 et 1400">14e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="century-15e" /><span title="Œuvres créées entre 1401 et 1500">15e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="century-16e" /><span title="Œuvres créées entre 1501 et 1600">16e siècle</span></label>
@@ -86,53 +82,41 @@
               <label class="rubrique-option"><input type="checkbox" id="century-19e" /><span title="Œuvres créées entre 1801 et 1900">19e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="century-20e" /><span title="Artistes morts avant 1955 uniquement, pour raisons de droits">20e siècle</span></label>
               <p class="modal-hint">Cocher plusieurs siècles mélange aléatoirement leurs œuvres dans un même quiz.</p>
-            </fieldset>
-
-            <fieldset class="choices-group">
-              <legend title="Filtre optionnel par origine géographique de l'artiste">🌍 Zone géographique</legend>
+              <p class="modal-subheading">🌍 Zone géographique</p>
               <label class="rubrique-option"><input type="checkbox" id="zone-france" /><span title="Artistes d'origine française">France</span></label>
               <label class="rubrique-option"><input type="checkbox" id="zone-europe" /><span title="Artistes d'origine européenne hors France">Autres pays d'Europe</span></label>
               <label class="rubrique-option"><input type="checkbox" id="zone-amerique" /><span title="Artistes d'origine américaine (Nord et Sud)">Amérique</span></label>
               <label class="rubrique-option"><input type="checkbox" id="zone-asie" /><span title="Artistes d'origine asiatique">Asie</span></label>
               <p class="modal-hint">Rien coché = toutes zones confondues. Les œuvres sans nationalité connue sont incluses quel que soit le choix.</p>
-            </fieldset>
+            </div>
+          </div>
 
-            <fieldset class="choices-group">
-              <legend title="Informations sur lesquelles vous serez évalué en correction">📝 Rubriques</legend>
+          <div class="accordion-group" id="accordion-rubriques">
+            <button type="button" class="accordion-toggle" id="toggle-rubriques">📝 Choisissez vos rubriques</button>
+            <div class="accordion-body hidden" id="body-rubriques">
               <label class="rubrique-option"><input type="checkbox" id="rubrique-artist" /><span title="Nom du peintre ou du sculpteur">Artiste</span></label>
               <label class="rubrique-option"><input type="checkbox" id="rubrique-title" /><span title="Titre exact de l'œuvre">Titre de l'œuvre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="rubrique-date" /><span title="Année ou période de création">Date de création</span></label>
               <label class="rubrique-option"><input type="checkbox" id="rubrique-location" /><span title="Musée ou lieu où l'œuvre est conservée">Lieu de conservation</span></label>
               <p class="modal-hint">La correction affichera toujours les 4 informations, mais seules les rubriques cochées sont notées.</p>
-            </fieldset>
+            </div>
+          </div>
 
-            <fieldset class="choices-group">
-              <legend title="Notoriété des œuvres — chaque niveau est un réservoir indépendant">⭐ Niveau</legend>
+          <div class="accordion-group" id="accordion-level">
+            <button type="button" class="accordion-toggle" id="toggle-level">⭐ Choisissez votre niveau et votre nombre de questions</button>
+            <div class="accordion-body hidden" id="body-level">
               <label class="rubrique-option"><input type="checkbox" id="level-1" value="1" /><span title="Œuvres les plus connues">Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="level-2" value="2" /><span title="Œuvres moins connues">Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="level-3" value="3" /><span title="Œuvres rares, plus difficiles">Niveau 3</span></label>
               <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
-            </fieldset>
-
-            <fieldset class="choices-group">
-              <legend title="Longueur du quiz">🔢 Nombre de questions</legend>
+              <p class="modal-subheading">🔢 Nombre de questions</p>
               <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-10" value="10" /><span>10 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-20" value="20" /><span>20 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-30" value="30" checked /><span>30 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-60" value="60" /><span>60 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-120" value="120" /><span>120 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-max" value="max" /><span title="Toutes les œuvres disponibles pour ce choix">Maximum disponible</span></label>
-            </fieldset>
-
-            <button type="button" class="primary-button" id="choices-done-button" style="width:100%">Voir le récapitulatif</button>
-          </div>
-
-          <div class="quiz-summary hidden" id="quiz-summary">
-            <h3 class="modal-subheading" style="margin-top:0">Récapitulatif de votre quiz</h3>
-            <div class="summary-line"><span id="recap-art">—</span><button type="button" class="link-label recap-edit-button">Modifiez</button></div>
-            <div class="summary-line"><span id="recap-century">—</span><button type="button" class="link-label recap-edit-button">Modifiez</button></div>
-            <div class="summary-line"><span id="recap-rubriques">—</span><button type="button" class="link-label recap-edit-button">Modifiez</button></div>
-            <div class="summary-line"><span id="recap-level">—</span><button type="button" class="link-label recap-edit-button">Modifiez</button></div>
+            </div>
           </div>
 
           <div class="quiz-action-row quiz-action-row-single">
@@ -193,8 +177,6 @@
 
         <section id="quiz-panel" class="quiz-panel hidden" aria-live="polite">
           <div class="quiz-topbar" id="quiz-topbar">
-            <button type="button" class="home-icon-button" id="back-home-from-quiz" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
-            <button type="button" id="fullscreen-toggle" class="home-icon-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
             <button type="button" id="topbar-previous-button" class="nav-bottom-button topbar-nav-button" aria-label="Question précédente">← Précédente</button>
             <button type="button" id="topbar-next-button" class="nav-bottom-button topbar-nav-button" aria-label="Question suivante">Suivante →</button>
           </div>
@@ -258,10 +240,6 @@
         </section>
 
         <section id="other-works-panel" class="other-works-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" class="home-icon-button" id="other-works-home-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
-            <button type="button" class="home-icon-button" id="other-works-fullscreen-toggle" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
-          </div>
           <h2 id="other-works-panel-title">Autres œuvres du même peintre (tous niveaux)</h2>
           <div id="other-works-panel-list" class="other-works-panel-list"></div>
           <div class="quiz-bottom-bar">

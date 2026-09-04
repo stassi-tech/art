@@ -1257,7 +1257,7 @@ document.addEventListener('click', (event) => {
 });
 $('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-fonctionnement'); });
 $('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
-$('back-home-from-quiz')?.addEventListener('click', () => showPanel('welcome'));
+$('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
 // Boutons « Artiste / Titre / Date / Lieu » à côté de chaque champ : sélectionnent le champ comme
 // cible de dictée sans lui donner le focus réel, pour éviter l'ouverture systématique du clavier
 // virtuel sur mobile.
@@ -1273,9 +1273,7 @@ function toggleFullscreen() {
     document.exitFullscreen?.().catch(() => {});
   }
 }
-$('fullscreen-toggle')?.addEventListener('click', toggleFullscreen);
-$('other-works-fullscreen-toggle')?.addEventListener('click', toggleFullscreen);
-$('quiz-setup-fullscreen-toggle')?.addEventListener('click', toggleFullscreen);
+$('global-fullscreen-button')?.addEventListener('click', toggleFullscreen);
 // Position des boutons Artiste/Titre/Date/Lieu (droite par défaut pour droitiers, gauche pour
 // gauchers) : préférence locale mémorisée sur l'appareil. Pourra migrer vers le compte personnel.
 function applyHandedness(lefty) {
@@ -1297,7 +1295,6 @@ $('other-works-previous-button')?.addEventListener('click', () => {
   if (!answerFor(state.index).checked) saveInputs();
   if (state.index > 0) { state.index--; renderQuestion(); }
 });
-$('other-works-home-button')?.addEventListener('click', () => showPanel('welcome'));
 $('back-home-from-results')?.addEventListener('click', () => showPanel('welcome'));
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
@@ -1336,57 +1333,45 @@ function initBackgroundMosaic() {
   }).join('');
 }
 initBackgroundMosaic();
-// Le panneau de choix (art/siècle/zone/rubriques/niveau/nombre) est un seul bloc intégré à la
-// page — plus de fenêtres modales empilées. Il se replie tout seul 2 secondes après la dernière
-// case cochée, et se rouvre sur un nouveau clic sur « Sélectionnez vos choix » ou sur un lien
-// « Modifiez » du récapitulatif.
-let choicesCollapseTimer = null;
-function openChoicesPanel() {
-  clearTimeout(choicesCollapseTimer);
-  $('quiz-summary')?.classList.add('hidden');
-  $('choices-panel')?.classList.remove('hidden');
+// Quatre accordéons indépendants (art / siècle+zone / rubriques / niveau+nombre) : chacun a son
+// propre bouton, qui affiche « Choisissez… » tant que rien n'est coché, puis « Modifiez : … » une
+// fois une sélection faite. Cliquer sur le bouton ouvre/ferme sa propre section ; les autres ne
+// sont pas affectées. Plus de repli automatique ni de récapitulatif séparé.
+const ACCORDIONS = [
+  { toggle: 'toggle-art', body: 'body-art', icon: '🎨', label: 'Choisissez votre art', summaryFn: () => state.selectorSummaries?.artText },
+  { toggle: 'toggle-century', body: 'body-century', icon: '🏛️', label: 'Choisissez votre siècle et votre zone géographique', summaryFn: () => state.selectorSummaries?.centuryText },
+  { toggle: 'toggle-rubriques', body: 'body-rubriques', icon: '📝', label: 'Choisissez vos rubriques', summaryFn: () => state.selectorSummaries?.rubriquesText },
+  { toggle: 'toggle-level', body: 'body-level', icon: '⭐', label: 'Choisissez votre niveau et votre nombre de questions', summaryFn: () => state.selectorSummaries?.levelText },
+];
+function refreshAccordionLabels() {
+  ACCORDIONS.forEach(({ toggle, icon, label, summaryFn }) => {
+    const btn = $(toggle);
+    if (!btn) return;
+    const summary = summaryFn();
+    const isEmpty = !summary || /^(Aucun|Aucune)/.test(summary);
+    btn.textContent = isEmpty ? `${icon} ${label}` : `${icon} Modifiez : ${summary}`;
+    btn.classList.toggle('accordion-toggle-done', !isEmpty);
+  });
 }
-function scheduleChoicesCollapse() {
-  clearTimeout(choicesCollapseTimer);
-  choicesCollapseTimer = setTimeout(() => {
-    $('choices-panel')?.classList.add('hidden');
-  }, 2000);
-}
-$('choices-panel')?.addEventListener('change', (event) => {
-  if (event.target.matches('input[type="checkbox"], input[type="radio"]')) {
-    updateSelectorSummaries();
-    scheduleChoicesCollapse();
-  }
+ACCORDIONS.forEach(({ toggle, body }) => {
+  $(toggle)?.addEventListener('click', () => {
+    const el = $(body);
+    if (!el) return;
+    const opening = el.classList.contains('hidden');
+    // Un seul accordéon ouvert à la fois, pour rester lisible.
+    ACCORDIONS.forEach(({ body: otherBody }) => { if (otherBody !== body) $(otherBody)?.classList.add('hidden'); });
+    el.classList.toggle('hidden', !opening);
+  });
 });
-$('select-choices')?.addEventListener('click', () => {
-  const panel = $('choices-panel');
-  if (panel.classList.contains('hidden')) openChoicesPanel();
-  else { clearTimeout(choicesCollapseTimer); panel.classList.add('hidden'); }
-});
-$('choices-done-button')?.addEventListener('click', () => {
-  clearTimeout(choicesCollapseTimer);
-  updateSelectorSummaries();
-  showQuizSummary();
-});
-document.querySelectorAll('.recap-edit-button').forEach((button) => {
-  button.addEventListener('click', () => openChoicesPanel());
+document.querySelectorAll('.accordion-body input[type="checkbox"], .accordion-body input[type="radio"]').forEach((input) => {
+  input.addEventListener('change', () => { updateSelectorSummaries(); refreshAccordionLabels(); });
 });
 $('open-quiz-setup')?.addEventListener('click', () => showPanel('quiz-setup'));
-$('back-home-from-quiz-setup')?.addEventListener('click', () => showPanel('welcome'));
 // Info-bulle CSS (survol/focus) plutôt qu'une alerte bloquante ; sur mobile (pas de survol), un
 // tap bascule son affichage.
 $('open-training')?.addEventListener('click', (event) => {
   event.currentTarget.classList.toggle('show-tooltip');
 });
-function showQuizSummary() {
-  $('choices-panel')?.classList.add('hidden');
-  $('quiz-summary')?.classList.remove('hidden');
-  const s = state.selectorSummaries || {};
-  $('recap-art').textContent = `🎨 Art : ${s.artText || 'Aucun art choisi'}`;
-  $('recap-century').textContent = `🏛️ Siècle et zone : ${s.centuryText || 'Aucun siècle choisi'}`;
-  $('recap-rubriques').textContent = `📝 Rubriques : ${s.rubriquesText || 'Aucune rubrique choisie'}`;
-  $('recap-level').textContent = `⭐ Niveau et questions : ${s.levelText || 'Aucun niveau choisi'}`;
-}
 document.querySelectorAll('.modal-close').forEach((button) => {
   button.addEventListener('click', () => { closeModal(button.dataset.modal); updateSelectorSummaries(); });
 });
@@ -1453,6 +1438,7 @@ function updateSelectorSummaries() {
   state.selectorSummaries = { artText, centuryText: centuryText + zoneText, rubriquesText, levelText };
 }
 updateSelectorSummaries();
+refreshAccordionLabels();
 
 const LEVEL_QUESTION_COUNTS = { '1': 30, '2': 60, '3': 120 };
 
