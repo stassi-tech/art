@@ -27,13 +27,13 @@
         <section id="welcome-panel" class="welcome-panel">
           <div id="account-bar" class="account-bar">
             <span id="account-status">Non connecté</span>
-            <button type="button" id="account-login-button" class="link-label">Se connecter / Créer un compte</button>
-            <button type="button" id="account-page-button" class="link-label hidden">Mon compte</button>
-            <button type="button" id="account-logout-button" class="link-label hidden">Se déconnecter</button>
+            <button type="button" id="account-login-button" class="secondary-button account-bar-button">Se connecter / Créer un compte</button>
+            <button type="button" id="account-page-button" class="secondary-button account-bar-button hidden">Mon compte</button>
+            <button type="button" id="account-logout-button" class="secondary-button account-bar-button hidden">Se déconnecter</button>
           </div>
 
           <p class="eyebrow home-eyebrow">Peinture &amp; sculpture — 14e au 20e siècle</p>
-          <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art, c'est possible.</h1>
+          <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
 
           <figure class="home-illustration">
             <img src="assets/accueil.jpg" alt="" />
@@ -57,40 +57,82 @@
         </section>
 
         <section id="quiz-setup-panel" class="welcome-panel hidden">
-          <button type="button" class="link-label back-home-link" id="back-home-from-quiz-setup">← Accueil</button>
+          <div class="quiz-topbar">
+            <button type="button" class="home-icon-button" id="back-home-from-quiz-setup" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
+            <button type="button" id="quiz-setup-fullscreen-toggle" class="home-icon-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
+          </div>
 
           <figure class="home-illustration">
             <img src="assets/accueil.jpg" alt="" />
             <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
           </figure>
 
-          <div class="quiz-selectors hidden" id="quiz-selectors-grid">
-            <button type="button" class="selector-button hidden" id="open-art">
-              🎨 Choisissez votre art
-              <span class="selector-summary" id="summary-art">Aucun art choisi</span>
-            </button>
-            <button type="button" class="selector-button hidden" id="open-century">
-              🏛️ Choisissez votre siècle et votre zone géographique
-              <span class="selector-summary" id="summary-century">Aucun siècle choisi</span>
-            </button>
-            <button type="button" class="selector-button hidden" id="open-rubriques">
-              📝 Choisissez vos rubriques
-              <span class="selector-summary" id="summary-rubriques">Aucune rubrique choisie</span>
-            </button>
-            <button type="button" class="selector-button hidden" id="open-level">
-              ⭐ Choisissez votre niveau et votre nombre de questions
-              <span class="selector-summary" id="summary-level">Aucun niveau choisi</span>
-            </button>
-          </div>
+          <button type="button" class="primary-button" id="select-choices" style="width:100%; margin-bottom:14px;">🎯 Sélectionnez vos choix</button>
 
-          <button type="button" class="primary-button" id="select-choices" style="width:100%; margin-bottom:20px;">🎯 Sélectionnez vos choix</button>
+          <div class="choices-panel hidden" id="choices-panel">
+            <fieldset class="choices-group">
+              <legend title="Type d'œuvres proposées dans le quiz">🎨 Art</legend>
+              <label class="rubrique-option"><input type="checkbox" id="art-peinture" /><span title="Tableaux, fresques, retables…">Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="art-sculpture" /><span title="Statues, bustes, bas-reliefs…">Sculpture</span></label>
+            </fieldset>
+
+            <fieldset class="choices-group">
+              <legend title="Période(s) de création des œuvres">🏛️ Siècle</legend>
+              <label class="rubrique-option"><input type="checkbox" id="century-14e" /><span title="Œuvres créées entre 1301 et 1400">14e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-15e" /><span title="Œuvres créées entre 1401 et 1500">15e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-16e" /><span title="Œuvres créées entre 1501 et 1600">16e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-17e" /><span title="Œuvres créées entre 1601 et 1700">17e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-18e" /><span title="Œuvres créées entre 1701 et 1800">18e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-19e" /><span title="Œuvres créées entre 1801 et 1900">19e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-20e" /><span title="Artistes morts avant 1955 uniquement, pour raisons de droits">20e siècle</span></label>
+              <p class="modal-hint">Cocher plusieurs siècles mélange aléatoirement leurs œuvres dans un même quiz.</p>
+            </fieldset>
+
+            <fieldset class="choices-group">
+              <legend title="Filtre optionnel par origine géographique de l'artiste">🌍 Zone géographique</legend>
+              <label class="rubrique-option"><input type="checkbox" id="zone-france" /><span title="Artistes d'origine française">France</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-europe" /><span title="Artistes d'origine européenne hors France">Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-amerique" /><span title="Artistes d'origine américaine (Nord et Sud)">Amérique</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-asie" /><span title="Artistes d'origine asiatique">Asie</span></label>
+              <p class="modal-hint">Rien coché = toutes zones confondues. Les œuvres sans nationalité connue sont incluses quel que soit le choix.</p>
+            </fieldset>
+
+            <fieldset class="choices-group">
+              <legend title="Informations sur lesquelles vous serez évalué en correction">📝 Rubriques</legend>
+              <label class="rubrique-option"><input type="checkbox" id="rubrique-artist" /><span title="Nom du peintre ou du sculpteur">Artiste</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="rubrique-title" /><span title="Titre exact de l'œuvre">Titre de l'œuvre</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="rubrique-date" /><span title="Année ou période de création">Date de création</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="rubrique-location" /><span title="Musée ou lieu où l'œuvre est conservée">Lieu de conservation</span></label>
+              <p class="modal-hint">La correction affichera toujours les 4 informations, mais seules les rubriques cochées sont notées.</p>
+            </fieldset>
+
+            <fieldset class="choices-group">
+              <legend title="Notoriété des œuvres — chaque niveau est un réservoir indépendant">⭐ Niveau</legend>
+              <label class="rubrique-option"><input type="checkbox" id="level-1" value="1" /><span title="Œuvres les plus connues">Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="level-2" value="2" /><span title="Œuvres moins connues">Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="level-3" value="3" /><span title="Œuvres rares, plus difficiles">Niveau 3</span></label>
+              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
+            </fieldset>
+
+            <fieldset class="choices-group">
+              <legend title="Longueur du quiz">🔢 Nombre de questions</legend>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-10" value="10" /><span>10 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-20" value="20" /><span>20 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-30" value="30" checked /><span>30 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-60" value="60" /><span>60 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-120" value="120" /><span>120 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-max" value="max" /><span title="Toutes les œuvres disponibles pour ce choix">Maximum disponible</span></label>
+            </fieldset>
+
+            <button type="button" class="primary-button" id="choices-done-button" style="width:100%">Voir le récapitulatif</button>
+          </div>
 
           <div class="quiz-summary hidden" id="quiz-summary">
             <h3 class="modal-subheading" style="margin-top:0">Récapitulatif de votre quiz</h3>
-            <div class="summary-line"><span id="recap-art">—</span><button type="button" class="link-label" data-modal="modal-art">Modifiez</button></div>
-            <div class="summary-line"><span id="recap-century">—</span><button type="button" class="link-label" data-modal="modal-century">Modifiez</button></div>
-            <div class="summary-line"><span id="recap-rubriques">—</span><button type="button" class="link-label" data-modal="modal-rubriques">Modifiez</button></div>
-            <div class="summary-line"><span id="recap-level">—</span><button type="button" class="link-label" data-modal="modal-level">Modifiez</button></div>
+            <div class="summary-line"><span id="recap-art">—</span><button type="button" class="link-label recap-edit-button">Modifiez</button></div>
+            <div class="summary-line"><span id="recap-century">—</span><button type="button" class="link-label recap-edit-button">Modifiez</button></div>
+            <div class="summary-line"><span id="recap-rubriques">—</span><button type="button" class="link-label recap-edit-button">Modifiez</button></div>
+            <div class="summary-line"><span id="recap-level">—</span><button type="button" class="link-label recap-edit-button">Modifiez</button></div>
           </div>
 
           <div class="quiz-action-row quiz-action-row-single">
@@ -98,109 +140,6 @@
           </div>
           <p id="launch-feedback" class="hint hidden"></p>
         </section>
-
-        <div class="modal-overlay hidden" id="modal-art">
-          <div class="modal-box">
-            <h3>Choisissez votre art</h3>
-            <label class="rubrique-option">
-              <input type="checkbox" id="art-peinture" />
-              <span>Peinture</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="art-sculpture" />
-              <span>Sculpture</span>
-            </label>
-            <button type="button" class="primary-button" id="art-next" data-modal="modal-art">Suivant →</button>
-          </div>
-        </div>
-
-        <div class="modal-overlay hidden" id="modal-century">
-          <div class="modal-box">
-            <h3>Choisissez votre siècle</h3>
-            <label class="rubrique-option">
-              <input type="checkbox" id="century-14e" />
-              <span>14e siècle</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="century-15e" />
-              <span>15e siècle</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="century-16e" />
-              <span>16e siècle</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="century-17e" />
-              <span>17e siècle</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="century-18e" />
-              <span>18e siècle</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="century-19e" />
-              <span>19e siècle</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="century-20e" />
-              <span>20e siècle</span>
-            </label>
-            <p class="modal-hint">Cocher plusieurs siècles mélange aléatoirement leurs œuvres dans un même quiz.</p>
-
-            <h3 class="modal-subheading">🌍 Zone géographique</h3>
-            <label class="rubrique-option">
-              <input type="checkbox" id="zone-france" />
-              <span>France</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="zone-europe" />
-              <span>Autres pays d'Europe</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="zone-amerique" />
-              <span>Amérique</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="zone-asie" />
-              <span>Asie</span>
-            </label>
-            <p class="modal-hint">Rien coché = toutes zones confondues. Ce filtre s'appuie sur la nationalité renseignée dans les fichiers ; les œuvres sans nationalité connue sont incluses quel que soit le choix.</p>
-            <div class="modal-nav-row">
-              <button type="button" class="secondary-button" id="century-prev" data-modal="modal-century">← Précédent</button>
-              <button type="button" class="primary-button" id="century-next" data-modal="modal-century">Suivant →</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-overlay hidden" id="modal-fonctionnement">
-          <div class="modal-box">
-            <h3>Le fonctionnement des quiz</h3>
-            <p>Chaque quiz vous présente une série d'œuvres d'art à identifier, une par une, à partir de leur image.</p>
-            <p>Vous choisissez : l'<strong>art</strong> (peinture et/ou sculpture), le <strong>siècle</strong> (et, si vous le souhaitez, une zone géographique), les <strong>rubriques</strong> sur lesquelles vous voulez être noté (artiste, titre, date de création, lieu de conservation), le <strong>nombre de questions</strong> et le <strong>niveau</strong> (chaque niveau est un réservoir d'œuvres distinct et indépendant des autres ; si vous souhaitez mélanger plusieurs niveaux, sélectionnez-les conjointement).</p>
-            <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les 4 informations, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d'orthographe, surnoms, titres en langue d'origine) sont tolérées dans une certaine mesure.</p>
-            <p>Un bouton micro (🎤) sur l'image permet de dicter votre réponse au champ actuellement sélectionné : attendez que la ligne passe en jaune avant de parler, puis épelez ou corrigez au clavier si besoin. <strong>Pour l'artiste, dictez le prénom complet plutôt que le seul nom de famille</strong> : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » tout seul, souvent retranscrit en « monnaie ».</p>
-            <p>À la fin du quiz, votre score s'affiche et s'enregistre automatiquement si vous êtes connecté à votre compte.</p>
-
-            <h3 class="modal-subheading">Comment les niveaux 1, 2, 3 sont-ils établis ? (méthode — version provisoire)</h3>
-            <p>Le niveau 1 rassemble les artistes les plus universellement connus d'un siècle donné ; le niveau 2 élargit à des artistes célèbres mais plus spécialisés ; le niveau 3 descend vers des artistes moins connus du grand public, plus intéressants pour un amateur averti. Établir cette hiérarchie de façon vraiment objective est difficile — voici la démarche suivie, avec ses limites assumées.</p>
-            <p><strong>Aucun critère unique n'est satisfaisant seul.</strong> Le nombre d'œuvres conservées en institution favorise les artistes prolifiques mais mineurs, et pénalise au contraire des figures majeures au corpus réduit (Léonard de Vinci ne compte qu'une quinzaine à une vingtaine de peintures attribuées avec certitude). Le volume de documentation disponible sur Wikimedia Commons — qui a en pratique le plus influencé les choix faits jusqu'ici pour des raisons d'accessibilité des images — surreprésente nettement l'Europe de l'Ouest par rapport au reste du monde, sans rapport avec la célébrité réelle des artistes qui y sont moins documentés.</p>
-            <p><strong>Une piste plus solide : croiser les sources culturelles.</strong> Une étude académique (Frahm, El-Zant, Georgeot &amp; Shepelyansky, « Interactions and influence of world painters from the reduced Google matrix of Wikipedia networks », 2018) a précisément mesuré l'importance des peintres en comparant leur position dans sept éditions linguistiques de Wikipédia (anglaise, française, allemande, russe...), révélant que le classement diffère sensiblement d'une langue — donc d'une culture — à l'autre. C'est l'esprit de ce qu'on cherche à faire ici à plus petite échelle : demander « qui sont les grands peintres » à des sources issues de zones culturelles différentes (IA entraînées dans différentes langues, encyclopédies, manuels de référence de différents pays) et ne retenir en niveau 1 que ce qui converge largement entre elles, plutôt que de se fier à une seule tradition (occidentale) de désignation des « grands maîtres ».</p>
-            <p>Dans un genre voisin mais différent, le projet <em>The Most Wanted Paintings</em> de Komar &amp; Melamid (années 1990) avait sondé le goût du grand public dans une quinzaine de pays, dont la Russie — une démarche sur les préférences populaires plutôt que sur la notoriété des artistes, mais qui illustre que ce type d'enquête comparative internationale existe bel et bien.</p>
-            <p><strong>Piste complémentaire à l'étude — la couverture de la production.</strong> Pour chaque artiste retenu, on pourrait déterminer le nombre total d'œuvres qui lui sont attribuées et la part de « chefs-d'œuvre » reconnus dans cette production, puis appliquer un coefficient selon le niveau : un artiste de niveau 1 au corpus réduit (Léonard et sa vingtaine de tableaux) pourrait être couvert à 100 % dans nos fichiers, tandis qu'un artiste de niveau 3, plus prolifique mais moins central, n'y figurerait qu'à hauteur de ses œuvres les plus marquantes (par exemple 10 % de sa production). C'est une piste encore théorique, qui reste à affiner et à appliquer systématiquement.</p>
-            <p class="modal-hint">Cette méthode continuera d'évoluer. Les biais connus (surreprésentation de l'Europe de l'Ouest, angles morts sur l'Asie, l'Afrique, les Amériques précolombiennes...) seront progressivement corrigés au fur et à mesure des vérifications croisées.</p>
-            <button type="button" class="primary-button modal-close" data-modal="modal-fonctionnement">Fermer</button>
-          </div>
-        </div>
-
-        <div class="modal-overlay hidden" id="modal-contact">
-          <div class="modal-box">
-            <h3>Contact</h3>
-            <p>Pour toute question, suggestion ou signalement d'erreur, vous pouvez écrire à l'adresse suivante :</p>
-            <p><a href="mailto:votre-adresse@exemple.com" class="link-label">votre-adresse@exemple.com</a></p>
-            <p class="modal-hint">Adresse personnelle temporaire — à remplacer par la vôtre.</p>
-            <button type="button" class="primary-button modal-close" data-modal="modal-contact">Fermer</button>
-          </div>
-        </div>
 
         <div class="modal-overlay hidden" id="modal-artist-list">
           <div class="modal-box">
@@ -225,82 +164,6 @@
             <h3>À savoir sur le 20e siècle</h3>
             <p>Pour des raisons de droits de propriété intellectuelle, les artistes morts après 1955 ne sont pas actuellement représentés dans les quiz du 20e siècle. Seuls des artistes suffisamment anciens (dont les œuvres sont dans le domaine public) y figurent.</p>
             <button type="button" class="primary-button modal-close" data-modal="modal-century-20e-notice">Compris</button>
-          </div>
-        </div>
-
-        <div class="modal-overlay hidden" id="modal-rubriques">
-          <div class="modal-box">
-            <h3>Choisissez vos rubriques</h3>
-            <p class="modal-hint">La correction affichera toujours les 4 informations, mais seules les rubriques cochées sont notées.</p>
-            <label class="rubrique-option">
-              <input type="checkbox" id="rubrique-artist" />
-              <span>Artiste</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="rubrique-title" />
-              <span>Titre de l'œuvre</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="rubrique-date" />
-              <span>Date de création</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="rubrique-location" />
-              <span>Lieu de conservation</span>
-            </label>
-            <div class="modal-nav-row">
-              <button type="button" class="secondary-button" id="rubriques-prev" data-modal="modal-rubriques">← Précédent</button>
-              <button type="button" class="primary-button" id="rubriques-next" data-modal="modal-rubriques">Suivant →</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal-overlay hidden" id="modal-level">
-          <div class="modal-box">
-            <h3>Choisissez votre niveau et votre nombre de questions</h3>
-            <p class="modal-hint">Chaque niveau est indépendant : le niveau 1 réunit les œuvres les plus connues, le niveau 2 des œuvres moins connues, le niveau 3 les plus rares — sans chevauchement entre eux. Pour mélanger plusieurs niveaux, sélectionnez-les conjointement. Le nombre de questions est indépendant : vous pouvez par exemple piocher 30 questions dans le niveau 3. Exception ponctuelle : une œuvre exceptionnellement célèbre peut être classée à un niveau supérieur à celui de son artiste, indépendamment du reste de sa production (par exemple Le Radeau de la Méduse, en niveau 1, alors que Géricault est par ailleurs classé en niveau 2). Dans la page de correction, les autres œuvres du même artiste sont alors regroupées et triées par niveau, avec une ligne de séparation entre les groupes.</p>
-            <label class="rubrique-option">
-              <input type="checkbox" id="level-1" value="1" />
-              <span>Niveau 1</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="level-2" value="2" />
-              <span>Niveau 2</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="checkbox" id="level-3" value="3" />
-              <span>Niveau 3</span>
-            </label>
-
-            <h3 class="modal-subheading">🔢 Nombre de questions</h3>
-            <label class="rubrique-option">
-              <input type="radio" name="nb-questions" id="count-10" value="10" />
-              <span>10 questions</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="radio" name="nb-questions" id="count-20" value="20" />
-              <span>20 questions</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="radio" name="nb-questions" id="count-30" value="30" checked />
-              <span>30 questions</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="radio" name="nb-questions" id="count-60" value="60" />
-              <span>60 questions</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="radio" name="nb-questions" id="count-120" value="120" />
-              <span>120 questions</span>
-            </label>
-            <label class="rubrique-option">
-              <input type="radio" name="nb-questions" id="count-max" value="max" />
-              <span>Maximum disponible</span>
-            </label>
-            <div class="modal-nav-row">
-              <button type="button" class="secondary-button" id="level-prev" data-modal="modal-level">← Précédent</button>
-              <button type="button" class="primary-button modal-close" id="level-finish" data-modal="modal-level">Voir le récapitulatif</button>
-            </div>
           </div>
         </div>
 
@@ -351,7 +214,14 @@
             </div>
 
             <section class="answer-card" aria-label="Vos réponses">
-              <button type="button" id="mic-global" class="mic-under-image hidden" aria-label="Dicter la réponse au champ sélectionné">🎤 Micro inactif</button>
+              <div class="mic-wrap">
+                <button type="button" id="mic-global" class="mic-under-image hidden" aria-label="Dicter la réponse au champ sélectionné">🎤 Micro inactif</button>
+                <div class="mic-tooltip hidden" id="mic-tooltip">
+                  <p>Cliquez sur ce bouton pour dicter votre réponse au champ sélectionné (🎯). Attendez que la ligne passe en jaune avant de parler ; vous pouvez toujours corriger au clavier ensuite. Pour l'artiste, dictez le prénom complet (« Claude Monet », pas « Monet » seul).</p>
+                  <label class="rubrique-option"><input type="checkbox" id="mic-tooltip-dismiss" /><span>Ne plus afficher ce message</span></label>
+                  <button type="button" class="secondary-button" id="mic-tooltip-close">Fermer</button>
+                </div>
+              </div>
               <form id="answer-form">
                 <div class="field-row" data-field="artist">
                   <input id="artist-input" name="artist" autocomplete="off" placeholder="Artiste" aria-label="Artiste" />

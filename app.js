@@ -45,12 +45,15 @@ function updateAccountBar() {
     return;
   }
   if (currentUser) {
-    statusEl.textContent = `Connecté : ${currentUser.email}`;
+    statusEl.textContent = '';
+    statusEl.classList.add('hidden');
     loginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
     pageBtn.classList.remove('hidden');
+    pageBtn.textContent = `Mon compte (${currentUser.email})`;
   } else {
     statusEl.textContent = 'Non connecté';
+    statusEl.classList.remove('hidden');
     loginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
     pageBtn.classList.add('hidden');
@@ -386,7 +389,12 @@ const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRec
 const voiceSupported = Boolean(SpeechRecognitionImpl);
 if (voiceSupported) {
   $('mic-global').classList.remove('hidden');
+  if (localStorage.getItem('micTooltipDismissed') !== 'true') $('mic-tooltip')?.classList.remove('hidden');
 }
+$('mic-tooltip-close')?.addEventListener('click', () => {
+  if ($('mic-tooltip-dismiss')?.checked) localStorage.setItem('micTooltipDismissed', 'true');
+  $('mic-tooltip')?.classList.add('hidden');
+});
 // Un seul bouton micro sert les 4 rubriques : il dicte dans le champ actuellement sélectionné
 // (touché/cliqué), et suit automatiquement le focus si on passe à un autre champ pendant l'écoute.
 // La dictée reste active en continu, d'une question à l'autre, tant qu'on ne tape rien manuellement.
@@ -1267,6 +1275,7 @@ function toggleFullscreen() {
 }
 $('fullscreen-toggle')?.addEventListener('click', toggleFullscreen);
 $('other-works-fullscreen-toggle')?.addEventListener('click', toggleFullscreen);
+$('quiz-setup-fullscreen-toggle')?.addEventListener('click', toggleFullscreen);
 // Position des boutons Artiste/Titre/Date/Lieu (droite par défaut pour droitiers, gauche pour
 // gauchers) : préférence locale mémorisée sur l'appareil. Pourra migrer vers le compte personnel.
 function applyHandedness(lefty) {
@@ -1299,18 +1308,6 @@ const ZONE_ABBR = { france: 'Fr.', europe: 'Europe', amerique: 'Amér.', asie: '
 const LEVEL_LABELS = { '1': 'Niveau 1', '2': 'Niveau 2', '3': 'Niveau 3' };
 function openModal(id) { $(id).classList.remove('hidden'); }
 function closeModal(id) { $(id).classList.add('hidden'); }
-// Parcours guidé : les 4 fenêtres de choix s'enchaînent automatiquement (Suivant / Précédent),
-// pour ne rien oublier. Mais si on arrive dans une fenêtre via "Modifier" depuis le récapitulatif
-// final, on ne veut PAS relancer toute la chaîne (art → siècle → rubriques → niveau) : un clic sur
-// Suivant/Précédent doit alors revenir directement au récapitulatif. `editingFromSummary` retient
-// ce contexte le temps d'une seule fenêtre.
-let editingFromSummary = false;
-function goToModal(fromId, toId) {
-  closeModal(fromId);
-  updateSelectorSummaries();
-  if (editingFromSummary) { editingFromSummary = false; showQuizSummary(); return; }
-  openModal(toId);
-}
 // Fond décoratif de la page d'accueil : 15 œuvres célèbres, floutées et assourdies par défaut,
 // nettes et agrandies au survol. Purement décoratif (aria-hidden), tolère les échecs de chargement.
 const BG_MOSAIC_FILES = [
@@ -1339,7 +1336,41 @@ function initBackgroundMosaic() {
   }).join('');
 }
 initBackgroundMosaic();
-$('select-choices')?.addEventListener('click', () => openModal('modal-art'));
+// Le panneau de choix (art/siècle/zone/rubriques/niveau/nombre) est un seul bloc intégré à la
+// page — plus de fenêtres modales empilées. Il se replie tout seul 2 secondes après la dernière
+// case cochée, et se rouvre sur un nouveau clic sur « Sélectionnez vos choix » ou sur un lien
+// « Modifiez » du récapitulatif.
+let choicesCollapseTimer = null;
+function openChoicesPanel() {
+  clearTimeout(choicesCollapseTimer);
+  $('quiz-summary')?.classList.add('hidden');
+  $('choices-panel')?.classList.remove('hidden');
+}
+function scheduleChoicesCollapse() {
+  clearTimeout(choicesCollapseTimer);
+  choicesCollapseTimer = setTimeout(() => {
+    $('choices-panel')?.classList.add('hidden');
+  }, 2000);
+}
+$('choices-panel')?.addEventListener('change', (event) => {
+  if (event.target.matches('input[type="checkbox"], input[type="radio"]')) {
+    updateSelectorSummaries();
+    scheduleChoicesCollapse();
+  }
+});
+$('select-choices')?.addEventListener('click', () => {
+  const panel = $('choices-panel');
+  if (panel.classList.contains('hidden')) openChoicesPanel();
+  else { clearTimeout(choicesCollapseTimer); panel.classList.add('hidden'); }
+});
+$('choices-done-button')?.addEventListener('click', () => {
+  clearTimeout(choicesCollapseTimer);
+  updateSelectorSummaries();
+  showQuizSummary();
+});
+document.querySelectorAll('.recap-edit-button').forEach((button) => {
+  button.addEventListener('click', () => openChoicesPanel());
+});
 $('open-quiz-setup')?.addEventListener('click', () => showPanel('quiz-setup'));
 $('back-home-from-quiz-setup')?.addEventListener('click', () => showPanel('welcome'));
 // Info-bulle CSS (survol/focus) plutôt qu'une alerte bloquante ; sur mobile (pas de survol), un
@@ -1347,39 +1378,21 @@ $('back-home-from-quiz-setup')?.addEventListener('click', () => showPanel('welco
 $('open-training')?.addEventListener('click', (event) => {
   event.currentTarget.classList.toggle('show-tooltip');
 });
-$('art-next')?.addEventListener('click', () => goToModal('modal-art', 'modal-century'));
-$('century-prev')?.addEventListener('click', () => goToModal('modal-century', 'modal-art'));
-$('century-next')?.addEventListener('click', () => goToModal('modal-century', 'modal-rubriques'));
-$('rubriques-prev')?.addEventListener('click', () => goToModal('modal-rubriques', 'modal-century'));
-$('rubriques-next')?.addEventListener('click', () => goToModal('modal-rubriques', 'modal-level'));
-$('level-prev')?.addEventListener('click', () => goToModal('modal-level', 'modal-rubriques'));
-$('level-finish')?.addEventListener('click', () => { editingFromSummary = false; updateSelectorSummaries(); showQuizSummary(); });
 function showQuizSummary() {
-  $('quiz-selectors-grid')?.classList.add('hidden');
-  $('select-choices')?.classList.add('hidden');
+  $('choices-panel')?.classList.add('hidden');
   $('quiz-summary')?.classList.remove('hidden');
-  $('recap-art').textContent = `🎨 Art : ${$('summary-art').textContent}`;
-  $('recap-century').textContent = `🏛️ Siècle et zone : ${$('summary-century').textContent}`;
-  $('recap-rubriques').textContent = `📝 Rubriques : ${$('summary-rubriques').textContent}`;
-  $('recap-level').textContent = `⭐ Niveau et questions : ${$('summary-level').textContent}`;
+  const s = state.selectorSummaries || {};
+  $('recap-art').textContent = `🎨 Art : ${s.artText || 'Aucun art choisi'}`;
+  $('recap-century').textContent = `🏛️ Siècle et zone : ${s.centuryText || 'Aucun siècle choisi'}`;
+  $('recap-rubriques').textContent = `📝 Rubriques : ${s.rubriquesText || 'Aucune rubrique choisie'}`;
+  $('recap-level').textContent = `⭐ Niveau et questions : ${s.levelText || 'Aucun niveau choisi'}`;
 }
-// Les liens "Modifier" du récapitulatif ouvrent directement la fenêtre concernée. Peu importe où
-// elle se trouve dans la chaîne : le drapeau ci-dessus fait qu'on revient droit au récapitulatif
-// ensuite, sans repasser par les autres fenêtres.
-document.querySelectorAll('#quiz-summary .link-label').forEach((button) => {
-  button.addEventListener('click', () => { editingFromSummary = true; openModal(button.dataset.modal); });
-});
 document.querySelectorAll('.modal-close').forEach((button) => {
   button.addEventListener('click', () => { closeModal(button.dataset.modal); updateSelectorSummaries(); });
 });
 document.querySelectorAll('.modal-overlay').forEach((overlay) => {
   overlay.addEventListener('click', (event) => { if (event.target === overlay) { overlay.classList.add('hidden'); updateSelectorSummaries(); } });
 });
-$('open-art')?.addEventListener('click', () => openModal('modal-art'));
-$('open-century')?.addEventListener('click', () => openModal('modal-century'));
-$('open-zone')?.addEventListener('click', () => openModal('modal-century')); // zone fusionnée dans la modale siècle
-$('open-rubriques')?.addEventListener('click', () => openModal('modal-rubriques'));
-$('open-level')?.addEventListener('click', () => openModal('modal-level'));
 
 // Avertissement affiché une seule fois par session dès que le 20e siècle est coché : les
 // artistes morts après 1955 ne sont pas représentés, pour des raisons de droits d'auteur.
@@ -1424,21 +1437,20 @@ function selectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`level-${lv
 function selectedQuestionCount() { const checked = document.querySelector('input[name="nb-questions"]:checked'); return checked ? checked.value : '30'; }
 function updateSelectorSummaries() {
   const arts = selectedArts();
-  $('summary-art').textContent = arts.length ? arts.map((a) => ART_LABELS[a]).join(', ') : 'Aucun art choisi';
+  const artText = arts.length ? arts.map((a) => ART_LABELS[a]).join(', ') : 'Aucun art choisi';
   const centuries = selectedCenturies();
   const zones = selectedZones();
-  // Zone désormais choisie dans la même modale que le siècle : les deux s'affichent ensemble
-  // dans le résumé du bouton "Choisissez votre siècle".
   const centuryText = centuries.length ? centuries.map((c) => CENTURY_LABELS[c]).join(', ') : 'Aucun siècle choisi';
   const zoneText = zones.length ? ` · ${zones.map((z) => ZONE_LABELS[z]).join(', ')}` : '';
-  $('summary-century').textContent = centuryText + zoneText;
   const rubriques = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.label);
-  $('summary-rubriques').textContent = rubriques.length ? rubriques.join(', ') : 'Aucune rubrique choisie';
+  const rubriquesText = rubriques.length ? rubriques.join(', ') : 'Aucune rubrique choisie';
   const levels = selectedLevels();
   const count = selectedQuestionCount();
   const countText = count === 'max' ? 'maximum disponible' : `${count} questions`;
   const levelsText = levels.length ? levels.map((lvl) => LEVEL_LABELS[lvl]).join(' + ') : '';
-  $('summary-level').textContent = levels.length ? `${levelsText} — ${countText}` : 'Aucun niveau choisi';
+  const levelText = levels.length ? `${levelsText} — ${countText}` : 'Aucun niveau choisi';
+  // Conservé pour le récapitulatif (showQuizSummary), qui reprend ces mêmes textes.
+  state.selectorSummaries = { artText, centuryText: centuryText + zoneText, rubriquesText, levelText };
 }
 updateSelectorSummaries();
 
