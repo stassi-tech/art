@@ -11,6 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   </head>
   <body>
+    <div class="bg-mosaic" aria-hidden="true" id="bg-mosaic"></div>
     <div class="hamburger-wrap">
       <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button">☰</button>
       <div class="hamburger-menu hidden" id="hamburger-menu">
@@ -45,12 +46,20 @@
             <button type="button" class="home-mode-button" id="open-training">
               <span class="label">Entraînement</span>
               <span class="desc">Exercices de mémorisation sur un échantillon d'œuvres</span>
+              <span class="tooltip-bubble" role="tooltip">Le mode Entraînement est en construction (imprégnation, choix, reconstitution, énigme, vrai/faux, famille). Les quiz sont disponibles dès maintenant.</span>
             </button>
             <button type="button" class="home-mode-button" id="open-quiz-setup">
               <span class="label">Quiz</span>
               <span class="desc">Identification notée, score et suivi</span>
             </button>
           </div>
+
+          <p class="copyright-notice">© 2026 Stéphane Tassi. Contenu original — reproduction ou réutilisation de la sélection sans autorisation interdite.<br>Site à but non commercial, sans publicité, proposé à titre personnel et éducatif.<br>Les images sont issues de Wikimedia Commons et sont utilisées sous leurs licences respectives (domaine public ou Creative Commons selon les fichiers). Cliquez sur une image pour accéder à sa page source et à ses crédits complets.</p>
+        </section>
+
+        <section id="quiz-setup-panel" class="welcome-panel hidden">
+          <button type="button" class="link-label back-home-link" id="back-home-from-quiz-setup">← Accueil</button>
+          <h2 style="margin-top:0">Configurer votre quiz</h2>
 
           <div class="quiz-selectors hidden" id="quiz-selectors-grid">
             <button type="button" class="selector-button hidden" id="open-art">
@@ -71,7 +80,7 @@
             </button>
           </div>
 
-          <button type="button" class="primary-button hidden" id="select-choices" style="width:100%; margin-bottom:20px;">🎯 Sélectionnez vos choix</button>
+          <button type="button" class="primary-button" id="select-choices" style="width:100%; margin-bottom:20px;">🎯 Sélectionnez vos choix</button>
 
           <div class="quiz-summary hidden" id="quiz-summary">
             <h3 class="modal-subheading" style="margin-top:0">Récapitulatif de votre quiz</h3>
@@ -85,8 +94,6 @@
             <button id="launch-quiz-button" class="primary-button" type="button">Lancez le quiz</button>
           </div>
           <p id="launch-feedback" class="hint hidden"></p>
-
-          <p class="copyright-notice">© 2026 Stéphane Tassi. Contenu original — reproduction ou réutilisation de la sélection sans autorisation interdite.<br>Site à but non commercial, sans publicité, proposé à titre personnel et éducatif.<br>Les images sont issues de Wikimedia Commons et sont utilisées sous leurs licences respectives (domaine public ou Creative Commons selon les fichiers). Cliquez sur une image pour accéder à sa page source et à ses crédits complets.</p>
         </section>
 
         <div class="modal-overlay hidden" id="modal-art">

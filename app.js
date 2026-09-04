@@ -780,14 +780,17 @@ function selectedRubriquesLabel() {
   return labels.join(', ');
 }
 function showPanel(name) {
-  // name: 'welcome' | 'quiz' | 'results' | 'account' | 'other-works' — centralise l'affichage des
-  // panneaux et de la barre latérale (titre + import), visible uniquement sur la page d'accueil.
+  // name: 'welcome' | 'quiz-setup' | 'quiz' | 'results' | 'account' | 'other-works' — centralise
+  // l'affichage des panneaux et de la barre latérale (titre + import), visible uniquement sur la
+  // page d'accueil.
   $('welcome-panel').classList.toggle('hidden', name !== 'welcome');
+  $('quiz-setup-panel')?.classList.toggle('hidden', name !== 'quiz-setup');
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
   $('account-panel')?.classList.toggle('hidden', name !== 'account');
   $('other-works-panel')?.classList.toggle('hidden', name !== 'other-works');
   $('sidebar')?.classList.toggle('hidden', name !== 'welcome');
+  $('bg-mosaic')?.classList.toggle('hidden', name !== 'welcome');
 }
 
 function commonsFilePageUrl(imageUrl) {
@@ -1308,12 +1311,41 @@ function goToModal(fromId, toId) {
   if (editingFromSummary) { editingFromSummary = false; showQuizSummary(); return; }
   openModal(toId);
 }
+// Fond décoratif de la page d'accueil : 15 œuvres célèbres, floutées et assourdies par défaut,
+// nettes et agrandies au survol. Purement décoratif (aria-hidden), tolère les échecs de chargement.
+const BG_MOSAIC_FILES = [
+  'Mona_Lisa,_by_Leonardo_da_Vinci,_from_C2RMF_retouched.jpg',
+  'Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg',
+  'Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg',
+  'Edvard_Munch,_1893,_The_Scream,_oil,_tempera_and_pastel_on_cardboard,_91_x_73_cm,_National_Gallery_of_Norway.jpg',
+  'Eugène_Delacroix_-_La_liberté_guidant_le_peuple.jpg',
+  'Meisje_met_de_parel.jpg',
+  'JEAN_LOUIS_THEODORE_GERICAULT_-_La_Balsa_de_la_Medusa_(Museo_del_Louvre,_1818-19).jpg',
+  'Monet_-_Impression,_Sunrise.jpg',
+  'The_Kiss_-_Gustav_Klimt_-_Google_Cultural_Institute.jpg',
+  'The_Nightwatch_by_Rembrandt.jpg',
+  'Claude_Monet_038.jpg',
+  'Grant_Wood_-_American_Gothic_-_Google_Art_Project.jpg',
+  'Van_Eyck_-_Arnolfini_Portrait.jpg',
+  'Da_Vinci_Vitruve_Luc_Viatour.jpg',
+  'Whistlers_Mother_high_res.jpg',
+];
+function initBackgroundMosaic() {
+  const container = $('bg-mosaic');
+  if (!container) return;
+  container.innerHTML = BG_MOSAIC_FILES.map((filename) => {
+    const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
+    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" onerror="this.closest('.bg-tile').style.display='none'" /></div>`;
+  }).join('');
+}
+initBackgroundMosaic();
 $('select-choices')?.addEventListener('click', () => openModal('modal-art'));
-$('open-quiz-setup')?.addEventListener('click', () => openModal('modal-art'));
-$('open-training')?.addEventListener('click', () => {
-  // Les exercices d'entraînement (imprégnation, choix, reconstitution, énigme, vrai/faux,
-  // famille) sont en cours de construction — cf. échange avec l'utilisateur du 4 septembre 2026.
-  alert("Le mode Entraînement arrive bientôt : imprégnation, choix, reconstitution, énigme, vrai/faux, famille. En attendant, le Quiz est disponible.");
+$('open-quiz-setup')?.addEventListener('click', () => showPanel('quiz-setup'));
+$('back-home-from-quiz-setup')?.addEventListener('click', () => showPanel('welcome'));
+// Info-bulle CSS (survol/focus) plutôt qu'une alerte bloquante ; sur mobile (pas de survol), un
+// tap bascule son affichage.
+$('open-training')?.addEventListener('click', (event) => {
+  event.currentTarget.classList.toggle('show-tooltip');
 });
 $('art-next')?.addEventListener('click', () => goToModal('modal-art', 'modal-century'));
 $('century-prev')?.addEventListener('click', () => goToModal('modal-century', 'modal-art'));
