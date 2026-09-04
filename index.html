@@ -17,6 +17,7 @@
         <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Le fonctionnement des quiz</button>
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 La liste des artistes</button>
         <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
+        <button type="button" class="hamburger-item" id="menu-item-handedness">✋ Boutons de champ : droite (droitier)</button>
       </div>
     </div>
     <div class="app-shell">
@@ -320,38 +321,31 @@
               <a id="artwork-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
             </figure>
 
+            <button type="button" id="mic-global" class="mic-under-image hidden" aria-label="Dicter la réponse au champ sélectionné">🎤 Micro inactif</button>
+
             <section class="answer-card" aria-label="Vos réponses">
               <form id="answer-form">
-                <label>Artiste
-                  <div class="field-input-row">
-                    <input id="artist-input" name="artist" autocomplete="off" />
-                    <button type="button" class="field-target-button" data-field="artist" aria-label="Sélectionner ce champ pour la dictée sans ouvrir le clavier">🎯</button>
-                  </div>
-                </label>
-                <label>Titre de l'œuvre
-                  <div class="field-input-row">
-                    <input id="title-input" name="title" autocomplete="off" />
-                    <button type="button" class="field-target-button" data-field="title" aria-label="Sélectionner ce champ pour la dictée sans ouvrir le clavier">🎯</button>
-                  </div>
-                </label>
-                <label>Date de création
-                  <div class="field-input-row">
-                    <input id="date-input" name="date" autocomplete="off" />
-                    <button type="button" class="field-target-button" data-field="date" aria-label="Sélectionner ce champ pour la dictée sans ouvrir le clavier">🎯</button>
-                  </div>
-                </label>
+                <div class="field-row" data-field="artist">
+                  <input id="artist-input" name="artist" autocomplete="off" placeholder="Artiste" aria-label="Artiste" />
+                  <button type="button" class="field-label-button" data-field="artist">Artiste</button>
+                </div>
+                <div class="field-row" data-field="title">
+                  <input id="title-input" name="title" autocomplete="off" placeholder="Titre de l'œuvre" aria-label="Titre de l'œuvre" />
+                  <button type="button" class="field-label-button" data-field="title">Titre</button>
+                </div>
+                <div class="field-row" data-field="date">
+                  <input id="date-input" name="date" autocomplete="off" placeholder="Date de création" aria-label="Date de création" />
+                  <button type="button" class="field-label-button" data-field="date">Date</button>
+                </div>
                 <div class="field-nav-flank">
                   <button type="button" id="previous-button-overlay" class="nav-flank-button" aria-label="Question précédente">←</button>
-                  <label class="field-location">Lieu de conservation
-                    <div class="field-input-row">
-                      <input id="location-input" name="location" autocomplete="off" />
-                      <button type="button" class="field-target-button" data-field="location" aria-label="Sélectionner ce champ pour la dictée sans ouvrir le clavier">🎯</button>
-                    </div>
-                  </label>
+                  <div class="field-row field-location" data-field="location">
+                    <input id="location-input" name="location" autocomplete="off" placeholder="Lieu de conservation" aria-label="Lieu de conservation" />
+                    <button type="button" class="field-label-button" data-field="location">Lieu</button>
+                  </div>
                   <button type="button" id="next-button-overlay" class="nav-flank-button" aria-label="Question suivante">→</button>
                 </div>
                 <div class="answer-submit-row">
-                  <button type="button" id="mic-global" class="mic-bottom-button hidden" aria-label="Dicter la réponse au champ sélectionné">🎤</button>
                   <button id="check-button" class="primary-button" type="submit">Valider</button>
                 </div>
               </form>
