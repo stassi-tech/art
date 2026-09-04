@@ -29,9 +29,11 @@
         <section id="welcome-panel" class="welcome-panel">
           <div id="account-bar" class="account-bar">
             <span id="account-status">Non connecté</span>
-            <button type="button" id="account-login-button" class="secondary-button account-bar-button">Se connecter / Créer un compte</button>
-            <button type="button" id="account-page-button" class="secondary-button account-bar-button hidden">Mon compte</button>
-            <button type="button" id="account-logout-button" class="secondary-button account-bar-button hidden">Se déconnecter</button>
+          </div>
+          <div class="home-mode-buttons account-buttons-row">
+            <button type="button" id="account-login-button" class="home-mode-button account-slot">Se connecter / Créer un compte</button>
+            <button type="button" id="account-page-button" class="home-mode-button account-slot hidden">Mon compte</button>
+            <button type="button" id="account-logout-button" class="home-mode-button account-slot hidden">Se déconnecter</button>
           </div>
 
           <p class="eyebrow home-eyebrow">Peinture &amp; sculpture — 14e au 20e siècle</p>
@@ -240,12 +242,11 @@
         </section>
 
         <section id="other-works-panel" class="other-works-panel hidden">
-          <h2 id="other-works-panel-title">Autres œuvres du même peintre (tous niveaux)</h2>
-          <div id="other-works-panel-list" class="other-works-panel-list"></div>
           <div class="quiz-bottom-bar">
             <button type="button" id="other-works-previous-button" class="nav-bottom-button" aria-label="Question précédente">← Précédente</button>
             <button type="button" id="other-works-next-button" class="nav-bottom-button" aria-label="Question suivante">Suivante →</button>
           </div>
+          <div id="other-works-panel-list" class="other-works-panel-list"></div>
         </section>
 
         <div id="image-lightbox" class="image-lightbox hidden">

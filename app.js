@@ -1006,23 +1006,24 @@ function renderCorrection(answer, question) {
 function renderOtherWorksPanel() {
   const otherWorks = state.currentOtherWorks || [];
   const list = $('other-works-panel-list');
-  list.classList.remove('count-1', 'count-2', 'count-3-4');
+  list.classList.remove('count-1', 'count-2', 'count-3-4', 'count-5-8', 'count-9plus');
   if (otherWorks.length === 1) list.classList.add('count-1');
   else if (otherWorks.length === 2) list.classList.add('count-2');
   else if (otherWorks.length <= 4) list.classList.add('count-3-4');
-  let previousLevel = null;
+  else if (otherWorks.length <= 8) list.classList.add('count-5-8');
+  else list.classList.add('count-9plus');
+  // Classées comme un catalogue : niveau 1 d'abord, puis 2, puis 3 (déjà l'ordre fourni par
+  // renderCorrection), sans titre de section ni ligne de séparation — juste le niveau indiqué
+  // sous chaque légende.
   list.innerHTML = otherWorks.map((otherQuestion, index) => {
     const source = imageSource(otherQuestion.image);
     const titleValue = formatCorrectionValue('title', otherQuestion.title);
     const level = otherQuestion.niveau || 1;
-    const separator = (previousLevel !== null && level !== previousLevel)
-      ? `<div class="other-works-panel-separator" role="separator"><span>${escapeHtml(LEVEL_LABELS[String(level)] || `Niveau ${level}`)}</span></div>`
-      : '';
-    previousLevel = level;
-    return `${separator}<button type="button" class="other-work-card-big" data-index="${index}">
+    const levelLabel = LEVEL_LABELS[String(level)] || `Niveau ${level}`;
+    return `<button type="button" class="other-work-card-big" data-index="${index}">
       <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
            onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
-      <span class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}</span>
+      <span class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}<br><span class="other-work-level">${escapeHtml(levelLabel)}</span></span>
     </button>`;
   }).join('');
   // Clic sur une vignette : ouvre l'image en grand dans la visionneuse, avec juste un bouton
@@ -1331,6 +1332,20 @@ function initBackgroundMosaic() {
     const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
     return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" /></div>`;
   }).join('');
+  // Sur smartphone il n'y a pas de vrai survol à la souris : « :hover » seul ne suffit pas.
+  // On bascule une classe au toucher/clic pour obtenir le même effet net + agrandi, et on la
+  // retire des autres vignettes pour n'en montrer qu'une nette à la fois.
+  container.querySelectorAll('.bg-tile').forEach((tile) => {
+    tile.addEventListener('click', () => {
+      const wasActive = tile.classList.contains('touched');
+      container.querySelectorAll('.bg-tile.touched').forEach((t) => t.classList.remove('touched'));
+      if (!wasActive) tile.classList.add('touched');
+    });
+    // Doublon JS du survol CSS (:hover) : garantit l'effet même si le survol CSS est
+    // empêché quelque part dans la chaîne d'empilement (pointer-events, z-index…).
+    tile.addEventListener('mouseenter', () => tile.classList.add('touched'));
+    tile.addEventListener('mouseleave', () => tile.classList.remove('touched'));
+  });
 }
 initBackgroundMosaic();
 // Quatre accordéons indépendants (art / siècle+zone / rubriques / niveau+nombre) : chacun a son
