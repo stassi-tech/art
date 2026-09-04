@@ -150,7 +150,7 @@
             <p>Vous choisissez : l'<strong>art</strong> (peinture et/ou sculpture), le <strong>siècle</strong> (et, si vous le souhaitez, une zone géographique), les <strong>rubriques</strong> sur lesquelles vous voulez être noté (artiste, titre, date de création, lieu de conservation), le <strong>nombre de questions</strong> et le <strong>niveau</strong> (chaque niveau est un réservoir d'œuvres distinct et indépendant des autres ; si vous souhaitez mélanger plusieurs niveaux, sélectionnez-les conjointement).</p>
             <p>Le niveau reflète en général la notoriété de l'<strong>artiste</strong> dans son ensemble, pas celle de chaque œuvre individuellement. Il arrive qu'une œuvre isolée soit bien plus (ou moins) célèbre que le reste de la production du même artiste : dans ces cas, elle est reclassée à son propre niveau, indépendamment de celui de l'artiste. C'est une estimation, pas une science exacte — si un classement vous semble discutable, c'est probablement voulu plutôt qu'une erreur.</p>
             <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les 4 informations, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d'orthographe, surnoms, titres en langue d'origine) sont tolérées dans une certaine mesure.</p>
-            <p>Un bouton micro (🎤) permet de dicter votre réponse au champ sélectionné (via les boutons Artiste/Titre/Date/Lieu, qui n'ouvrent pas le clavier). Pour l'artiste, dictez le prénom complet plutôt que le seul nom de famille : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » seul, souvent retranscrit en « monnaie ».</p>
+            <p>Un bouton micro (🎤) permet de dicter votre réponse : appuyez d'abord sur le bouton de la rubrique concernée (Artiste/Titre/Date/Lieu, qui n'ouvre pas le clavier) pour la sélectionner, puis sur le micro juste avant de parler. Pour l'artiste, dictez le prénom complet plutôt que le seul nom de famille : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » seul, souvent retranscrit en « monnaie ».</p>
             <p>Bon travail de mémoire et de culture !</p>
             <button type="button" class="primary-button modal-close" data-modal="modal-fonctionnement">Fermer</button>
           </div>
@@ -251,7 +251,7 @@
               </div>
               <div class="mic-wrap">
                 <div class="mic-tooltip hidden" id="mic-tooltip">
-                  <p>Cliquez sur ce bouton pour dicter votre réponse au champ sélectionné (🎯). Attendez que la ligne passe en jaune avant de parler ; vous pouvez toujours corriger au clavier ensuite. Pour l'artiste, dictez le prénom complet (« Claude Monet », pas « Monet » seul).</p>
+                  <p>Appuyez d'abord sur le bouton de la rubrique concernée (Artiste, Titre, Date ou Lieu) pour la sélectionner, puis sur ce bouton micro juste avant de parler. Vous pouvez toujours corriger au clavier ensuite. Pour l'artiste, dictez le prénom complet (« Claude Monet », pas « Monet » seul).</p>
                   <label class="rubrique-option"><input type="checkbox" id="mic-tooltip-dismiss" /><span>Ne plus afficher ce message</span></label>
                   <button type="button" class="secondary-button" id="mic-tooltip-close">Fermer</button>
                 </div>
@@ -287,8 +287,8 @@
 
         <section id="other-works-panel" class="other-works-panel hidden">
           <div class="quiz-bottom-bar">
-            <button type="button" id="other-works-back-button" class="global-topbar-button" aria-label="Retour au questionnaire" title="Retour au questionnaire">↩</button>
-            <button type="button" id="other-works-next-button" class="nav-bottom-button" aria-label="Question suivante">Question suivante →</button>
+            <button type="button" id="other-works-back-button" class="nav-arrow-button" aria-label="Retour au questionnaire" title="Retour au questionnaire">↩</button>
+            <button type="button" id="other-works-next-button" class="nav-arrow-button" aria-label="Question suivante" title="Question suivante">→</button>
           </div>
           <div id="other-works-panel-list" class="other-works-panel-list"></div>
         </section>

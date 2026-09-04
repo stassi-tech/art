@@ -150,9 +150,9 @@ body.lefty .hamburger-menu { right:auto; left:0; }
 body.lefty .field-row { flex-direction:row-reverse; }
 .mic-nav-row { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
 .mic-nav-row .primary-button { flex:1; }
-.mic-nav-row .nav-arrow-button { flex:0 0 auto; width:38px; height:38px; border-radius:50%; border:1px solid var(--accent); background:var(--accent); color:#fff; font-size:1rem; font-weight:700; cursor:pointer; transition:background .15s; }
-.mic-nav-row .nav-arrow-button:hover:not(:disabled) { background:var(--accent-dark); }
-.mic-nav-row .nav-arrow-button:disabled { opacity:.35; cursor:not-allowed; }
+.nav-arrow-button { flex:0 0 auto; width:38px; height:38px; border-radius:50%; border:1px solid var(--accent); background:var(--accent); color:#fff; font-size:1rem; font-weight:700; cursor:pointer; transition:background .15s; }
+.nav-arrow-button:hover:not(:disabled) { background:var(--accent-dark); }
+.nav-arrow-button:disabled { opacity:.35; cursor:not-allowed; }
 .mic-icon-button { flex-shrink:0; width:44px; height:44px; border-radius:50%; border:1px solid #cfc8bc; background:#fff; color:var(--ink); cursor:pointer; font-size:1.1rem; transition:background .15s, border-color .15s; }
 .mic-icon-button:hover:not(:disabled) { background:#f7f2ea; border-color:var(--accent); }
 .mic-icon-button:disabled { cursor:not-allowed; opacity:.4; }
