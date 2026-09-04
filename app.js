@@ -993,7 +993,7 @@ function renderCorrection(answer, question) {
 function renderOtherWorksPanel() {
   const otherWorks = state.currentOtherWorks || [];
   let previousLevel = null;
-  $('other-works-panel-list').innerHTML = otherWorks.map((otherQuestion) => {
+  $('other-works-panel-list').innerHTML = otherWorks.map((otherQuestion, index) => {
     const source = imageSource(otherQuestion.image);
     const titleValue = formatCorrectionValue('title', otherQuestion.title);
     const level = otherQuestion.niveau || 1;
@@ -1001,12 +1001,23 @@ function renderOtherWorksPanel() {
       ? `<div class="other-works-panel-separator" role="separator"><span>${escapeHtml(LEVEL_LABELS[String(level)] || `Niveau ${level}`)}</span></div>`
       : '';
     previousLevel = level;
-    return `${separator}<div class="other-work-card-big">
+    return `${separator}<button type="button" class="other-work-card-big" data-index="${index}">
       <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
            onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
       <span class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}</span>
-    </div>`;
+    </button>`;
   }).join('');
+  // Clic sur une vignette : ouvre l'image en grand dans la visionneuse, avec juste un bouton
+  // de fermeture (les boutons du haut restent accessibles pour revenir en arrière).
+  $('other-works-panel-list').querySelectorAll('.other-work-card-big').forEach((card) => {
+    card.addEventListener('click', () => {
+      const work = otherWorks[Number(card.dataset.index)];
+      const titleValue = formatCorrectionValue('title', work.title);
+      $('lightbox-image').src = imageSource(work.image);
+      $('lightbox-caption').innerHTML = `<strong>${titleValue}</strong><br>${escapeHtml(work.date)} — ${escapeHtml(work.location)}`;
+      $('image-lightbox').classList.remove('hidden');
+    });
+  });
 }
 function escapeHtml(value) { const div = document.createElement('div'); div.textContent = value; return div.innerHTML; }
 
@@ -1235,11 +1246,17 @@ $('back-home-from-quiz')?.addEventListener('click', () => showPanel('welcome'));
 document.querySelectorAll('.field-label-button').forEach((button) => {
   button.addEventListener('click', () => setFocusedField(button.dataset.field, { focusInput: false, scroll: false }));
 });
-$('fullscreen-toggle')?.addEventListener('click', () => {
-  document.body.classList.toggle('quiz-fullscreen');
-  const active = document.body.classList.contains('quiz-fullscreen');
-  $('fullscreen-toggle').setAttribute('aria-label', active ? 'Quitter le plein écran' : 'Basculer le mode plein écran (masque le bandeau du haut)');
-});
+// Vrai plein écran navigateur (masque la barre d'adresse sur mobile quand le navigateur le
+// permet) plutôt qu'un simple masquage CSS — qui pouvait bloquer l'accès aux boutons si activé.
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  } else {
+    document.exitFullscreen?.().catch(() => {});
+  }
+}
+$('fullscreen-toggle')?.addEventListener('click', toggleFullscreen);
+$('other-works-fullscreen-toggle')?.addEventListener('click', toggleFullscreen);
 // Position des boutons Artiste/Titre/Date/Lieu (droite par défaut pour droitiers, gauche pour
 // gauchers) : préférence locale mémorisée sur l'appareil. Pourra migrer vers le compte personnel.
 function applyHandedness(lefty) {
@@ -1262,7 +1279,6 @@ $('other-works-previous-button')?.addEventListener('click', () => {
   if (state.index > 0) { state.index--; renderQuestion(); }
 });
 $('other-works-home-button')?.addEventListener('click', () => showPanel('welcome'));
-$('other-works-fullscreen-toggle')?.addEventListener('click', () => document.body.classList.toggle('quiz-fullscreen'));
 $('back-home-from-results')?.addEventListener('click', () => showPanel('welcome'));
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
@@ -1515,6 +1531,9 @@ $('previous-button-overlay').addEventListener('click', () => {
   if (state.index > 0) { state.index--; renderQuestion(); }
 });
 $('next-button-overlay').addEventListener('click', goToNextOrResults);
+$('topbar-previous-button')?.addEventListener('click', () => $('previous-button-overlay').click());
+$('topbar-next-button')?.addEventListener('click', () => $('next-button-overlay').click());
+$('lightbox-close-button')?.addEventListener('click', () => $('image-lightbox').classList.add('hidden'));
 $('review-button').addEventListener('click', () => {
   // Reprendre depuis le début le même jeu de questions (normal ou révision en cours)
   showPanel('quiz'); state.index = 0; renderQuestion();

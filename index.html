@@ -306,7 +306,9 @@
         <section id="quiz-panel" class="quiz-panel hidden" aria-live="polite">
           <div class="quiz-topbar" id="quiz-topbar">
             <button type="button" class="home-icon-button" id="back-home-from-quiz" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
-            <button type="button" id="fullscreen-toggle" class="home-icon-button" aria-label="Basculer le mode plein écran (masque le bandeau du haut)" title="Plein écran">⛶</button>
+            <button type="button" id="fullscreen-toggle" class="home-icon-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
+            <button type="button" id="topbar-previous-button" class="nav-bottom-button topbar-nav-button" aria-label="Question précédente">← Précédente</button>
+            <button type="button" id="topbar-next-button" class="nav-bottom-button topbar-nav-button" aria-label="Question suivante">Suivante →</button>
           </div>
           <div class="progress-row" id="quiz-progress-row">
             <span id="quiz-reference" class="quiz-reference"></span>
@@ -315,13 +317,14 @@
           <div class="progress-track" id="quiz-progress-track"><div id="progress-bar" class="progress-bar"></div></div>
 
           <div class="quiz-grid">
-            <figure class="artwork-card">
-              <img id="artwork-image" alt="Œuvre à identifier" />
-              <figcaption id="image-message" class="image-message hidden"></figcaption>
-              <a id="artwork-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
-            </figure>
-
-            <button type="button" id="mic-global" class="mic-under-image hidden" aria-label="Dicter la réponse au champ sélectionné">🎤 Micro inactif</button>
+            <div class="artwork-column">
+              <figure class="artwork-card">
+                <img id="artwork-image" alt="Œuvre à identifier" />
+                <figcaption id="image-message" class="image-message hidden"></figcaption>
+                <a id="artwork-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
+              </figure>
+              <button type="button" id="mic-global" class="mic-under-image hidden" aria-label="Dicter la réponse au champ sélectionné">🎤 Micro inactif</button>
+            </div>
 
             <section class="answer-card" aria-label="Vos réponses">
               <form id="answer-form">
@@ -364,13 +367,21 @@
             <button type="button" class="home-icon-button" id="other-works-home-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
             <button type="button" class="home-icon-button" id="other-works-fullscreen-toggle" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
           </div>
-          <h2 id="other-works-panel-title">Autres œuvres du même peintre dans le quiz</h2>
+          <h2 id="other-works-panel-title">Autres œuvres du même peintre dans ce quiz</h2>
           <div id="other-works-panel-list" class="other-works-panel-list"></div>
           <div class="quiz-bottom-bar">
             <button type="button" id="other-works-previous-button" class="nav-bottom-button" aria-label="Question précédente">← Précédente</button>
             <button type="button" id="other-works-next-button" class="nav-bottom-button" aria-label="Question suivante">Suivante →</button>
           </div>
         </section>
+
+        <div id="image-lightbox" class="image-lightbox hidden">
+          <div class="quiz-topbar">
+            <button type="button" class="home-icon-button" id="lightbox-close-button" aria-label="Fermer l'image" title="Retour">✕</button>
+          </div>
+          <img id="lightbox-image" alt="" />
+          <p id="lightbox-caption" class="lightbox-caption"></p>
+        </div>
 
         <section id="results-panel" class="results-panel hidden">
           <button type="button" class="link-label back-home-link" id="back-home-from-results">← Retour à l'accueil</button>
