@@ -398,6 +398,9 @@ function updateFieldHighlight() {
   allFields.forEach(({ key, input }) => {
     $(input)?.closest('label')?.classList.toggle('field-target', key === focusedFieldKey);
   });
+  document.querySelectorAll('.field-target-button').forEach((button) => {
+    button.classList.toggle('field-target-active', button.dataset.field === focusedFieldKey);
+  });
 }
 function setFocusedField(key, { focusInput = false, scroll = true } = {}) {
   focusedFieldKey = key;
@@ -440,7 +443,7 @@ function startDictation() {
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
   const button = $('mic-global');
-  button.classList.add('listening'); button.textContent = 'Parlez'; micIsListening = true;
+  button.classList.add('listening'); button.textContent = 'Micro actif'; micIsListening = true;
   activeRecognition = recognition;
   const forget = () => { resetMicButton(); if (activeRecognition === recognition) activeRecognition = null; };
   recognition.addEventListener('result', (event) => {
@@ -1229,6 +1232,16 @@ document.addEventListener('click', (event) => {
 $('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-fonctionnement'); });
 $('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
 $('back-home-from-quiz')?.addEventListener('click', () => showPanel('welcome'));
+// Boutons « 🎯 » à côté de chaque champ : sélectionnent le champ comme cible de dictée sans lui
+// donner le focus réel, pour éviter l'ouverture systématique du clavier virtuel sur mobile.
+document.querySelectorAll('.field-target-button').forEach((button) => {
+  button.addEventListener('click', () => setFocusedField(button.dataset.field, { focusInput: false, scroll: false }));
+});
+$('fullscreen-toggle')?.addEventListener('click', () => {
+  document.body.classList.toggle('quiz-fullscreen');
+  const active = document.body.classList.contains('quiz-fullscreen');
+  $('fullscreen-toggle').setAttribute('aria-label', active ? 'Quitter le plein écran' : 'Basculer le mode plein écran (masque le bandeau du haut)');
+});
 $('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
 $('other-works-next-button')?.addEventListener('click', () => { showPanel('quiz'); goToNextOrResults(); });
 $('back-home-from-results')?.addEventListener('click', () => showPanel('welcome'));
