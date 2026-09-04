@@ -55,8 +55,8 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .quiz-action-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:14px; }
 .quiz-action-row .secondary-button { min-height:52px; font-size:.95rem; }
 .quiz-action-row .primary-button { min-height:52px; }
-.hamburger-wrap { position:fixed; top:16px; left:16px; z-index:200; }
-.hamburger-button { width:32px; height:32px; border-radius:6px; border:1px solid var(--border); background:var(--paper); font-size:1rem; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+.hamburger-wrap { position:fixed; top:8px; left:8px; z-index:200; }
+.hamburger-button { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:var(--paper); font-size:.9rem; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
 .hamburger-button:hover { background:#f7f2ea; }
 .hamburger-menu { position:absolute; top:52px; left:0; background:var(--paper); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 30px rgba(0,0,0,.18); min-width:240px; padding:8px; }
 .hamburger-item { display:block; width:100%; text-align:left; padding:12px 14px; border-radius:6px; border:0; background:transparent; cursor:pointer; font-family:Arial,sans-serif; font-size:.92rem; color:var(--ink); }
@@ -145,9 +145,6 @@ body.quiz-fullscreen #quiz-progress-track { display:none; }
 
 .other-works-toggle { width:100%; margin-top:14px; }
 .other-works-panel { max-width:900px; margin:24px auto; padding:30px 26px; }
-.other-works-topbar { display:flex; justify-content:flex-end; margin-bottom:14px; }
-.other-works-next-button { background:#fff; border:1px solid var(--border); border-radius:5px; padding:9px 16px; font-family:Arial,sans-serif; font-size:.9rem; font-weight:700; color:var(--ink); cursor:pointer; }
-.other-works-next-button:hover { background:#f7f2ea; }
 .other-works-panel h2 { margin:6px 0 18px; font-size:1.25rem; }
 .other-works-panel-list { display:flex; flex-wrap:wrap; gap:18px; }
 .other-works-panel-list .other-work-card-big { width:220px; text-align:center; border:2px solid transparent; border-radius:8px; background:none; padding:8px; cursor:default; font:inherit; }
@@ -187,7 +184,7 @@ body.has-other-works .correction-label { font-size:.76rem; }
 .export-feedback { margin-top:14px; font-family:Arial,sans-serif; font-size:.85rem; color:var(--ok); }
 
 @media (max-width:900px) {
-  .app-shell { flex-direction:column; width:min(100% - 24px, 1120px); padding-top:18px; min-height:auto; }
+  .app-shell { flex-direction:column; width:min(100% - 24px, 1120px); padding-top:44px; min-height:auto; }
   .sidebar { flex-direction:column; width:100%; max-width:100%; flex-basis:auto; position:static; align-self:stretch; padding:18px; }
   .sidebar-illustration { max-height:160px; }
   .welcome-panel,.results-panel { padding:26px 20px; }
@@ -206,15 +203,17 @@ body.has-other-works .correction-label { font-size:.76rem; }
 
   /* Une fois la correction affichée : on réduit l'image pour que la correction
      complète et les boutons Précédente/Suivante tiennent sans défiler. */
-  body.is-corrected .artwork-card { min-height:30vh; padding:6px; }
-  body.is-corrected .artwork-card img { max-height:28vh; }
+  body.is-corrected .artwork-card { min-height:26vh; padding:6px; }
+  body.is-corrected .artwork-card img { max-height:24vh; }
   body.is-corrected .progress-row,
-  body.is-corrected .progress-track { margin-bottom:8px; }
-  body.is-corrected .correction { padding:8px 12px; }
-  body.is-corrected .correction-value { font-size:1.05rem; margin-bottom:8px; }
-  body.is-corrected .answer-result { font-size:.95rem; }
-  body.is-corrected .navigation { margin-top:10px; }
-  body.is-corrected .nav-button { padding:7px 8px; }
+  body.is-corrected .progress-track { margin-bottom:6px; }
+  body.is-corrected .correction { padding:6px 10px; }
+  body.is-corrected .correction-label { font-size:.68rem; }
+  body.is-corrected .correction-value { font-size:.92rem; margin-bottom:6px; }
+  body.is-corrected .answer-result { font-size:.82rem; }
+  body.is-corrected .quiz-bottom-bar { margin-top:8px; }
+  body.is-corrected .nav-bottom-button { padding:8px 6px; font-size:.78rem; }
+  body.is-corrected .other-works-toggle { margin-top:8px; padding:8px; font-size:.78rem; }
   body.has-other-works.is-corrected .artwork-card { min-height:20vh; }
   body.has-other-works.is-corrected .artwork-card img { max-height:18vh; }
   body.has-other-works .artwork-card { min-height:360px; }

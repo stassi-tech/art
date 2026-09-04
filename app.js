@@ -1256,6 +1256,13 @@ $('menu-item-handedness')?.addEventListener('click', () => {
 });
 $('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
 $('other-works-next-button')?.addEventListener('click', () => { showPanel('quiz'); goToNextOrResults(); });
+$('other-works-previous-button')?.addEventListener('click', () => {
+  showPanel('quiz');
+  if (!answerFor(state.index).checked) saveInputs();
+  if (state.index > 0) { state.index--; renderQuestion(); }
+});
+$('other-works-home-button')?.addEventListener('click', () => showPanel('welcome'));
+$('other-works-fullscreen-toggle')?.addEventListener('click', () => document.body.classList.toggle('quiz-fullscreen'));
 $('back-home-from-results')?.addEventListener('click', () => showPanel('welcome'));
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
