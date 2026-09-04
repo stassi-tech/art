@@ -222,11 +222,6 @@
         </div>
 
         <section id="quiz-panel" class="quiz-panel hidden" aria-live="polite">
-          <div class="quiz-topbar quiz-bottom-bar" id="quiz-topbar">
-            <button type="button" id="previous-button-overlay" class="nav-bottom-button" aria-label="Question précédente">← Précédente</button>
-            <button id="check-button" class="primary-button" type="submit" form="answer-form">Valider</button>
-            <button type="button" id="next-button-overlay" class="nav-bottom-button" aria-label="Question suivante">Suivante →</button>
-          </div>
           <div class="progress-row" id="quiz-progress-row">
             <span id="quiz-reference" class="quiz-reference"></span>
             <span id="score-summary" class="score-summary-highlight">0 / 0 réponse correcte</span>
@@ -243,8 +238,13 @@
             </div>
 
             <section class="answer-card" aria-label="Vos réponses">
+              <div class="mic-nav-row">
+                <button type="button" id="mic-global" class="mic-icon-button hidden" aria-label="Dicter la réponse au champ sélectionné">🎤</button>
+                <button type="button" id="previous-button-overlay" class="nav-bottom-button" aria-label="Question précédente">← Précédente</button>
+                <button id="check-button" class="primary-button" type="submit" form="answer-form">Valider</button>
+                <button type="button" id="next-button-overlay" class="nav-bottom-button" aria-label="Question suivante">Suivante →</button>
+              </div>
               <div class="mic-wrap">
-                <button type="button" id="mic-global" class="mic-under-image hidden" aria-label="Dicter la réponse au champ sélectionné">🎤 Micro inactif</button>
                 <div class="mic-tooltip hidden" id="mic-tooltip">
                   <p>Cliquez sur ce bouton pour dicter votre réponse au champ sélectionné (🎯). Attendez que la ligne passe en jaune avant de parler ; vous pouvez toujours corriger au clavier ensuite. Pour l'artiste, dictez le prénom complet (« Claude Monet », pas « Monet » seul).</p>
                   <label class="rubrique-option"><input type="checkbox" id="mic-tooltip-dismiss" /><span>Ne plus afficher ce message</span></label>
@@ -283,6 +283,7 @@
         <section id="other-works-panel" class="other-works-panel hidden">
           <div class="quiz-bottom-bar">
             <button type="button" id="other-works-back-button" class="global-topbar-button" aria-label="Retour au questionnaire" title="Retour au questionnaire">↩</button>
+            <button type="button" id="other-works-next-button" class="nav-bottom-button" aria-label="Question suivante">Question suivante →</button>
           </div>
           <div id="other-works-panel-list" class="other-works-panel-list"></div>
         </section>

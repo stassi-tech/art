@@ -423,7 +423,7 @@ function resetMicButton() {
   const button = $('mic-global');
   if (!button) return;
   button.classList.remove('listening');
-  button.textContent = '🎤 Micro inactif';
+  button.textContent = '🎤';
   micIsListening = false;
 }
 function stopActiveDictation() {
@@ -448,7 +448,7 @@ function startDictation() {
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
   const button = $('mic-global');
-  button.classList.add('listening'); button.textContent = '🎤 Micro actif'; micIsListening = true;
+  button.classList.add('listening'); button.textContent = '🎤'; micIsListening = true;
   activeRecognition = recognition;
   const forget = () => { resetMicButton(); if (activeRecognition === recognition) activeRecognition = null; };
   recognition.addEventListener('result', (event) => {
@@ -1292,6 +1292,7 @@ $('menu-item-handedness')?.addEventListener('click', () => {
 });
 $('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
 $('other-works-back-button')?.addEventListener('click', () => showPanel('quiz'));
+$('other-works-next-button')?.addEventListener('click', () => { showPanel('quiz'); goToNextOrResults(); });
 $('back-home-from-results')?.addEventListener('click', () => showPanel('welcome'));
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
