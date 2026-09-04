@@ -21,10 +21,6 @@
       </div>
     </div>
     <div class="app-shell">
-      <aside class="sidebar" id="sidebar">
-        <img class="sidebar-illustration" src="assets/accueil.jpg" alt="" aria-hidden="true" />
-        <p class="illustration-caption">Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</p>
-      </aside>
 
       <main class="main-content">
         <section id="welcome-panel" class="welcome-panel">
@@ -35,7 +31,26 @@
             <button type="button" id="account-logout-button" class="link-label hidden">Se déconnecter</button>
           </div>
 
-          <p class="intro-banner">Cette application vous propose d'identifier des œuvres d'art, peintures, sculptures, à travers des images publiées sur le site collaboratif Wikimedia Commons, en retrouvant leur créateur, titre, date de création et lieu de conservation. Choisissez votre art, votre siècle, vos rubriques, le nombre de questions et le niveau que vous souhaitez, puis lancez le quiz. Bon travail de culture et de mémoire!</p>
+          <p class="eyebrow home-eyebrow">Peinture &amp; sculpture — 14e au 20e siècle</p>
+          <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art, c'est possible.</h1>
+
+          <figure class="home-illustration">
+            <img src="assets/accueil.jpg" alt="" />
+            <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
+          </figure>
+
+          <p class="intro-banner">Cette application vous propose de jouer avec une base de plusieurs milliers d'œuvres d'art — peintures et sculptures, du 14e au 20e siècle — à travers des exercices d'entraînement à la mémoire et des quiz d'identification notés.</p>
+
+          <div class="home-mode-buttons">
+            <button type="button" class="home-mode-button" id="open-training">
+              <span class="label">Entraînement</span>
+              <span class="desc">Exercices de mémorisation sur un échantillon d'œuvres</span>
+            </button>
+            <button type="button" class="home-mode-button" id="open-quiz-setup">
+              <span class="label">Quiz</span>
+              <span class="desc">Identification notée, score et suivi</span>
+            </button>
+          </div>
 
           <div class="quiz-selectors hidden" id="quiz-selectors-grid">
             <button type="button" class="selector-button hidden" id="open-art">
@@ -56,7 +71,7 @@
             </button>
           </div>
 
-          <button type="button" class="primary-button" id="select-choices" style="width:100%; margin-bottom:20px;">🎯 Sélectionnez vos choix</button>
+          <button type="button" class="primary-button hidden" id="select-choices" style="width:100%; margin-bottom:20px;">🎯 Sélectionnez vos choix</button>
 
           <div class="quiz-summary hidden" id="quiz-summary">
             <h3 class="modal-subheading" style="margin-top:0">Récapitulatif de votre quiz</h3>

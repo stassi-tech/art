@@ -787,7 +787,7 @@ function showPanel(name) {
   $('results-panel').classList.toggle('hidden', name !== 'results');
   $('account-panel')?.classList.toggle('hidden', name !== 'account');
   $('other-works-panel')?.classList.toggle('hidden', name !== 'other-works');
-  $('sidebar').classList.toggle('hidden', name !== 'welcome');
+  $('sidebar')?.classList.toggle('hidden', name !== 'welcome');
 }
 
 function commonsFilePageUrl(imageUrl) {
@@ -994,8 +994,13 @@ function renderCorrection(answer, question) {
 }
 function renderOtherWorksPanel() {
   const otherWorks = state.currentOtherWorks || [];
+  const list = $('other-works-panel-list');
+  list.classList.remove('count-1', 'count-2', 'count-3-4');
+  if (otherWorks.length === 1) list.classList.add('count-1');
+  else if (otherWorks.length === 2) list.classList.add('count-2');
+  else if (otherWorks.length <= 4) list.classList.add('count-3-4');
   let previousLevel = null;
-  $('other-works-panel-list').innerHTML = otherWorks.map((otherQuestion, index) => {
+  list.innerHTML = otherWorks.map((otherQuestion, index) => {
     const source = imageSource(otherQuestion.image);
     const titleValue = formatCorrectionValue('title', otherQuestion.title);
     const level = otherQuestion.niveau || 1;
@@ -1304,6 +1309,12 @@ function goToModal(fromId, toId) {
   openModal(toId);
 }
 $('select-choices')?.addEventListener('click', () => openModal('modal-art'));
+$('open-quiz-setup')?.addEventListener('click', () => openModal('modal-art'));
+$('open-training')?.addEventListener('click', () => {
+  // Les exercices d'entraînement (imprégnation, choix, reconstitution, énigme, vrai/faux,
+  // famille) sont en cours de construction — cf. échange avec l'utilisateur du 4 septembre 2026.
+  alert("Le mode Entraînement arrive bientôt : imprégnation, choix, reconstitution, énigme, vrai/faux, famille. En attendant, le Quiz est disponible.");
+});
 $('art-next')?.addEventListener('click', () => goToModal('modal-art', 'modal-century'));
 $('century-prev')?.addEventListener('click', () => goToModal('modal-century', 'modal-art'));
 $('century-next')?.addEventListener('click', () => goToModal('modal-century', 'modal-rubriques'));

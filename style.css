@@ -16,7 +16,19 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .folder-button { color:var(--ink); background:transparent; border:1px solid var(--border); }.folder-button:hover { background:#fff; transform:translateY(-1px); }
 .secondary-button { color:var(--ink); background:transparent; border:1px solid var(--border); } .secondary-button:hover { background:#fff; }.secondary-button:disabled { cursor:not-allowed; opacity:.45; }
 
-.welcome-panel,.results-panel { max-width:none; width:100%; margin:0 auto; padding:52px 46px; text-align:center; background:rgba(255,253,249,.86); border:1px solid var(--border); box-shadow:0 16px 35px rgba(54,45,31,.08); border-radius:8px; }.welcome-panel p { color:var(--muted); line-height:1.5; font-size:1.02rem; }.hint { margin:23px auto 0; font-size:1rem; }
+.welcome-panel { max-width:640px; width:100%; margin:0 auto; padding:52px 46px; text-align:center; background:rgba(255,253,249,.86); border:1px solid var(--border); box-shadow:0 16px 35px rgba(54,45,31,.08); border-radius:8px; }
+.results-panel { max-width:none; width:100%; margin:0 auto; padding:52px 46px; text-align:center; background:rgba(255,253,249,.86); border:1px solid var(--border); box-shadow:0 16px 35px rgba(54,45,31,.08); border-radius:8px; }
+.welcome-panel p,.results-panel p { color:var(--muted); line-height:1.5; font-size:1.02rem; }.hint { margin:23px auto 0; font-size:1rem; }
+.home-eyebrow { text-align:center; }
+.home-tagline { font-family:Georgia,"Times New Roman",serif; font-weight:400; font-size:1.55rem; line-height:1.35; margin:0 0 28px; color:var(--ink); }
+.home-illustration { margin:0 0 28px; }
+.home-illustration img { width:100%; max-height:320px; object-fit:contain; border-radius:6px; display:block; background:#f6ecd6; }
+.home-illustration figcaption { margin:10px 0 0; font-family:Georgia,"Times New Roman",serif; font-size:.82rem; font-style:italic; color:var(--muted); }
+.home-mode-buttons { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:8px; }
+.home-mode-button { padding:20px; border:1px solid var(--border); border-radius:4px; background:transparent; cursor:pointer; text-align:left; transition:border-color .15s, background .15s; }
+.home-mode-button:hover { border-color:var(--accent); background:#fff; }
+.home-mode-button .label { display:block; font-family:Arial,sans-serif; font-size:.98rem; font-weight:700; color:var(--ink); margin-bottom:4px; }
+.home-mode-button .desc { display:block; font-family:Georgia,"Times New Roman",serif; font-size:.83rem; color:var(--muted); font-style:italic; }
 .intro-banner { background:#f3e6c9; color:var(--ink); padding:20px 24px; border-radius:6px; font-family:Arial,sans-serif; font-size:1.05rem; font-weight:700; line-height:1.6; text-align:justify; margin-bottom:24px; }
 .account-bar { display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-bottom:14px; font-family:Arial,sans-serif; font-size:.85rem; color:var(--muted); }
 .account-error { color:var(--wrong); font-family:Arial,sans-serif; font-size:.85rem; margin:6px 0 0; }
@@ -145,13 +157,22 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 #correction-details .correction-item:last-child .correction-value { margin-bottom:0; }
 
 .other-works-toggle { width:100%; margin-top:14px; }
-.other-works-panel { max-width:900px; margin:24px auto; padding:30px 26px; }
+.other-works-panel { max-width:1100px; margin:24px auto; padding:30px 26px; }
+.other-works-panel .quiz-topbar { position:sticky; top:0; z-index:5; background:var(--paper); padding:8px 0; }
 .other-works-panel h2 { margin:6px 0 18px; font-size:1.25rem; }
 .other-works-panel-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:22px; }
 .other-works-panel-list .other-work-card-big { width:auto; text-align:center; border:2px solid transparent; border-radius:8px; background:none; padding:8px; cursor:pointer; font:inherit; transition:border-color .15s, background .15s; }
 .other-works-panel-list .other-work-card-big:hover { background:#f7f2ea; border-color:var(--accent); }
 .other-works-panel-list .other-work-card-big img { width:100%; height:min(38vh, 320px); object-fit:cover; border-radius:6px; display:block; margin-bottom:10px; background:#1b1c1e; }
 .other-works-panel-list .other-work-card-big .other-work-caption { font-family:Arial,sans-serif; font-size:.9rem; }
+/* Les images s'adaptent au nombre d'œuvres à afficher : une seule œuvre occupe presque tout
+   l'écran (voir renderOtherWorksPanel en JS, qui pose ces classes selon le nombre). */
+.other-works-panel-list.count-1 { grid-template-columns:1fr; }
+.other-works-panel-list.count-1 .other-work-card-big img { height:min(78vh, 900px); object-fit:contain; background:#1b1c1e; }
+.other-works-panel-list.count-2 { grid-template-columns:repeat(2, 1fr); }
+.other-works-panel-list.count-2 .other-work-card-big img { height:min(58vh, 560px); }
+.other-works-panel-list.count-3-4 { grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); }
+.other-works-panel-list.count-3-4 .other-work-card-big img { height:min(46vh, 420px); }
 /* Un séparateur de niveau occupe toute la largeur de la grille, quel que soit le nombre de
    colonnes calculé automatiquement par auto-fit. */
 .other-works-panel-separator { grid-column:1 / -1; }
