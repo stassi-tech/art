@@ -865,7 +865,7 @@ function renderQuestion() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   $('previous-button-overlay').disabled = state.index === 0;
-  $('next-button-overlay').textContent = state.index === state.questions.length - 1 ? 'Voir le score' : 'Suivante →';
+  $('next-button-overlay').textContent = state.index === state.questions.length - 1 ? '🏁' : '→';
 }
 function formatArtistName(name) {
   // Convention des légendes muséales : prénom normal, nom de famille en MAJUSCULES
@@ -1378,7 +1378,29 @@ ACCORDIONS.forEach(({ toggle, body }) => {
 document.querySelectorAll('.accordion-body input[type="checkbox"], .accordion-body input[type="radio"]').forEach((input) => {
   input.addEventListener('change', () => { updateSelectorSummaries(); refreshAccordionLabels(); });
 });
-$('open-quiz-setup')?.addEventListener('click', () => showPanel('quiz-setup'));
+function refreshSavedChoiceButton() {
+  $('load-saved-choice-button')?.toggleAttribute('hidden', !localStorage.getItem('savedQuizConfig'));
+}
+refreshSavedChoiceButton();
+$('open-quiz-setup')?.addEventListener('click', () => { showPanel('quiz-setup'); refreshSavedChoiceButton(); });
+$('load-saved-choice-button')?.addEventListener('click', () => {
+  const raw = localStorage.getItem('savedQuizConfig');
+  if (!raw) return;
+  const cfg = JSON.parse(raw);
+  ['art-peinture', 'art-sculpture', 'century-14e', 'century-15e', 'century-16e', 'century-17e', 'century-18e', 'century-19e', 'century-20e',
+   'zone-france', 'zone-europe', 'zone-amerique', 'zone-asie', 'level-1', 'level-2', 'level-3'].forEach((id) => { const el = $(id); if (el) el.checked = false; });
+  allFields.forEach((field) => { $(field.checkbox).checked = false; });
+  (cfg.arts || []).forEach((a) => { const el = $(`art-${a}`); if (el) el.checked = true; });
+  (cfg.centuries || []).forEach((c) => { const el = $(`century-${c}`); if (el) el.checked = true; });
+  (cfg.zones || []).forEach((z) => { const el = $(`zone-${z}`); if (el) el.checked = true; });
+  (cfg.levels || []).forEach((lvl) => { const el = $(`level-${lvl}`); if (el) el.checked = true; });
+  (cfg.chosenKeys || []).forEach((key) => { const field = allFields.find((f) => f.key === key); if (field) $(field.checkbox).checked = true; });
+  if (cfg.count) { const el = $(`count-${cfg.count}`); if (el) el.checked = true; }
+  updateSelectorSummaries();
+  refreshAccordionLabels();
+  const fb = $('launch-feedback');
+  if (fb) { fb.classList.remove('hidden'); fb.textContent = 'Choix mémorisé rechargé.'; }
+});
 // Info-bulle CSS (survol/focus) plutôt qu'une alerte bloquante ; sur mobile (pas de survol), un
 // tap bascule son affichage.
 $('open-training')?.addEventListener('click', (event) => {
@@ -1488,6 +1510,14 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
   if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle (« Choisissez votre siècle »).'; return; }
   if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau (« Choisissez votre niveau »).'; return; }
   if (!chosenKeys.length) { feedback.textContent = 'Choisissez au moins une rubrique à réviser (« Choisissez vos rubriques »).'; return; }
+  // Mémorise la configuration choisie (sur l'appareil) si la case est cochée, pour la retrouver
+  // au prochain jeu sans repasser par tout le menu de sélection.
+  if ($('remember-choice-checkbox')?.checked) {
+    localStorage.setItem('savedQuizConfig', JSON.stringify({
+      arts, centuries, zones: selectedZones(), levels, chosenKeys,
+      count: selectedQuestionCount(), savedAt: new Date().toISOString(),
+    }));
+  }
   feedback.textContent = 'Chargement du quiz…';
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé. Vérifiez votre connexion Internet et rechargez la page.');

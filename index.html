@@ -135,6 +135,9 @@
             </div>
           </div>
 
+          <label class="rubrique-option" style="justify-content:center; margin-bottom:10px;"><input type="checkbox" id="remember-choice-checkbox" /><span>💾 Mémoriser ce choix pour un prochain jeu</span></label>
+          <button type="button" class="secondary-button" id="load-saved-choice-button" style="width:100%; margin-bottom:14px;" hidden>📂 Charger le dernier choix mémorisé</button>
+
           <div class="quiz-action-row quiz-action-row-single">
             <button id="launch-quiz-button" class="primary-button" type="button">Lancez le quiz</button>
           </div>
@@ -178,12 +181,12 @@
               <button type="button" class="secondary-button" id="artist-list-mode-filtered">Liste par choix des critères</button>
             </div>
             <p class="modal-hint" id="artist-list-status">Chargement…</p>
-            <div id="artist-list-table" class="artist-list-table"></div>
             <div class="artist-list-filters hidden" id="artist-list-filters">
               <select id="filter-nationalite"><option value="">Toutes nationalités</option></select>
               <select id="filter-art"><option value="">Tous arts</option></select>
               <select id="filter-siecle"><option value="">Tous siècles</option></select>
             </div>
+            <div id="artist-list-table" class="artist-list-table"></div>
             <button type="button" class="primary-button modal-close" data-modal="modal-artist-list">Fermer</button>
           </div>
         </div>
@@ -240,9 +243,9 @@
             <section class="answer-card" aria-label="Vos réponses">
               <div class="mic-nav-row">
                 <button type="button" id="mic-global" class="mic-icon-button hidden" aria-label="Dicter la réponse au champ sélectionné">🎤</button>
-                <button type="button" id="previous-button-overlay" class="nav-bottom-button" aria-label="Question précédente">← Précédente</button>
+                <button type="button" id="previous-button-overlay" class="nav-bottom-button" aria-label="Question précédente">←</button>
                 <button id="check-button" class="primary-button" type="submit" form="answer-form">Valider</button>
-                <button type="button" id="next-button-overlay" class="nav-bottom-button" aria-label="Question suivante">Suivante →</button>
+                <button type="button" id="next-button-overlay" class="nav-bottom-button" aria-label="Question suivante">→</button>
               </div>
               <div class="mic-wrap">
                 <div class="mic-tooltip hidden" id="mic-tooltip">

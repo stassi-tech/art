@@ -128,7 +128,7 @@ body.lefty .hamburger-menu { right:auto; left:0; }
 #modal-artist-list .modal-box { max-width:720px; }
 .modal-box h3 { margin-bottom:18px; font-size:1.25rem; }
 #modal-fonctionnement p { text-align:justify; }
-.modal-box .primary-button { margin-top:20px; width:100%; }
+.modal-box .primary-button { margin-top:20px; width:100%; position:sticky; bottom:0; background:var(--cta); }
 .modal-hint { font-family:Arial,sans-serif; font-size:.82rem; color:var(--muted); margin:10px 0 14px; line-height:1.4; }
 
 .quiz-topbar { display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px; }
@@ -261,6 +261,7 @@ body.has-other-works .correction-label { font-size:.76rem; }
 @media (max-width:640px) {
   .accordion-columns { grid-template-columns:1fr; gap:0; }
   .app-shell { flex-direction:column; width:min(100% - 24px, 1120px); padding-top:44px; min-height:auto; }
+  #quiz-panel .progress-row { margin-top:10px; }
   .sidebar { flex-direction:column; width:100%; max-width:100%; flex-basis:auto; position:static; align-self:stretch; padding:18px; }
   .sidebar-illustration { max-height:160px; }
   .welcome-panel,.results-panel { padding:24px 14px; margin:24px auto; }
