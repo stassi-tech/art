@@ -1258,6 +1258,7 @@ document.addEventListener('click', (event) => {
 });
 $('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-fonctionnement'); });
 $('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
+$('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
 $('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
 // Boutons « Artiste / Titre / Date / Lieu » à côté de chaque champ : sélectionnent le champ comme
 // cible de dictée sans lui donner le focus réel, pour éviter l'ouverture systématique du clavier

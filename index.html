@@ -56,7 +56,7 @@
             </button>
           </div>
 
-          <p class="copyright-notice">© 2026 Stéphane Tassi. Contenu original — reproduction ou réutilisation de la sélection sans autorisation interdite.<br>Site à but non commercial, sans publicité, proposé à titre personnel et éducatif.<br>Les images sont issues de Wikimedia Commons et sont utilisées sous leurs licences respectives (domaine public ou Creative Commons selon les fichiers). Cliquez sur une image pour accéder à sa page source et à ses crédits complets.</p>
+          <p class="copyright-notice">© 2026 Stéphane Tassi — <button type="button" class="link-label copyright-more-link" id="open-mentions-legales">mentions légales</button></p>
         </section>
 
         <section id="quiz-setup-panel" class="welcome-panel hidden">
@@ -76,20 +76,26 @@
           <div class="accordion-group" id="accordion-century">
             <button type="button" class="accordion-toggle" id="toggle-century">🏛️ Choisissez votre siècle et votre zone géographique</button>
             <div class="accordion-body hidden" id="body-century">
-              <label class="rubrique-option"><input type="checkbox" id="century-14e" /><span title="Œuvres créées entre 1301 et 1400">14e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="century-15e" /><span title="Œuvres créées entre 1401 et 1500">15e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="century-16e" /><span title="Œuvres créées entre 1501 et 1600">16e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="century-17e" /><span title="Œuvres créées entre 1601 et 1700">17e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="century-18e" /><span title="Œuvres créées entre 1701 et 1800">18e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="century-19e" /><span title="Œuvres créées entre 1801 et 1900">19e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="century-20e" /><span title="Artistes morts avant 1955 uniquement, pour raisons de droits">20e siècle</span></label>
-              <p class="modal-hint">Cocher plusieurs siècles mélange aléatoirement leurs œuvres dans un même quiz.</p>
-              <p class="modal-subheading">🌍 Zone géographique</p>
-              <label class="rubrique-option"><input type="checkbox" id="zone-france" /><span title="Artistes d'origine française">France</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="zone-europe" /><span title="Artistes d'origine européenne hors France">Autres pays d'Europe</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="zone-amerique" /><span title="Artistes d'origine américaine (Nord et Sud)">Amérique</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="zone-asie" /><span title="Artistes d'origine asiatique">Asie</span></label>
-              <p class="modal-hint">Rien coché = toutes zones confondues. Les œuvres sans nationalité connue sont incluses quel que soit le choix.</p>
+              <div class="accordion-columns">
+                <div class="accordion-col">
+                  <p class="modal-subheading" style="margin-top:0">🏛️ Siècle</p>
+                  <label class="rubrique-option"><input type="checkbox" id="century-14e" /><span title="Œuvres créées entre 1301 et 1400">14e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="century-15e" /><span title="Œuvres créées entre 1401 et 1500">15e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="century-16e" /><span title="Œuvres créées entre 1501 et 1600">16e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="century-17e" /><span title="Œuvres créées entre 1601 et 1700">17e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="century-18e" /><span title="Œuvres créées entre 1701 et 1800">18e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="century-19e" /><span title="Œuvres créées entre 1801 et 1900">19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="century-20e" /><span title="Artistes morts avant 1955 uniquement, pour raisons de droits">20e siècle</span></label>
+                </div>
+                <div class="accordion-col">
+                  <p class="modal-subheading" style="margin-top:0">🌍 Zone géographique</p>
+                  <label class="rubrique-option"><input type="checkbox" id="zone-france" /><span title="Artistes d'origine française">France</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="zone-europe" /><span title="Artistes d'origine européenne hors France">Autres pays d'Europe</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="zone-amerique" /><span title="Artistes d'origine américaine (Nord et Sud)">Amérique</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="zone-asie" /><span title="Artistes d'origine asiatique">Asie</span></label>
+                </div>
+              </div>
+              <p class="modal-hint">Cocher plusieurs siècles mélange aléatoirement leurs œuvres dans un même quiz. Rien coché en zone = toutes zones confondues ; les œuvres sans nationalité connue sont incluses quel que soit le choix.</p>
             </div>
           </div>
 
@@ -107,17 +113,24 @@
           <div class="accordion-group" id="accordion-level">
             <button type="button" class="accordion-toggle" id="toggle-level">⭐ Choisissez votre niveau et votre nombre de questions</button>
             <div class="accordion-body hidden" id="body-level">
-              <label class="rubrique-option"><input type="checkbox" id="level-1" value="1" /><span title="Œuvres les plus connues">Niveau 1</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="level-2" value="2" /><span title="Œuvres moins connues">Niveau 2</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="level-3" value="3" /><span title="Œuvres rares, plus difficiles">Niveau 3</span></label>
+              <div class="accordion-columns">
+                <div class="accordion-col">
+                  <p class="modal-subheading" style="margin-top:0">⭐ Niveau</p>
+                  <label class="rubrique-option"><input type="checkbox" id="level-1" value="1" /><span title="Œuvres les plus connues">Niveau 1</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="level-2" value="2" /><span title="Œuvres moins connues">Niveau 2</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="level-3" value="3" /><span title="Œuvres rares, plus difficiles">Niveau 3</span></label>
+                </div>
+                <div class="accordion-col">
+                  <p class="modal-subheading" style="margin-top:0">🔢 Nombre de questions</p>
+                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-10" value="10" /><span>10 questions</span></label>
+                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-20" value="20" /><span>20 questions</span></label>
+                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-30" value="30" checked /><span>30 questions</span></label>
+                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-60" value="60" /><span>60 questions</span></label>
+                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-120" value="120" /><span>120 questions</span></label>
+                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-max" value="max" /><span title="Toutes les œuvres disponibles pour ce choix">Maximum disponible</span></label>
+                </div>
+              </div>
               <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
-              <p class="modal-subheading">🔢 Nombre de questions</p>
-              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-10" value="10" /><span>10 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-20" value="20" /><span>20 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-30" value="30" checked /><span>30 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-60" value="60" /><span>60 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-120" value="120" /><span>120 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-max" value="max" /><span title="Toutes les œuvres disponibles pour ce choix">Maximum disponible</span></label>
             </div>
           </div>
 
@@ -126,6 +139,35 @@
           </div>
           <p id="launch-feedback" class="hint hidden"></p>
         </section>
+
+        <div class="modal-overlay hidden" id="modal-fonctionnement">
+          <div class="modal-box">
+            <h3>Le fonctionnement des quiz</h3>
+            <p>Vous choisissez : l'<strong>art</strong> (peinture et/ou sculpture), le <strong>siècle</strong> (et, si vous le souhaitez, une zone géographique), les <strong>rubriques</strong> sur lesquelles vous voulez être noté (artiste, titre, date de création, lieu de conservation), le <strong>nombre de questions</strong> et le <strong>niveau</strong> (chaque niveau est un réservoir d'œuvres distinct et indépendant des autres ; si vous souhaitez mélanger plusieurs niveaux, sélectionnez-les conjointement).</p>
+            <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les 4 informations, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d'orthographe, surnoms, titres en langue d'origine) sont tolérées dans une certaine mesure.</p>
+            <p>Un bouton micro (🎤) permet de dicter votre réponse au champ sélectionné (via les boutons Artiste/Titre/Date/Lieu, qui n'ouvrent pas le clavier). Pour l'artiste, dictez le prénom complet plutôt que le seul nom de famille : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » seul, souvent retranscrit en « monnaie ».</p>
+            <button type="button" class="primary-button modal-close" data-modal="modal-fonctionnement">Fermer</button>
+          </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="modal-contact">
+          <div class="modal-box">
+            <h3>Contact</h3>
+            <p>Pour toute question, suggestion ou signalement d'erreur, vous pouvez écrire à l'adresse suivante :</p>
+            <p><a href="mailto:stephane.tassi@gmail.com" class="link-label">stephane.tassi@gmail.com</a></p>
+            <button type="button" class="primary-button modal-close" data-modal="modal-contact">Fermer</button>
+          </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="modal-mentions-legales">
+          <div class="modal-box">
+            <h3>Mentions légales</h3>
+            <p>© 2026 Stéphane Tassi. Contenu original — reproduction ou réutilisation de la sélection sans autorisation interdite.</p>
+            <p>Site à but non commercial, sans publicité, proposé à titre personnel et éducatif.</p>
+            <p>Les images sont issues de Wikimedia Commons et sont utilisées sous leurs licences respectives (domaine public ou Creative Commons selon les fichiers). Cliquez sur une image pour accéder à sa page source et à ses crédits complets.</p>
+            <button type="button" class="primary-button modal-close" data-modal="modal-mentions-legales">Fermer</button>
+          </div>
+        </div>
 
         <div class="modal-overlay hidden" id="modal-artist-list">
           <div class="modal-box">
