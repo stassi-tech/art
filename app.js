@@ -960,9 +960,11 @@ function renderCorrection(answer, question) {
   renderCorrectionDetails(question, question, answer);
 
   // Pour les quiz où un même peintre a plusieurs œuvres (ex. niveau 200 œuvres), on montre les
-  // autres pour aider à les mémoriser ensemble. Recherche sur l'ensemble du quiz chargé, pas
-  // seulement les questions déjà vues.
-  const otherWorks = state.fullQuestions
+  // autres pour aider à les mémoriser ensemble. Recherche sur toute la base connue de l'artiste
+  // (tous niveaux confondus, cf. state.allRowsForArtistLookup) — pas seulement le niveau choisi
+  // pour ce quiz, pour ne rien manquer de ce que l'artiste a d'autre dans la base.
+  const otherWorksSource = state.allRowsForArtistLookup || state.fullQuestions;
+  const otherWorks = otherWorksSource
     .filter((otherQuestion) => otherQuestion !== question && keyName(otherQuestion.artist) === keyName(question.artist))
     .sort((a, b) => {
       // Tri par niveau croissant d'abord (les œuvres les plus célèbres de l'artiste en tête),
@@ -1445,6 +1447,9 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     if (missing.length) {
       alert(`Ce site est en construction pour : ${missing.join(', ')}. Le quiz continue avec les autres choix disponibles.`);
     }
+    // Conservé pour la page « autres œuvres » : elle doit retrouver tout ce que la base connaît
+    // d'un artiste, même les œuvres d'un autre niveau que celui choisi pour ce quiz.
+    state.allRowsForArtistLookup = allRows;
     // Filtre par niveau (indépendant) : seules les œuvres des niveaux sélectionnés sont gardées.
     let levelFilteredRows = allRows.filter((r) => levels.includes(String(r.niveau || 1)));
     if (!levelFilteredRows.length) levelFilteredRows = allRows; // filet de sécurité si la colonne Niveau est absente/mal renseignée

@@ -118,7 +118,8 @@ body.lefty .field-row { flex-direction:row-reverse; }
 .quiz-bottom-bar .primary-button { flex-shrink:0; padding:11px 24px; }
 body.is-corrected .quiz-bottom-bar .primary-button { display:none; }
 .topbar-nav-button { display:none; }
-body.is-corrected .topbar-nav-button { display:inline-flex; }
+body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width:auto; padding:6px 12px; font-size:.78rem; }
+.quiz-topbar { flex-wrap:nowrap; }
 @keyframes mic-pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.015); } }
 
 .correction { padding:12px 16px; background:#f7f2ea; border-left:4px solid var(--accent); }
@@ -200,8 +201,9 @@ body.has-other-works .correction-label { font-size:.76rem; }
   /* En mobile, la topbar (Accueil/Plein écran/nav de correction) devient fixe pour rester au
      même niveau que le hamburger, plutôt que de dépendre de la position de défilement. */
   #quiz-panel .quiz-topbar, #other-works-panel .quiz-topbar { position:fixed; top:8px; right:8px; left:auto; z-index:150; margin:0; background:var(--paper); padding:4px; border-radius:8px; }
-  #quiz-panel .progress-row { margin-top:38px; }
-  #other-works-panel h2 { margin-top:38px; }
+  .home-icon-button { width:26px; height:26px; font-size:.85rem; }
+  #quiz-panel .progress-row { margin-top:32px; }
+  #other-works-panel h2 { margin-top:32px; }
   .artwork-card { min-height:52vh; padding:10px; }
   .artwork-card img { max-height:48vh; }
   body.four-fields .artwork-card { min-height:42vh; }
