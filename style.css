@@ -45,6 +45,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .account-buttons-row { margin-bottom:14px; }
 .account-slot { grid-column:2; }
 #account-login-button, #account-page-button { grid-column:1; }
+.account-slot-email { font-size:.68rem; font-weight:400; opacity:.85; word-break:break-all; }
 .account-error { color:var(--wrong); font-family:Arial,sans-serif; font-size:.85rem; margin:6px 0 0; }
 .account-notice { color:var(--ok); font-family:Arial,sans-serif; font-size:.85rem; margin:6px 0 0; line-height:1.4; }
 #account-form { display:flex; flex-direction:column; gap:12px; }
@@ -123,6 +124,7 @@ body.lefty .hamburger-menu { right:auto; left:0; }
 
 .modal-overlay { position:fixed; inset:0; background:rgba(36,49,63,.6); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px; }
 .modal-box { background:var(--paper); border-radius:10px; padding:30px; max-width:440px; width:100%; text-align:left; box-shadow:0 24px 60px rgba(0,0,0,.32); max-height:85vh; overflow-y:auto; }
+#modal-fonctionnement .modal-box { max-width:900px; max-height:92vh; }
 #modal-artist-list .modal-box { max-width:720px; }
 .modal-box h3 { margin-bottom:18px; font-size:1.25rem; }
 #modal-fonctionnement p { text-align:justify; }
@@ -259,7 +261,11 @@ body.has-other-works .correction-label { font-size:.76rem; }
   .app-shell { flex-direction:column; width:min(100% - 24px, 1120px); padding-top:44px; min-height:auto; }
   .sidebar { flex-direction:column; width:100%; max-width:100%; flex-basis:auto; position:static; align-self:stretch; padding:18px; }
   .sidebar-illustration { max-height:160px; }
-  .welcome-panel,.results-panel { padding:26px 20px; }
+  .welcome-panel,.results-panel { padding:24px 14px; margin:24px auto; }
+  .home-mode-buttons { gap:8px; }
+  .home-mode-button { padding:12px 8px; }
+  .home-mode-button .label { font-size:.8rem; }
+  .account-slot-email { font-size:.6rem; }
   .quiz-grid { grid-template-columns:1fr; }
   /* En mobile, la topbar (Accueil/Plein écran/nav de correction) devient fixe pour rester au
      même niveau que le hamburger, plutôt que de dépendre de la position de défilement. */
@@ -267,13 +273,12 @@ body.has-other-works .correction-label { font-size:.76rem; }
   body.lefty #quiz-panel .quiz-topbar:not(:empty), body.lefty #other-works-panel .quiz-bottom-bar { left:auto; right:8px; }
   .home-icon-button { width:26px; height:26px; font-size:.85rem; }
   #quiz-panel .progress-row { margin-top:32px; }
-  #other-works-panel .quiz-bottom-bar { margin-top:32px; }
+  #other-works-panel-list { margin-top:36px; }
   .artwork-card { min-height:52vh; padding:10px; }
   .artwork-card img { max-height:48vh; }
   body.four-fields .artwork-card { min-height:42vh; }
   body.four-fields .artwork-card img { max-height:38vh; }
   .answer-card { padding:18px 16px; }
-  .welcome-panel,.results-panel { margin:24px auto; padding:30px 20px; }
   .quiz-selectors { grid-template-columns:1fr; }
   .quiz-action-row { grid-template-columns:1fr; }
   .modal-box { padding:22px; max-height:90vh; }

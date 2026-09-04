@@ -50,7 +50,7 @@ function updateAccountBar() {
     loginBtn.classList.add('hidden');
     logoutBtn.classList.remove('hidden');
     pageBtn.classList.remove('hidden');
-    pageBtn.textContent = `Mon compte (${currentUser.email})`;
+    pageBtn.innerHTML = `Mon compte<br><span class="account-slot-email">${escapeHtml(currentUser.email)}</span>`;
   } else {
     statusEl.textContent = 'Non connecté';
     statusEl.classList.remove('hidden');
@@ -1593,8 +1593,6 @@ $('previous-button-overlay').addEventListener('click', () => {
   if (state.index > 0) { state.index--; renderQuestion(); }
 });
 $('next-button-overlay').addEventListener('click', goToNextOrResults);
-$('topbar-previous-button')?.addEventListener('click', () => $('previous-button-overlay').click());
-$('topbar-next-button')?.addEventListener('click', () => $('next-button-overlay').click());
 $('lightbox-close-button')?.addEventListener('click', () => $('image-lightbox').classList.add('hidden'));
 $('review-button').addEventListener('click', () => {
   // Reprendre depuis le début le même jeu de questions (normal ou révision en cours)
