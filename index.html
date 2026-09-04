@@ -152,6 +152,7 @@
             <p>Chaque quiz vous présente une série d'œuvres d'art à identifier, une par une, à partir de leur image.</p>
             <p>Vous choisissez : l'<strong>art</strong> (peinture et/ou sculpture), le <strong>siècle</strong> (et, si vous le souhaitez, une zone géographique), les <strong>rubriques</strong> sur lesquelles vous voulez être noté (artiste, titre, date de création, lieu de conservation), le <strong>nombre de questions</strong> et le <strong>niveau</strong> (chaque niveau est un réservoir d'œuvres distinct et indépendant des autres ; si vous souhaitez mélanger plusieurs niveaux, sélectionnez-les conjointement).</p>
             <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les 4 informations, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d'orthographe, surnoms, titres en langue d'origine) sont tolérées dans une certaine mesure.</p>
+            <p>Un bouton micro (🎤) sur l'image permet de dicter votre réponse au champ actuellement sélectionné : attendez que la ligne passe en jaune avant de parler, puis épelez ou corrigez au clavier si besoin. <strong>Pour l'artiste, dictez le prénom complet plutôt que le seul nom de famille</strong> : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » tout seul, souvent retranscrit en « monnaie ».</p>
             <p>À la fin du quiz, votre score s'affiche et s'enregistre automatiquement si vous êtes connecté à votre compte.</p>
 
             <h3 class="modal-subheading">Comment les niveaux 1, 2, 3 sont-ils établis ? (méthode — version provisoire)</h3>
@@ -302,8 +303,10 @@
         </div>
 
         <section id="quiz-panel" class="quiz-panel hidden" aria-live="polite">
-          <button type="button" class="link-label back-home-link" id="back-home-from-quiz">← Retour à l'accueil</button>
-          <p id="quiz-reference" class="quiz-reference"></p>
+          <div class="quiz-topbar">
+            <button type="button" class="link-label back-home-link" id="back-home-from-quiz">← Accueil</button>
+            <p id="quiz-reference" class="quiz-reference"></p>
+          </div>
           <div class="progress-row">
             <span id="question-count">Question 1 sur 1</span>
             <span id="score-summary">0 / 0 réponse correcte</span>
@@ -313,14 +316,13 @@
           <div class="quiz-grid">
             <figure class="artwork-card">
               <img id="artwork-image" alt="Œuvre à identifier" />
+              <button type="button" id="mic-global" class="mic-global-button hidden" aria-label="Dicter la réponse au champ sélectionné">🎤</button>
               <figcaption id="image-message" class="image-message hidden"></figcaption>
               <a id="artwork-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
             </figure>
 
             <section class="answer-card" aria-label="Vos réponses">
               <form id="answer-form">
-                <button type="button" id="mic-global" class="mic-global-button hidden" aria-label="Dicter la réponse au champ sélectionné">🎤 Appuyez pour dicter</button>
-                <p id="mic-hint" class="mic-hint hidden">Pour dicter, attendez que la ligne passe en jaune. Il est possible d'épeler et de corriger par le clavier.</p>
                 <label>Artiste
                   <input id="artist-input" name="artist" autocomplete="off" />
                 </label>
@@ -330,12 +332,12 @@
                 <label>Date de création
                   <input id="date-input" name="date" autocomplete="off" />
                 </label>
-                <label class="field-with-submit">Lieu de conservation
-                  <div class="field-submit-row">
-                    <input id="location-input" name="location" autocomplete="off" />
-                    <button id="check-button" class="primary-button" type="submit">Valider</button>
-                  </div>
+                <label class="field-location">Lieu de conservation
+                  <input id="location-input" name="location" autocomplete="off" />
                 </label>
+                <div class="answer-submit-row">
+                  <button id="check-button" class="primary-button" type="submit">Valider</button>
+                </div>
               </form>
 
               <nav class="navigation" aria-label="Navigation du quiz">

@@ -386,7 +386,6 @@ const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRec
 const voiceSupported = Boolean(SpeechRecognitionImpl);
 if (voiceSupported) {
   $('mic-global').classList.remove('hidden');
-  $('mic-hint').classList.remove('hidden');
 }
 // Un seul bouton micro sert les 4 rubriques : il dicte dans le champ actuellement sélectionné
 // (touché/cliqué), et suit automatiquement le focus si on passe à un autre champ pendant l'écoute.
@@ -416,7 +415,7 @@ function resetMicButton() {
   const button = $('mic-global');
   if (!button) return;
   button.classList.remove('listening');
-  button.textContent = '🎤 Appuyez pour dicter';
+  button.textContent = '🎤';
   micIsListening = false;
 }
 function stopActiveDictation() {
