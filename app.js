@@ -1487,9 +1487,10 @@ $('vf-validate-button')?.addEventListener('click', () => {
     if (playerSaysFalse && actuallyWrong) correctFinds++;
     else if (playerSaysFalse && !actuallyWrong) falseAlarms++;
   });
-  const basePoints = totalErrors > 0 ? (correctFinds / totalErrors) : (falseAlarms === 0 ? 1 : 0);
-  const penalty = Math.min(falseAlarms * 0.5, 1);
-  const questionScore = Math.round((basePoints - penalty) * 10) / 10;
+  // Barème simplifié, tout ou rien : 1 point seulement si toutes les erreurs réelles sont
+  // repérées et qu'aucune fausse alerte n'a été déclenchée ; sinon 0, même pour un repérage
+  // partiel (une erreur trouvée sur deux ne rapporte rien).
+  const questionScore = (correctFinds === totalErrors && falseAlarms === 0) ? 1 : 0;
   vfScore = Math.round((vfScore + questionScore) * 10) / 10;
 
   const naturalPhrase = (key, value) => {
@@ -1507,7 +1508,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
   // Correction directement dans les rubriques initiales : chaque champ faux se réécrit
   // progressivement en vert, au rythme où la voix l'explique (une rubrique à la fois).
   if (q.errorFields.length) {
-    vfSpeak('Une référence est fausse.');
+    vfSpeak(q.errorFields.length > 1 ? 'Deux références sont fausses.' : 'Une référence est fausse.');
     q.errorFields.forEach((key, i) => {
       const correctVal = vfFieldValue(q.correct, key) || '—';
       const shownCorrect = key === 'title' ? `« ${correctVal} »` : correctVal;
