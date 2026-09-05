@@ -1325,13 +1325,13 @@ $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel();
 $('vf-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
 // ============================================================
-// MODULE FAMILLE — 8 images, 4 partagent un point commun (artiste, mot du titre, siècle ou
-// musée, tiré au sort parmi les types cochés). Sélectionner les 4 bonnes images ET écrire le bon
-// point commun dans la bonne rubrique : les deux doivent être exacts pour marquer le point.
+// MODULE FAMILLE — 8 images, 4 sont du même artiste. Le joueur les repère et nomme l'artiste
+// (1re validation), puis doit retrouver le titre de chacune des 4 œuvres (2e validation).
+// Tout-ou-rien : 1 point seulement si artiste + les 4 titres sont exacts.
 // ============================================================
 $('open-famille-setup')?.addEventListener('click', () => { showPanel('famille-setup'); populateFamVoices(); });
 $('famille-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
-$('fam-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('famille-setup'); });
+$('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
 $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
 $('fam-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
@@ -1766,7 +1766,7 @@ function detectCenturyFromDate(dateStr) {
   return `${Math.floor((year - 1) / 100) + 1}e`;
 }
 
-let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [];
+let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [], famStep = 1, famTimers = [];
 function famSpeak(text) {
   if (!famAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
@@ -1780,13 +1780,11 @@ $('fam-start-button')?.addEventListener('click', async () => {
   const arts = famSelectedArts();
   const centuries = famSelectedCenturies();
   const levels = famSelectedLevels();
-  const types = famSelectedTypes();
   const feedback = $('fam-setup-feedback');
   feedback.classList.remove('hidden');
   if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
   if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
   if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
-  if (!types.length) { feedback.textContent = 'Choisissez au moins un type de point commun.'; return; }
   feedback.textContent = 'Chargement des œuvres…';
   try {
     const zones = famSelectedZones();
@@ -1819,13 +1817,12 @@ $('fam-start-button')?.addEventListener('click', async () => {
     let attempts = 0;
     while (questions.length < count && attempts < count * 15) {
       attempts++;
-      const type = types[Math.floor(Math.random() * types.length)];
-      const group = famFindGroup(type, pool, distractorCount);
+      const group = famFindGroup('artist', pool, distractorCount);
       if (!group) continue;
       const distractors = group.outsiders.slice().sort(() => Math.random() - 0.5).slice(0, distractorCount);
       if (distractors.length < distractorCount) continue;
       const images = group.family.concat(distractors).sort(() => Math.random() - 0.5);
-      questions.push({ type, family: group.family, answer: group.answer, images, imgCount: imgCountChoice });
+      questions.push({ family: group.family, artist: group.answer, images, imgCount: imgCountChoice });
     }
     if (!questions.length) { feedback.textContent = "Impossible de constituer un exercice avec ces critères — essayez d'élargir le choix (plus de siècles, plus de niveaux)."; return; }
     FAM_SESSION = questions;
@@ -1838,89 +1835,131 @@ $('fam-start-button')?.addEventListener('click', async () => {
 });
 
 function famShowQuestion() {
+  famTimers.forEach(clearTimeout); famTimers = [];
   famAnswered = false;
   famSelectedImages = [];
+  famStep = 1;
   const q = FAM_SESSION[famIndex];
   $('fam-progress-label').textContent = `Question ${famIndex + 1} / ${FAM_SESSION.length}`;
   $('fam-progress-bar').style.width = `${(famIndex / FAM_SESSION.length) * 100}%`;
   $('fam-correction').classList.add('hidden');
-  $('fam-validate-button').classList.remove('hidden');
-  $('fam-validate-button').disabled = false;
+  $('fam-step1').classList.remove('hidden');
+  $('fam-step2').classList.add('hidden');
+  $('fam-step1').querySelectorAll('p.hint').forEach((el) => el.remove());
+  $('fam-step-title').textContent = 'Cliquez sur les 4 œuvres du même artiste, puis nommez-le';
+  $('fam-artist-input').value = '';
+  $('fam-artist-input').disabled = false;
+  $('fam-validate-artist-button').disabled = false;
 
   $('fam-image-grid').className = `fam-image-grid${q.imgCount === 6 ? ' fam-count-6' : ''}`;
-  $('fam-image-grid').innerHTML = q.images.map((work, i) =>    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSource(work.image))}" alt="" /></button>`
+  $('fam-image-grid').innerHTML = q.images.map((work, i) =>
+    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSource(work.image))}" alt="" /></button>`
   ).join('');
   $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
     btn.addEventListener('click', () => {
+      if (famStep !== 1) return;
       const idx = Number(btn.dataset.index);
       const pos = famSelectedImages.indexOf(idx);
-      if (pos >= 0) { famSelectedImages.splice(pos, 1); btn.classList.remove('selected'); }
-      else if (famSelectedImages.length < 4) { famSelectedImages.push(idx); btn.classList.add('selected'); }
+      if (pos >= 0) {
+        famSelectedImages.splice(pos, 1);
+        btn.classList.remove('selected');
+        btn.removeAttribute('data-num');
+        // Renumérote les badges restants dans leur ordre de sélection.
+        famSelectedImages.forEach((si, n) => { $(`fam-image-grid`).querySelector(`.fam-image-cell[data-index="${si}"]`).dataset.num = n + 1; });
+      } else if (famSelectedImages.length < 4) {
+        famSelectedImages.push(idx);
+        btn.classList.add('selected');
+        btn.dataset.num = famSelectedImages.length;
+      }
     });
   });
-
-  const types = famSelectedTypes();
-  $('fam-rubriques').innerHTML = types.map((t) =>
-    `<div class="fam-rubrique-row" data-type="${t}">
-      <label>${FAM_TYPE_LABELS[t]}</label>
-      <input type="text" class="fam-answer-input" data-type="${t}" placeholder="Votre réponse ici si c'est ce type de point commun…" />
-    </div>`
-  ).join('');
 }
 
-$('fam-validate-button')?.addEventListener('click', () => {
-  if (famAnswered) return;
-  famAnswered = true;
+$('fam-validate-artist-button')?.addEventListener('click', () => {
   const q = FAM_SESSION[famIndex];
-  $('fam-validate-button').disabled = true;
+  if (famSelectedImages.length !== 4) { famArtistFeedback('Sélectionnez exactement 4 œuvres avant de valider.'); return; }
   document.querySelectorAll('.fam-image-cell').forEach((btn) => { btn.disabled = true; });
-  document.querySelectorAll('.fam-answer-input').forEach((inp) => { inp.disabled = true; });
+  $('fam-artist-input').disabled = true;
+  $('fam-validate-artist-button').disabled = true;
 
-  // Vérification des images : il faut avoir sélectionné exactement les 4 bonnes.
   const familyIndexes = q.images.map((w, i) => q.family.includes(w) ? i : -1).filter((i) => i >= 0);
   const selectedSet = new Set(famSelectedImages);
   const familySet = new Set(familyIndexes);
-  const imagesCorrect = selectedSet.size === familySet.size && [...selectedSet].every((i) => familySet.has(i));
+  q.imagesCorrect = selectedSet.size === familySet.size && [...selectedSet].every((i) => familySet.has(i));
   document.querySelectorAll('.fam-image-cell').forEach((btn, i) => {
     if (familySet.has(i)) btn.classList.add('correct');
     else if (selectedSet.has(i)) btn.classList.add('wrong');
   });
+  q.artistCorrect = famAnswerMatches($('fam-artist-input').value, q.artist, 'artist');
 
-  // Vérification de la réponse écrite : doit être dans la BONNE rubrique (q.type), avec une
-  // valeur reconnaissable (tolérance sur les accents/majuscules/sous-chaîne).
-  let answerCorrect = false;
-  let filledType = null;
-  document.querySelectorAll('.fam-answer-input').forEach((inp) => {
-    if (inp.value.trim()) filledType = inp.dataset.type;
+  // On passe à l'étape 2 (les titres) quoi qu'il arrive : le score final dépendra de tout —
+  // artiste, images et titres — mais autant laisser le joueur tenter les titres.
+  famStep = 2;
+  $('fam-step2').classList.remove('hidden');
+  $('fam-step-title').textContent = 'Es-tu capable de donner le titre de ces tableaux ?';
+  $('fam-title-rows').innerHTML = famSelectedImages.map((idx, n) =>
+    `<div class="fam-title-row" data-index="${idx}">
+      <span class="fam-num-badge">${n + 1}</span>
+      <input type="text" class="fam-title-input" data-index="${idx}" placeholder="Titre de l'œuvre n° ${n + 1}" />
+    </div>`
+  ).join('');
+});
+
+function famArtistFeedback(msg) {
+  let el = $('fam-artist-feedback');
+  if (!el) {
+    el = document.createElement('p');
+    el.id = 'fam-artist-feedback';
+    el.className = 'hint';
+    $('fam-step1').appendChild(el);
+  }
+  el.textContent = msg;
+}
+
+$('fam-validate-titles-button')?.addEventListener('click', () => {
+  if (famAnswered) return;
+  famAnswered = true;
+  const q = FAM_SESSION[famIndex];
+  document.querySelectorAll('.fam-title-input').forEach((inp) => { inp.disabled = true; });
+  $('fam-validate-titles-button').disabled = true;
+
+  let allTitlesCorrect = true;
+  document.querySelectorAll('.fam-title-row').forEach((row) => {
+    const idx = Number(row.dataset.index);
+    const work = q.images[idx];
+    const input = row.querySelector('.fam-title-input');
+    const ok = famAnswerMatches(input.value, work.title);
+    if (!ok) allTitlesCorrect = false;
+    // Remplace la ligne de saisie par la valeur donnée, avec le même principe de correction
+    // que Vrai/Faux : faux en rouge, puis réécriture en vert de la bonne réponse.
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'fam-title-value';
+    valueSpan.textContent = input.value.trim() || '(rien répondu)';
+    if (!ok) valueSpan.classList.add('vf-was-wrong');
+    input.replaceWith(valueSpan);
+    if (!ok) {
+      famTimers.push(setTimeout(() => {
+        valueSpan.textContent = work.title;
+        valueSpan.classList.remove('vf-was-wrong');
+        valueSpan.classList.add('vf-updated');
+      }, 900));
+    }
   });
-  const correctInput = document.querySelector(`.fam-answer-input[data-type="${q.type}"]`);
-  if (correctInput && famAnswerMatches(correctInput.value, q.answer, q.type)) answerCorrect = true;
 
-  const pointEarned = (imagesCorrect && answerCorrect) ? 1 : 0;
+  const pointEarned = (q.imagesCorrect && q.artistCorrect && allTitlesCorrect) ? 1 : 0;
   famScore = Math.round((famScore + pointEarned) * 10) / 10;
 
-  // Verdict à côté de la rubrique remplie (ou, si rien n'a été rempli, à côté de la bonne).
-  const verdictTarget = filledType || q.type;
-  const verdictRow = document.querySelector(`.fam-rubrique-row[data-type="${verdictTarget}"]`);
-  if (verdictRow) {
-    const verdictSpan = document.createElement('span');
-    verdictSpan.className = 'fam-verdict';
-    verdictSpan.style.color = pointEarned ? 'var(--ok)' : 'var(--wrong)';
-    verdictSpan.textContent = pointEarned ? 'Exact' : 'À réviser';
-    verdictRow.querySelector('label').appendChild(verdictSpan);
-  }
+  const artistNote = document.createElement('p');
+  artistNote.className = 'hint';
+  artistNote.style.textAlign = 'center';
+  artistNote.innerHTML = q.artistCorrect
+    ? `<span style="color:var(--ok);font-weight:700;">Artiste exact : ${escapeHtml(q.artist)}</span>`
+    : `<span style="color:var(--wrong);font-weight:700;">Artiste : ${escapeHtml(q.artist)}</span>`;
+  $('fam-step1').appendChild(artistNote);
 
-  // La bonne réponse s'écrit en vert dans la bonne rubrique, avec la voix qui l'annonce.
-  const correctRow = document.querySelector(`.fam-rubrique-row[data-type="${q.type}"]`);
-  if (correctRow && !pointEarned) {
-    const answerLine = document.createElement('span');
-    answerLine.className = 'fam-correct-answer';
-    answerLine.textContent = `Réponse exacte : ${q.answer}`;
-    correctRow.appendChild(answerLine);
-  }
   famSpeak(pointEarned
-    ? `Exact. Le point commun était bien : ${q.answer}.`
-    : `À réviser. Le point commun exact était : ${q.answer}.`);
+    ? `Exact. Il s'agissait bien de ${q.artist}.`
+    : `À réviser. L'artiste était : ${q.artist}.`);
 
   $('fam-correction').classList.remove('hidden');
   $('fam-next-button').textContent = famIndex === FAM_SESSION.length - 1 ? 'Terminer' : 'Suivant →';

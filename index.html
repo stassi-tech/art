@@ -514,7 +514,7 @@
             <button type="button" id="famille-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Famille</h2></div>
-          <p class="modal-hint" style="text-align:center;margin-top:0;">8 images apparaissent ; 4 d'entre elles partagent un point commun. Repérez-les, puis écrivez ce point commun dans la bonne rubrique.</p>
+          <p class="modal-hint" style="text-align:center;margin-top:0;">8 images apparaissent ; 4 sont du même artiste. Repérez-les et nommez l'artiste. Une fois validé, retrouvez aussi le titre de chacune des 4 œuvres.</p>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="fam-toggle-art">🎨 Choisissez votre art</button>
@@ -546,7 +546,7 @@
                   <label class="rubrique-option"><input type="checkbox" id="fam-zone-asie" /><span>Asie</span></label>
                 </div>
               </div>
-              <p class="modal-hint">Rien coché en zone = toutes zones confondues. Cocher plusieurs siècles augmente les chances de point commun « Siècle ».</p>
+              <p class="modal-hint">Rien coché en zone = toutes zones confondues.</p>
             </div>
           </div>
 
@@ -557,17 +557,6 @@
               <label class="rubrique-option"><input type="checkbox" id="fam-level-2" checked /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-level-3" /><span>Niveau 3</span></label>
               <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="fam-toggle-types">📝 Types de point commun</button>
-            <div class="accordion-body hidden" id="fam-body-types">
-              <label class="rubrique-option"><input type="checkbox" id="fam-type-artist" checked /><span>Artiste</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="fam-type-word" checked /><span>Mot commun dans les titres</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="fam-type-century" checked /><span>Siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="fam-type-museum" checked /><span>Musée / lieu</span></label>
-              <p class="modal-hint">Un seul type sera tiré au sort à chaque question, parmi ceux cochés ici.</p>
             </div>
           </div>
 
@@ -602,10 +591,17 @@
             <div class="artwork-column">
               <div id="fam-image-grid" class="fam-image-grid"></div>
             </div>
-            <section class="answer-card" aria-label="Point commun">
-              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 10px;">Cliquez sur les 4 images qui vont ensemble, puis écrivez leur point commun</h2>
-              <div id="fam-rubriques"></div>
-              <button type="button" class="primary-button" id="fam-validate-button" style="width:100%;margin-top:14px;">Valider</button>
+            <section class="answer-card" aria-label="Artiste et titres">
+              <h2 id="fam-step-title" style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 10px;">Cliquez sur les 4 œuvres du même artiste, puis nommez-le</h2>
+              <div id="fam-step1">
+                <input type="text" id="fam-artist-input" placeholder="Nom de l'artiste" style="width:100%;padding:10px;border:1px solid #cfc8bc;border-radius:4px;font-family:Arial,sans-serif;font-size:.95rem;" />
+                <button type="button" class="primary-button" id="fam-validate-artist-button" style="width:100%;margin-top:14px;">Valider l'artiste</button>
+              </div>
+              <div id="fam-step2" class="hidden">
+                <p class="modal-hint" style="margin-top:0;">Es-tu capable de donner le titre de ces tableaux ?</p>
+                <div id="fam-title-rows"></div>
+                <button type="button" class="primary-button" id="fam-validate-titles-button" style="width:100%;margin-top:14px;">Valider les titres</button>
+              </div>
               <div id="fam-correction" class="hidden">
                 <button type="button" class="primary-button" id="fam-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
