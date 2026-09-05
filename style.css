@@ -26,7 +26,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 /* Panneaux "hauts" (plusieurs accordéons empilés) : marge fixe en haut plutôt que centrage
    vertical automatique, sinon leur partie supérieure dépasse au-dessus de l'écran et tout
    semble tassé vers le bas. Plus larges aussi, pour respirer davantage. */
-#impregnation-setup-panel, #quiz-setup-panel { margin:30px auto; max-width:720px; }
+#impregnation-setup-panel, #quiz-setup-panel, #intrus-setup-panel { margin:30px auto; max-width:720px; }
 .results-panel { max-width:none; width:100%; margin:0 auto; padding:52px 46px; text-align:center; background:rgba(255,253,249,.86); border:1px solid var(--border); box-shadow:0 16px 35px rgba(54,45,31,.08); border-radius:8px; }
 .welcome-panel p,.results-panel p { color:var(--muted); line-height:1.5; font-size:1.02rem; }.hint { margin:23px auto 0; font-size:1rem; }
 .home-eyebrow { text-align:center; }
@@ -37,6 +37,20 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .home-mode-buttons { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:8px; }
 .training-exercise-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:8px; }
 .training-exercise-grid .home-mode-button { padding:16px 10px; }
+.score-filter-btn.inactive { background:transparent; color:var(--cta); }
+.score-filter-btn.inactive:hover { background:#f7f2ea; }
+.intrus-mode-btn.inactive { background:transparent; color:var(--cta); }
+.intrus-mode-btn.inactive:hover { background:#f7f2ea; }
+.intrus-ref-prompt { text-align:center; color:#fff; padding:24px; font-family:Georgia,serif; }
+.intrus-ref-prompt .artist { font-size:1.6rem; font-weight:700; margin-bottom:10px; }
+.intrus-ref-prompt .title { font-style:italic; font-size:1.3rem; }
+.intrus-choice-list { display:grid; gap:12px; }
+.intrus-choice-btn { display:block; width:100%; text-align:left; padding:14px 16px; border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--ink); font-family:Arial,sans-serif; font-size:.95rem; cursor:pointer; transition:border-color .15s, background .15s; }
+.intrus-choice-btn:hover:not(:disabled) { border-color:var(--accent); background:#f7f2ea; }
+.intrus-choice-btn img { width:100%; height:140px; object-fit:cover; border-radius:4px; display:block; margin-bottom:8px; }
+.intrus-choice-btn.correct { border-color:var(--ok); background:#eaf6f0; }
+.intrus-choice-btn.wrong { border-color:var(--wrong); background:#fbeceb; }
+.intrus-choice-btn:disabled { cursor:not-allowed; }
 .home-mode-button { position:relative; padding:20px; border:1px solid var(--cta); border-radius:4px; background:var(--cta); color:#fff; cursor:pointer; text-align:center; transition:background .15s; }
 .home-mode-button:hover { background:var(--cta-dark); border-color:var(--cta-dark); }
 .home-mode-button .label { display:block; font-family:Arial,sans-serif; font-size:.98rem; font-weight:700; color:#fff; margin-bottom:4px; }

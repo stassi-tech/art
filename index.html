@@ -77,7 +77,7 @@
 
           <div class="training-exercise-grid">
             <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="label">Imprégnation</span></button>
-            <button type="button" class="home-mode-button training-soon" id="open-training-intrus"><span class="label">Intrus</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+            <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="label">Intrus</span></button>
             <button type="button" class="home-mode-button training-soon" id="open-training-reconstitution"><span class="label">Reconstitution</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
             <button type="button" class="home-mode-button training-soon" id="open-training-enigme"><span class="label">Énigme</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
             <button type="button" class="home-mode-button training-soon" id="open-training-vraifaux"><span class="label">Vrai/Faux</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
@@ -191,6 +191,101 @@
               </div>
               <div style="text-align:center;margin-top:14px;">
                 <button type="button" class="home-icon-button" id="imp-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="intrus-setup-panel" class="welcome-panel hidden">
+          <div class="quiz-topbar">
+            <button type="button" id="intrus-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          </div>
+          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;">Configurer l'exercice Intrus</h2></div>
+
+          <div class="training-exercise-grid" style="grid-template-columns:1fr 1fr;margin-bottom:20px;">
+            <button type="button" class="home-mode-button intrus-mode-btn" id="intrus-mode-image" data-mode="image">Images intruses</button>
+            <button type="button" class="home-mode-button intrus-mode-btn inactive" id="intrus-mode-ref" data-mode="reference">Références intruses</button>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="intrus-toggle-art">🎨 Choisissez votre art</button>
+            <div class="accordion-body hidden" id="intrus-body-art">
+              <label class="rubrique-option"><input type="checkbox" id="intrus-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-art-sculpture" /><span>Sculpture</span></label>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="intrus-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
+            <div class="accordion-body hidden" id="intrus-body-century">
+              <div class="accordion-columns">
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-14e" /><span>14e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-15e" /><span>15e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-16e" /><span>16e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-17e" /><span>17e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-18e" /><span>18e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-19e" checked /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-20e" /><span>20e siècle</span></label>
+                </div>
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-zone-france" /><span>France</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-zone-europe" /><span>Autres pays d'Europe</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-zone-amerique" /><span>Amérique</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-zone-asie" /><span>Asie</span></label>
+                </div>
+              </div>
+              <p class="modal-hint">Rien coché en zone = toutes zones confondues.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="intrus-toggle-level">⭐ Choisissez votre niveau</button>
+            <div class="accordion-body hidden" id="intrus-body-level">
+              <label class="rubrique-option"><input type="checkbox" id="intrus-level-1" checked /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-level-2" /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-level-3" /><span>Niveau 3</span></label>
+              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="intrus-toggle-count">🔢 Nombre de questions</button>
+            <div class="accordion-body hidden" id="intrus-body-count">
+              <label class="rubrique-option"><input type="radio" name="intrus-count" value="10" checked /><span>10 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="intrus-count" value="20" /><span>20 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="intrus-count" value="max" /><span>Maximum disponible</span></label>
+            </div>
+          </div>
+
+          <button type="button" class="primary-button" id="intrus-start-button" style="width:100%">Commencer</button>
+          <p id="intrus-setup-feedback" class="hint hidden"></p>
+        </section>
+
+        <section id="intrus-panel" class="quiz-panel hidden">
+          <div class="progress-row">
+            <span id="intrus-progress-label">Question 1 / 10</span>
+            <span id="intrus-score-label" class="score-summary-highlight">0 / 0 réponse correcte</span>
+          </div>
+          <div class="progress-track"><div class="progress-bar" id="intrus-progress-bar"></div></div>
+
+          <div class="quiz-grid">
+            <div class="artwork-column">
+              <figure class="artwork-card" id="intrus-prompt-card">
+                <!-- Selon le mode : soit l'image de référence, soit le texte de la référence à retrouver -->
+              </figure>
+            </div>
+            <section class="answer-card" aria-label="Choix">
+              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Choisissez la bonne réponse</h2>
+              <div id="intrus-choices"></div>
+              <div id="intrus-correction" class="hidden">
+                <div class="correction-details" id="intrus-correction-details"></div>
+                <button type="button" class="primary-button" id="intrus-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
+              </div>
+              <div style="text-align:center;margin-top:auto;padding-top:14px;">
+                <button type="button" class="home-icon-button" id="intrus-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
               </div>
             </section>
           </div>
@@ -456,6 +551,10 @@
         <section id="account-panel" class="results-panel account-panel hidden">
           <p class="eyebrow">MON COMPTE</p>
           <h2>Historique de mes scores</h2>
+          <div class="training-exercise-grid" style="grid-template-columns:1fr 1fr;max-width:420px;margin:0 auto 20px;">
+            <button type="button" class="home-mode-button score-filter-btn" id="account-scores-quiz-button">Scores de quiz</button>
+            <button type="button" class="home-mode-button score-filter-btn inactive" id="account-scores-training-button">Scores d'entraînement</button>
+          </div>
           <p id="account-page-empty" class="hint hidden">Vous n'avez pas encore de score enregistré. Terminez un quiz : votre score s'enregistrera automatiquement et apparaîtra ici.</p>
           <div id="account-page-groups"></div>
           <div class="account-page-actions">

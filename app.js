@@ -150,6 +150,7 @@ async function saveCurrentScore() {
   });
   try {
     await db.collection('users').doc(currentUser.uid).collection('scores').add({
+      type: 'quiz',
       correct, possible, percent,
       questionCount: state.questions.length,
       quizLabel: config.label || 'Quiz',
@@ -168,6 +169,7 @@ async function saveCurrentScore() {
 }
 
 // --- Page « Mon compte » : historique complet, groupé par type de quiz, avec évolution ---
+let accountScoreFilter = 'quiz'; // 'quiz' | 'entrainement' — bascule via les 2 boutons de la page compte
 async function fetchScoreLevelGroups() {
   if (!firebaseReady || !currentUser) return null;
   const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores')
@@ -176,6 +178,9 @@ async function fetchScoreLevelGroups() {
   const levelGroups = new Map(); // niveau -> liste des scores (docs Firestore)
   snapshot.docs.forEach((doc) => {
     const d = { id: doc.id, ...doc.data() };
+    // Les scores enregistrés avant l'ajout du champ « type » sont considérés comme des quiz.
+    const scoreType = d.type || 'quiz';
+    if (scoreType !== accountScoreFilter) return;
     const level = d.quizLevel || 'Autre';
     if (!levelGroups.has(level)) levelGroups.set(level, []);
     levelGroups.get(level).push(d);
@@ -374,6 +379,18 @@ async function deleteScore(docId) {
   }
 }
 $('account-page-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+$('account-scores-quiz-button')?.addEventListener('click', () => {
+  accountScoreFilter = 'quiz';
+  $('account-scores-quiz-button').classList.remove('inactive');
+  $('account-scores-training-button').classList.add('inactive');
+  loadAccountPage();
+});
+$('account-scores-training-button')?.addEventListener('click', () => {
+  accountScoreFilter = 'entrainement';
+  $('account-scores-training-button').classList.remove('inactive');
+  $('account-scores-quiz-button').classList.add('inactive');
+  loadAccountPage();
+});
 $('account-page-back-button')?.addEventListener('click', () => showPanel('welcome'));
 
 const allFields = [
@@ -795,13 +812,16 @@ function selectedRubriquesLabel() {
   return labels.join(', ');
 }
 function showPanel(name) {
-  // name: 'welcome' | 'training-hub' | 'impregnation-setup' | 'impregnation' | 'quiz-setup' |
-  // 'quiz' | 'results' | 'account' | 'other-works' — centralise l'affichage des panneaux et de
-  // la barre latérale (titre + import), visible uniquement sur la page d'accueil.
+  // name: 'welcome' | 'training-hub' | 'impregnation-setup' | 'impregnation' | 'intrus-setup' |
+  // 'intrus' | 'quiz-setup' | 'quiz' | 'results' | 'account' | 'other-works' — centralise
+  // l'affichage des panneaux et de la barre latérale (titre + import), visible uniquement sur la
+  // page d'accueil.
   $('welcome-panel').classList.toggle('hidden', name !== 'welcome');
   $('training-hub-panel')?.classList.toggle('hidden', name !== 'training-hub');
   $('impregnation-setup-panel')?.classList.toggle('hidden', name !== 'impregnation-setup');
   $('impregnation-panel')?.classList.toggle('hidden', name !== 'impregnation');
+  $('intrus-setup-panel')?.classList.toggle('hidden', name !== 'intrus-setup');
+  $('intrus-panel')?.classList.toggle('hidden', name !== 'intrus');
   $('quiz-setup-panel')?.classList.toggle('hidden', name !== 'quiz-setup');
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
@@ -1558,6 +1578,174 @@ $('imp-pause-button')?.addEventListener('click', () => {
 });
 $('imp-prev-button')?.addEventListener('click', () => { if (impIndex > 0) { impIndex--; impShowCurrent(); } });
 $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSION.length - 1) { impIndex++; impShowCurrent(); } });
+
+// ============================================================
+// MODULE INTRUS — retrouver la bonne image parmi 3 (mode « image »), ou la bonne référence
+// parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
+// ============================================================
+$('open-intrus-setup')?.addEventListener('click', () => showPanel('intrus-setup'));
+$('intrus-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('intrus-exit-link')?.addEventListener('click', () => showPanel('intrus-setup'));
+
+let intrusMode = 'image';
+document.querySelectorAll('.intrus-mode-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    intrusMode = btn.dataset.mode;
+    document.querySelectorAll('.intrus-mode-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
+  });
+});
+
+const INTRUS_ACCORDIONS = ['intrus-toggle-art:intrus-body-art', 'intrus-toggle-century:intrus-body-century', 'intrus-toggle-level:intrus-body-level', 'intrus-toggle-count:intrus-body-count'];
+INTRUS_ACCORDIONS.forEach((pair) => {
+  const [toggleId, bodyId] = pair.split(':');
+  $(toggleId)?.addEventListener('click', () => {
+    const opening = $(bodyId).classList.contains('hidden');
+    INTRUS_ACCORDIONS.forEach((p) => $(p.split(':')[1])?.classList.add('hidden'));
+    if (opening) $(bodyId).classList.remove('hidden');
+  });
+});
+
+function intrusSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`intrus-art-${a}`)?.checked); }
+function intrusSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`intrus-century-${c}`)?.checked); }
+function intrusSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`intrus-zone-${z}`)?.checked); }
+function intrusSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`intrus-level-${lvl}`)?.checked); }
+
+let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false;
+
+$('intrus-start-button')?.addEventListener('click', async () => {
+  const arts = intrusSelectedArts();
+  const centuries = intrusSelectedCenturies();
+  const levels = intrusSelectedLevels();
+  const feedback = $('intrus-setup-feedback');
+  feedback.classList.remove('hidden');
+  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
+  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
+  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
+  feedback.textContent = 'Chargement des œuvres…';
+  try {
+    const zones = intrusSelectedZones();
+    let allRows = [];
+    for (const art of arts) {
+      for (const century of centuries) {
+        try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+      }
+    }
+    if (allRows.length < 3) { feedback.textContent = "Pas assez d'œuvres disponibles pour ce choix (3 minimum)."; return; }
+    let pool = allRows.filter((r) => levels.includes(String(r.niveau || 1)));
+    if (pool.length < 3) pool = allRows;
+    if (zones.length) {
+      const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
+      if (zoned.length >= 3) pool = zoned;
+    }
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    const countChoice = document.querySelector('input[name="intrus-count"]:checked').value;
+    const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
+    INTRUS_SESSION = pool.slice(0, count).map((correct) => {
+      // 2 intrus tirés du reste du réservoir (pas la bonne réponse elle-même).
+      const others = pool.filter((r) => r !== correct);
+      const distractors = [];
+      const otherPool = others.slice();
+      while (distractors.length < 2 && otherPool.length) {
+        const idx = Math.floor(Math.random() * otherPool.length);
+        distractors.push(otherPool.splice(idx, 1)[0]);
+      }
+      const choices = [correct, ...distractors];
+      for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [choices[i], choices[j]] = [choices[j], choices[i]]; }
+      return { correct, choices };
+    });
+    intrusIndex = 0; intrusCorrectCount = 0;
+    showPanel('intrus');
+    intrusShowQuestion();
+  } catch (error) {
+    feedback.textContent = `Erreur : ${error.message}`;
+  }
+});
+
+function intrusShowQuestion() {
+  intrusAnswered = false;
+  const q = INTRUS_SESSION[intrusIndex];
+  $('intrus-progress-label').textContent = `Question ${intrusIndex + 1} / ${INTRUS_SESSION.length}`;
+  $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
+  $('intrus-progress-bar').style.width = `${(intrusIndex / INTRUS_SESSION.length) * 100}%`;
+  $('intrus-correction').classList.add('hidden');
+  $('intrus-choices').classList.remove('hidden');
+
+  const promptCard = $('intrus-prompt-card');
+  if (intrusMode === 'image') {
+    // Référence en haut (artiste + titre seulement), 3 images en choix.
+    promptCard.innerHTML = `<div class="intrus-ref-prompt"><div class="artist">${escapeHtml(q.correct.artist)}</div><div class="title">« ${escapeHtml(q.correct.title)} »</div></div>`;
+    $('intrus-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
+      `<button type="button" class="intrus-choice-btn" data-index="${i}"><img src="${escapeHtml(imageSource(c.image))}" alt="" /></button>`
+    ).join('')}</div>`;
+  } else {
+    // Image en haut, 3 références (artiste + titre) en choix.
+    promptCard.innerHTML = `<img src="${escapeHtml(imageSource(q.correct.image))}" alt="" style="max-width:100%;max-height:min(820px,74vh);display:block;" />`;
+    $('intrus-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
+      `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title)} »</em></button>`
+    ).join('')}</div>`;
+  }
+
+  $('intrus-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
+    btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
+  });
+}
+
+function intrusAnswer(chosenIndex) {
+  if (intrusAnswered) return;
+  intrusAnswered = true;
+  const q = INTRUS_SESSION[intrusIndex];
+  const chosen = q.choices[chosenIndex];
+  const isCorrect = chosen === q.correct;
+  if (isCorrect) intrusCorrectCount++;
+
+  $('intrus-choices').querySelectorAll('.intrus-choice-btn').forEach((btn, i) => {
+    btn.disabled = true;
+    if (q.choices[i] === q.correct) btn.classList.add('correct');
+    else if (i === chosenIndex) btn.classList.add('wrong');
+  });
+
+  const chosenLabel = intrusMode === 'image' ? '' : `${chosen.artist} — « ${chosen.title} »`;
+  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date} — ${q.correct.location}`;
+  const detailsParts = [];
+  if (chosenLabel) {
+    detailsParts.push(`<span class="correction-label">Réponse donnée</span><span class="correction-value">${escapeHtml(chosenLabel)} — <span style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</span></span>`);
+  } else {
+    detailsParts.push(`<span class="correction-label">Votre choix</span><span class="correction-value" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</span>`);
+  }
+  detailsParts.push(`<span class="correction-label">Référence complète</span><span class="correction-value">${escapeHtml(correctFullRef)}</span>`);
+  $('intrus-correction-details').innerHTML = detailsParts.join('');
+  $('intrus-correction').classList.remove('hidden');
+  $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
+  $('intrus-next-button').textContent = intrusIndex === INTRUS_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
+}
+
+$('intrus-next-button')?.addEventListener('click', async () => {
+  if (intrusIndex < INTRUS_SESSION.length - 1) {
+    intrusIndex++;
+    intrusShowQuestion();
+  } else {
+    // Fin de l'exercice : enregistrement du score, à part des scores de quiz.
+    if (firebaseReady && currentUser) {
+      try {
+        await db.collection('users').doc(currentUser.uid).collection('scores').add({
+          type: 'entrainement',
+          exerciseName: 'Intrus',
+          correct: intrusCorrectCount, possible: INTRUS_SESSION.length,
+          percent: Math.round((intrusCorrectCount / INTRUS_SESSION.length) * 100),
+          questionCount: INTRUS_SESSION.length,
+          quizLabel: `Intrus — ${intrusMode === 'image' ? 'images intruses' : 'références intruses'}`,
+          quizLevel: intrusSelectedLevels().map((lvl) => `Niveau ${lvl}`).join(' + '),
+          quizArts: intrusSelectedArts(), quizCenturies: intrusSelectedCenturies(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (e) { /* enregistrement best-effort */ }
+    }
+    showPanel('intrus-setup');
+    const feedback = $('intrus-setup-feedback');
+    feedback.classList.remove('hidden');
+    feedback.textContent = `Terminé : ${intrusCorrectCount} / ${INTRUS_SESSION.length} bonnes réponses.`;
+  }
+});
 
 document.querySelectorAll('.modal-close').forEach((button) => {
   button.addEventListener('click', () => { closeModal(button.dataset.modal); updateSelectorSummaries(); });
