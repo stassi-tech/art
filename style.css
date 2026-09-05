@@ -53,10 +53,16 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .fam-image-cell.selected::after { content:attr(data-num); position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:1rem; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.4); }
 .fam-title-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
 .fam-title-row .fam-num-badge { flex:0 0 28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; font-family:Arial,sans-serif; font-weight:700; font-size:.9rem; display:flex; align-items:center; justify-content:center; }
-.fam-title-row input { flex:1; padding:9px; border:1px solid #cfc8bc; border-radius:4px; font-family:Arial,sans-serif; font-size:.9rem; }
-.fam-title-row .fam-title-value { flex:1; font-weight:700; transition:color .4s; }
-.fam-title-row .fam-title-value.vf-was-wrong { color:var(--wrong); text-decoration:line-through; }
-.fam-title-row .fam-title-value.vf-updated { color:var(--ok); }
+.fam-title-row .fam-drop-slot { flex:1; min-height:40px; padding:9px 12px; border:2px dashed #cfc8bc; border-radius:4px; font-family:Arial,sans-serif; font-size:.9rem; display:flex; align-items:center; cursor:pointer; color:var(--muted); transition:border-color .15s, background .15s; }
+.fam-title-row .fam-drop-slot:hover { border-color:var(--accent); background:#f7f2ea; }
+.fam-title-row .fam-drop-slot.filled { border-style:solid; color:var(--ink); font-weight:700; }
+.fam-title-row .fam-drop-slot.vf-was-wrong { border-color:var(--wrong); color:var(--wrong); text-decoration:line-through; }
+.fam-title-row .fam-drop-slot.vf-updated { border-color:var(--ok); color:var(--ok); text-decoration:none; }
+.fam-labels-pool { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+.fam-label-chip { padding:8px 14px; border:1px solid var(--accent); border-radius:20px; background:#fff; color:var(--accent); font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; cursor:pointer; transition:background .15s; }
+.fam-label-chip:hover:not(:disabled) { background:#f7f2ea; }
+.fam-label-chip.picked { background:var(--accent); color:#fff; }
+.fam-label-chip:disabled { opacity:.35; cursor:not-allowed; }
 .fam-image-cell.correct { border-color:var(--ok); }
 .fam-image-cell.wrong { border-color:var(--wrong); }
 .fam-image-cell:disabled { cursor:not-allowed; }

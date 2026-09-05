@@ -1766,13 +1766,20 @@ function detectCenturyFromDate(dateStr) {
   return `${Math.floor((year - 1) / 100) + 1}e`;
 }
 
-let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [], famStep = 1, famTimers = [];
-function famSpeak(text) {
-  if (!famAudioOn || !window.speechSynthesis) return;
+let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [], famStep = 1, famTimers = [], famPickedLabel = null;
+function famSpeak(text, onEnd) {
+  if (!famAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'fr-FR'; u.rate = 0.85;
   if (famSelectedVoiceRef) u.voice = famSelectedVoiceRef;
+  if (onEnd) {
+    let done = false;
+    const finish = () => { if (!done) { done = true; onEnd(); } };
+    u.onend = finish; u.onerror = finish;
+    const estimatedMs = Math.max(1200, (text.length / 13) * 1000) + 400;
+    famTimers.push(setTimeout(finish, estimatedMs));
+  }
   speechSynthesis.speak(u);
 }
 
@@ -1839,6 +1846,7 @@ function famShowQuestion() {
   famAnswered = false;
   famSelectedImages = [];
   famStep = 1;
+  famPickedLabel = null;
   const q = FAM_SESSION[famIndex];
   $('fam-progress-label').textContent = `Question ${famIndex + 1} / ${FAM_SESSION.length}`;
   $('fam-progress-bar').style.width = `${(famIndex / FAM_SESSION.length) * 100}%`;
@@ -1892,18 +1900,74 @@ $('fam-validate-artist-button')?.addEventListener('click', () => {
   });
   q.artistCorrect = famAnswerMatches($('fam-artist-input').value, q.artist, 'artist');
 
-  // On passe à l'étape 2 (les titres) quoi qu'il arrive : le score final dépendra de tout —
-  // artiste, images et titres — mais autant laisser le joueur tenter les titres.
+  if (!q.imagesCorrect || !q.artistCorrect) {
+    // Famille non identifiée : pas d'étape des titres, on va directement à la correction.
+    famAnswered = true;
+    famScore = Math.round(famScore * 10) / 10; // 0 point pour cette question
+    const artistNote = document.createElement('p');
+    artistNote.className = 'hint';
+    artistNote.style.textAlign = 'center';
+    artistNote.innerHTML = `<span style="color:var(--wrong);font-weight:700;">À réviser. Il fallait retrouver les 4 œuvres de : ${escapeHtml(q.artist)}</span>`;
+    $('fam-step1').appendChild(artistNote);
+    famSpeak(`À réviser. Il fallait retrouver les quatre œuvres de ${q.artist}.`);
+    $('fam-correction').classList.remove('hidden');
+    $('fam-next-button').textContent = famIndex === FAM_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
+    return;
+  }
+
+  // Famille identifiée : étape 2, replacer les 4 étiquettes (titres mélangés) dans les bonnes
+  // barres, numérotées comme les images sélectionnées.
   famStep = 2;
+  famPickedLabel = null;
   $('fam-step2').classList.remove('hidden');
-  $('fam-step-title').textContent = 'Es-tu capable de donner le titre de ces tableaux ?';
+  $('fam-step-title').textContent = 'Replacez les étiquettes';
   $('fam-title-rows').innerHTML = famSelectedImages.map((idx, n) =>
     `<div class="fam-title-row" data-index="${idx}">
       <span class="fam-num-badge">${n + 1}</span>
-      <input type="text" class="fam-title-input" data-index="${idx}" placeholder="Titre de l'œuvre n° ${n + 1}" />
+      <button type="button" class="fam-drop-slot" data-index="${idx}">Déposez l'étiquette ici</button>
     </div>`
   ).join('');
+  const shuffledTitles = famSelectedImages.map((idx) => ({ idx, title: q.images[idx].title })).sort(() => Math.random() - 0.5);
+  $('fam-title-labels').innerHTML = `<div class="fam-labels-pool">${shuffledTitles.map((t, n) =>
+    `<button type="button" class="fam-label-chip" data-label-index="${n}" data-true-index="${t.idx}">${escapeHtml(t.title)}</button>`
+  ).join('')}</div>`;
+
+  document.querySelectorAll('.fam-label-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.fam-label-chip').forEach((c) => c.classList.remove('picked'));
+      famPickedLabel = famPickedLabel === chip ? null : chip;
+      if (famPickedLabel) chip.classList.add('picked');
+    });
+  });
+  document.querySelectorAll('.fam-drop-slot').forEach((slot) => {
+    slot.addEventListener('click', () => {
+      if (slot.classList.contains('filled')) {
+        // Retire l'étiquette déposée ici, la remet disponible dans le réservoir.
+        const chip = document.querySelector(`.fam-label-chip[data-label-index="${slot.dataset.labelIndex}"]`);
+        if (chip) { chip.disabled = false; chip.classList.remove('picked'); }
+        slot.textContent = "Déposez l'étiquette ici";
+        slot.classList.remove('filled');
+        delete slot.dataset.labelIndex;
+        updateFamValidateTitlesState();
+        return;
+      }
+      if (!famPickedLabel) return;
+      slot.textContent = famPickedLabel.textContent;
+      slot.dataset.labelIndex = famPickedLabel.dataset.labelIndex;
+      slot.classList.add('filled');
+      famPickedLabel.disabled = true;
+      famPickedLabel.classList.remove('picked');
+      famPickedLabel = null;
+      updateFamValidateTitlesState();
+    });
+  });
+  updateFamValidateTitlesState();
 });
+
+function updateFamValidateTitlesState() {
+  const allFilled = document.querySelectorAll('.fam-drop-slot.filled').length === 4;
+  $('fam-validate-titles-button').disabled = !allFilled;
+}
 
 function famArtistFeedback(msg) {
   let el = $('fam-artist-feedback');
@@ -1920,30 +1984,22 @@ $('fam-validate-titles-button')?.addEventListener('click', () => {
   if (famAnswered) return;
   famAnswered = true;
   const q = FAM_SESSION[famIndex];
-  document.querySelectorAll('.fam-title-input').forEach((inp) => { inp.disabled = true; });
+  document.querySelectorAll('.fam-label-chip').forEach((chip) => { chip.disabled = true; });
+  document.querySelectorAll('.fam-drop-slot').forEach((slot) => { slot.disabled = true; });
   $('fam-validate-titles-button').disabled = true;
 
   let allTitlesCorrect = true;
+  const slotChecks = [];
   document.querySelectorAll('.fam-title-row').forEach((row) => {
     const idx = Number(row.dataset.index);
     const work = q.images[idx];
-    const input = row.querySelector('.fam-title-input');
-    const ok = famAnswerMatches(input.value, work.title);
+    const slot = row.querySelector('.fam-drop-slot');
+    const placedTrueIndex = Number(slot.dataset.labelIndex !== undefined
+      ? document.querySelector(`.fam-label-chip[data-label-index="${slot.dataset.labelIndex}"]`)?.dataset.trueIndex
+      : NaN);
+    const ok = placedTrueIndex === idx;
     if (!ok) allTitlesCorrect = false;
-    // Remplace la ligne de saisie par la valeur donnée, avec le même principe de correction
-    // que Vrai/Faux : faux en rouge, puis réécriture en vert de la bonne réponse.
-    const valueSpan = document.createElement('span');
-    valueSpan.className = 'fam-title-value';
-    valueSpan.textContent = input.value.trim() || '(rien répondu)';
-    if (!ok) valueSpan.classList.add('vf-was-wrong');
-    input.replaceWith(valueSpan);
-    if (!ok) {
-      famTimers.push(setTimeout(() => {
-        valueSpan.textContent = work.title;
-        valueSpan.classList.remove('vf-was-wrong');
-        valueSpan.classList.add('vf-updated');
-      }, 900));
-    }
+    slotChecks.push({ slot, work, ok });
   });
 
   const pointEarned = (q.imagesCorrect && q.artistCorrect && allTitlesCorrect) ? 1 : 0;
@@ -1952,14 +2008,29 @@ $('fam-validate-titles-button')?.addEventListener('click', () => {
   const artistNote = document.createElement('p');
   artistNote.className = 'hint';
   artistNote.style.textAlign = 'center';
-  artistNote.innerHTML = q.artistCorrect
-    ? `<span style="color:var(--ok);font-weight:700;">Artiste exact : ${escapeHtml(q.artist)}</span>`
-    : `<span style="color:var(--wrong);font-weight:700;">Artiste : ${escapeHtml(q.artist)}</span>`;
+  artistNote.innerHTML = `<span style="color:var(--ok);font-weight:700;">Artiste exact : ${escapeHtml(q.artist)}</span>`;
   $('fam-step1').appendChild(artistNote);
 
-  famSpeak(pointEarned
-    ? `Exact. Il s'agissait bien de ${q.artist}.`
-    : `À réviser. L'artiste était : ${q.artist}.`);
+  // Annonce séquentielle : une œuvre à la fois, sans jamais couper la phrase précédente.
+  // Si bien placée, la voix redonne simplement le titre ; sinon la barre se corrige en vert et
+  // la voix donne le titre exact.
+  function announceNext(i) {
+    if (i >= slotChecks.length) return;
+    const { slot, work, ok } = slotChecks[i];
+    if (ok) {
+      slot.classList.add('vf-updated');
+      famSpeak(work.title, () => announceNext(i + 1));
+    } else {
+      slot.classList.add('vf-was-wrong');
+      famTimers.push(setTimeout(() => {
+        slot.textContent = work.title;
+        slot.classList.remove('vf-was-wrong');
+        slot.classList.add('vf-updated');
+        famSpeak(work.title, () => announceNext(i + 1));
+      }, 700));
+    }
+  }
+  announceNext(0);
 
   $('fam-correction').classList.remove('hidden');
   $('fam-next-button').textContent = famIndex === FAM_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
