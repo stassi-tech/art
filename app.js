@@ -1366,6 +1366,74 @@ const ENIGME_DEMO_DATA = [
   },
 ];
 
+// Position approximative (en % de l'image) pour chacune des 6 zones fixes utilisées dans le
+// fichier -enigme.xlsx (colonnes « Personnage A Haut/gauche » etc.).
+const ENIG_POSITIONS = {
+  A: { x: 25, y: 25 }, B: { x: 25, y: 75 }, C: { x: 50, y: 25 },
+  D: { x: 50, y: 75 }, E: { x: 75, y: 25 }, F: { x: 75, y: 75 },
+};
+function enigImageKey(url) {
+  // Clé de correspondance entre le fichier principal et le fichier -enigme : le nom de fichier
+  // Wikimedia, indépendamment du domaine ou des paramètres d'URL (utm_source, width, etc.).
+  const m = String(url || '').match(/[^/]+\.(jpg|jpeg|png|gif|tif|tiff)/i);
+  return m ? decodeURIComponent(m[0]).toLowerCase() : '';
+}
+async function fetchEnigmeRows(art, century) {
+  const [mainRows, enigResponse] = await Promise.all([
+    fetchQuizRows(art, century).catch(() => []),
+    fetch(`quizzes/${art}-${century}-enigme.xlsx`),
+  ]);
+  if (!enigResponse.ok) throw new Error('fichier énigme introuvable');
+  const buffer = await enigResponse.arrayBuffer();
+  const book = XLSX.read(buffer, { type: 'array' });
+  const raw = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { header: 1, defval: '' });
+
+  const mainByKey = new Map();
+  mainRows.forEach((r) => { const k = enigImageKey(r.image); if (k) mainByKey.set(k, r); });
+
+  const results = [];
+  for (let i = 1; i < raw.length; i++) {
+    const r = raw[i];
+    if (!r || !r[0]) continue;
+    const key = enigImageKey(r[0]);
+    const mainRow = mainByKey.get(key);
+    // Sans correspondance dans le fichier principal, on ne connaît ni date ni lieu : on ignore
+    // cette ligne plutôt que d'afficher une référence incomplète.
+    if (!mainRow) continue;
+
+    const people = [];
+    ['A', 'B', 'C', 'D', 'E', 'F'].forEach((letter, idx) => {
+      const name = String(r[3 + idx] || '').trim();
+      if (name) people.push({ letter, name, ...ENIG_POSITIONS[letter] });
+    });
+    const evenement = String(r[9] || '').trim();
+    const evFaux1 = String(r[10] || '').trim(), evFaux2 = String(r[11] || '').trim();
+    const interpretation = String(r[12] || '').trim();
+    const intFaux1 = String(r[13] || '').trim(), intFaux2 = String(r[14] || '').trim();
+
+    const availableTypes = [];
+    if (people.length) availableTypes.push({ type: 'personnages', people });
+    if (evenement && evFaux1 && evFaux2) availableTypes.push({ type: 'evenement', question: 'Quel événement représente cette œuvre ?', options: [evenement, evFaux1, evFaux2], correctIndex: 0 });
+    if (interpretation && intFaux1 && intFaux2) availableTypes.push({ type: 'interpretation', question: "Quelle est l'interprétation de cette œuvre ?", options: [interpretation, intFaux1, intFaux2], correctIndex: 0 });
+
+    // Il faut au moins 2 types disponibles pour interroger sur deux éléments distincts.
+    if (availableTypes.length < 2) continue;
+    const shuffledTypes = availableTypes.slice().sort(() => Math.random() - 0.5);
+    const chosenItems = shuffledTypes.slice(0, 2).map((it) => {
+      if (it.type !== 'evenement' && it.type !== 'interpretation') return it;
+      // Mélange l'ordre des 3 options QCM tout en gardant trace du bon index.
+      const opts = it.options.map((opt, idx) => ({ opt, idx })).sort(() => Math.random() - 0.5);
+      return { ...it, options: opts.map((o) => o.opt), correctIndex: opts.findIndex((o) => o.idx === 0) };
+    });
+
+    results.push({
+      century, artist: mainRow.artist, date: mainRow.date, location: mainRow.location,
+      image: mainRow.image, items: chosenItems,
+    });
+  }
+  return results;
+}
+
 $('open-enigme-setup')?.addEventListener('click', () => { showPanel('enigme-setup'); populateEnigVoices(); });
 $('enigme-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('enig-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('enigme-setup'); });
@@ -1392,6 +1460,7 @@ ENIG_ACCORDIONS.forEach((pair) => {
 });
 
 function enigSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e'].filter((c) => $(`enig-century-${c}`)?.checked); }
+function enigSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`enig-art-${a}`)?.checked); }
 
 let ENIG_SESSION = [], enigIndex = 0, enigScore = 0, enigAnswered = false, enigAudioOn = true, enigSelectedVoiceRef = null;
 function enigSpeak(text) {
@@ -1403,21 +1472,38 @@ function enigSpeak(text) {
   speechSynthesis.speak(u);
 }
 
-$('enig-start-button')?.addEventListener('click', () => {
+$('enig-start-button')?.addEventListener('click', async () => {
+  const arts = enigSelectedArts();
   const centuries = enigSelectedCenturies();
   const feedback = $('enig-setup-feedback');
   feedback.classList.remove('hidden');
   if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
-  // Filtre les énigmes disponibles (démo) selon les siècles choisis.
-  const available = ENIGME_DEMO_DATA.filter((e) => centuries.includes(e.century));
-  if (!available.length) { feedback.textContent = "Aucune énigme de démonstration pour ce choix de siècle — essayez 19e siècle en attendant votre fichier de données."; return; }
+  feedback.textContent = 'Chargement des énigmes…';
   enigAudioOn = $('enig-opt-audio').checked;
   const enigVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   enigSelectedVoiceRef = enigVoices[$('enig-opt-voice').value] || null;
   const countChoice = Number(document.querySelector('input[name="enig-count"]:checked').value);
-  // Boucle sur les énigmes disponibles si le nombre demandé dépasse ce qui existe (mode démo).
+
+  // Essaie d'abord les vrais fichiers -enigme.xlsx (un par art/siècle) ; si aucun n'est encore
+  // en ligne, se rabat sur les énigmes de démonstration pour ne pas bloquer le test de l'appli.
+  let available = [];
+  for (const art of arts) {
+    for (const century of centuries) {
+      try { available.push(...(await fetchEnigmeRows(art, century))); } catch (e) { /* fichier pas encore en ligne, ignoré */ }
+    }
+  }
+  let usingDemo = false;
+  if (!available.length) {
+    available = ENIGME_DEMO_DATA.filter((e) => centuries.includes(e.century));
+    usingDemo = true;
+  }
+  if (!available.length) { feedback.textContent = "Aucune énigme disponible pour ce choix — essayez 19e siècle (démonstration) ou vérifiez que le fichier -enigme.xlsx est bien en ligne."; return; }
+
+  for (let i = available.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [available[i], available[j]] = [available[j], available[i]]; }
   ENIG_SESSION = [];
   for (let i = 0; i < countChoice; i++) ENIG_SESSION.push(available[i % available.length]);
+  feedback.classList.add('hidden');
+  if (usingDemo) { feedback.classList.remove('hidden'); feedback.textContent = 'Mode démonstration (fichier -enigme.xlsx non trouvé en ligne).'; }
   enigIndex = 0; enigScore = 0;
   showPanel('enigme');
   enigShowQuestion();
@@ -1610,28 +1696,42 @@ const FAM_TYPE_LABELS = { artist: 'Artiste', word: 'Mot commun dans les titres',
 function famNormalize(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[«»"',.]/g, '').trim();
 }
-function famAnswerMatches(input, correct) {
-  const a = famNormalize(input), b = famNormalize(correct);
+function famAnswerMatches(input, correct, type) {
+  const a = famNormalize(input);
+  // Pour l'artiste, seul le nom de famille compte (le prénom est ignoré, comme dans le quiz).
+  const correctForCompare = type === 'artist' ? String(correct || '').trim().split(/\s+/).pop() : correct;
+  const b = famNormalize(correctForCompare);
   if (!a) return false;
-  return a === b || b.includes(a) || a.includes(b);
+  if (a === b || b.includes(a) || a.includes(b)) return true;
+  // Tolérance spécifique aux siècles : « 18 », « 18e », « 18eme », avec ou sans « siecle »,
+  // doivent tous valider pour « 18e siecle ».
+  const stripCentury = (s2) => s2.replace(/\bsiecles?\b/g, '').replace(/eme\b|e\b/g, '').replace(/\s+/g, '').trim();
+  const na = stripCentury(a), nb = stripCentury(b);
+  return na && na === nb;
 }
 
 // Cherche, pour un type donné, un groupe de 4 œuvres partageant un trait commun, avec assez
 // d'œuvres différentes en dehors du groupe pour servir d'intrus.
-function famFindGroup(type, pool) {
+function famFindGroup(type, pool, distractorCount) {
   if (type === 'artist') {
     const byArtist = new Map();
     pool.forEach((r) => { if (!byArtist.has(r.artist)) byArtist.set(r.artist, []); byArtist.get(r.artist).push(r); });
-    const candidates = [...byArtist.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= 4);
+    const candidates = [...byArtist.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= distractorCount);
     if (!candidates.length) return null;
     const [artist, works] = candidates[Math.floor(Math.random() * candidates.length)];
     const shuffled = works.slice().sort(() => Math.random() - 0.5);
-    return { family: shuffled.slice(0, 4), answer: artist, outsiders: pool.filter((r) => r.artist !== artist) };
+    const family = shuffled.slice(0, 4);
+    // Les intrus ne doivent pas partager le même siècle que la famille : sinon « tel siècle »
+    // serait aussi une réponse juste, mais refusée puisqu'on cherche l'artiste.
+    const familyCenturies = new Set(family.map((r) => r.century || detectCenturyFromDate(r.date)));
+    const otherCentury = pool.filter((r) => r.artist !== artist && !familyCenturies.has(r.century || detectCenturyFromDate(r.date)));
+    const outsiders = otherCentury.length >= 4 ? otherCentury : pool.filter((r) => r.artist !== artist);
+    return { family, answer: artist, outsiders };
   }
   if (type === 'century') {
     const byCentury = new Map();
     pool.forEach((r) => { const c = r.century || detectCenturyFromDate(r.date); if (c) { if (!byCentury.has(c)) byCentury.set(c, []); byCentury.get(c).push(r); } });
-    const candidates = [...byCentury.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= 4);
+    const candidates = [...byCentury.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= distractorCount);
     if (!candidates.length) return null;
     const [century, works] = candidates[Math.floor(Math.random() * candidates.length)];
     const shuffled = works.slice().sort(() => Math.random() - 0.5);
@@ -1640,7 +1740,7 @@ function famFindGroup(type, pool) {
   if (type === 'museum') {
     const byPlace = new Map();
     pool.forEach((r) => { if (r.location) { if (!byPlace.has(r.location)) byPlace.set(r.location, []); byPlace.get(r.location).push(r); } });
-    const candidates = [...byPlace.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= 4);
+    const candidates = [...byPlace.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= distractorCount);
     if (!candidates.length) return null;
     const [place, works] = candidates[Math.floor(Math.random() * candidates.length)];
     const shuffled = works.slice().sort(() => Math.random() - 0.5);
@@ -1651,7 +1751,7 @@ function famFindGroup(type, pool) {
     pool.forEach((r) => {
       intrusTitleWords(r.title).forEach((w) => { if (!byWord.has(w)) byWord.set(w, []); byWord.get(w).push(r); });
     });
-    const candidates = [...byWord.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= 4);
+    const candidates = [...byWord.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= distractorCount);
     if (!candidates.length) return null;
     const [word, works] = candidates[Math.floor(Math.random() * candidates.length)];
     const shuffled = works.slice().sort(() => Math.random() - 0.5);
@@ -1712,18 +1812,20 @@ $('fam-start-button')?.addEventListener('click', async () => {
     famSelectedVoiceRef = famVoices[$('fam-opt-voice').value] || null;
     const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
     const count = Number(countChoice);
+    const imgCountChoice = Number(document.querySelector('input[name="fam-images"]:checked').value);
+    const distractorCount = imgCountChoice - 4;
 
     const questions = [];
     let attempts = 0;
     while (questions.length < count && attempts < count * 15) {
       attempts++;
       const type = types[Math.floor(Math.random() * types.length)];
-      const group = famFindGroup(type, pool);
+      const group = famFindGroup(type, pool, distractorCount);
       if (!group) continue;
-      const distractors = group.outsiders.slice().sort(() => Math.random() - 0.5).slice(0, 4);
-      if (distractors.length < 4) continue;
+      const distractors = group.outsiders.slice().sort(() => Math.random() - 0.5).slice(0, distractorCount);
+      if (distractors.length < distractorCount) continue;
       const images = group.family.concat(distractors).sort(() => Math.random() - 0.5);
-      questions.push({ type, family: group.family, answer: group.answer, images });
+      questions.push({ type, family: group.family, answer: group.answer, images, imgCount: imgCountChoice });
     }
     if (!questions.length) { feedback.textContent = "Impossible de constituer un exercice avec ces critères — essayez d'élargir le choix (plus de siècles, plus de niveaux)."; return; }
     FAM_SESSION = questions;
@@ -1745,8 +1847,8 @@ function famShowQuestion() {
   $('fam-validate-button').classList.remove('hidden');
   $('fam-validate-button').disabled = false;
 
-  $('fam-image-grid').innerHTML = q.images.map((work, i) =>
-    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSource(work.image))}" alt="" /></button>`
+  $('fam-image-grid').className = `fam-image-grid${q.imgCount === 6 ? ' fam-count-6' : ''}`;
+  $('fam-image-grid').innerHTML = q.images.map((work, i) =>    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSource(work.image))}" alt="" /></button>`
   ).join('');
   $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -1792,7 +1894,7 @@ $('fam-validate-button')?.addEventListener('click', () => {
     if (inp.value.trim()) filledType = inp.dataset.type;
   });
   const correctInput = document.querySelector(`.fam-answer-input[data-type="${q.type}"]`);
-  if (correctInput && famAnswerMatches(correctInput.value, q.answer)) answerCorrect = true;
+  if (correctInput && famAnswerMatches(correctInput.value, q.answer, q.type)) answerCorrect = true;
 
   const pointEarned = (imagesCorrect && answerCorrect) ? 1 : 0;
   famScore = Math.round((famScore + pointEarned) * 10) / 10;
@@ -1899,7 +2001,16 @@ function vfSpeak(text, onEnd) {
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'fr-FR'; u.rate = 0.85;
   if (vfSelectedVoiceRef) u.voice = vfSelectedVoiceRef;
-  if (onEnd) { u.onend = onEnd; u.onerror = onEnd; }
+  if (onEnd) {
+    // Filet de sécurité : certains navigateurs ne déclenchent pas toujours onend de façon
+    // fiable. On estime la durée de lecture (≈ 13 caractères/seconde à ce débit) et on force
+    // la suite si l'événement tarde trop, plutôt que de rester bloqué ou de chevaucher.
+    let done = false;
+    const finish = () => { if (!done) { done = true; onEnd(); } };
+    u.onend = finish; u.onerror = finish;
+    const estimatedMs = Math.max(1200, (text.length / 13) * 1000) + 400;
+    vfTimers.push(setTimeout(finish, estimatedMs));
+  }
   speechSynthesis.speak(u);
 }
 
@@ -2411,6 +2522,9 @@ document.querySelectorAll('.training-soon').forEach((btn) => {
 $('open-impregnation-setup')?.addEventListener('click', () => { showPanel('impregnation-setup'); populateImpVoices(); });
 $('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
+['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
+  $(`${p}-hub-link`)?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); });
+});
 
 const IMP_ACCORDIONS = ['imp-toggle-art:imp-body-art', 'imp-toggle-century:imp-body-century', 'imp-toggle-level:imp-body-level', 'imp-toggle-rubriques:imp-body-rubriques'];
 IMP_ACCORDIONS.forEach((pair) => {
