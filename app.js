@@ -832,6 +832,8 @@ function showPanel(name) {
   $('vraifaux-panel')?.classList.toggle('hidden', name !== 'vraifaux');
   $('famille-setup-panel')?.classList.toggle('hidden', name !== 'famille-setup');
   $('famille-panel')?.classList.toggle('hidden', name !== 'famille');
+  $('enigme-setup-panel')?.classList.toggle('hidden', name !== 'enigme-setup');
+  $('enigme-panel')?.classList.toggle('hidden', name !== 'enigme');
   $('quiz-setup-panel')?.classList.toggle('hidden', name !== 'quiz-setup');
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
@@ -1333,6 +1335,249 @@ $('fam-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); 
 $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
 $('fam-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
+// ============================================================
+// MODULE ÉNIGME — artiste/date/lieu donnés d'emblée (titre caché) ; deux éléments à retrouver
+// par œuvre parmi : personnages (cercles lettrés), événement (QCM), interprétation (QCM).
+// Données de démonstration en dur ci-dessous, en attendant un fichier « -enigme.xlsx » réel
+// (même principe de lecture que les autres modules à brancher plus tard, clé = lien d'image).
+// ============================================================
+const ENIGME_DEMO_DATA = [
+  {
+    century: '19e', artist: 'Théodore Géricault', date: '1818-1819', location: 'Musée du Louvre, Paris',
+    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/JEAN%20LOUIS%20THEODORE%20GERICAULT%20-%20La%20Balsa%20de%20la%20Medusa%20(Museo%20del%20Louvre,%201818-19).jpg?width=700',
+    items: [
+      { type: 'personnages', people: [
+        { letter: 'A', x: 20, y: 78, name: 'Un survivant épuisé' },
+        { letter: 'B', x: 78, y: 22, name: 'Le marin agitant un linge' },
+      ] },
+      { type: 'evenement', question: "Quel événement réel a inspiré cette scène ?", options: ["Le naufrage de la frégate La Méduse (1816)", "La bataille de Trafalgar", "Le naufrage du Titanic"], correctIndex: 0 },
+    ],
+  },
+  {
+    century: '19e', artist: 'Eugène Delacroix', date: '1830', location: 'Musée du Louvre, Paris',
+    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Eug%C3%A8ne%20Delacroix%20-%20La%20libert%C3%A9%20guidant%20le%20peuple.jpg?width=700',
+    items: [
+      { type: 'personnages', people: [
+        { letter: 'A', x: 45, y: 30, name: 'La Liberté (figure allégorique)' },
+        { letter: 'B', x: 60, y: 55, name: 'Un gamin de Paris (le futur Gavroche)' },
+      ] },
+      { type: 'interpretation', question: "Que symbolise la figure féminine au centre du tableau ?", options: ["La République et la Liberté", "La Vierge Marie", "La Victoire militaire"], correctIndex: 0 },
+    ],
+  },
+];
+
+$('open-enigme-setup')?.addEventListener('click', () => { showPanel('enigme-setup'); populateEnigVoices(); });
+$('enigme-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('enig-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('enigme-setup'); });
+$('enig-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'enigme'; showPanel('account'); loadAccountPage(); });
+$('enig-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
+
+function populateEnigVoices() {
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  const select = $('enig-opt-voice');
+  if (!select) return;
+  select.innerHTML = voices.length
+    ? voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('')
+    : '<option value="">Voix par défaut du système</option>';
+}
+
+const ENIG_ACCORDIONS = ['enig-toggle-art:enig-body-art', 'enig-toggle-century:enig-body-century', 'enig-toggle-count:enig-body-count'];
+ENIG_ACCORDIONS.forEach((pair) => {
+  const [toggleId, bodyId] = pair.split(':');
+  $(toggleId)?.addEventListener('click', () => {
+    const opening = $(bodyId).classList.contains('hidden');
+    ENIG_ACCORDIONS.forEach((p) => $(p.split(':')[1])?.classList.add('hidden'));
+    if (opening) $(bodyId).classList.remove('hidden');
+  });
+});
+
+function enigSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e'].filter((c) => $(`enig-century-${c}`)?.checked); }
+
+let ENIG_SESSION = [], enigIndex = 0, enigScore = 0, enigAnswered = false, enigAudioOn = true, enigSelectedVoiceRef = null;
+function enigSpeak(text) {
+  if (!enigAudioOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'fr-FR'; u.rate = 0.85;
+  if (enigSelectedVoiceRef) u.voice = enigSelectedVoiceRef;
+  speechSynthesis.speak(u);
+}
+
+$('enig-start-button')?.addEventListener('click', () => {
+  const centuries = enigSelectedCenturies();
+  const feedback = $('enig-setup-feedback');
+  feedback.classList.remove('hidden');
+  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
+  // Filtre les énigmes disponibles (démo) selon les siècles choisis.
+  const available = ENIGME_DEMO_DATA.filter((e) => centuries.includes(e.century));
+  if (!available.length) { feedback.textContent = "Aucune énigme de démonstration pour ce choix de siècle — essayez 19e siècle en attendant votre fichier de données."; return; }
+  enigAudioOn = $('enig-opt-audio').checked;
+  const enigVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  enigSelectedVoiceRef = enigVoices[$('enig-opt-voice').value] || null;
+  const countChoice = Number(document.querySelector('input[name="enig-count"]:checked').value);
+  // Boucle sur les énigmes disponibles si le nombre demandé dépasse ce qui existe (mode démo).
+  ENIG_SESSION = [];
+  for (let i = 0; i < countChoice; i++) ENIG_SESSION.push(available[i % available.length]);
+  enigIndex = 0; enigScore = 0;
+  showPanel('enigme');
+  enigShowQuestion();
+});
+
+function enigShowQuestion() {
+  enigAnswered = false;
+  const q = ENIG_SESSION[enigIndex];
+  $('enig-progress-label').textContent = `Question ${enigIndex + 1} / ${ENIG_SESSION.length}`;
+  $('enig-progress-bar').style.width = `${(enigIndex / ENIG_SESSION.length) * 100}%`;
+  $('enig-correction').classList.add('hidden');
+  $('enig-validate-button').classList.remove('hidden');
+  $('enig-validate-button').disabled = false;
+
+  $('enig-stage-img').src = imageSource(q.image);
+  const personnagesItem = q.items.find((it) => it.type === 'personnages');
+  $('enig-image-wrap').querySelectorAll('.enig-circle').forEach((c) => c.remove());
+  if (personnagesItem) {
+    // Les cercles sont positionnés une fois l'image chargée, pour connaître ses dimensions réelles.
+    const img = $('enig-stage-img');
+    const placeCircles = () => {
+      $('enig-image-wrap').querySelectorAll('.enig-circle').forEach((c) => c.remove());
+      personnagesItem.people.forEach((p) => {
+        const circle = document.createElement('div');
+        circle.className = 'enig-circle';
+        circle.style.left = `${p.x}%`;
+        circle.style.top = `${p.y}%`;
+        circle.style.width = '52px';
+        circle.style.height = '52px';
+        circle.innerHTML = `<span>${p.letter}</span>`;
+        $('enig-image-wrap').appendChild(circle);
+      });
+    };
+    if (img.complete) placeCircles(); else img.onload = placeCircles;
+  }
+
+  $('enig-header-details').innerHTML = [
+    ['Artiste', q.artist], ['Date', q.date], ['Lieu', q.location],
+  ].map(([label, val]) => `<span class="correction-label">${label}</span><span class="correction-value">${escapeHtml(val)}</span>`).join('');
+  enigSpeak(`Ce tableau est de ${q.artist}. Il date de ${q.date} et est conservé à ${q.location}. Trouvez les éléments suivants.`);
+
+  $('enig-items').innerHTML = q.items.map((item, itemIdx) => {
+    if (item.type === 'personnages') {
+      return `<div class="enig-item" data-item="${itemIdx}">
+        <div class="enig-item-title">Personnages</div>
+        ${item.people.map((p) => `<div class="enig-person-row" data-letter="${p.letter}">
+          <span class="enig-letter">${p.letter}</span>
+          <input type="text" class="enig-person-input" data-letter="${p.letter}" placeholder="Qui est-ce ?" />
+        </div>`).join('')}
+      </div>`;
+    }
+    // QCM (événement ou interprétation) : la voix ne lira que la question, pas les options.
+    const label = item.type === 'evenement' ? 'Événement' : 'Interprétation';
+    const shuffledOptions = item.options.map((opt, i) => ({ opt, i })).sort(() => Math.random() - 0.5);
+    return `<div class="enig-item" data-item="${itemIdx}">
+      <div class="enig-item-title">${label}</div>
+      <p class="enig-qcm-question">${escapeHtml(item.question)}</p>
+      ${shuffledOptions.map(({ opt, i }) => `<button type="button" class="enig-qcm-option" data-item="${itemIdx}" data-option="${i}">${escapeHtml(opt)}</button>`).join('')}
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('.enig-qcm-option').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const itemIdx = btn.dataset.item;
+      document.querySelectorAll(`.enig-qcm-option[data-item="${itemIdx}"]`).forEach((b) => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+
+  // La voix lit chaque question de QCM (sans les propositions), après le message d'ouverture.
+  q.items.forEach((item, i) => {
+    if (item.type !== 'personnages') {
+      setTimeout(() => enigSpeak(item.question), 4500 + i * 3500);
+    }
+  });
+}
+
+$('enig-validate-button')?.addEventListener('click', () => {
+  if (enigAnswered) return;
+  enigAnswered = true;
+  const q = ENIG_SESSION[enigIndex];
+  $('enig-validate-button').disabled = true;
+  document.querySelectorAll('.enig-person-input').forEach((inp) => { inp.disabled = true; });
+  document.querySelectorAll('.enig-qcm-option').forEach((btn) => { btn.disabled = true; });
+
+  // Tout ou rien sur les deux éléments de la question, comme les autres exercices.
+  let allCorrect = true;
+  const spokenParts = [];
+
+  q.items.forEach((item, itemIdx) => {
+    if (item.type === 'personnages') {
+      let itemOk = true;
+      item.people.forEach((p) => {
+        const input = document.querySelector(`.enig-person-input[data-letter="${p.letter}"]`);
+        const given = famNormalize(input ? input.value : '');
+        const correct = famNormalize(p.name);
+        const ok = given && (correct.includes(given) || given.includes(correct));
+        if (!ok) itemOk = false;
+        const row = input.closest('.enig-person-row');
+        const verdict = document.createElement('span');
+        verdict.className = 'enig-person-verdict';
+        verdict.style.color = ok ? 'var(--ok)' : 'var(--wrong)';
+        verdict.textContent = ok ? 'Exact' : 'À réviser';
+        row.appendChild(verdict);
+        if (!ok) {
+          const note = document.createElement('span');
+          note.className = 'enig-correct-note';
+          note.textContent = `Bonne réponse : ${p.name}`;
+          row.appendChild(note);
+        }
+        spokenParts.push(`Dans le cercle ${p.letter}, on voyait ${p.name}.`);
+      });
+      if (!itemOk) allCorrect = false;
+    } else {
+      const selected = document.querySelector(`.enig-qcm-option[data-item="${itemIdx}"].selected`);
+      const selectedIndex = selected ? Number(selected.dataset.option) : -1;
+      const ok = selectedIndex === item.correctIndex;
+      if (!ok) allCorrect = false;
+      document.querySelectorAll(`.enig-qcm-option[data-item="${itemIdx}"]`).forEach((btn) => {
+        const optIndex = Number(btn.dataset.option);
+        if (optIndex === item.correctIndex) btn.classList.add('correct');
+        else if (btn === selected) btn.classList.add('wrong');
+      });
+      spokenParts.push(`La bonne réponse était : ${item.options[item.correctIndex]}.`);
+    }
+  });
+
+  const pointEarned = allCorrect ? 1 : 0;
+  enigScore = Math.round((enigScore + pointEarned) * 10) / 10;
+  enigSpeak(spokenParts.join(' '));
+
+  $('enig-correction').classList.remove('hidden');
+  $('enig-next-button').textContent = enigIndex === ENIG_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
+});
+
+$('enig-next-button')?.addEventListener('click', async () => {
+  if (enigIndex < ENIG_SESSION.length - 1) {
+    enigIndex++;
+    enigShowQuestion();
+  } else {
+    if (firebaseReady && currentUser) {
+      try {
+        await db.collection('users').doc(currentUser.uid).collection('scores').add({
+          type: 'entrainement',
+          exerciseName: 'Énigme',
+          correct: enigScore, possible: ENIG_SESSION.length,
+          percent: Math.round((enigScore / ENIG_SESSION.length) * 100),
+          questionCount: ENIG_SESSION.length,
+          quizLabel: 'Énigme',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (e) { /* enregistrement best-effort */ }
+    }
+    showPanel('enigme-setup');
+    const feedback = $('enig-setup-feedback');
+    feedback.classList.remove('hidden');
+    feedback.textContent = `Terminé : ${enigScore} points sur ${ENIG_SESSION.length} questions.`;
+  }
+});
+
 function populateFamVoices() {
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   const select = $('fam-opt-voice');
@@ -1648,12 +1893,13 @@ function vfFieldValue(row, key) {
 }
 
 let VF_SESSION = [], vfIndex = 0, vfScore = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null, vfTimers = [];
-function vfSpeak(text) {
-  if (!vfAudioOn || !window.speechSynthesis) return;
+function vfSpeak(text, onEnd) {
+  if (!vfAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'fr-FR'; u.rate = 0.85;
   if (vfSelectedVoiceRef) u.voice = vfSelectedVoiceRef;
+  if (onEnd) { u.onend = onEnd; u.onerror = onEnd; }
   speechSynthesis.speak(u);
 }
 
@@ -1791,25 +2037,27 @@ $('vf-validate-button')?.addEventListener('click', () => {
     return phrases[key] || `${value}`;
   };
 
-  // Correction directement dans les rubriques initiales : chaque champ faux se réécrit
-  // progressivement en vert, au rythme où la voix l'explique (une rubrique à la fois).
+  // Correction directement dans les rubriques initiales : chaque champ faux se réécrit en vert
+  // au fur et à mesure, en attendant la fin réelle de chaque phrase (pas de minuteur à durée
+  // fixe) pour ne jamais couper la voix au milieu d'une explication.
+  function speakNextCorrection(i) {
+    if (i >= q.errorFields.length) return;
+    const key = q.errorFields[i];
+    const correctVal = vfFieldValue(q.correct, key) || '—';
+    const shownCorrect = key === 'title' ? `« ${correctVal} »` : correctVal;
+    const el = $(`vf-value-${key}`);
+    if (el) el.classList.add('vf-was-wrong');
+    vfTimers.push(setTimeout(() => {
+      if (el) {
+        el.textContent = shownCorrect;
+        el.classList.remove('vf-was-wrong');
+        el.classList.add('vf-updated');
+      }
+      vfSpeak(naturalPhrase(key, correctVal), () => speakNextCorrection(i + 1));
+    }, 700));
+  }
   if (q.errorFields.length) {
-    vfSpeak(q.errorFields.length > 1 ? 'Deux références sont fausses.' : 'Une référence est fausse.');
-    q.errorFields.forEach((key, i) => {
-      const correctVal = vfFieldValue(q.correct, key) || '—';
-      const shownCorrect = key === 'title' ? `« ${correctVal} »` : correctVal;
-      vfTimers.push(setTimeout(() => {
-        const el = $(`vf-value-${key}`);
-        if (!el) return;
-        el.classList.add('vf-was-wrong');
-        vfTimers.push(setTimeout(() => {
-          el.textContent = shownCorrect;
-          el.classList.remove('vf-was-wrong');
-          el.classList.add('vf-updated');
-          vfSpeak(naturalPhrase(key, correctVal));
-        }, 900));
-      }, i * 2600 + 1200));
-    });
+    vfSpeak(q.errorFields.length > 1 ? 'Deux références sont fausses.' : 'Une référence est fausse.', () => speakNextCorrection(0));
   } else {
     vfSpeak(`Les références de ${artWord} sont bonnes.`);
   }

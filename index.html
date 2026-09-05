@@ -79,7 +79,7 @@
             <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="label">Imprégnation</span></button>
             <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="label">Intrus</span></button>
             <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="label">Reconstitution</span></button>
-            <button type="button" class="home-mode-button training-soon" id="open-training-enigme"><span class="label">Énigme</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+            <button type="button" class="home-mode-button" id="open-enigme-setup"><span class="label">Énigme</span></button>
             <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="label">Vrai/Faux</span></button>
             <button type="button" class="home-mode-button" id="open-famille-setup"><span class="label">Famille</span></button>
           </div>
@@ -605,6 +605,82 @@
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
                 <button type="button" class="home-icon-button exercise-icon-button" id="fam-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
                 <button type="button" class="home-icon-button exercise-icon-button" id="fam-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="enigme-setup-panel" class="welcome-panel hidden">
+          <div class="quiz-topbar">
+            <button type="button" id="enigme-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          </div>
+          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Énigme</h2></div>
+          <p class="modal-hint" style="text-align:center;margin-top:0;">L'artiste, la date et le lieu sont donnés d'emblée (le titre reste caché). À vous de retrouver deux éléments parmi : les personnages représentés, l'événement, ou l'interprétation de l'œuvre.</p>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="enig-toggle-art">🎨 Choisissez votre art</button>
+            <div class="accordion-body hidden" id="enig-body-art">
+              <label class="rubrique-option"><input type="checkbox" id="enig-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="enig-art-sculpture" /><span>Sculpture</span></label>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="enig-toggle-century">🏛️ Choisissez votre siècle</button>
+            <div class="accordion-body hidden" id="enig-body-century">
+              <label class="rubrique-option"><input type="checkbox" id="enig-century-15e" /><span>15e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="enig-century-16e" /><span>16e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="enig-century-17e" checked /><span>17e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="enig-century-18e" checked /><span>18e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="enig-century-19e" checked /><span>19e siècle</span></label>
+              <p class="modal-hint">Seuls les siècles pour lesquels des énigmes existent seront réellement proposés.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="enig-toggle-count">🔢 Nombre de questions</button>
+            <div class="accordion-body hidden" id="enig-body-count">
+              <label class="rubrique-option"><input type="radio" name="enig-count" value="5" checked /><span>5 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="enig-count" value="10" /><span>10 questions</span></label>
+            </div>
+          </div>
+
+          <div class="opt-row">
+            <label><input type="checkbox" id="enig-opt-audio" checked /> Lecture audio</label>
+            <select id="enig-opt-voice"><option value="">Chargement des voix…</option></select>
+          </div>
+
+          <button type="button" class="primary-button" id="enig-start-button" style="width:100%">Commencer</button>
+          <p id="enig-setup-feedback" class="hint hidden"></p>
+          <p class="modal-hint" style="text-align:center;">Module en cours de constitution : quelques énigmes de démonstration en attendant votre fichier de données.</p>
+          <button type="button" class="secondary-button" id="enig-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
+        </section>
+
+        <section id="enigme-panel" class="quiz-panel hidden">
+          <div class="progress-row">
+            <span><span class="quiz-reference">Énigme</span> — <span id="enig-progress-label">Question 1 / 5</span></span>
+          </div>
+          <div class="progress-track"><div class="progress-bar" id="enig-progress-bar"></div></div>
+
+          <div class="quiz-grid">
+            <div class="artwork-column">
+              <figure class="artwork-card">
+                <div id="enig-image-wrap" class="enig-image-wrap">
+                  <img id="enig-stage-img" alt="" />
+                </div>
+              </figure>
+            </div>
+            <section class="answer-card" aria-label="Éléments à retrouver">
+              <div class="correction-details" id="enig-header-details" style="margin-bottom:16px;"></div>
+              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 12px;">Trouvez les éléments suivants</h2>
+              <div id="enig-items"></div>
+              <button type="button" class="primary-button" id="enig-validate-button" style="width:100%;margin-top:14px;">Valider</button>
+              <div id="enig-correction" class="hidden">
+                <button type="button" class="primary-button" id="enig-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
+              </div>
+              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
+                <button type="button" class="home-icon-button exercise-icon-button" id="enig-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
+                <button type="button" class="home-icon-button exercise-icon-button" id="enig-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
               </div>
             </section>
           </div>
