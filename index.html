@@ -81,7 +81,7 @@
             <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="label">Reconstitution</span></button>
             <button type="button" class="home-mode-button training-soon" id="open-training-enigme"><span class="label">Énigme</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
             <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="label">Vrai/Faux</span></button>
-            <button type="button" class="home-mode-button training-soon" id="open-training-famille"><span class="label">Famille</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+            <button type="button" class="home-mode-button" id="open-famille-setup"><span class="label">Famille</span></button>
           </div>
         </section>
 
@@ -500,6 +500,111 @@
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
                 <button type="button" class="home-icon-button exercise-icon-button" id="vf-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
                 <button type="button" class="home-icon-button exercise-icon-button" id="vf-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="famille-setup-panel" class="welcome-panel hidden">
+          <div class="quiz-topbar">
+            <button type="button" id="famille-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          </div>
+          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Famille</h2></div>
+          <p class="modal-hint" style="text-align:center;margin-top:0;">8 images apparaissent ; 4 d'entre elles partagent un point commun. Repérez-les, puis écrivez ce point commun dans la bonne rubrique.</p>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="fam-toggle-art">🎨 Choisissez votre art</button>
+            <div class="accordion-body hidden" id="fam-body-art">
+              <label class="rubrique-option"><input type="checkbox" id="fam-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-art-sculpture" /><span>Sculpture</span></label>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="fam-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
+            <div class="accordion-body hidden" id="fam-body-century">
+              <div class="accordion-columns">
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-century-14e" /><span>14e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-century-15e" /><span>15e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-century-16e" /><span>16e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-century-17e" /><span>17e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-century-18e" checked /><span>18e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-century-19e" checked /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-century-20e" /><span>20e siècle</span></label>
+                </div>
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-zone-france" /><span>France</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-zone-europe" /><span>Autres pays d'Europe</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-zone-amerique" /><span>Amérique</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-zone-asie" /><span>Asie</span></label>
+                </div>
+              </div>
+              <p class="modal-hint">Rien coché en zone = toutes zones confondues. Cocher plusieurs siècles augmente les chances de point commun « Siècle ».</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="fam-toggle-level">⭐ Choisissez votre niveau</button>
+            <div class="accordion-body hidden" id="fam-body-level">
+              <label class="rubrique-option"><input type="checkbox" id="fam-level-1" checked /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-level-2" checked /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-level-3" /><span>Niveau 3</span></label>
+              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="fam-toggle-types">📝 Types de point commun</button>
+            <div class="accordion-body hidden" id="fam-body-types">
+              <label class="rubrique-option"><input type="checkbox" id="fam-type-artist" checked /><span>Artiste</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-type-word" checked /><span>Mot commun dans les titres</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-type-century" checked /><span>Siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-type-museum" checked /><span>Musée / lieu</span></label>
+              <p class="modal-hint">Un seul type sera tiré au sort à chaque question, parmi ceux cochés ici.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="fam-toggle-count">🔢 Nombre de questions</button>
+            <div class="accordion-body hidden" id="fam-body-count">
+              <label class="rubrique-option"><input type="radio" name="fam-count" value="5" checked /><span>5 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="fam-count" value="10" /><span>10 questions</span></label>
+            </div>
+          </div>
+
+          <div class="opt-row">
+            <label><input type="checkbox" id="fam-opt-audio" checked /> Lecture audio</label>
+            <select id="fam-opt-voice"><option value="">Chargement des voix…</option></select>
+          </div>
+
+          <button type="button" class="primary-button" id="fam-start-button" style="width:100%">Commencer</button>
+          <p id="fam-setup-feedback" class="hint hidden"></p>
+          <button type="button" class="secondary-button" id="fam-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
+        </section>
+
+        <section id="famille-panel" class="quiz-panel hidden">
+          <div class="progress-row">
+            <span><span class="quiz-reference">Famille</span> — <span id="fam-progress-label">Question 1 / 5</span></span>
+          </div>
+          <div class="progress-track"><div class="progress-bar" id="fam-progress-bar"></div></div>
+
+          <div class="quiz-grid">
+            <div class="artwork-column">
+              <div id="fam-image-grid" class="fam-image-grid"></div>
+            </div>
+            <section class="answer-card" aria-label="Point commun">
+              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 10px;">Cliquez sur les 4 images qui vont ensemble, puis écrivez leur point commun</h2>
+              <div id="fam-rubriques"></div>
+              <button type="button" class="primary-button" id="fam-validate-button" style="width:100%;margin-top:14px;">Valider</button>
+              <div id="fam-correction" class="hidden">
+                <button type="button" class="primary-button" id="fam-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
+              </div>
+              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
+                <button type="button" class="home-icon-button exercise-icon-button" id="fam-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
+                <button type="button" class="home-icon-button exercise-icon-button" id="fam-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
               </div>
             </section>
           </div>

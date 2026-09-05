@@ -830,6 +830,8 @@ function showPanel(name) {
   $('reconstitution-panel')?.classList.toggle('hidden', name !== 'reconstitution');
   $('vraifaux-setup-panel')?.classList.toggle('hidden', name !== 'vraifaux-setup');
   $('vraifaux-panel')?.classList.toggle('hidden', name !== 'vraifaux');
+  $('famille-setup-panel')?.classList.toggle('hidden', name !== 'famille-setup');
+  $('famille-panel')?.classList.toggle('hidden', name !== 'famille');
   $('quiz-setup-panel')?.classList.toggle('hidden', name !== 'quiz-setup');
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
@@ -1319,6 +1321,290 @@ $('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('trai
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
 $('vf-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
+
+// ============================================================
+// MODULE FAMILLE — 8 images, 4 partagent un point commun (artiste, mot du titre, siècle ou
+// musée, tiré au sort parmi les types cochés). Sélectionner les 4 bonnes images ET écrire le bon
+// point commun dans la bonne rubrique : les deux doivent être exacts pour marquer le point.
+// ============================================================
+$('open-famille-setup')?.addEventListener('click', () => { showPanel('famille-setup'); populateFamVoices(); });
+$('famille-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('fam-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('famille-setup'); });
+$('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
+$('fam-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
+
+function populateFamVoices() {
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  const select = $('fam-opt-voice');
+  if (!select) return;
+  select.innerHTML = voices.length
+    ? voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('')
+    : '<option value="">Voix par défaut du système</option>';
+}
+
+const FAM_ACCORDIONS = ['fam-toggle-art:fam-body-art', 'fam-toggle-century:fam-body-century', 'fam-toggle-level:fam-body-level', 'fam-toggle-types:fam-body-types', 'fam-toggle-count:fam-body-count'];
+FAM_ACCORDIONS.forEach((pair) => {
+  const [toggleId, bodyId] = pair.split(':');
+  $(toggleId)?.addEventListener('click', () => {
+    const opening = $(bodyId).classList.contains('hidden');
+    FAM_ACCORDIONS.forEach((p) => $(p.split(':')[1])?.classList.add('hidden'));
+    if (opening) $(bodyId).classList.remove('hidden');
+  });
+});
+
+function famSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`fam-art-${a}`)?.checked); }
+function famSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`fam-century-${c}`)?.checked); }
+function famSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`fam-zone-${z}`)?.checked); }
+function famSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`fam-level-${lvl}`)?.checked); }
+function famSelectedTypes() {
+  const map = { artist: 'fam-type-artist', word: 'fam-type-word', century: 'fam-type-century', museum: 'fam-type-museum' };
+  return Object.keys(map).filter((t) => $(map[t])?.checked);
+}
+const FAM_TYPE_LABELS = { artist: 'Artiste', word: 'Mot commun dans les titres', century: 'Siècle', museum: 'Musée / lieu' };
+
+function famNormalize(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[«»"',.]/g, '').trim();
+}
+function famAnswerMatches(input, correct) {
+  const a = famNormalize(input), b = famNormalize(correct);
+  if (!a) return false;
+  return a === b || b.includes(a) || a.includes(b);
+}
+
+// Cherche, pour un type donné, un groupe de 4 œuvres partageant un trait commun, avec assez
+// d'œuvres différentes en dehors du groupe pour servir d'intrus.
+function famFindGroup(type, pool) {
+  if (type === 'artist') {
+    const byArtist = new Map();
+    pool.forEach((r) => { if (!byArtist.has(r.artist)) byArtist.set(r.artist, []); byArtist.get(r.artist).push(r); });
+    const candidates = [...byArtist.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= 4);
+    if (!candidates.length) return null;
+    const [artist, works] = candidates[Math.floor(Math.random() * candidates.length)];
+    const shuffled = works.slice().sort(() => Math.random() - 0.5);
+    return { family: shuffled.slice(0, 4), answer: artist, outsiders: pool.filter((r) => r.artist !== artist) };
+  }
+  if (type === 'century') {
+    const byCentury = new Map();
+    pool.forEach((r) => { const c = r.century || detectCenturyFromDate(r.date); if (c) { if (!byCentury.has(c)) byCentury.set(c, []); byCentury.get(c).push(r); } });
+    const candidates = [...byCentury.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= 4);
+    if (!candidates.length) return null;
+    const [century, works] = candidates[Math.floor(Math.random() * candidates.length)];
+    const shuffled = works.slice().sort(() => Math.random() - 0.5);
+    return { family: shuffled.slice(0, 4), answer: `${century} siècle`, outsiders: pool.filter((r) => (r.century || detectCenturyFromDate(r.date)) !== century) };
+  }
+  if (type === 'museum') {
+    const byPlace = new Map();
+    pool.forEach((r) => { if (r.location) { if (!byPlace.has(r.location)) byPlace.set(r.location, []); byPlace.get(r.location).push(r); } });
+    const candidates = [...byPlace.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= 4);
+    if (!candidates.length) return null;
+    const [place, works] = candidates[Math.floor(Math.random() * candidates.length)];
+    const shuffled = works.slice().sort(() => Math.random() - 0.5);
+    return { family: shuffled.slice(0, 4), answer: place, outsiders: pool.filter((r) => r.location !== place) };
+  }
+  if (type === 'word') {
+    const byWord = new Map();
+    pool.forEach((r) => {
+      intrusTitleWords(r.title).forEach((w) => { if (!byWord.has(w)) byWord.set(w, []); byWord.get(w).push(r); });
+    });
+    const candidates = [...byWord.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= 4);
+    if (!candidates.length) return null;
+    const [word, works] = candidates[Math.floor(Math.random() * candidates.length)];
+    const shuffled = works.slice().sort(() => Math.random() - 0.5);
+    return { family: shuffled.slice(0, 4), answer: word, outsiders: pool.filter((r) => !works.includes(r)) };
+  }
+  return null;
+}
+function detectCenturyFromDate(dateStr) {
+  const m = String(dateStr || '').match(/\b(1[3-9]|20)\d{2}\b/);
+  if (!m) return null;
+  const year = Number(m[0]);
+  return `${Math.floor((year - 1) / 100) + 1}e`;
+}
+
+let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [];
+function famSpeak(text) {
+  if (!famAudioOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'fr-FR'; u.rate = 0.85;
+  if (famSelectedVoiceRef) u.voice = famSelectedVoiceRef;
+  speechSynthesis.speak(u);
+}
+
+$('fam-start-button')?.addEventListener('click', async () => {
+  const arts = famSelectedArts();
+  const centuries = famSelectedCenturies();
+  const levels = famSelectedLevels();
+  const types = famSelectedTypes();
+  const feedback = $('fam-setup-feedback');
+  feedback.classList.remove('hidden');
+  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
+  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
+  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
+  if (!types.length) { feedback.textContent = 'Choisissez au moins un type de point commun.'; return; }
+  feedback.textContent = 'Chargement des œuvres…';
+  try {
+    const zones = famSelectedZones();
+    let allRows = [];
+    for (const art of arts) {
+      for (const century of centuries) {
+        try {
+          const rows = await fetchQuizRows(art, century);
+          rows.forEach((r) => { r.century = century; });
+          allRows.push(...rows);
+        } catch (e) { /* fichier absent, ignoré */ }
+      }
+    }
+    if (allRows.length < 8) { feedback.textContent = "Pas assez d'œuvres disponibles pour ce choix (8 minimum)."; return; }
+    let pool = allRows.filter((r) => levels.includes(String(r.niveau || 1)));
+    if (pool.length < 8) pool = allRows;
+    if (zones.length) {
+      const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
+      if (zoned.length >= 8) pool = zoned;
+    }
+    famAudioOn = $('fam-opt-audio').checked;
+    const famVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+    famSelectedVoiceRef = famVoices[$('fam-opt-voice').value] || null;
+    const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
+    const count = Number(countChoice);
+
+    const questions = [];
+    let attempts = 0;
+    while (questions.length < count && attempts < count * 15) {
+      attempts++;
+      const type = types[Math.floor(Math.random() * types.length)];
+      const group = famFindGroup(type, pool);
+      if (!group) continue;
+      const distractors = group.outsiders.slice().sort(() => Math.random() - 0.5).slice(0, 4);
+      if (distractors.length < 4) continue;
+      const images = group.family.concat(distractors).sort(() => Math.random() - 0.5);
+      questions.push({ type, family: group.family, answer: group.answer, images });
+    }
+    if (!questions.length) { feedback.textContent = "Impossible de constituer un exercice avec ces critères — essayez d'élargir le choix (plus de siècles, plus de niveaux)."; return; }
+    FAM_SESSION = questions;
+    famIndex = 0; famScore = 0;
+    showPanel('famille');
+    famShowQuestion();
+  } catch (error) {
+    feedback.textContent = `Erreur : ${error.message}`;
+  }
+});
+
+function famShowQuestion() {
+  famAnswered = false;
+  famSelectedImages = [];
+  const q = FAM_SESSION[famIndex];
+  $('fam-progress-label').textContent = `Question ${famIndex + 1} / ${FAM_SESSION.length}`;
+  $('fam-progress-bar').style.width = `${(famIndex / FAM_SESSION.length) * 100}%`;
+  $('fam-correction').classList.add('hidden');
+  $('fam-validate-button').classList.remove('hidden');
+  $('fam-validate-button').disabled = false;
+
+  $('fam-image-grid').innerHTML = q.images.map((work, i) =>
+    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSource(work.image))}" alt="" /></button>`
+  ).join('');
+  $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.index);
+      const pos = famSelectedImages.indexOf(idx);
+      if (pos >= 0) { famSelectedImages.splice(pos, 1); btn.classList.remove('selected'); }
+      else if (famSelectedImages.length < 4) { famSelectedImages.push(idx); btn.classList.add('selected'); }
+    });
+  });
+
+  const types = famSelectedTypes();
+  $('fam-rubriques').innerHTML = types.map((t) =>
+    `<div class="fam-rubrique-row" data-type="${t}">
+      <label>${FAM_TYPE_LABELS[t]}</label>
+      <input type="text" class="fam-answer-input" data-type="${t}" placeholder="Votre réponse ici si c'est ce type de point commun…" />
+    </div>`
+  ).join('');
+}
+
+$('fam-validate-button')?.addEventListener('click', () => {
+  if (famAnswered) return;
+  famAnswered = true;
+  const q = FAM_SESSION[famIndex];
+  $('fam-validate-button').disabled = true;
+  document.querySelectorAll('.fam-image-cell').forEach((btn) => { btn.disabled = true; });
+  document.querySelectorAll('.fam-answer-input').forEach((inp) => { inp.disabled = true; });
+
+  // Vérification des images : il faut avoir sélectionné exactement les 4 bonnes.
+  const familyIndexes = q.images.map((w, i) => q.family.includes(w) ? i : -1).filter((i) => i >= 0);
+  const selectedSet = new Set(famSelectedImages);
+  const familySet = new Set(familyIndexes);
+  const imagesCorrect = selectedSet.size === familySet.size && [...selectedSet].every((i) => familySet.has(i));
+  document.querySelectorAll('.fam-image-cell').forEach((btn, i) => {
+    if (familySet.has(i)) btn.classList.add('correct');
+    else if (selectedSet.has(i)) btn.classList.add('wrong');
+  });
+
+  // Vérification de la réponse écrite : doit être dans la BONNE rubrique (q.type), avec une
+  // valeur reconnaissable (tolérance sur les accents/majuscules/sous-chaîne).
+  let answerCorrect = false;
+  let filledType = null;
+  document.querySelectorAll('.fam-answer-input').forEach((inp) => {
+    if (inp.value.trim()) filledType = inp.dataset.type;
+  });
+  const correctInput = document.querySelector(`.fam-answer-input[data-type="${q.type}"]`);
+  if (correctInput && famAnswerMatches(correctInput.value, q.answer)) answerCorrect = true;
+
+  const pointEarned = (imagesCorrect && answerCorrect) ? 1 : 0;
+  famScore = Math.round((famScore + pointEarned) * 10) / 10;
+
+  // Verdict à côté de la rubrique remplie (ou, si rien n'a été rempli, à côté de la bonne).
+  const verdictTarget = filledType || q.type;
+  const verdictRow = document.querySelector(`.fam-rubrique-row[data-type="${verdictTarget}"]`);
+  if (verdictRow) {
+    const verdictSpan = document.createElement('span');
+    verdictSpan.className = 'fam-verdict';
+    verdictSpan.style.color = pointEarned ? 'var(--ok)' : 'var(--wrong)';
+    verdictSpan.textContent = pointEarned ? 'Exact' : 'À réviser';
+    verdictRow.querySelector('label').appendChild(verdictSpan);
+  }
+
+  // La bonne réponse s'écrit en vert dans la bonne rubrique, avec la voix qui l'annonce.
+  const correctRow = document.querySelector(`.fam-rubrique-row[data-type="${q.type}"]`);
+  if (correctRow && !pointEarned) {
+    const answerLine = document.createElement('span');
+    answerLine.className = 'fam-correct-answer';
+    answerLine.textContent = `Réponse exacte : ${q.answer}`;
+    correctRow.appendChild(answerLine);
+  }
+  famSpeak(pointEarned
+    ? `Exact. Le point commun était bien : ${q.answer}.`
+    : `À réviser. Le point commun exact était : ${q.answer}.`);
+
+  $('fam-correction').classList.remove('hidden');
+  $('fam-next-button').textContent = famIndex === FAM_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
+});
+
+$('fam-next-button')?.addEventListener('click', async () => {
+  if (famIndex < FAM_SESSION.length - 1) {
+    famIndex++;
+    famShowQuestion();
+  } else {
+    if (firebaseReady && currentUser) {
+      try {
+        await db.collection('users').doc(currentUser.uid).collection('scores').add({
+          type: 'entrainement',
+          exerciseName: 'Famille',
+          correct: famScore, possible: FAM_SESSION.length,
+          percent: Math.round((famScore / FAM_SESSION.length) * 100),
+          questionCount: FAM_SESSION.length,
+          quizLabel: 'Famille',
+          quizLevel: famSelectedLevels().map((lvl) => `Niveau ${lvl}`).join(' + '),
+          quizArts: famSelectedArts(), quizCenturies: famSelectedCenturies(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (e) { /* enregistrement best-effort */ }
+    }
+    showPanel('famille-setup');
+    const feedback = $('fam-setup-feedback');
+    feedback.classList.remove('hidden');
+    feedback.textContent = `Terminé : ${famScore} points sur ${FAM_SESSION.length} questions.`;
+  }
+});
 
 function populateVfVoices() {
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
