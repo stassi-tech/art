@@ -1467,7 +1467,6 @@ function populateImpVoices() {
     ? voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('')
     : '<option value="">Voix par défaut du système</option>';
 }
-speechSynthesis.onvoiceschanged = populateImpVoices;
 
 function impSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`imp-art-${a}`)?.checked); }
 function impSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`imp-century-${c}`)?.checked); }
@@ -1583,7 +1582,18 @@ $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSI
 // MODULE INTRUS — retrouver la bonne image parmi 3 (mode « image »), ou la bonne référence
 // parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
 // ============================================================
-$('open-intrus-setup')?.addEventListener('click', () => showPanel('intrus-setup'));
+$('open-intrus-setup')?.addEventListener('click', () => { showPanel('intrus-setup'); populateIntrusVoices(); });
+$('intrus-scores-link')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+$('intrus-setup-scores-link')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+function populateIntrusVoices() {
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  const select = $('intrus-opt-voice');
+  if (!select) return;
+  select.innerHTML = voices.length
+    ? voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('')
+    : '<option value="">Voix par défaut du système</option>';
+}
+speechSynthesis.onvoiceschanged = () => { populateImpVoices(); populateIntrusVoices(); };
 $('intrus-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('intrus-exit-link')?.addEventListener('click', () => showPanel('intrus-setup'));
 
@@ -1610,7 +1620,39 @@ function intrusSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', 
 function intrusSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`intrus-zone-${z}`)?.checked); }
 function intrusSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`intrus-level-${lvl}`)?.checked); }
 
-let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false;
+let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false, intrusAudioOn = true, intrusSelectedVoice = null;
+function intrusSpeak(text) {
+  if (!intrusAudioOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'fr-FR'; u.rate = 0.85;
+  if (intrusSelectedVoice) u.voice = intrusSelectedVoice;
+  speechSynthesis.speak(u);
+}
+const INTRUS_STOPWORDS = new Set(['le', 'la', 'les', 'de', 'du', 'des', 'un', 'une', 'et', 'à', 'au', 'aux', 'en', 'dans', 'sur', 'avec', 'sans', 'pour', 'par', 'ou', 'se', 'son', 'sa', 'ses', 'l']);
+function intrusTitleWords(title) {
+  return String(title || '').toLowerCase().replace(/[«»"',.]/g, '').split(/\s+/).filter((w) => w.length > 3 && !INTRUS_STOPWORDS.has(w));
+}
+function pickIntrusDistractors(correct, pool) {
+  // Rendre le choix plus exigeant : on préfère des intrus qui partagent un mot significatif du
+  // titre (ex. « paysage »), sinon des œuvres d'un AUTRE artiste (pour ne pas trivialiser un
+  // choix limité au nom du peintre), sinon n'importe quoi d'autre du réservoir.
+  const correctWords = new Set(intrusTitleWords(correct.title));
+  const others = pool.filter((r) => r !== correct);
+  let candidates = correctWords.size ? others.filter((r) => intrusTitleWords(r.title).some((w) => correctWords.has(w))) : [];
+  const picked = [];
+  const drawFrom = (list) => {
+    const copy = list.filter((r) => !picked.includes(r));
+    while (picked.length < 2 && copy.length) {
+      const idx = Math.floor(Math.random() * copy.length);
+      picked.push(copy.splice(idx, 1)[0]);
+    }
+  };
+  drawFrom(candidates);
+  if (picked.length < 2) drawFrom(others.filter((r) => r.artist !== correct.artist));
+  if (picked.length < 2) drawFrom(others);
+  return picked;
+}
 
 $('intrus-start-button')?.addEventListener('click', async () => {
   const arts = intrusSelectedArts();
@@ -1640,18 +1682,17 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const countChoice = document.querySelector('input[name="intrus-count"]:checked').value;
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
+    intrusAudioOn = $('intrus-opt-audio').checked;
+    const intrusVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+    intrusSelectedVoice = intrusVoices[$('intrus-opt-voice').value] || null;
     INTRUS_SESSION = pool.slice(0, count).map((correct) => {
-      // 2 intrus tirés du reste du réservoir (pas la bonne réponse elle-même).
-      const others = pool.filter((r) => r !== correct);
-      const distractors = [];
-      const otherPool = others.slice();
-      while (distractors.length < 2 && otherPool.length) {
-        const idx = Math.floor(Math.random() * otherPool.length);
-        distractors.push(otherPool.splice(idx, 1)[0]);
-      }
+      const distractors = pickIntrusDistractors(correct, pool);
       const choices = [correct, ...distractors];
       for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [choices[i], choices[j]] = [choices[j], choices[i]]; }
-      return { correct, choices };
+      // En mode « Références intruses », on ne montre le plus souvent que le nom du peintre (le
+      // cas le plus fréquent et le plus exigeant), et parfois artiste + titre pour varier.
+      const titleMode = Math.random() < 0.3;
+      return { correct, choices, titleMode };
     });
     intrusIndex = 0; intrusCorrectCount = 0;
     showPanel('intrus');
@@ -1674,14 +1715,18 @@ function intrusShowQuestion() {
   if (intrusMode === 'image') {
     // Référence en haut (artiste + titre seulement), 3 images en choix.
     promptCard.innerHTML = `<div class="intrus-ref-prompt"><div class="artist">${escapeHtml(q.correct.artist)}</div><div class="title">« ${escapeHtml(q.correct.title)} »</div></div>`;
+    intrusSpeak(`${q.correct.artist} — « ${q.correct.title} »`);
     $('intrus-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
       `<button type="button" class="intrus-choice-btn" data-index="${i}"><img src="${escapeHtml(imageSource(c.image))}" alt="" /></button>`
     ).join('')}</div>`;
   } else {
-    // Image en haut, 3 références (artiste + titre) en choix.
+    // Image en haut. Choix : le plus souvent le nom du peintre seul (le cas le plus exigeant),
+    // parfois artiste + titre pour varier (q.titleMode).
     promptCard.innerHTML = `<img src="${escapeHtml(imageSource(q.correct.image))}" alt="" style="max-width:100%;max-height:min(820px,74vh);display:block;" />`;
     $('intrus-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
-      `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title)} »</em></button>`
+      q.titleMode
+        ? `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title)} »</em></button>`
+        : `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong></button>`
     ).join('')}</div>`;
   }
 
@@ -1704,8 +1749,9 @@ function intrusAnswer(chosenIndex) {
     else if (i === chosenIndex) btn.classList.add('wrong');
   });
 
-  const chosenLabel = intrusMode === 'image' ? '' : `${chosen.artist} — « ${chosen.title} »`;
+  const chosenLabel = intrusMode === 'image' ? '' : (q.titleMode ? `${chosen.artist} — « ${chosen.title} »` : chosen.artist);
   const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date} — ${q.correct.location}`;
+  intrusSpeak(correctFullRef);
   const detailsParts = [];
   if (chosenLabel) {
     detailsParts.push(`<span class="correction-label">Réponse donnée</span><span class="correction-value">${escapeHtml(chosenLabel)} — <span style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</span></span>`);

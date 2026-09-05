@@ -260,8 +260,14 @@
             </div>
           </div>
 
+          <div class="opt-row">
+            <label><input type="checkbox" id="intrus-opt-audio" checked /> Lecture audio</label>
+            <select id="intrus-opt-voice"><option value="">Chargement des voix…</option></select>
+          </div>
+
           <button type="button" class="primary-button" id="intrus-start-button" style="width:100%">Commencer</button>
           <p id="intrus-setup-feedback" class="hint hidden"></p>
+          <button type="button" class="secondary-button" id="intrus-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
         </section>
 
         <section id="intrus-panel" class="quiz-panel hidden">
@@ -284,8 +290,9 @@
                 <div class="correction-details" id="intrus-correction-details"></div>
                 <button type="button" class="primary-button" id="intrus-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
-              <div style="text-align:center;margin-top:auto;padding-top:14px;">
+              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
                 <button type="button" class="home-icon-button" id="intrus-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
+                <button type="button" class="home-icon-button" id="intrus-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
               </div>
             </section>
           </div>

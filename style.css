@@ -47,10 +47,13 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intrus-choice-list { display:grid; gap:12px; }
 .intrus-choice-btn { display:block; width:100%; text-align:left; padding:14px 16px; border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--ink); font-family:Arial,sans-serif; font-size:.95rem; cursor:pointer; transition:border-color .15s, background .15s; }
 .intrus-choice-btn:hover:not(:disabled) { border-color:var(--accent); background:#f7f2ea; }
-.intrus-choice-btn img { width:100%; height:140px; object-fit:cover; border-radius:4px; display:block; margin-bottom:8px; }
+.intrus-choice-btn img { width:100%; height:140px; object-fit:contain; background:#1b1c1e; border-radius:4px; display:block; margin-bottom:8px; }
 .intrus-choice-btn.correct { border-color:var(--ok); background:#eaf6f0; }
 .intrus-choice-btn.wrong { border-color:var(--wrong); background:#fbeceb; }
 .intrus-choice-btn:disabled { cursor:not-allowed; }
+#intrus-correction-details { display:grid; grid-template-columns:max-content 1fr; column-gap:14px; row-gap:4px; align-items:baseline; margin-top:16px; }
+#intrus-correction-details .correction-label { grid-column:1; font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; }
+#intrus-correction-details .correction-value { grid-column:1/-1; font-size:1.05rem; font-weight:700; color:var(--ink); line-height:1.3; margin-bottom:14px; }
 .home-mode-button { position:relative; padding:20px; border:1px solid var(--cta); border-radius:4px; background:var(--cta); color:#fff; cursor:pointer; text-align:center; transition:background .15s; }
 .home-mode-button:hover { background:var(--cta-dark); border-color:var(--cta-dark); }
 .home-mode-button .label { display:block; font-family:Arial,sans-serif; font-size:.98rem; font-weight:700; color:#fff; margin-bottom:4px; }
