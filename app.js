@@ -1437,7 +1437,6 @@ function vfShowQuestion() {
   vfAnswered = false;
   const q = VF_SESSION[vfIndex];
   $('vf-progress-label').textContent = `Question ${vfIndex + 1} / ${VF_SESSION.length}`;
-  $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''} — question ${vfIndex + 1}`;
   $('vf-progress-bar').style.width = `${(vfIndex / VF_SESSION.length) * 100}%`;
   $('vf-correction').classList.add('hidden');
   $('vf-validate-button').classList.remove('hidden');
@@ -1477,18 +1476,20 @@ $('vf-validate-button')?.addEventListener('click', () => {
   $('vf-validate-button').disabled = true;
   document.querySelectorAll('.vf-toggle button').forEach((b) => { b.disabled = true; });
 
-  // Score : +0,5 par erreur réelle correctement repérée (Faux), -0,5 par fausse alerte (Faux
-  // coché sur une rubrique en réalité exacte). Rien pour une rubrique juste laissée en Vrai.
-  let questionScore = 0;
-  const judgedWrong = [];
+  // Barème : 1 point si toutes les erreurs réelles sont repérées (ou, s'il n'y en a pas, si rien
+  // n'est signalé à tort) ; 0,5 point si une seule sur deux est repérée ; -0,5 par fausse alerte
+  // (rubrique juste signalée comme fausse), plafonné à -1 au total.
+  const totalErrors = q.errorFields.length;
+  let correctFinds = 0, falseAlarms = 0;
   q.activeFields.forEach((f) => {
     const playerSaysFalse = document.querySelector(`.vf-toggle[data-key="${f.key}"] button.active`).dataset.val === 'false';
     const actuallyWrong = q.errorFields.includes(f.key);
-    if (playerSaysFalse) {
-      judgedWrong.push(f.key);
-      questionScore += actuallyWrong ? 0.5 : -0.5;
-    }
+    if (playerSaysFalse && actuallyWrong) correctFinds++;
+    else if (playerSaysFalse && !actuallyWrong) falseAlarms++;
   });
+  const basePoints = totalErrors > 0 ? (correctFinds / totalErrors) : (falseAlarms === 0 ? 1 : 0);
+  const penalty = Math.min(falseAlarms * 0.5, 1);
+  const questionScore = Math.round((basePoints - penalty) * 10) / 10;
   vfScore = Math.round((vfScore + questionScore) * 10) / 10;
 
   const naturalPhrase = (key, value) => {
@@ -1526,10 +1527,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
     vfSpeak(`Les références de ${artWord} sont bonnes.`);
   }
 
-  const gained = questionScore > 0 ? `+${questionScore}` : questionScore;
-  $('vf-score-detail').textContent = `${judgedWrong.length ? `Rubrique(s) signalée(s) fausse(s) : ${judgedWrong.length}. ` : ''}Points pour cette question : ${gained}.`;
   $('vf-correction').classList.remove('hidden');
-  $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''} — question ${vfIndex + 1}`;
   $('vf-next-button').textContent = vfIndex === VF_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
 });
 

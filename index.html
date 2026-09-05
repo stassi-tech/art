@@ -399,7 +399,8 @@
             <button type="button" id="vraifaux-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Vrai/Faux</h2></div>
-          <p class="modal-hint" style="text-align:center;margin-top:0;">Une image apparaît avec sa référence — entièrement juste, ou comportant un ou deux éléments faux. À vous de juger.</p>
+          <p class="modal-hint" style="text-align:center;margin-top:0;">Une image apparaît avec sa référence. Elle est soit entièrement exacte, soit comporte <strong>au maximum deux</strong> éléments faux. Cochez « Faux » sur les rubriques que vous pensez erronées, puis validez.</p>
+          <p class="modal-hint" style="text-align:center;margin-top:0;">Barème : 1 point si vous repérez correctement toutes les erreurs (ou l'absence d'erreur) ; 0,5 point si vous n'en repérez qu'une sur deux ; −0,5 point par rubrique juste signalée à tort comme fausse (−1 point maximum).</p>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="vf-toggle-art">🎨 Choisissez votre art</button>
@@ -480,7 +481,6 @@
         <section id="vraifaux-panel" class="quiz-panel hidden">
           <div class="progress-row">
             <span><span class="quiz-reference">Vrai/Faux</span> — <span id="vf-progress-label">Question 1 / 10</span></span>
-            <span id="vf-score-label" class="score-summary-highlight">0 / 0 réponse correcte</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="vf-progress-bar"></div></div>
 
@@ -495,7 +495,6 @@
               <div id="vf-field-rows"></div>
               <button type="button" class="primary-button" id="vf-validate-button" style="width:100%;margin-top:16px;">Valider</button>
               <div id="vf-correction" class="hidden">
-                <p id="vf-score-detail" class="hint" style="text-align:center;"></p>
                 <button type="button" class="primary-button" id="vf-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
