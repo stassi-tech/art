@@ -1461,7 +1461,7 @@ function impSpeak(text) {
   if (!impAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'fr-FR'; u.rate = 0.6;
+  u.lang = 'fr-FR'; u.rate = 0.72;
   if (impSelectedVoice) u.voice = impSelectedVoice;
   speechSynthesis.speak(u);
 }
@@ -1539,7 +1539,7 @@ function impShowCurrent() {
   const refText = fields.map((f) => f.value).join(' — ') || work.artist;
   impSpeak(refText);
 
-  const STAGGER = impDelayMs;
+  const STAGGER = impDelayMs * 0.5;
   fields.forEach((f, i) => {
     impTimers.push(setTimeout(() => {
       const el = $(`imp-val-${f.key}`);
