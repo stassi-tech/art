@@ -1695,6 +1695,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
       return { correct, choices, titleMode };
     });
     intrusIndex = 0; intrusCorrectCount = 0;
+    $('intrus-title-label').textContent = `Intrus — ${intrusMode === 'image' ? 'images intruses' : 'références intruses'}`;
     showPanel('intrus');
     intrusShowQuestion();
   } catch (error) {
@@ -1713,26 +1714,32 @@ function intrusShowQuestion() {
 
   const promptCard = $('intrus-prompt-card');
   if (intrusMode === 'image') {
-    // Référence en haut (artiste + titre seulement), 3 images en choix.
-    promptCard.innerHTML = `<div class="intrus-ref-prompt"><div class="artist">${escapeHtml(q.correct.artist)}</div><div class="title">« ${escapeHtml(q.correct.title)} »</div></div>`;
-    intrusSpeak(`${q.correct.artist} — « ${q.correct.title} »`);
-    $('intrus-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
-      `<button type="button" class="intrus-choice-btn" data-index="${i}"><img src="${escapeHtml(imageSource(c.image))}" alt="" /></button>`
+    // Les 3 images (choix) occupent la grande zone de gauche, en plus grand ; la référence à
+    // retrouver s'affiche à droite, avec le même espacement de rubrique que la correction.
+    promptCard.innerHTML = `<div class="intrus-image-choices">${q.choices.map((c, i) =>
+      `<button type="button" class="intrus-image-choice" data-index="${i}"><img src="${escapeHtml(imageSource(c.image))}" alt="" /></button>`
     ).join('')}</div>`;
+    promptCard.querySelectorAll('.intrus-image-choice').forEach((btn) => {
+      btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
+    });
+    $('intrus-choices').innerHTML = `<div class="correction-details">
+      <span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>
+      <span class="correction-label">Titre de l'œuvre</span><span class="correction-value">« ${escapeHtml(q.correct.title)} »</span>
+    </div>`;
+    intrusSpeak(`${q.correct.artist} — « ${q.correct.title} »`);
   } else {
-    // Image en haut. Choix : le plus souvent le nom du peintre seul (le cas le plus exigeant),
-    // parfois artiste + titre pour varier (q.titleMode).
+    // Image en haut à gauche. Choix à droite : le plus souvent le nom du peintre seul (le cas
+    // le plus exigeant), parfois artiste + titre pour varier (q.titleMode).
     promptCard.innerHTML = `<img src="${escapeHtml(imageSource(q.correct.image))}" alt="" style="max-width:100%;max-height:min(820px,74vh);display:block;" />`;
     $('intrus-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
       q.titleMode
         ? `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title)} »</em></button>`
         : `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong></button>`
     ).join('')}</div>`;
+    $('intrus-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
+      btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
+    });
   }
-
-  $('intrus-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
-    btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
-  });
 }
 
 function intrusAnswer(chosenIndex) {
@@ -1743,13 +1750,15 @@ function intrusAnswer(chosenIndex) {
   const isCorrect = chosen === q.correct;
   if (isCorrect) intrusCorrectCount++;
 
-  $('intrus-choices').querySelectorAll('.intrus-choice-btn').forEach((btn, i) => {
+  const choiceSelector = intrusMode === 'image' ? '.intrus-image-choice' : '.intrus-choice-btn';
+  document.querySelectorAll(`#intrus-prompt-card ${choiceSelector}, #intrus-choices ${choiceSelector}`).forEach((btn, i) => {
     btn.disabled = true;
     if (q.choices[i] === q.correct) btn.classList.add('correct');
     else if (i === chosenIndex) btn.classList.add('wrong');
   });
 
   const chosenLabel = intrusMode === 'image' ? '' : (q.titleMode ? `${chosen.artist} — « ${chosen.title} »` : chosen.artist);
+  const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
   const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date} — ${q.correct.location}`;
   intrusSpeak(correctFullRef);
   const detailsParts = [];
@@ -1758,7 +1767,12 @@ function intrusAnswer(chosenIndex) {
   } else {
     detailsParts.push(`<span class="correction-label">Votre choix</span><span class="correction-value" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</span>`);
   }
-  detailsParts.push(`<span class="correction-label">Référence complète</span><span class="correction-value">${escapeHtml(correctFullRef)}</span>`);
+  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
+  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value">« ${escapeHtml(q.correct.title)} »</span>`);
+  detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
+  if (q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materials)}</span>`);
+  if (dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
+  detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
   $('intrus-correction').classList.remove('hidden');
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
