@@ -424,19 +424,30 @@ function speakObjective(elementId) {
 function attachSimpleMic(button, input) {
   if (!voiceSupported || !button || !input) { button?.classList.add('hidden'); return; }
   button.classList.remove('hidden');
-  let recognition = null, listening = false;
+  let recognition = null, listening = false, manualStop = false;
   button.addEventListener('click', () => {
-    if (listening) { try { recognition.abort(); } catch (e) {} return; }
+    if (listening) { manualStop = true; try { recognition.abort(); } catch (e) {} return; }
+    manualStop = false;
     try { recognition = new SpeechRecognitionImpl(); } catch (e) { return; }
-    recognition.lang = 'fr-FR'; recognition.continuous = false; recognition.interimResults = false;
+    // Même réglage que le micro du quiz : continu, avec redémarrage automatique si le
+    // navigateur referme la session après un silence, pour une dictée plus fiable.
+    recognition.lang = 'fr-FR'; recognition.continuous = true; recognition.interimResults = false; recognition.maxAlternatives = 1;
     button.classList.add('listening'); listening = true;
+    const thisRecognition = recognition;
     recognition.addEventListener('result', (event) => {
-      input.value = event.results[0][0].transcript.trim();
+      const last = event.results[event.results.length - 1];
+      input.value = last[0].transcript.trim();
     });
-    const stop = () => { button.classList.remove('listening'); listening = false; recognition = null; };
-    recognition.addEventListener('end', stop);
-    recognition.addEventListener('error', stop);
-    try { recognition.start(); } catch (e) { stop(); }
+    recognition.addEventListener('end', () => {
+      if (manualStop || recognition !== thisRecognition) { button.classList.remove('listening'); listening = false; return; }
+      try { thisRecognition.start(); } catch (e) { button.classList.remove('listening'); listening = false; recognition = null; }
+    });
+    recognition.addEventListener('error', (event) => {
+      if (event.error === 'aborted' || event.error === 'no-speech') return; // redémarrage géré par 'end'
+      manualStop = true;
+      button.classList.remove('listening'); listening = false; recognition = null;
+    });
+    try { recognition.start(); } catch (e) { button.classList.remove('listening'); listening = false; }
   });
 }
 
@@ -1552,6 +1563,7 @@ $('enig-start-button')?.addEventListener('click', async () => {
 });
 
 function enigShowQuestion() {
+  speechSynthesis.cancel();
   enigAnswered = false;
   const q = ENIG_SESSION[enigIndex];
   $('enig-progress-label').textContent = `Question ${enigIndex + 1} / ${ENIG_SESSION.length}`;
@@ -1893,6 +1905,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
 });
 
 function famShowQuestion() {
+  speechSynthesis.cancel();
   famTimers.forEach(clearTimeout); famTimers = [];
   famAnswered = false;
   famSelectedImages = [];
@@ -2136,26 +2149,32 @@ $('fam-validate-titles-button')?.addEventListener('click', () => {
   famScore = Math.round((famScore + pointEarned) * 10) / 10;
   $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
 
-  // Annonce séquentielle, une œuvre à la fois : « Prénom Nom a peint Titre en Année », sans
-  // jamais couper la phrase précédente. L'année s'affiche à côté du titre une fois la barre
-  // corrigée (bien ou mal placée).
-  function announceNext(i) {
-    if (i >= slotChecks.length) return;
-    const { slot, work, ok } = slotChecks[i];
+  // Une seule phrase pour toute la correction (l'artiste n'est nommé qu'une fois), avec une
+  // écriture progressive des barres calée sur une estimation du rythme de lecture.
+  function famEstimateMs(text) { return Math.max(1200, (text.length / 13) * 1000) + 400; }
+  const parts = slotChecks.map(({ work }) => {
     const year = detectCenturyYear(work.date);
-    const sentence = `${q.artist} a peint ${work.title}${year ? ` en ${year}` : ''}.`;
-    const finish = () => {
-      slot.textContent = `${work.title}${year ? ` (${year})` : ''}`;
-      slot.classList.add('vf-updated');
-      famSpeak(sentence, () => announceNext(i + 1));
-    };
-    if (ok) { finish(); }
-    else {
-      slot.classList.add('vf-was-wrong');
-      famTimers.push(setTimeout(finish, 700));
-    }
-  }
-  announceNext(0);
+    return `${work.title}${year ? ` en ${year}` : ''}`;
+  });
+  const fullSentence = `${q.artist} a peint : ${parts.join(', ')}.`;
+  const prefixLen = `${q.artist} a peint : `.length;
+  const totalMs = famEstimateMs(fullSentence);
+  let offset = prefixLen;
+  slotChecks.forEach(({ slot, work, ok }, i) => {
+    const segment = parts[i];
+    const revealAt = Math.round((offset / fullSentence.length) * totalMs);
+    offset += segment.length + 2; // ", "
+    famTimers.push(setTimeout(() => {
+      if (!ok) slot.classList.add('vf-was-wrong');
+      const year = detectCenturyYear(work.date);
+      setTimeout(() => {
+        slot.textContent = `${work.title}${year ? ` (${year})` : ''}`;
+        slot.classList.remove('vf-was-wrong');
+        slot.classList.add('vf-updated');
+      }, ok ? 0 : 350);
+    }, Math.max(0, revealAt - 300)));
+  });
+  famSpeak(fullSentence);
 
   $('fam-correction').classList.remove('hidden');
   $('fam-next-button').textContent = famIndex === FAM_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
@@ -2314,6 +2333,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
 });
 
 function vfShowQuestion() {
+  speechSynthesis.cancel();
   vfTimers.forEach(clearTimeout); vfTimers = [];
   vfAnswered = false;
   const q = VF_SESSION[vfIndex];
@@ -2528,6 +2548,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
 });
 
 function reconShowQuestion() {
+  speechSynthesis.cancel();
   reconAnswered = false;
   const q = RECON_SESSION[reconIndex];
   $('recon-progress-label').textContent = `Question ${reconIndex + 1} / ${RECON_SESSION.length}`;
@@ -3031,6 +3052,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
 });
 
 function intrusShowQuestion() {
+  speechSynthesis.cancel();
   intrusAnswered = false;
   const q = INTRUS_SESSION[intrusIndex];
   $('intrus-progress-label').textContent = `Question ${intrusIndex + 1} / ${INTRUS_SESSION.length}`;
