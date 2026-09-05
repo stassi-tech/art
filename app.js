@@ -192,6 +192,7 @@ async function loadAccountPage() {
   const groupsBox = $('account-page-groups');
   const emptyMsg = $('account-page-empty');
   const downloadButton = $('account-page-download-button');
+  $('account-resume-exercise-button')?.classList.toggle('hidden', !returnToExercisePanel);
   if (!firebaseReady || !currentUser) return;
   groupsBox.innerHTML = '';
   emptyMsg.classList.add('hidden');
@@ -391,7 +392,10 @@ $('account-scores-training-button')?.addEventListener('click', () => {
   $('account-scores-quiz-button').classList.add('inactive');
   loadAccountPage();
 });
-$('account-page-back-button')?.addEventListener('click', () => showPanel('welcome'));
+$('account-page-back-button')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('welcome'); });
+$('account-resume-exercise-button')?.addEventListener('click', () => {
+  if (returnToExercisePanel) showPanel(returnToExercisePanel);
+});
 
 const allFields = [
   { key: 'artist', label: 'Artiste', input: 'artist-input', checkbox: 'rubrique-artist' },
@@ -822,6 +826,8 @@ function showPanel(name) {
   $('impregnation-panel')?.classList.toggle('hidden', name !== 'impregnation');
   $('intrus-setup-panel')?.classList.toggle('hidden', name !== 'intrus-setup');
   $('intrus-panel')?.classList.toggle('hidden', name !== 'intrus');
+  $('reconstitution-setup-panel')?.classList.toggle('hidden', name !== 'reconstitution-setup');
+  $('reconstitution-panel')?.classList.toggle('hidden', name !== 'reconstitution');
   $('quiz-setup-panel')?.classList.toggle('hidden', name !== 'quiz-setup');
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
@@ -1288,6 +1294,181 @@ $('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerM
 $('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
 $('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
 $('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
+$('quiz-setup-back-button')?.addEventListener('click', () => showPanel('welcome'));
+
+// ============================================================
+// MODULE RECONSTITUTION — un détail très resserré (< 10 % de la surface) sert d'indice ; 3
+// références (artiste + titre) sont proposées. Même mécanique de correction que Intrus (référence
+// choisie conservée avec son verdict), puis l'image entière est révélée avec la référence complète.
+// ============================================================
+$('open-reconstitution-setup')?.addEventListener('click', () => { showPanel('reconstitution-setup'); populateReconVoices(); });
+$('reconstitution-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
+$('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
+$('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
+
+function populateReconVoices() {
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  const select = $('recon-opt-voice');
+  if (!select) return;
+  select.innerHTML = voices.length
+    ? voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('')
+    : '<option value="">Voix par défaut du système</option>';
+}
+
+const RECON_ACCORDIONS = ['recon-toggle-art:recon-body-art', 'recon-toggle-century:recon-body-century', 'recon-toggle-level:recon-body-level', 'recon-toggle-count:recon-body-count'];
+RECON_ACCORDIONS.forEach((pair) => {
+  const [toggleId, bodyId] = pair.split(':');
+  $(toggleId)?.addEventListener('click', () => {
+    const opening = $(bodyId).classList.contains('hidden');
+    RECON_ACCORDIONS.forEach((p) => $(p.split(':')[1])?.classList.add('hidden'));
+    if (opening) $(bodyId).classList.remove('hidden');
+  });
+});
+
+function reconSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`recon-art-${a}`)?.checked); }
+function reconSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`recon-century-${c}`)?.checked); }
+function reconSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`recon-zone-${z}`)?.checked); }
+function reconSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`recon-level-${lvl}`)?.checked); }
+
+let RECON_SESSION = [], reconIndex = 0, reconCorrectCount = 0, reconAnswered = false, reconAudioOn = true, reconSelectedVoice = null;
+function reconSpeak(text) {
+  if (!reconAudioOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'fr-FR'; u.rate = 0.85;
+  if (reconSelectedVoice) u.voice = reconSelectedVoice;
+  speechSynthesis.speak(u);
+}
+
+$('recon-start-button')?.addEventListener('click', async () => {
+  const arts = reconSelectedArts();
+  const centuries = reconSelectedCenturies();
+  const levels = reconSelectedLevels();
+  const feedback = $('recon-setup-feedback');
+  feedback.classList.remove('hidden');
+  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
+  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
+  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
+  feedback.textContent = 'Chargement des œuvres…';
+  try {
+    const zones = reconSelectedZones();
+    let allRows = [];
+    for (const art of arts) {
+      for (const century of centuries) {
+        try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+      }
+    }
+    if (allRows.length < 3) { feedback.textContent = "Pas assez d'œuvres disponibles pour ce choix (3 minimum)."; return; }
+    let pool = allRows.filter((r) => levels.includes(String(r.niveau || 1)));
+    if (pool.length < 3) pool = allRows;
+    if (zones.length) {
+      const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
+      if (zoned.length >= 3) pool = zoned;
+    }
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    const countChoice = document.querySelector('input[name="recon-count"]:checked').value;
+    const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
+    reconAudioOn = $('recon-opt-audio').checked;
+    const reconVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+    reconSelectedVoice = reconVoices[$('recon-opt-voice').value] || null;
+    RECON_SESSION = pool.slice(0, count).map((correct) => {
+      const distractors = pickIntrusDistractors(correct, pool);
+      const choices = [correct, ...distractors];
+      for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [choices[i], choices[j]] = [choices[j], choices[i]]; }
+      // Position aléatoire du détail rogné : avec un fond à 340% de taille, la zone visible
+      // représente environ 1/3.4 de chaque dimension, soit ~8-9 % de la surface totale.
+      const cropX = Math.floor(Math.random() * 101);
+      const cropY = Math.floor(Math.random() * 101);
+      return { correct, choices, cropX, cropY };
+    });
+    reconIndex = 0; reconCorrectCount = 0;
+    showPanel('reconstitution');
+    reconShowQuestion();
+  } catch (error) {
+    feedback.textContent = `Erreur : ${error.message}`;
+  }
+});
+
+function reconShowQuestion() {
+  reconAnswered = false;
+  const q = RECON_SESSION[reconIndex];
+  $('recon-progress-label').textContent = `Question ${reconIndex + 1} / ${RECON_SESSION.length}`;
+  $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
+  $('recon-progress-bar').style.width = `${(reconIndex / RECON_SESSION.length) * 100}%`;
+  $('recon-correction').classList.add('hidden');
+  $('recon-choices').classList.remove('hidden');
+
+  const src = escapeHtml(imageSource(q.correct.image));
+  $('recon-prompt-card').innerHTML = `<div class="recon-detail-crop" style="background-image:url('${src}');background-position:${q.cropX}% ${q.cropY}%;"></div>`;
+  $('recon-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
+    `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title)} »</em></button>`
+  ).join('')}</div>`;
+  $('recon-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
+    btn.addEventListener('click', () => reconAnswer(Number(btn.dataset.index)));
+  });
+}
+
+function reconAnswer(chosenIndex) {
+  if (reconAnswered) return;
+  reconAnswered = true;
+  const q = RECON_SESSION[reconIndex];
+  const chosen = q.choices[chosenIndex];
+  const isCorrect = chosen === q.correct;
+  if (isCorrect) reconCorrectCount++;
+
+  const verdictHtml = ` <span class="intrus-verdict" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? '— Exact' : '— À réviser'}</span>`;
+  $('recon-choices').querySelectorAll('.intrus-choice-btn').forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === chosenIndex) btn.insertAdjacentHTML('beforeend', verdictHtml);
+    else btn.remove();
+  });
+
+  // L'image entière est révélée, avec la référence complète.
+  $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSource(q.correct.image))}" alt="" />`;
+
+  const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
+  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date} — ${q.correct.location}`;
+  reconSpeak(correctFullRef);
+  const detailsParts = [];
+  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
+  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value">« ${escapeHtml(q.correct.title)} »</span>`);
+  detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
+  if (q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materials)}</span>`);
+  if (dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
+  detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
+  $('recon-correction-details').innerHTML = detailsParts.join('');
+  $('recon-correction').classList.remove('hidden');
+  $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex + 1} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
+  $('recon-next-button').textContent = reconIndex === RECON_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
+}
+
+$('recon-next-button')?.addEventListener('click', async () => {
+  if (reconIndex < RECON_SESSION.length - 1) {
+    reconIndex++;
+    reconShowQuestion();
+  } else {
+    if (firebaseReady && currentUser) {
+      try {
+        await db.collection('users').doc(currentUser.uid).collection('scores').add({
+          type: 'entrainement',
+          exerciseName: 'Reconstitution',
+          correct: reconCorrectCount, possible: RECON_SESSION.length,
+          percent: Math.round((reconCorrectCount / RECON_SESSION.length) * 100),
+          questionCount: RECON_SESSION.length,
+          quizLabel: 'Reconstitution',
+          quizLevel: reconSelectedLevels().map((lvl) => `Niveau ${lvl}`).join(' + '),
+          quizArts: reconSelectedArts(), quizCenturies: reconSelectedCenturies(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (e) { /* enregistrement best-effort */ }
+    }
+    showPanel('reconstitution-setup');
+    const feedback = $('recon-setup-feedback');
+    feedback.classList.remove('hidden');
+    feedback.textContent = `Terminé : ${reconCorrectCount} / ${RECON_SESSION.length} bonnes réponses.`;
+  }
+});
 // Boutons « Artiste / Titre / Date / Lieu » à côté de chaque champ : sélectionnent le champ comme
 // cible de dictée sans lui donner le focus réel, pour éviter l'ouverture systématique du clavier
 // virtuel sur mobile.
@@ -1583,8 +1764,14 @@ $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSI
 // parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
 // ============================================================
 $('open-intrus-setup')?.addEventListener('click', () => { showPanel('intrus-setup'); populateIntrusVoices(); });
-$('intrus-scores-link')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
-$('intrus-setup-scores-link')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
+$('intrus-scores-link')?.addEventListener('click', () => {
+  speechSynthesis.cancel();
+  returnToExercisePanel = 'intrus';
+  showPanel('account');
+  loadAccountPage();
+});
+$('intrus-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 function populateIntrusVoices() {
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   const select = $('intrus-opt-voice');

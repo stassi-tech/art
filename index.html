@@ -78,7 +78,7 @@
           <div class="training-exercise-grid">
             <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="label">Imprégnation</span></button>
             <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="label">Intrus</span></button>
-            <button type="button" class="home-mode-button training-soon" id="open-training-reconstitution"><span class="label">Reconstitution</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+            <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="label">Reconstitution</span></button>
             <button type="button" class="home-mode-button training-soon" id="open-training-enigme"><span class="label">Énigme</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
             <button type="button" class="home-mode-button training-soon" id="open-training-vraifaux"><span class="label">Vrai/Faux</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
             <button type="button" class="home-mode-button training-soon" id="open-training-famille"><span class="label">Famille</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
@@ -298,7 +298,106 @@
           </div>
         </section>
 
+        <section id="reconstitution-setup-panel" class="welcome-panel hidden">
+          <div class="quiz-topbar">
+            <button type="button" id="reconstitution-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          </div>
+          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Reconstitution</h2></div>
+          <p class="modal-hint" style="text-align:center;margin-top:0;">Un détail très resserré de l'œuvre (moins de 10 % de la surface) apparaît ; retrouvez la référence complète parmi 3 choix.</p>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="recon-toggle-art">🎨 Choisissez votre art</button>
+            <div class="accordion-body hidden" id="recon-body-art">
+              <label class="rubrique-option"><input type="checkbox" id="recon-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-art-sculpture" /><span>Sculpture</span></label>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="recon-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
+            <div class="accordion-body hidden" id="recon-body-century">
+              <div class="accordion-columns">
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-century-14e" /><span>14e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-century-15e" /><span>15e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-century-16e" /><span>16e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-century-17e" /><span>17e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-century-18e" /><span>18e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-century-19e" checked /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-century-20e" /><span>20e siècle</span></label>
+                </div>
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-zone-france" /><span>France</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-zone-europe" /><span>Autres pays d'Europe</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-zone-amerique" /><span>Amérique</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-zone-asie" /><span>Asie</span></label>
+                </div>
+              </div>
+              <p class="modal-hint">Rien coché en zone = toutes zones confondues.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="recon-toggle-level">⭐ Choisissez votre niveau</button>
+            <div class="accordion-body hidden" id="recon-body-level">
+              <label class="rubrique-option"><input type="checkbox" id="recon-level-1" checked /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-level-2" /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-level-3" /><span>Niveau 3</span></label>
+              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="recon-toggle-count">🔢 Nombre de questions</button>
+            <div class="accordion-body hidden" id="recon-body-count">
+              <label class="rubrique-option"><input type="radio" name="recon-count" value="10" checked /><span>10 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="recon-count" value="20" /><span>20 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="recon-count" value="max" /><span>Maximum disponible</span></label>
+            </div>
+          </div>
+
+          <div class="opt-row">
+            <label><input type="checkbox" id="recon-opt-audio" checked /> Lecture audio</label>
+            <select id="recon-opt-voice"><option value="">Chargement des voix…</option></select>
+          </div>
+
+          <button type="button" class="primary-button" id="recon-start-button" style="width:100%">Commencer</button>
+          <p id="recon-setup-feedback" class="hint hidden"></p>
+          <button type="button" class="secondary-button" id="recon-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
+        </section>
+
+        <section id="reconstitution-panel" class="quiz-panel hidden">
+          <div class="progress-row">
+            <span><span class="quiz-reference">Reconstitution</span> — <span id="recon-progress-label">Question 1 / 10</span></span>
+            <span id="recon-score-label" class="score-summary-highlight">0 / 0 réponse correcte</span>
+          </div>
+          <div class="progress-track"><div class="progress-bar" id="recon-progress-bar"></div></div>
+
+          <div class="quiz-grid">
+            <div class="artwork-column">
+              <figure class="artwork-card" id="recon-prompt-card"></figure>
+            </div>
+            <section class="answer-card" aria-label="Choix">
+              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Retrouvez la référence</h2>
+              <div id="recon-choices"></div>
+              <div id="recon-correction" class="hidden">
+                <div class="correction-details" id="recon-correction-details"></div>
+                <button type="button" class="primary-button" id="recon-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
+              </div>
+              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
+                <button type="button" class="home-icon-button exercise-icon-button" id="recon-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
+                <button type="button" class="home-icon-button exercise-icon-button" id="recon-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
         <section id="quiz-setup-panel" class="welcome-panel hidden">
+          <div class="quiz-topbar">
+            <button type="button" id="quiz-setup-back-button" class="home-icon-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
+          </div>
           <figure class="home-illustration">
             <img src="assets/accueil.jpg" alt="" />
             <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
@@ -565,6 +664,7 @@
           <p id="account-page-empty" class="hint hidden">Vous n'avez pas encore de score enregistré. Terminez un quiz : votre score s'enregistrera automatiquement et apparaîtra ici.</p>
           <div id="account-page-groups"></div>
           <div class="account-page-actions">
+            <button type="button" id="account-resume-exercise-button" class="primary-button hidden">↩ Revenir à l'exercice en cours</button>
             <button type="button" id="account-page-download-button" class="secondary-button hidden">Télécharger mon bilan</button>
             <button type="button" id="account-page-back-button" class="secondary-button">← Retour à l'accueil</button>
           </div>
