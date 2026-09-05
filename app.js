@@ -828,6 +828,8 @@ function showPanel(name) {
   $('intrus-panel')?.classList.toggle('hidden', name !== 'intrus');
   $('reconstitution-setup-panel')?.classList.toggle('hidden', name !== 'reconstitution-setup');
   $('reconstitution-panel')?.classList.toggle('hidden', name !== 'reconstitution');
+  $('vraifaux-setup-panel')?.classList.toggle('hidden', name !== 'vraifaux-setup');
+  $('vraifaux-panel')?.classList.toggle('hidden', name !== 'vraifaux');
   $('quiz-setup-panel')?.classList.toggle('hidden', name !== 'quiz-setup');
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
@@ -1307,6 +1309,198 @@ $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel()
 $('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
 $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
+// ============================================================
+// MODULE VRAI/FAUX — la référence affichée est soit entièrement exacte, soit comporte 1 ou 2
+// éléments faux (jamais les dimensions, qui ne sont pas montrées ici). Le joueur juge Vrai/Faux ;
+// en cas d'erreur, la ou les lignes fautives apparaissent en rouge, corrigées en vert en dessous.
+// ============================================================
+$('open-vraifaux-setup')?.addEventListener('click', () => { showPanel('vraifaux-setup'); populateVfVoices(); });
+$('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('vf-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
+$('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
+$('vf-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
+
+function populateVfVoices() {
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  const select = $('vf-opt-voice');
+  if (!select) return;
+  select.innerHTML = voices.length
+    ? voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('')
+    : '<option value="">Voix par défaut du système</option>';
+}
+
+const VF_ACCORDIONS = ['vf-toggle-art:vf-body-art', 'vf-toggle-century:vf-body-century', 'vf-toggle-level:vf-body-level', 'vf-toggle-count:vf-body-count'];
+VF_ACCORDIONS.forEach((pair) => {
+  const [toggleId, bodyId] = pair.split(':');
+  $(toggleId)?.addEventListener('click', () => {
+    const opening = $(bodyId).classList.contains('hidden');
+    VF_ACCORDIONS.forEach((p) => $(p.split(':')[1])?.classList.add('hidden'));
+    if (opening) $(bodyId).classList.remove('hidden');
+  });
+});
+
+function vfSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`vf-art-${a}`)?.checked); }
+function vfSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`vf-century-${c}`)?.checked); }
+function vfSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`vf-zone-${z}`)?.checked); }
+function vfSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`vf-level-${lvl}`)?.checked); }
+
+const VF_FIELDS = [
+  { key: 'artist', label: 'Auteur' },
+  { key: 'title', label: 'Titre de l\u2019œuvre' },
+  { key: 'date', label: 'Date' },
+  { key: 'materials', label: 'Matériau' },
+  { key: 'location', label: 'Lieu' },
+];
+
+let VF_SESSION = [], vfIndex = 0, vfCorrectCount = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null;
+function vfSpeak(text) {
+  if (!vfAudioOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'fr-FR'; u.rate = 0.85;
+  if (vfSelectedVoiceRef) u.voice = vfSelectedVoiceRef;
+  speechSynthesis.speak(u);
+}
+
+$('vf-start-button')?.addEventListener('click', async () => {
+  const arts = vfSelectedArts();
+  const centuries = vfSelectedCenturies();
+  const levels = vfSelectedLevels();
+  const feedback = $('vf-setup-feedback');
+  feedback.classList.remove('hidden');
+  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
+  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
+  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
+  feedback.textContent = 'Chargement des œuvres…';
+  try {
+    const zones = vfSelectedZones();
+    let allRows = [];
+    for (const art of arts) {
+      for (const century of centuries) {
+        try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+      }
+    }
+    if (allRows.length < 2) { feedback.textContent = "Pas assez d'œuvres disponibles pour ce choix (2 minimum)."; return; }
+    let pool = allRows.filter((r) => levels.includes(String(r.niveau || 1)));
+    if (pool.length < 2) pool = allRows;
+    if (zones.length) {
+      const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
+      if (zoned.length >= 2) pool = zoned;
+    }
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    const countChoice = document.querySelector('input[name="vf-count"]:checked').value;
+    const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
+    vfAudioOn = $('vf-opt-audio').checked;
+    const vfVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+    vfSelectedVoiceRef = vfVoices[$('vf-opt-voice').value] || null;
+    VF_SESSION = pool.slice(0, count).map((correct) => {
+      const hasError = Math.random() < 0.5;
+      let errorFields = [];
+      const displayed = {};
+      VF_FIELDS.forEach((f) => { displayed[f.key] = correct[f.key] || '—'; });
+      if (hasError) {
+        const nbErrors = Math.random() < 0.5 ? 1 : 2; // jamais plus de deux erreurs
+        const shuffledFields = VF_FIELDS.slice().sort(() => Math.random() - 0.5);
+        errorFields = shuffledFields.slice(0, nbErrors).map((f) => f.key);
+        errorFields.forEach((key) => {
+          const others = pool.filter((r) => r !== correct && r[key]);
+          if (others.length) displayed[key] = others[Math.floor(Math.random() * others.length)][key];
+        });
+      }
+      return { correct, hasError, errorFields, displayed };
+    });
+    vfIndex = 0; vfCorrectCount = 0;
+    showPanel('vraifaux');
+    vfShowQuestion();
+  } catch (error) {
+    feedback.textContent = `Erreur : ${error.message}`;
+  }
+});
+
+function vfShowQuestion() {
+  vfAnswered = false;
+  const q = VF_SESSION[vfIndex];
+  $('vf-progress-label').textContent = `Question ${vfIndex + 1} / ${VF_SESSION.length}`;
+  $('vf-score-label').textContent = `${vfCorrectCount} / ${vfIndex} réponse${vfCorrectCount > 1 ? 's' : ''} correcte${vfCorrectCount > 1 ? 's' : ''}`;
+  $('vf-progress-bar').style.width = `${(vfIndex / VF_SESSION.length) * 100}%`;
+  $('vf-correction').classList.add('hidden');
+  $('vf-buttons').classList.remove('hidden');
+  $('vf-stage-img').src = imageSource(q.correct.image);
+
+  $('vf-reference-details').innerHTML = VF_FIELDS.map((f) =>
+    `<span class="correction-label">${f.label}</span><span class="correction-value">${escapeHtml(f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key])}</span>`
+  ).join('');
+
+  const spokenText = VF_FIELDS.map((f) => f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key]).join(' — ');
+  vfSpeak(spokenText);
+}
+
+function vfAnswer(guessTrue) {
+  if (vfAnswered) return;
+  vfAnswered = true;
+  const q = VF_SESSION[vfIndex];
+  const guessCorrect = guessTrue !== q.hasError;
+  if (guessCorrect) vfCorrectCount++;
+
+  $('vf-buttons').classList.add('hidden');
+  $('vf-verdict').textContent = guessCorrect ? 'Exact' : 'À réviser';
+  $('vf-verdict').style.color = guessCorrect ? 'var(--ok)' : 'var(--wrong)';
+
+  if (q.hasError) {
+    // Les lignes fautives (telles qu'affichées) en rouge, puis les mêmes lignes corrigées en vert
+    // juste en dessous.
+    const wrongLines = q.errorFields.map((key) => {
+      const f = VF_FIELDS.find((x) => x.key === key);
+      const shown = key === 'title' ? `« ${q.displayed[key]} »` : q.displayed[key];
+      return `<span class="correction-label">${f.label}</span><span class="correction-value vf-line-wrong">${escapeHtml(shown)}</span>`;
+    }).join('');
+    const correctedLines = q.errorFields.map((key) => {
+      const f = VF_FIELDS.find((x) => x.key === key);
+      const shown = key === 'title' ? `« ${q.correct[key]} »` : (q.correct[key] || '—');
+      return `<span class="correction-label">${f.label} (correction)</span><span class="correction-value vf-line-correct">${escapeHtml(shown)}</span>`;
+    }).join('');
+    $('vf-correction-details').innerHTML = wrongLines + correctedLines;
+  } else {
+    $('vf-correction-details').innerHTML = `<span class="correction-label">Référence</span><span class="correction-value vf-line-correct">Entièrement exacte</span>`;
+  }
+
+  const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
+  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + q.correct.materials : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
+  vfSpeak(correctFullRef);
+  $('vf-correction').classList.remove('hidden');
+  $('vf-score-label').textContent = `${vfCorrectCount} / ${vfIndex + 1} réponse${vfCorrectCount > 1 ? 's' : ''} correcte${vfCorrectCount > 1 ? 's' : ''}`;
+  $('vf-next-button').textContent = vfIndex === VF_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
+}
+$('vf-true-button')?.addEventListener('click', () => vfAnswer(true));
+$('vf-false-button')?.addEventListener('click', () => vfAnswer(false));
+
+$('vf-next-button')?.addEventListener('click', async () => {
+  if (vfIndex < VF_SESSION.length - 1) {
+    vfIndex++;
+    vfShowQuestion();
+  } else {
+    if (firebaseReady && currentUser) {
+      try {
+        await db.collection('users').doc(currentUser.uid).collection('scores').add({
+          type: 'entrainement',
+          exerciseName: 'Vrai/Faux',
+          correct: vfCorrectCount, possible: VF_SESSION.length,
+          percent: Math.round((vfCorrectCount / VF_SESSION.length) * 100),
+          questionCount: VF_SESSION.length,
+          quizLabel: 'Vrai/Faux',
+          quizLevel: vfSelectedLevels().map((lvl) => `Niveau ${lvl}`).join(' + '),
+          quizArts: vfSelectedArts(), quizCenturies: vfSelectedCenturies(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (e) { /* enregistrement best-effort */ }
+    }
+    showPanel('vraifaux-setup');
+    const feedback = $('vf-setup-feedback');
+    feedback.classList.remove('hidden');
+    feedback.textContent = `Terminé : ${vfCorrectCount} / ${VF_SESSION.length} bonnes réponses.`;
+  }
+});
+
 function populateReconVoices() {
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   const select = $('recon-opt-voice');
@@ -1428,7 +1622,7 @@ function reconAnswer(chosenIndex) {
   $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSource(q.correct.image))}" alt="" />`;
 
   const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
-  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date} — ${q.correct.location}`;
+  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + q.correct.materials : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
   reconSpeak(correctFullRef);
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
@@ -1953,16 +2147,14 @@ function intrusAnswer(chosenIndex) {
   if (intrusMode === 'image') {
     const kept = $('intrus-prompt-card').querySelector('.intrus-image-choice');
     if (kept) kept.classList.add('intrus-image-choice-solo');
+    // On ne garde plus la référence initiale (Auteur/Titre) affichée à droite : juste le verdict.
+    $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
   }
 
   const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
-  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date} — ${q.correct.location}`;
+  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + q.correct.materials : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
   intrusSpeak(correctFullRef);
   const detailsParts = [];
-  if (intrusMode === 'image') {
-    // Pas de pavé texte pour porter le verdict ici (seule l'image reste) : on l'indique en tête.
-    detailsParts.push(`<span class="correction-label">Votre réponse</span><span class="correction-value" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</span>`);
-  }
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value">« ${escapeHtml(q.correct.title)} »</span>`);
   detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);

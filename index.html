@@ -80,7 +80,7 @@
             <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="label">Intrus</span></button>
             <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="label">Reconstitution</span></button>
             <button type="button" class="home-mode-button training-soon" id="open-training-enigme"><span class="label">Énigme</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
-            <button type="button" class="home-mode-button training-soon" id="open-training-vraifaux"><span class="label">Vrai/Faux</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+            <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="label">Vrai/Faux</span></button>
             <button type="button" class="home-mode-button training-soon" id="open-training-famille"><span class="label">Famille</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
           </div>
         </section>
@@ -389,6 +389,109 @@
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
                 <button type="button" class="home-icon-button exercise-icon-button" id="recon-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
                 <button type="button" class="home-icon-button exercise-icon-button" id="recon-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="vraifaux-setup-panel" class="welcome-panel hidden">
+          <div class="quiz-topbar">
+            <button type="button" id="vraifaux-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          </div>
+          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Vrai/Faux</h2></div>
+          <p class="modal-hint" style="text-align:center;margin-top:0;">Une image apparaît avec sa référence — entièrement juste, ou comportant un ou deux éléments faux. À vous de juger.</p>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="vf-toggle-art">🎨 Choisissez votre art</button>
+            <div class="accordion-body hidden" id="vf-body-art">
+              <label class="rubrique-option"><input type="checkbox" id="vf-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-art-sculpture" /><span>Sculpture</span></label>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="vf-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
+            <div class="accordion-body hidden" id="vf-body-century">
+              <div class="accordion-columns">
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-century-14e" /><span>14e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-century-15e" /><span>15e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-century-16e" /><span>16e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-century-17e" /><span>17e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-century-18e" /><span>18e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-century-19e" checked /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-century-20e" /><span>20e siècle</span></label>
+                </div>
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-zone-france" /><span>France</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-zone-europe" /><span>Autres pays d'Europe</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-zone-amerique" /><span>Amérique</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-zone-asie" /><span>Asie</span></label>
+                </div>
+              </div>
+              <p class="modal-hint">Rien coché en zone = toutes zones confondues.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="vf-toggle-level">⭐ Choisissez votre niveau</button>
+            <div class="accordion-body hidden" id="vf-body-level">
+              <label class="rubrique-option"><input type="checkbox" id="vf-level-1" checked /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-level-2" /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-level-3" /><span>Niveau 3</span></label>
+              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="vf-toggle-count">🔢 Nombre de questions</button>
+            <div class="accordion-body hidden" id="vf-body-count">
+              <label class="rubrique-option"><input type="radio" name="vf-count" value="10" checked /><span>10 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="vf-count" value="20" /><span>20 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="vf-count" value="max" /><span>Maximum disponible</span></label>
+            </div>
+          </div>
+
+          <div class="opt-row">
+            <label><input type="checkbox" id="vf-opt-audio" checked /> Lecture audio</label>
+            <select id="vf-opt-voice"><option value="">Chargement des voix…</option></select>
+          </div>
+
+          <button type="button" class="primary-button" id="vf-start-button" style="width:100%">Commencer</button>
+          <p id="vf-setup-feedback" class="hint hidden"></p>
+          <button type="button" class="secondary-button" id="vf-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
+        </section>
+
+        <section id="vraifaux-panel" class="quiz-panel hidden">
+          <div class="progress-row">
+            <span><span class="quiz-reference">Vrai/Faux</span> — <span id="vf-progress-label">Question 1 / 10</span></span>
+            <span id="vf-score-label" class="score-summary-highlight">0 / 0 réponse correcte</span>
+          </div>
+          <div class="progress-track"><div class="progress-bar" id="vf-progress-bar"></div></div>
+
+          <div class="quiz-grid">
+            <div class="artwork-column">
+              <figure class="artwork-card">
+                <img id="vf-stage-img" alt="" style="max-width:100%;max-height:min(820px,74vh);display:block;" />
+              </figure>
+            </div>
+            <section class="answer-card" aria-label="Référence proposée">
+              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Cette référence est-elle exacte ?</h2>
+              <div class="correction-details" id="vf-reference-details"></div>
+              <div class="mic-nav-row" id="vf-buttons" style="justify-content:center;margin-top:16px;">
+                <button type="button" class="primary-button" id="vf-true-button" style="flex:1;">Vrai</button>
+                <button type="button" class="primary-button" id="vf-false-button" style="flex:1;background:var(--wrong);">Faux</button>
+              </div>
+              <div id="vf-correction" class="hidden">
+                <p id="vf-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;"></p>
+                <div class="correction-details" id="vf-correction-details"></div>
+                <button type="button" class="primary-button" id="vf-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
+              </div>
+              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
+                <button type="button" class="home-icon-button exercise-icon-button" id="vf-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
+                <button type="button" class="home-icon-button exercise-icon-button" id="vf-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
               </div>
             </section>
           </div>
