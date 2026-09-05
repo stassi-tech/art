@@ -491,15 +491,11 @@
               </figure>
             </div>
             <section class="answer-card" aria-label="Référence proposée">
-              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Cette référence est-elle exacte ?</h2>
-              <div class="correction-details" id="vf-reference-details"></div>
-              <div class="mic-nav-row" id="vf-buttons" style="justify-content:center;margin-top:16px;">
-                <button type="button" class="primary-button" id="vf-true-button" style="flex:1;">Vrai</button>
-                <button type="button" class="primary-button" id="vf-false-button" style="flex:1;background:var(--wrong);">Faux</button>
-              </div>
+              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Chaque rubrique est-elle exacte ?</h2>
+              <div id="vf-field-rows"></div>
+              <button type="button" class="primary-button" id="vf-validate-button" style="width:100%;margin-top:16px;">Valider</button>
               <div id="vf-correction" class="hidden">
-                <p id="vf-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;"></p>
-                <div class="correction-details" id="vf-correction-details"></div>
+                <p id="vf-score-detail" class="hint" style="text-align:center;"></p>
                 <button type="button" class="primary-button" id="vf-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">

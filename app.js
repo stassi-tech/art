@@ -1316,7 +1316,7 @@ $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercise
 // ============================================================
 $('open-vraifaux-setup')?.addEventListener('click', () => { showPanel('vraifaux-setup'); populateVfVoices(); });
 $('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
-$('vf-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
+$('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
 $('vf-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
@@ -1361,7 +1361,7 @@ function vfFieldValue(row, key) {
   return row[key] || '';
 }
 
-let VF_SESSION = [], vfIndex = 0, vfCorrectCount = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null;
+let VF_SESSION = [], vfIndex = 0, vfScore = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null, vfTimers = [];
 function vfSpeak(text) {
   if (!vfAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
@@ -1424,7 +1424,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
       }
       return { correct, hasError, errorFields, displayed, activeFields };
     });
-    vfIndex = 0; vfCorrectCount = 0;
+    vfIndex = 0; vfScore = 0;
     showPanel('vraifaux');
     vfShowQuestion();
   } catch (error) {
@@ -1433,36 +1433,64 @@ $('vf-start-button')?.addEventListener('click', async () => {
 });
 
 function vfShowQuestion() {
+  vfTimers.forEach(clearTimeout); vfTimers = [];
   vfAnswered = false;
   const q = VF_SESSION[vfIndex];
   $('vf-progress-label').textContent = `Question ${vfIndex + 1} / ${VF_SESSION.length}`;
-  $('vf-score-label').textContent = `${vfCorrectCount} / ${vfIndex} réponse${vfCorrectCount > 1 ? 's' : ''} correcte${vfCorrectCount > 1 ? 's' : ''}`;
+  $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''} — question ${vfIndex + 1}`;
   $('vf-progress-bar').style.width = `${(vfIndex / VF_SESSION.length) * 100}%`;
   $('vf-correction').classList.add('hidden');
-  $('vf-buttons').classList.remove('hidden');
+  $('vf-validate-button').classList.remove('hidden');
+  $('vf-validate-button').disabled = false;
   $('vf-stage-img').src = imageSource(q.correct.image);
 
-  $('vf-reference-details').innerHTML = q.activeFields.map((f) =>
-    `<span class="correction-label">${f.label}</span><span class="correction-value">${escapeHtml(f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key])}</span>`
-  ).join('');
+  // Chaque rubrique a son propre bouton Vrai/Faux, réglé sur Vrai par défaut.
+  $('vf-field-rows').innerHTML = q.activeFields.map((f) => {
+    const shown = f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key];
+    return `<div class="vf-field-row" data-key="${f.key}">
+      <span class="vf-field-label">${f.label}</span>
+      <span class="vf-field-value" id="vf-value-${f.key}">${escapeHtml(shown)}</span>
+      <div class="vf-toggle" data-key="${f.key}">
+        <button type="button" class="active" data-val="true">Vrai</button>
+        <button type="button" data-val="false">Faux</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.vf-toggle').forEach((toggle) => {
+    toggle.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        toggle.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  });
 
   const spokenText = q.activeFields.map((f) => f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key]).join(' — ');
   vfSpeak(spokenText);
 }
 
-function vfAnswer(guessTrue) {
+$('vf-validate-button')?.addEventListener('click', () => {
   if (vfAnswered) return;
   vfAnswered = true;
   const q = VF_SESSION[vfIndex];
-  const guessCorrect = guessTrue !== q.hasError;
-  if (guessCorrect) vfCorrectCount++;
   const artWord = q.correct.artType === 'sculpture' ? 'cette sculpture' : 'ce tableau';
+  $('vf-validate-button').disabled = true;
+  document.querySelectorAll('.vf-toggle button').forEach((b) => { b.disabled = true; });
 
-  $('vf-buttons').classList.add('hidden');
-  $('vf-verdict').textContent = guessCorrect ? 'Exact' : 'À réviser';
-  $('vf-verdict').style.color = guessCorrect ? 'var(--ok)' : 'var(--wrong)';
+  // Score : +0,5 par erreur réelle correctement repérée (Faux), -0,5 par fausse alerte (Faux
+  // coché sur une rubrique en réalité exacte). Rien pour une rubrique juste laissée en Vrai.
+  let questionScore = 0;
+  const judgedWrong = [];
+  q.activeFields.forEach((f) => {
+    const playerSaysFalse = document.querySelector(`.vf-toggle[data-key="${f.key}"] button.active`).dataset.val === 'false';
+    const actuallyWrong = q.errorFields.includes(f.key);
+    if (playerSaysFalse) {
+      judgedWrong.push(f.key);
+      questionScore += actuallyWrong ? 0.5 : -0.5;
+    }
+  });
+  vfScore = Math.round((vfScore + questionScore) * 10) / 10;
 
-  // Phrase naturelle par champ, pour la voix et pour la ligne « correction » écrite en vert.
   const naturalPhrase = (key, value) => {
     const phrases = {
       artist: `L'auteur exact de ${artWord} est : ${value}`,
@@ -1475,31 +1503,35 @@ function vfAnswer(guessTrue) {
     return phrases[key] || `${value}`;
   };
 
-  let spokenMessage;
-  if (q.hasError) {
-    spokenMessage = `Une référence est fausse. Par exemple, ${naturalPhrase(q.errorFields[0], vfFieldValue(q.correct, q.errorFields[0]) || '—').toLowerCase()}.`;
-    // Les lignes fautives (telles qu'affichées) en rouge, puis leur correction en vert juste en dessous.
-    const wrongLines = q.errorFields.map((key) => {
-      const f = q.activeFields.find((x) => x.key === key);
-      const shown = key === 'title' ? `« ${q.displayed[key]} »` : q.displayed[key];
-      return `<span class="correction-label">${f.label}</span><span class="correction-value vf-line-wrong">${escapeHtml(shown)}</span>`;
-    }).join('');
-    const correctedLines = q.errorFields.map((key) => {
+  // Correction directement dans les rubriques initiales : chaque champ faux se réécrit
+  // progressivement en vert, au rythme où la voix l'explique (une rubrique à la fois).
+  if (q.errorFields.length) {
+    vfSpeak('Une référence est fausse.');
+    q.errorFields.forEach((key, i) => {
       const correctVal = vfFieldValue(q.correct, key) || '—';
-      return `<span class="correction-label"></span><span class="correction-value vf-line-correct">${escapeHtml(naturalPhrase(key, correctVal))}</span>`;
-    }).join('');
-    $('vf-correction-details').innerHTML = wrongLines + correctedLines;
+      const shownCorrect = key === 'title' ? `« ${correctVal} »` : correctVal;
+      vfTimers.push(setTimeout(() => {
+        const el = $(`vf-value-${key}`);
+        if (!el) return;
+        el.classList.add('vf-was-wrong');
+        vfTimers.push(setTimeout(() => {
+          el.textContent = shownCorrect;
+          el.classList.remove('vf-was-wrong');
+          el.classList.add('vf-updated');
+          vfSpeak(naturalPhrase(key, correctVal));
+        }, 900));
+      }, i * 2600 + 1200));
+    });
   } else {
-    spokenMessage = `C'est exact. Les références de ${artWord} sont bonnes.`;
-    $('vf-correction-details').innerHTML = `<span class="correction-value vf-line-correct">Les références de ${artWord} sont bonnes.</span>`;
+    vfSpeak(`Les références de ${artWord} sont bonnes.`);
   }
-  vfSpeak(spokenMessage);
+
+  const gained = questionScore > 0 ? `+${questionScore}` : questionScore;
+  $('vf-score-detail').textContent = `${judgedWrong.length ? `Rubrique(s) signalée(s) fausse(s) : ${judgedWrong.length}. ` : ''}Points pour cette question : ${gained}.`;
   $('vf-correction').classList.remove('hidden');
-  $('vf-score-label').textContent = `${vfCorrectCount} / ${vfIndex + 1} réponse${vfCorrectCount > 1 ? 's' : ''} correcte${vfCorrectCount > 1 ? 's' : ''}`;
+  $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''} — question ${vfIndex + 1}`;
   $('vf-next-button').textContent = vfIndex === VF_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
-}
-$('vf-true-button')?.addEventListener('click', () => vfAnswer(true));
-$('vf-false-button')?.addEventListener('click', () => vfAnswer(false));
+});
 
 $('vf-next-button')?.addEventListener('click', async () => {
   if (vfIndex < VF_SESSION.length - 1) {
@@ -1511,8 +1543,8 @@ $('vf-next-button')?.addEventListener('click', async () => {
         await db.collection('users').doc(currentUser.uid).collection('scores').add({
           type: 'entrainement',
           exerciseName: 'Vrai/Faux',
-          correct: vfCorrectCount, possible: VF_SESSION.length,
-          percent: Math.round((vfCorrectCount / VF_SESSION.length) * 100),
+          correct: vfScore, possible: VF_SESSION.length,
+          percent: Math.round((vfScore / VF_SESSION.length) * 100),
           questionCount: VF_SESSION.length,
           quizLabel: 'Vrai/Faux',
           quizLevel: vfSelectedLevels().map((lvl) => `Niveau ${lvl}`).join(' + '),
@@ -1524,7 +1556,7 @@ $('vf-next-button')?.addEventListener('click', async () => {
     showPanel('vraifaux-setup');
     const feedback = $('vf-setup-feedback');
     feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${vfCorrectCount} / ${VF_SESSION.length} bonnes réponses.`;
+    feedback.textContent = `Terminé : ${vfScore} points sur ${VF_SESSION.length} questions.`;
   }
 });
 
