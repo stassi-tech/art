@@ -1329,7 +1329,7 @@ function populateVfVoices() {
     : '<option value="">Voix par défaut du système</option>';
 }
 
-const VF_ACCORDIONS = ['vf-toggle-art:vf-body-art', 'vf-toggle-century:vf-body-century', 'vf-toggle-level:vf-body-level', 'vf-toggle-count:vf-body-count'];
+const VF_ACCORDIONS = ['vf-toggle-art:vf-body-art', 'vf-toggle-century:vf-body-century', 'vf-toggle-level:vf-body-level', 'vf-toggle-rubriques:vf-body-rubriques', 'vf-toggle-count:vf-body-count'];
 VF_ACCORDIONS.forEach((pair) => {
   const [toggleId, bodyId] = pair.split(':');
   $(toggleId)?.addEventListener('click', () => {
@@ -1344,13 +1344,22 @@ function vfSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e
 function vfSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`vf-zone-${z}`)?.checked); }
 function vfSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`vf-level-${lvl}`)?.checked); }
 
-const VF_FIELDS = [
-  { key: 'artist', label: 'Auteur' },
-  { key: 'title', label: 'Titre de l\u2019œuvre' },
-  { key: 'date', label: 'Date' },
-  { key: 'materials', label: 'Matériau' },
-  { key: 'location', label: 'Lieu' },
-];
+function vfActiveFields() {
+  const all = [
+    { key: 'artist', label: 'Auteur' },
+    { key: 'title', label: 'Titre de l\u2019œuvre' },
+    { key: 'date', label: 'Date' },
+    { key: 'materials', label: 'Matériau' },
+    { key: 'dimensions', label: 'Dimensions' },
+    { key: 'location', label: 'Lieu' },
+  ];
+  const checkboxMap = { artist: 'vf-field-artist', title: 'vf-field-title', date: 'vf-field-date', materials: 'vf-field-materiaux', dimensions: 'vf-field-dimensions', location: 'vf-field-location' };
+  return all.filter((f) => $(checkboxMap[f.key])?.checked);
+}
+function vfFieldValue(row, key) {
+  if (key === 'dimensions') return [row.hauteur, row.longueur].filter(Boolean).join(' × ');
+  return row[key] || '';
+}
 
 let VF_SESSION = [], vfIndex = 0, vfCorrectCount = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null;
 function vfSpeak(text) {
@@ -1377,7 +1386,11 @@ $('vf-start-button')?.addEventListener('click', async () => {
     let allRows = [];
     for (const art of arts) {
       for (const century of centuries) {
-        try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+        try {
+          const rows = await fetchQuizRows(art, century);
+          rows.forEach((r) => { r.artType = art; });
+          allRows.push(...rows);
+        } catch (e) { /* fichier absent, ignoré */ }
       }
     }
     if (allRows.length < 2) { feedback.textContent = "Pas assez d'œuvres disponibles pour ce choix (2 minimum)."; return; }
@@ -1393,21 +1406,23 @@ $('vf-start-button')?.addEventListener('click', async () => {
     vfAudioOn = $('vf-opt-audio').checked;
     const vfVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
     vfSelectedVoiceRef = vfVoices[$('vf-opt-voice').value] || null;
+    const activeFields = vfActiveFields();
+    if (!activeFields.length) { feedback.textContent = 'Choisissez au moins une rubrique.'; return; }
     VF_SESSION = pool.slice(0, count).map((correct) => {
       const hasError = Math.random() < 0.5;
       let errorFields = [];
       const displayed = {};
-      VF_FIELDS.forEach((f) => { displayed[f.key] = correct[f.key] || '—'; });
+      activeFields.forEach((f) => { displayed[f.key] = vfFieldValue(correct, f.key) || '—'; });
       if (hasError) {
-        const nbErrors = Math.random() < 0.5 ? 1 : 2; // jamais plus de deux erreurs
-        const shuffledFields = VF_FIELDS.slice().sort(() => Math.random() - 0.5);
+        const nbErrors = activeFields.length > 1 && Math.random() < 0.5 ? 2 : 1; // jamais plus de deux erreurs
+        const shuffledFields = activeFields.slice().sort(() => Math.random() - 0.5);
         errorFields = shuffledFields.slice(0, nbErrors).map((f) => f.key);
         errorFields.forEach((key) => {
-          const others = pool.filter((r) => r !== correct && r[key]);
-          if (others.length) displayed[key] = others[Math.floor(Math.random() * others.length)][key];
+          const others = pool.filter((r) => r !== correct && vfFieldValue(r, key));
+          if (others.length) displayed[key] = vfFieldValue(others[Math.floor(Math.random() * others.length)], key);
         });
       }
-      return { correct, hasError, errorFields, displayed };
+      return { correct, hasError, errorFields, displayed, activeFields };
     });
     vfIndex = 0; vfCorrectCount = 0;
     showPanel('vraifaux');
@@ -1427,11 +1442,11 @@ function vfShowQuestion() {
   $('vf-buttons').classList.remove('hidden');
   $('vf-stage-img').src = imageSource(q.correct.image);
 
-  $('vf-reference-details').innerHTML = VF_FIELDS.map((f) =>
+  $('vf-reference-details').innerHTML = q.activeFields.map((f) =>
     `<span class="correction-label">${f.label}</span><span class="correction-value">${escapeHtml(f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key])}</span>`
   ).join('');
 
-  const spokenText = VF_FIELDS.map((f) => f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key]).join(' — ');
+  const spokenText = q.activeFields.map((f) => f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key]).join(' — ');
   vfSpeak(spokenText);
 }
 
@@ -1441,32 +1456,44 @@ function vfAnswer(guessTrue) {
   const q = VF_SESSION[vfIndex];
   const guessCorrect = guessTrue !== q.hasError;
   if (guessCorrect) vfCorrectCount++;
+  const artWord = q.correct.artType === 'sculpture' ? 'cette sculpture' : 'ce tableau';
 
   $('vf-buttons').classList.add('hidden');
   $('vf-verdict').textContent = guessCorrect ? 'Exact' : 'À réviser';
   $('vf-verdict').style.color = guessCorrect ? 'var(--ok)' : 'var(--wrong)';
 
+  // Phrase naturelle par champ, pour la voix et pour la ligne « correction » écrite en vert.
+  const naturalPhrase = (key, value) => {
+    const phrases = {
+      artist: `L'auteur exact de ${artWord} est : ${value}`,
+      title: `Le titre exact de ${artWord} est : « ${value} »`,
+      date: `La date exacte de ${artWord} est : ${value}`,
+      materials: `Le matériau exact de ${artWord} est : ${value}`,
+      dimensions: `Les dimensions exactes de ${artWord} sont : ${value}`,
+      location: `Le lieu exact de ${artWord} est : ${value}`,
+    };
+    return phrases[key] || `${value}`;
+  };
+
+  let spokenMessage;
   if (q.hasError) {
-    // Les lignes fautives (telles qu'affichées) en rouge, puis les mêmes lignes corrigées en vert
-    // juste en dessous.
+    spokenMessage = `Une référence est fausse. Par exemple, ${naturalPhrase(q.errorFields[0], vfFieldValue(q.correct, q.errorFields[0]) || '—').toLowerCase()}.`;
+    // Les lignes fautives (telles qu'affichées) en rouge, puis leur correction en vert juste en dessous.
     const wrongLines = q.errorFields.map((key) => {
-      const f = VF_FIELDS.find((x) => x.key === key);
+      const f = q.activeFields.find((x) => x.key === key);
       const shown = key === 'title' ? `« ${q.displayed[key]} »` : q.displayed[key];
       return `<span class="correction-label">${f.label}</span><span class="correction-value vf-line-wrong">${escapeHtml(shown)}</span>`;
     }).join('');
     const correctedLines = q.errorFields.map((key) => {
-      const f = VF_FIELDS.find((x) => x.key === key);
-      const shown = key === 'title' ? `« ${q.correct[key]} »` : (q.correct[key] || '—');
-      return `<span class="correction-label">${f.label} (correction)</span><span class="correction-value vf-line-correct">${escapeHtml(shown)}</span>`;
+      const correctVal = vfFieldValue(q.correct, key) || '—';
+      return `<span class="correction-label"></span><span class="correction-value vf-line-correct">${escapeHtml(naturalPhrase(key, correctVal))}</span>`;
     }).join('');
     $('vf-correction-details').innerHTML = wrongLines + correctedLines;
   } else {
-    $('vf-correction-details').innerHTML = `<span class="correction-label">Référence</span><span class="correction-value vf-line-correct">Entièrement exacte</span>`;
+    spokenMessage = `C'est exact. Les références de ${artWord} sont bonnes.`;
+    $('vf-correction-details').innerHTML = `<span class="correction-value vf-line-correct">Les références de ${artWord} sont bonnes.</span>`;
   }
-
-  const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
-  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + q.correct.materials : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
-  vfSpeak(correctFullRef);
+  vfSpeak(spokenMessage);
   $('vf-correction').classList.remove('hidden');
   $('vf-score-label').textContent = `${vfCorrectCount} / ${vfIndex + 1} réponse${vfCorrectCount > 1 ? 's' : ''} correcte${vfCorrectCount > 1 ? 's' : ''}`;
   $('vf-next-button').textContent = vfIndex === VF_SESSION.length - 1 ? 'Terminer' : 'Suivant →';

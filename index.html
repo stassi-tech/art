@@ -73,7 +73,7 @@
             <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
           </figure>
 
-          <p class="intro-banner">Choisissez un exercice d'entraînement à la mémoire. Chacun porte sur un échantillon d'œuvres que vous filtrez vous-même (art, siècle, niveau), sans notation.</p>
+          <p class="intro-banner">Choisissez un exercice d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même (art, siècle, niveau). Les exercices sont classés par ordre croissant de difficulté, de gauche à droite puis de haut en bas.</p>
 
           <div class="training-exercise-grid">
             <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="label">Imprégnation</span></button>
@@ -442,6 +442,19 @@
               <label class="rubrique-option"><input type="checkbox" id="vf-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-level-3" /><span>Niveau 3</span></label>
               <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="vf-toggle-rubriques">📝 Choisissez vos rubriques</button>
+            <div class="accordion-body hidden" id="vf-body-rubriques">
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-artist" checked /><span>Auteur</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-title" checked /><span>Titre</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-date" checked /><span>Date</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-materiaux" /><span>Matériau</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-dimensions" /><span>Dimensions</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-location" checked /><span>Lieu</span></label>
+              <p class="modal-hint">Si vous cochez Matériau et/ou Dimensions, les fausses références pourront aussi porter sur ces rubriques.</p>
             </div>
           </div>
 
