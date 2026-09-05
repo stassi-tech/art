@@ -1461,7 +1461,7 @@ function impSpeak(text) {
   if (!impAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'fr-FR'; u.rate = 0.85;
+  u.lang = 'fr-FR'; u.rate = 0.72;
   if (impSelectedVoice) u.voice = impSelectedVoice;
   speechSynthesis.speak(u);
 }
