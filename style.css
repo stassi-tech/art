@@ -55,6 +55,10 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intrus-image-choice.correct { border-color:var(--ok); }
 .intrus-image-choice.wrong { border-color:var(--wrong); }
 .intrus-image-choice:disabled { cursor:not-allowed; }
+.intrus-image-choices:has(.intrus-image-choice-solo) { display:flex; align-items:center; justify-content:center; }
+.intrus-image-choice-solo { width:100%; }
+.intrus-image-choice-solo img { max-height:min(760px, 78vh); }
+.intrus-verdict { font-family:Arial,sans-serif; font-weight:700; }
 .correction-details, #intrus-correction-details { display:grid; grid-template-columns:max-content 1fr; column-gap:14px; row-gap:4px; align-items:baseline; margin-top:16px; }
 #intrus-correction-details .correction-label { grid-column:1; font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; }
 #intrus-correction-details .correction-value { grid-column:1/-1; font-size:1.05rem; font-weight:700; color:var(--ink); line-height:1.3; margin-bottom:14px; }
@@ -136,6 +140,8 @@ body.lefty .hamburger-menu { right:auto; left:0; }
 .hamburger-item { display:block; width:100%; text-align:left; padding:12px 14px; border-radius:6px; border:0; background:transparent; cursor:pointer; font-family:Arial,sans-serif; font-size:.92rem; color:var(--ink); }
 .hamburger-item:hover { background:#f7f2ea; }
 .home-icon-button { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:6px; border:1px solid var(--border); background:#e9e5dc; color:#8a837a; font-size:.95rem; cursor:pointer; opacity:.8; filter:grayscale(1); transition:opacity .15s, background .15s; }
+.exercise-icon-button { background:var(--accent); border-color:var(--accent); color:#fff; opacity:1; filter:none; width:38px; height:38px; border-radius:50%; font-size:1.05rem; }
+.exercise-icon-button:hover { background:var(--accent-dark); border-color:var(--accent-dark); }
 .home-icon-button:hover { opacity:1; background:#f7f2ea; }
 .quiz-action-row-single { grid-template-columns:1fr; }
 .grey-button:hover { background:#d8d0c0 !important; }

@@ -1751,21 +1751,30 @@ function intrusAnswer(chosenIndex) {
   if (isCorrect) intrusCorrectCount++;
 
   const choiceSelector = intrusMode === 'image' ? '.intrus-image-choice' : '.intrus-choice-btn';
+  const verdictHtml = ` <span class="intrus-verdict" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? '— Exact' : '— À réviser'}</span>`;
+  // Images intruses : on garde uniquement la BONNE image (en grand) ; en référence intruses, on
+  // garde uniquement la case CHOISIE (avec son verdict écrit dedans) — les deux autres disparaissent.
+  const keepIndex = intrusMode === 'image' ? q.choices.indexOf(q.correct) : chosenIndex;
   document.querySelectorAll(`#intrus-prompt-card ${choiceSelector}, #intrus-choices ${choiceSelector}`).forEach((btn, i) => {
     btn.disabled = true;
-    if (q.choices[i] === q.correct) btn.classList.add('correct');
-    else if (i === chosenIndex) btn.classList.add('wrong');
+    if (i === keepIndex) {
+      if (intrusMode !== 'image') btn.insertAdjacentHTML('beforeend', verdictHtml);
+    } else {
+      btn.remove();
+    }
   });
+  if (intrusMode === 'image') {
+    const kept = $('intrus-prompt-card').querySelector('.intrus-image-choice');
+    if (kept) kept.classList.add('intrus-image-choice-solo');
+  }
 
-  const chosenLabel = intrusMode === 'image' ? '' : (q.titleMode ? `${chosen.artist} — « ${chosen.title} »` : chosen.artist);
   const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
   const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date} — ${q.correct.location}`;
   intrusSpeak(correctFullRef);
   const detailsParts = [];
-  if (chosenLabel) {
-    detailsParts.push(`<span class="correction-label">Réponse donnée</span><span class="correction-value">${escapeHtml(chosenLabel)} — <span style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</span></span>`);
-  } else {
-    detailsParts.push(`<span class="correction-label">Votre choix</span><span class="correction-value" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</span>`);
+  if (intrusMode === 'image') {
+    // Pas de pavé texte pour porter le verdict ici (seule l'image reste) : on l'indique en tête.
+    detailsParts.push(`<span class="correction-label">Votre réponse</span><span class="correction-value" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</span>`);
   }
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value">« ${escapeHtml(q.correct.title)} »</span>`);
