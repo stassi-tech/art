@@ -90,6 +90,7 @@
             <button type="button" id="impregnation-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice d'imprégnation</h2></div>
+          <p class="modal-hint" id="imp-objective" style="text-align:center;margin-top:0;">Une image apparaît, puis sa référence s'écrit progressivement pendant que la voix la lit — sans notation, juste pour vous en imprégner par la répétition.</p>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="imp-toggle-art">🎨 Choisissez votre art</button>
@@ -202,6 +203,7 @@
             <button type="button" id="intrus-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Intrus</h2></div>
+          <p class="modal-hint" id="intrus-objective" style="text-align:center;margin-top:0;">Retrouvez la bonne image ou la bonne référence parmi 3 propositions, sans vous laisser distraire par les intrus.</p>
 
           <div class="training-exercise-grid" style="grid-template-columns:1fr 1fr;margin-bottom:20px;">
             <button type="button" class="home-mode-button intrus-mode-btn" id="intrus-mode-image" data-mode="image">Images intruses</button>
@@ -305,7 +307,7 @@
             <button type="button" id="reconstitution-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Reconstitution</h2></div>
-          <p class="modal-hint" style="text-align:center;margin-top:0;">Un détail très resserré de l'œuvre (moins de 10 % de la surface) apparaît ; retrouvez la référence complète parmi 3 choix.</p>
+          <p class="modal-hint" id="recon-objective" style="text-align:center;margin-top:0;">Un détail très resserré de l'œuvre (moins de 10 % de la surface) apparaît ; retrouvez la référence complète parmi 3 choix.</p>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="recon-toggle-art">🎨 Choisissez votre art</button>
@@ -402,7 +404,7 @@
             <button type="button" id="vraifaux-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Vrai/Faux</h2></div>
-          <p class="modal-hint" style="text-align:center;margin-top:0;">Une image apparaît avec sa référence. Elle est soit entièrement exacte, soit comporte <strong>au maximum deux</strong> éléments faux. Cochez « Faux » sur les rubriques que vous pensez erronées, puis validez.</p>
+          <p class="modal-hint" id="vf-objective" style="text-align:center;margin-top:0;">Une image apparaît avec sa référence. Elle est soit entièrement exacte, soit comporte <strong>au maximum deux</strong> éléments faux. Cochez « Faux » sur les rubriques que vous pensez erronées, puis validez.</p>
           <p class="modal-hint" style="text-align:center;margin-top:0;">Barème exigeant : 1 point uniquement si vous repérez <strong>exactement</strong> toutes les erreurs réelles (ni oubli, ni fausse alerte) — 0 point sinon, même pour un repérage partiel.</p>
 
           <div class="accordion-group">
@@ -484,6 +486,7 @@
         <section id="vraifaux-panel" class="quiz-panel hidden">
           <div class="progress-row">
             <span><span class="quiz-reference">Vrai/Faux</span> — <span id="vf-progress-label">Question 1 / 10</span></span>
+            <span id="vf-score-label" class="score-summary-highlight">0 point</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="vf-progress-bar"></div></div>
 
@@ -514,7 +517,7 @@
             <button type="button" id="famille-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Famille</h2></div>
-          <p class="modal-hint" style="text-align:center;margin-top:0;">8 images apparaissent ; 4 sont du même artiste. Repérez-les et nommez l'artiste. Une fois validé, retrouvez aussi le titre de chacune des 4 œuvres.</p>
+          <p class="modal-hint" id="fam-objective" style="text-align:center;margin-top:0;">8 images apparaissent ; 4 sont du même artiste. Repérez-les et nommez l'artiste. Une fois validé, retrouvez aussi le titre de chacune des 4 œuvres.</p>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="fam-toggle-art">🎨 Choisissez votre art</button>
@@ -584,6 +587,7 @@
         <section id="famille-panel" class="quiz-panel hidden">
           <div class="progress-row">
             <span><span class="quiz-reference">Famille</span> — <span id="fam-progress-label">Question 1 / 5</span></span>
+            <span id="fam-score-label" class="score-summary-highlight">0 point</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="fam-progress-bar"></div></div>
 
@@ -592,13 +596,19 @@
               <div id="fam-image-grid" class="fam-image-grid"></div>
             </div>
             <section class="answer-card" aria-label="Artiste et titres">
-              <h2 id="fam-step-title" style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 10px;">Cliquez sur les 4 œuvres du même artiste, puis nommez-le</h2>
-              <div id="fam-step1">
-                <input type="text" id="fam-artist-input" placeholder="Nom de l'artiste" style="width:100%;padding:10px;border:1px solid #cfc8bc;border-radius:4px;font-family:Arial,sans-serif;font-size:.95rem;" />
+              <div id="fam-step0">
+                <button type="button" class="primary-button" id="fam-validate-selection-button" style="width:100%">Valider ma sélection</button>
+              </div>
+              <div id="fam-step1" class="hidden">
+                <h2 id="fam-step-title" style="font-family:Arial,sans-serif;font-size:1.15rem;font-weight:700;margin:0 0 12px;">Quel est le nom du peintre ?</h2>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input type="text" id="fam-artist-input" placeholder="Nom de l'artiste" style="flex:1;padding:10px;border:1px solid #cfc8bc;border-radius:4px;font-family:Arial,sans-serif;font-size:.95rem;" />
+                  <button type="button" id="fam-artist-mic" class="mic-icon-button hidden" aria-label="Dicter la réponse">🎤</button>
+                </div>
                 <button type="button" class="primary-button" id="fam-validate-artist-button" style="width:100%;margin-top:14px;">Valider l'artiste</button>
               </div>
               <div id="fam-step2" class="hidden">
-                <p class="modal-hint" style="margin-top:0;">Replacez chaque étiquette dans la barre du bon tableau : cliquez une étiquette, puis la barre qui correspond.</p>
+                <p class="modal-hint" style="margin-top:0;">Replacez chaque étiquette dans la barre du bon tableau (dans l'ordre chronologique) : cliquez une étiquette, puis la barre qui correspond.</p>
                 <div id="fam-title-rows"></div>
                 <p class="modal-subheading">Étiquettes à placer</p>
                 <div id="fam-title-labels"></div>
@@ -621,7 +631,7 @@
             <button type="button" id="enigme-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Énigme</h2></div>
-          <p class="modal-hint" style="text-align:center;margin-top:0;">L'artiste, la date et le lieu sont donnés d'emblée (le titre reste caché). À vous de retrouver deux éléments parmi : les personnages représentés, l'événement, ou l'interprétation de l'œuvre.</p>
+          <p class="modal-hint" id="enig-objective" style="text-align:center;margin-top:0;">L'artiste, la date et le lieu sont donnés d'emblée (le titre reste caché). À vous de retrouver un élément : les personnages représentés, l'événement, ou l'interprétation de l'œuvre.</p>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="enig-toggle-art">🎨 Choisissez votre art</button>
@@ -665,6 +675,7 @@
         <section id="enigme-panel" class="quiz-panel hidden">
           <div class="progress-row">
             <span><span class="quiz-reference">Énigme</span> — <span id="enig-progress-label">Question 1 / 5</span></span>
+            <span id="enig-score-label" class="score-summary-highlight">0 point</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="enig-progress-bar"></div></div>
 

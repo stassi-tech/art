@@ -407,6 +407,39 @@ function activeFields() { return allFields.filter((field) => state.selectedField
 
 const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
 const voiceSupported = Boolean(SpeechRecognitionImpl);
+
+// Micro simple et autonome pour un champ texte unique (Famille, Énigme) — même moteur que le
+// micro du quiz, mais sans la logique de champ actif multiple : un bouton, un champ.
+// Lit à voix haute l'objectif d'un exercice, affiché en texte sur sa page de configuration.
+function speakObjective(elementId) {
+  if (!window.speechSynthesis) return;
+  const el = $(elementId);
+  if (!el) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(el.textContent);
+  u.lang = 'fr-FR'; u.rate = 0.85;
+  speechSynthesis.speak(u);
+}
+
+function attachSimpleMic(button, input) {
+  if (!voiceSupported || !button || !input) { button?.classList.add('hidden'); return; }
+  button.classList.remove('hidden');
+  let recognition = null, listening = false;
+  button.addEventListener('click', () => {
+    if (listening) { try { recognition.abort(); } catch (e) {} return; }
+    try { recognition = new SpeechRecognitionImpl(); } catch (e) { return; }
+    recognition.lang = 'fr-FR'; recognition.continuous = false; recognition.interimResults = false;
+    button.classList.add('listening'); listening = true;
+    recognition.addEventListener('result', (event) => {
+      input.value = event.results[0][0].transcript.trim();
+    });
+    const stop = () => { button.classList.remove('listening'); listening = false; recognition = null; };
+    recognition.addEventListener('end', stop);
+    recognition.addEventListener('error', stop);
+    try { recognition.start(); } catch (e) { stop(); }
+  });
+}
+
 if (voiceSupported) {
   $('mic-global').classList.remove('hidden');
   if (localStorage.getItem('micTooltipDismissed') !== 'true') $('mic-tooltip')?.classList.remove('hidden');
@@ -1307,7 +1340,7 @@ $('quiz-setup-back-button')?.addEventListener('click', () => showPanel('welcome'
 // références (artiste + titre) sont proposées. Même mécanique de correction que Intrus (référence
 // choisie conservée avec son verdict), puis l'image entière est révélée avec la référence complète.
 // ============================================================
-$('open-reconstitution-setup')?.addEventListener('click', () => { showPanel('reconstitution-setup'); populateReconVoices(); });
+$('open-reconstitution-setup')?.addEventListener('click', () => { showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon-objective'); });
 $('reconstitution-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
 $('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
@@ -1318,7 +1351,7 @@ $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercise
 // éléments faux (jamais les dimensions, qui ne sont pas montrées ici). Le joueur juge Vrai/Faux ;
 // en cas d'erreur, la ou les lignes fautives apparaissent en rouge, corrigées en vert en dessous.
 // ============================================================
-$('open-vraifaux-setup')?.addEventListener('click', () => { showPanel('vraifaux-setup'); populateVfVoices(); });
+$('open-vraifaux-setup')?.addEventListener('click', () => { showPanel('vraifaux-setup'); populateVfVoices(); speakObjective('vf-objective'); });
 $('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
@@ -1329,7 +1362,7 @@ $('vf-setup-scores-link')?.addEventListener('click', () => { returnToExercisePan
 // (1re validation), puis doit retrouver le titre de chacune des 4 œuvres (2e validation).
 // Tout-ou-rien : 1 point seulement si artiste + les 4 titres sont exacts.
 // ============================================================
-$('open-famille-setup')?.addEventListener('click', () => { showPanel('famille-setup'); populateFamVoices(); });
+$('open-famille-setup')?.addEventListener('click', () => { showPanel('famille-setup'); populateFamVoices(); speakObjective('fam-objective'); });
 $('famille-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
 $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
@@ -1416,10 +1449,10 @@ async function fetchEnigmeRows(art, century) {
     if (evenement && evFaux1 && evFaux2) availableTypes.push({ type: 'evenement', question: 'Quel événement représente cette œuvre ?', options: [evenement, evFaux1, evFaux2], correctIndex: 0 });
     if (interpretation && intFaux1 && intFaux2) availableTypes.push({ type: 'interpretation', question: "Quelle est l'interprétation de cette œuvre ?", options: [interpretation, intFaux1, intFaux2], correctIndex: 0 });
 
-    // Il faut au moins 2 types disponibles pour interroger sur deux éléments distincts.
-    if (availableTypes.length < 2) continue;
+    // Une seule question par œuvre désormais : au moins 1 type disponible suffit.
+    if (availableTypes.length < 1) continue;
     const shuffledTypes = availableTypes.slice().sort(() => Math.random() - 0.5);
-    const chosenItems = shuffledTypes.slice(0, 2).map((it) => {
+    const chosenItems = shuffledTypes.slice(0, 1).map((it) => {
       if (it.type !== 'evenement' && it.type !== 'interpretation') return it;
       // Mélange l'ordre des 3 options QCM tout en gardant trace du bon index.
       const opts = it.options.map((opt, idx) => ({ opt, idx })).sort(() => Math.random() - 0.5);
@@ -1434,7 +1467,7 @@ async function fetchEnigmeRows(art, century) {
   return results;
 }
 
-$('open-enigme-setup')?.addEventListener('click', () => { showPanel('enigme-setup'); populateEnigVoices(); });
+$('open-enigme-setup')?.addEventListener('click', () => { showPanel('enigme-setup'); populateEnigVoices(); speakObjective('enig-objective'); });
 $('enigme-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('enig-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('enigme-setup'); });
 $('enig-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'enigme'; showPanel('account'); loadAccountPage(); });
@@ -1494,7 +1527,8 @@ $('enig-start-button')?.addEventListener('click', async () => {
   }
   let usingDemo = false;
   if (!available.length) {
-    available = ENIGME_DEMO_DATA.filter((e) => centuries.includes(e.century));
+    available = ENIGME_DEMO_DATA.filter((e) => centuries.includes(e.century))
+      .map((e) => ({ ...e, items: [e.items[Math.floor(Math.random() * e.items.length)]] }));
     usingDemo = true;
   }
   if (!available.length) { feedback.textContent = "Aucune énigme disponible pour ce choix — essayez 19e siècle (démonstration) ou vérifiez que le fichier -enigme.xlsx est bien en ligne."; return; }
@@ -1514,6 +1548,7 @@ function enigShowQuestion() {
   const q = ENIG_SESSION[enigIndex];
   $('enig-progress-label').textContent = `Question ${enigIndex + 1} / ${ENIG_SESSION.length}`;
   $('enig-progress-bar').style.width = `${(enigIndex / ENIG_SESSION.length) * 100}%`;
+  $('enig-score-label').textContent = `${enigScore} point${enigScore > 1 ? 's' : ''}`;
   $('enig-correction').classList.add('hidden');
   $('enig-validate-button').classList.remove('hidden');
   $('enig-validate-button').disabled = false;
@@ -1552,6 +1587,7 @@ function enigShowQuestion() {
         ${item.people.map((p) => `<div class="enig-person-row" data-letter="${p.letter}">
           <span class="enig-letter">${p.letter}</span>
           <input type="text" class="enig-person-input" data-letter="${p.letter}" placeholder="Qui est-ce ?" />
+          <button type="button" class="mic-icon-button enig-person-mic" data-letter="${p.letter}" aria-label="Dicter la réponse">🎤</button>
         </div>`).join('')}
       </div>`;
     }
@@ -1564,6 +1600,11 @@ function enigShowQuestion() {
       ${shuffledOptions.map(({ opt, i }) => `<button type="button" class="enig-qcm-option" data-item="${itemIdx}" data-option="${i}">${escapeHtml(opt)}</button>`).join('')}
     </div>`;
   }).join('');
+
+  document.querySelectorAll('.enig-person-mic').forEach((btn) => {
+    const input = document.querySelector(`.enig-person-input[data-letter="${btn.dataset.letter}"]`);
+    attachSimpleMic(btn, input);
+  });
 
   document.querySelectorAll('.enig-qcm-option').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -1633,6 +1674,7 @@ $('enig-validate-button')?.addEventListener('click', () => {
 
   const pointEarned = allCorrect ? 1 : 0;
   enigScore = Math.round((enigScore + pointEarned) * 10) / 10;
+  $('enig-score-label').textContent = `${enigScore} point${enigScore > 1 ? 's' : ''}`;
   enigSpeak(spokenParts.join(' '));
 
   $('enig-correction').classList.remove('hidden');
@@ -1815,6 +1857,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
     famAudioOn = $('fam-opt-audio').checked;
     const famVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
     famSelectedVoiceRef = famVoices[$('fam-opt-voice').value] || null;
+    attachSimpleMic($('fam-artist-mic'), $('fam-artist-input'));
     const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
     const count = Number(countChoice);
     const imgCountChoice = Number(document.querySelector('input[name="fam-images"]:checked').value);
@@ -1845,19 +1888,21 @@ function famShowQuestion() {
   famTimers.forEach(clearTimeout); famTimers = [];
   famAnswered = false;
   famSelectedImages = [];
-  famStep = 1;
+  famStep = 0;
   famPickedLabel = null;
   const q = FAM_SESSION[famIndex];
   $('fam-progress-label').textContent = `Question ${famIndex + 1} / ${FAM_SESSION.length}`;
+  $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
   $('fam-progress-bar').style.width = `${(famIndex / FAM_SESSION.length) * 100}%`;
   $('fam-correction').classList.add('hidden');
-  $('fam-step1').classList.remove('hidden');
+  $('fam-step0').classList.remove('hidden');
+  $('fam-step1').classList.add('hidden');
   $('fam-step2').classList.add('hidden');
   $('fam-step1').querySelectorAll('p.hint').forEach((el) => el.remove());
-  $('fam-step-title').textContent = 'Cliquez sur les 4 œuvres du même artiste, puis nommez-le';
   $('fam-artist-input').value = '';
   $('fam-artist-input').disabled = false;
   $('fam-validate-artist-button').disabled = false;
+  $('fam-validate-selection-button').disabled = false;
 
   $('fam-image-grid').className = `fam-image-grid${q.imgCount === 6 ? ' fam-count-6' : ''}`;
   $('fam-image-grid').innerHTML = q.images.map((work, i) =>
@@ -1865,15 +1910,14 @@ function famShowQuestion() {
   ).join('');
   $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
     btn.addEventListener('click', () => {
-      if (famStep !== 1) return;
+      if (famStep !== 0) return;
       const idx = Number(btn.dataset.index);
       const pos = famSelectedImages.indexOf(idx);
       if (pos >= 0) {
         famSelectedImages.splice(pos, 1);
         btn.classList.remove('selected');
         btn.removeAttribute('data-num');
-        // Renumérote les badges restants dans leur ordre de sélection.
-        famSelectedImages.forEach((si, n) => { $(`fam-image-grid`).querySelector(`.fam-image-cell[data-index="${si}"]`).dataset.num = n + 1; });
+        famSelectedImages.forEach((si, n) => { $('fam-image-grid').querySelector(`.fam-image-cell[data-index="${si}"]`).dataset.num = n + 1; });
       } else if (famSelectedImages.length < 4) {
         famSelectedImages.push(idx);
         btn.classList.add('selected');
@@ -1881,14 +1925,15 @@ function famShowQuestion() {
       }
     });
   });
+
+  famSpeak('Trouve quatre tableaux d\u2019un même peintre.');
 }
 
-$('fam-validate-artist-button')?.addEventListener('click', () => {
+$('fam-validate-selection-button')?.addEventListener('click', () => {
   const q = FAM_SESSION[famIndex];
-  if (famSelectedImages.length !== 4) { famArtistFeedback('Sélectionnez exactement 4 œuvres avant de valider.'); return; }
+  if (famSelectedImages.length !== 4) { famStepFeedback('fam-step0', 'Sélectionnez exactement 4 œuvres avant de valider.'); return; }
   document.querySelectorAll('.fam-image-cell').forEach((btn) => { btn.disabled = true; });
-  $('fam-artist-input').disabled = true;
-  $('fam-validate-artist-button').disabled = true;
+  $('fam-validate-selection-button').disabled = true;
 
   const familyIndexes = q.images.map((w, i) => q.family.includes(w) ? i : -1).filter((i) => i >= 0);
   const selectedSet = new Set(famSelectedImages);
@@ -1898,36 +1943,68 @@ $('fam-validate-artist-button')?.addEventListener('click', () => {
     if (familySet.has(i)) btn.classList.add('correct');
     else if (selectedSet.has(i)) btn.classList.add('wrong');
   });
-  q.artistCorrect = famAnswerMatches($('fam-artist-input').value, q.artist, 'artist');
 
-  if (!q.imagesCorrect || !q.artistCorrect) {
-    // Famille non identifiée : pas d'étape des titres, on va directement à la correction.
+  if (!q.imagesCorrect) {
+    // Erreur de choix : correction immédiate, on ne va pas plus loin sur cette question.
     famAnswered = true;
-    famScore = Math.round(famScore * 10) / 10; // 0 point pour cette question
-    const artistNote = document.createElement('p');
-    artistNote.className = 'hint';
-    artistNote.style.textAlign = 'center';
-    artistNote.innerHTML = `<span style="color:var(--wrong);font-weight:700;">À réviser. Il fallait retrouver les 4 œuvres de : ${escapeHtml(q.artist)}</span>`;
-    $('fam-step1').appendChild(artistNote);
-    famSpeak(`À réviser. Il fallait retrouver les quatre œuvres de ${q.artist}.`);
+    famSpeak('Voilà les quatre tableaux qu\u2019il fallait choisir.');
+    const note = document.createElement('p');
+    note.className = 'hint';
+    note.style.textAlign = 'center';
+    note.innerHTML = `<span style="color:var(--wrong);font-weight:700;">Il fallait choisir les 4 œuvres de : ${escapeHtml(q.artist)}</span>`;
+    $('fam-step0').appendChild(note);
     $('fam-correction').classList.remove('hidden');
     $('fam-next-button').textContent = famIndex === FAM_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
     return;
   }
 
-  // Famille identifiée : étape 2, replacer les 4 étiquettes (titres mélangés) dans les bonnes
-  // barres, numérotées comme les images sélectionnées.
+  // Bonne sélection : passage à la question sur le nom du peintre.
+  famStep = 1;
+  $('fam-step1').classList.remove('hidden');
+  famSpeak('Quel est le nom du peintre ?');
+});
+
+function famStepFeedback(stepId, msg) {
+  let el = document.querySelector(`#${stepId} .fam-inline-feedback`);
+  if (!el) {
+    el = document.createElement('p');
+    el.className = 'hint fam-inline-feedback';
+    $(stepId).appendChild(el);
+  }
+  el.textContent = msg;
+}
+
+$('fam-validate-artist-button')?.addEventListener('click', () => {
+  const q = FAM_SESSION[famIndex];
+  $('fam-artist-input').disabled = true;
+  $('fam-validate-artist-button').disabled = true;
+  q.artistCorrect = famAnswerMatches($('fam-artist-input').value, q.artist, 'artist');
+
+  // La correction rajoute éventuellement le prénom : on affiche toujours le nom complet.
+  const note = document.createElement('p');
+  note.className = 'hint';
+  note.style.textAlign = 'center';
+  note.innerHTML = q.artistCorrect
+    ? `<span style="color:var(--ok);font-weight:700;">Exact : ${escapeHtml(q.artist)}</span>`
+    : `<span style="color:var(--wrong);font-weight:700;">À réviser — il s'agissait de : ${escapeHtml(q.artist)}</span>`;
+  $('fam-step1').appendChild(note);
+
+  // On passe à l'étape des titres dans tous les cas (que l'artiste soit juste ou non).
   famStep = 2;
-  famPickedLabel = null;
   $('fam-step2').classList.remove('hidden');
-  $('fam-step-title').textContent = 'Replacez les étiquettes';
-  $('fam-title-rows').innerHTML = famSelectedImages.map((idx, n) =>
+
+  // Les barres sont dans l'ordre CHRONOLOGIQUE des œuvres sélectionnées, pas l'ordre de clic.
+  const chronological = famSelectedImages.slice().sort((a, b) => {
+    const ya = detectCenturyYear(q.images[a].date), yb = detectCenturyYear(q.images[b].date);
+    return (ya ?? 9999) - (yb ?? 9999);
+  });
+  $('fam-title-rows').innerHTML = chronological.map((idx, n) =>
     `<div class="fam-title-row" data-index="${idx}">
       <span class="fam-num-badge">${n + 1}</span>
       <button type="button" class="fam-drop-slot" data-index="${idx}">Déposez l'étiquette ici</button>
     </div>`
   ).join('');
-  const shuffledTitles = famSelectedImages.map((idx) => ({ idx, title: q.images[idx].title })).sort(() => Math.random() - 0.5);
+  const shuffledTitles = chronological.map((idx) => ({ idx, title: q.images[idx].title })).sort(() => Math.random() - 0.5);
   $('fam-title-labels').innerHTML = `<div class="fam-labels-pool">${shuffledTitles.map((t, n) =>
     `<button type="button" class="fam-label-chip" data-label-index="${n}" data-true-index="${t.idx}">${escapeHtml(t.title)}</button>`
   ).join('')}</div>`;
@@ -1942,7 +2019,6 @@ $('fam-validate-artist-button')?.addEventListener('click', () => {
   document.querySelectorAll('.fam-drop-slot').forEach((slot) => {
     slot.addEventListener('click', () => {
       if (slot.classList.contains('filled')) {
-        // Retire l'étiquette déposée ici, la remet disponible dans le réservoir.
         const chip = document.querySelector(`.fam-label-chip[data-label-index="${slot.dataset.labelIndex}"]`);
         if (chip) { chip.disabled = false; chip.classList.remove('picked'); }
         slot.textContent = "Déposez l'étiquette ici";
@@ -1964,20 +2040,14 @@ $('fam-validate-artist-button')?.addEventListener('click', () => {
   updateFamValidateTitlesState();
 });
 
+function detectCenturyYear(dateStr) {
+  const m = String(dateStr || '').match(/\b(1[3-9]|20)\d{2}\b/);
+  return m ? Number(m[0]) : null;
+}
+
 function updateFamValidateTitlesState() {
   const allFilled = document.querySelectorAll('.fam-drop-slot.filled').length === 4;
   $('fam-validate-titles-button').disabled = !allFilled;
-}
-
-function famArtistFeedback(msg) {
-  let el = $('fam-artist-feedback');
-  if (!el) {
-    el = document.createElement('p');
-    el.id = 'fam-artist-feedback';
-    el.className = 'hint';
-    $('fam-step1').appendChild(el);
-  }
-  el.textContent = msg;
 }
 
 $('fam-validate-titles-button')?.addEventListener('click', () => {
@@ -2004,30 +2074,25 @@ $('fam-validate-titles-button')?.addEventListener('click', () => {
 
   const pointEarned = (q.imagesCorrect && q.artistCorrect && allTitlesCorrect) ? 1 : 0;
   famScore = Math.round((famScore + pointEarned) * 10) / 10;
+  $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
 
-  const artistNote = document.createElement('p');
-  artistNote.className = 'hint';
-  artistNote.style.textAlign = 'center';
-  artistNote.innerHTML = `<span style="color:var(--ok);font-weight:700;">Artiste exact : ${escapeHtml(q.artist)}</span>`;
-  $('fam-step1').appendChild(artistNote);
-
-  // Annonce séquentielle : une œuvre à la fois, sans jamais couper la phrase précédente.
-  // Si bien placée, la voix redonne simplement le titre ; sinon la barre se corrige en vert et
-  // la voix donne le titre exact.
+  // Annonce séquentielle, une œuvre à la fois : « Prénom Nom a peint Titre en Année », sans
+  // jamais couper la phrase précédente. L'année s'affiche à côté du titre une fois la barre
+  // corrigée (bien ou mal placée).
   function announceNext(i) {
     if (i >= slotChecks.length) return;
     const { slot, work, ok } = slotChecks[i];
-    if (ok) {
+    const year = detectCenturyYear(work.date);
+    const sentence = `${q.artist} a peint ${work.title}${year ? ` en ${year}` : ''}.`;
+    const finish = () => {
+      slot.textContent = `${work.title}${year ? ` (${year})` : ''}`;
       slot.classList.add('vf-updated');
-      famSpeak(work.title, () => announceNext(i + 1));
-    } else {
+      famSpeak(sentence, () => announceNext(i + 1));
+    };
+    if (ok) { finish(); }
+    else {
       slot.classList.add('vf-was-wrong');
-      famTimers.push(setTimeout(() => {
-        slot.textContent = work.title;
-        slot.classList.remove('vf-was-wrong');
-        slot.classList.add('vf-updated');
-        famSpeak(work.title, () => announceNext(i + 1));
-      }, 700));
+      famTimers.push(setTimeout(finish, 700));
     }
   }
   announceNext(0);
@@ -2170,6 +2235,9 @@ $('vf-start-button')?.addEventListener('click', async () => {
         const nbErrors = activeFields.length > 1 && Math.random() < 0.5 ? 2 : 1; // jamais plus de deux erreurs
         const shuffledFields = activeFields.slice().sort(() => Math.random() - 0.5);
         errorFields = shuffledFields.slice(0, nbErrors).map((f) => f.key);
+        // La correction doit toujours descendre dans l'ordre des rubriques (Auteur d'abord s'il
+        // est concerné, puis Titre, Date, etc.) : on retrie après le tirage au sort aléatoire.
+        errorFields.sort((a, b) => activeFields.findIndex((f) => f.key === a) - activeFields.findIndex((f) => f.key === b));
         errorFields.forEach((key) => {
           const others = pool.filter((r) => r !== correct && vfFieldValue(r, key));
           if (others.length) displayed[key] = vfFieldValue(others[Math.floor(Math.random() * others.length)], key);
@@ -2191,6 +2259,7 @@ function vfShowQuestion() {
   const q = VF_SESSION[vfIndex];
   $('vf-progress-label').textContent = `Question ${vfIndex + 1} / ${VF_SESSION.length}`;
   $('vf-progress-bar').style.width = `${(vfIndex / VF_SESSION.length) * 100}%`;
+  $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''}`;
   $('vf-correction').classList.add('hidden');
   $('vf-validate-button').classList.remove('hidden');
   $('vf-validate-button').disabled = false;
@@ -2245,6 +2314,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
   // partiel (une erreur trouvée sur deux ne rapporte rien).
   const questionScore = (correctFinds === totalErrors && falseAlarms === 0) ? 1 : 0;
   vfScore = Math.round((vfScore + questionScore) * 10) / 10;
+  $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''}`;
 
   const naturalPhrase = (key, value) => {
     const phrases = {
@@ -2629,7 +2699,7 @@ document.querySelectorAll('.training-soon').forEach((btn) => {
 // définis pour le quiz ; sélection propre (préfixe imp-), mécanique d'écriture progressive
 // synchronisée à la voix de synthèse, sans notation.
 // ============================================================
-$('open-impregnation-setup')?.addEventListener('click', () => { showPanel('impregnation-setup'); populateImpVoices(); });
+$('open-impregnation-setup')?.addEventListener('click', () => { showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp-objective'); });
 $('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
 ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
@@ -2773,7 +2843,7 @@ $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSI
 // MODULE INTRUS — retrouver la bonne image parmi 3 (mode « image »), ou la bonne référence
 // parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
 // ============================================================
-$('open-intrus-setup')?.addEventListener('click', () => { showPanel('intrus-setup'); populateIntrusVoices(); });
+$('open-intrus-setup')?.addEventListener('click', () => { showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus-objective'); });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
 $('intrus-scores-link')?.addEventListener('click', () => {
   speechSynthesis.cancel();
