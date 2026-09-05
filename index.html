@@ -89,7 +89,7 @@
           <div class="quiz-topbar">
             <button type="button" id="impregnation-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
           </div>
-          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.15rem;">Configurer l'exercice d'imprégnation</h2></div>
+          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;">Configurer l'exercice d'imprégnation</h2></div>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="imp-toggle-art">🎨 Choisissez votre art</button>
@@ -159,7 +159,6 @@
             <select id="imp-opt-delay">
               <option value="2000">2 s</option>
               <option value="3000" selected>3 s</option>
-              <option value="5000">5 s</option>
             </select>
           </div>
           <div class="opt-row">
@@ -185,12 +184,14 @@
             <section class="answer-card" aria-label="Rubriques">
               <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Rubriques</h2>
               <div class="correction-details" id="imp-correction-details"></div>
-              <div class="mic-nav-row" style="margin-top:auto;padding-top:20px;">
+              <div class="mic-nav-row" style="margin-top:auto;padding-top:20px;justify-content:center;">
                 <button type="button" id="imp-prev-button" class="nav-arrow-button" aria-label="Précédent">←</button>
                 <button type="button" id="imp-pause-button" class="nav-arrow-button" aria-label="Pause">⏸</button>
                 <button type="button" id="imp-next-button" class="nav-arrow-button" aria-label="Suivant">→</button>
               </div>
-              <button type="button" class="link-label" id="imp-exit-link" style="display:block;text-align:center;margin-top:14px;">Quitter l'exercice</button>
+              <div style="text-align:center;margin-top:14px;">
+                <button type="button" class="home-icon-button" id="imp-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
+              </div>
             </section>
           </div>
         </section>
