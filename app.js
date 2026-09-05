@@ -849,6 +849,14 @@ function selectedRubriquesLabel() {
   return labels.join(', ');
 }
 function showPanel(name) {
+  // Coupe systématiquement toute voix en cours ET tous les minuteurs différés de chaque
+  // exercice dès qu'on change de page — sinon un rappel programmé (setTimeout) d'un exercice
+  // quitté en cours de route peut se déclencher plus tard, en plein milieu d'un autre exercice
+  // (voix qui parle d'une œuvre sans rapport avec ce qui est affiché).
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  [impTimers, vfTimers, famTimers].forEach((arr) => { if (arr) arr.forEach(clearTimeout); });
+  impTimers = []; vfTimers = []; famTimers = [];
+
   // name: 'welcome' | 'training-hub' | 'impregnation-setup' | 'impregnation' | 'intrus-setup' |
   // 'intrus' | 'quiz-setup' | 'quiz' | 'results' | 'account' | 'other-works' — centralise
   // l'affichage des panneaux et de la barre latérale (titre + import), visible uniquement sur la
@@ -1993,29 +2001,85 @@ $('fam-validate-artist-button')?.addEventListener('click', () => {
   famStep = 2;
   $('fam-step2').classList.remove('hidden');
 
-  // Les barres sont dans l'ordre CHRONOLOGIQUE des œuvres sélectionnées, pas l'ordre de clic.
-  const chronological = famSelectedImages.slice().sort((a, b) => {
-    const ya = detectCenturyYear(q.images[a].date), yb = detectCenturyYear(q.images[b].date);
-    return (ya ?? 9999) - (yb ?? 9999);
-  });
-  $('fam-title-rows').innerHTML = chronological.map((idx, n) =>
+  // Les barres restent dans l'ordre où le joueur a cliqué les images (ce n'est pas à lui de
+  // deviner l'ordre chronologique) — seule la correction, plus loin, se déroulera dans cet ordre.
+  $('fam-title-rows').innerHTML = famSelectedImages.map((idx, n) =>
     `<div class="fam-title-row" data-index="${idx}">
       <span class="fam-num-badge">${n + 1}</span>
       <button type="button" class="fam-drop-slot" data-index="${idx}">Déposez l'étiquette ici</button>
     </div>`
   ).join('');
-  const shuffledTitles = chronological.map((idx) => ({ idx, title: q.images[idx].title })).sort(() => Math.random() - 0.5);
+  const shuffledTitles = famSelectedImages.map((idx) => ({ idx, title: q.images[idx].title })).sort(() => Math.random() - 0.5);
   $('fam-title-labels').innerHTML = `<div class="fam-labels-pool">${shuffledTitles.map((t, n) =>
     `<button type="button" class="fam-label-chip" data-label-index="${n}" data-true-index="${t.idx}">${escapeHtml(t.title)}</button>`
   ).join('')}</div>`;
 
+  attachFamDragAndDrop();
+  updateFamValidateTitlesState();
+});
+
+// Glisser-déposer compatible souris ET tactile (les événements pointer unifient les deux) :
+// on saisit une étiquette, un « fantôme » suit le doigt/curseur, et on la dépose sur la barre
+// visée. Un simple clic (sans déplacement) reste accepté comme repli, plus facile pour certains.
+function attachFamDragAndDrop() {
+  let dragGhost = null, dragChip = null, dragStartX = 0, dragStartY = 0, dragMoved = false;
+
+  function dropOn(slot) {
+    if (!dragChip) return;
+    if (slot.classList.contains('filled')) {
+      const oldChip = document.querySelector(`.fam-label-chip[data-label-index="${slot.dataset.labelIndex}"]`);
+      if (oldChip) { oldChip.disabled = false; oldChip.classList.remove('picked'); }
+    }
+    slot.textContent = dragChip.textContent;
+    slot.dataset.labelIndex = dragChip.dataset.labelIndex;
+    slot.classList.add('filled');
+    dragChip.disabled = true;
+    dragChip.classList.remove('picked');
+    updateFamValidateTitlesState();
+  }
+
   document.querySelectorAll('.fam-label-chip').forEach((chip) => {
+    chip.addEventListener('pointerdown', (event) => {
+      if (chip.disabled) return;
+      dragChip = chip; dragMoved = false;
+      dragStartX = event.clientX; dragStartY = event.clientY;
+      dragGhost = chip.cloneNode(true);
+      dragGhost.style.cssText = 'position:fixed;z-index:999;pointer-events:none;opacity:.85;';
+      document.body.appendChild(dragGhost);
+      moveGhost(event.clientX, event.clientY);
+      chip.setPointerCapture(event.pointerId);
+    });
+    chip.addEventListener('pointermove', (event) => {
+      if (!dragGhost || dragChip !== chip) return;
+      if (Math.abs(event.clientX - dragStartX) > 4 || Math.abs(event.clientY - dragStartY) > 4) dragMoved = true;
+      moveGhost(event.clientX, event.clientY);
+    });
+    chip.addEventListener('pointerup', (event) => {
+      if (dragChip !== chip) return;
+      dragGhost?.remove(); dragGhost = null;
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      const slot = target?.closest('.fam-drop-slot');
+      if (slot && !slot.disabled) dropOn(slot);
+      else if (!dragMoved) {
+        // Simple clic, sans glisser : bascule le mode « sélection puis clic sur la barre ».
+        document.querySelectorAll('.fam-label-chip').forEach((c) => c.classList.remove('picked'));
+        famPickedLabel = famPickedLabel === chip ? null : chip;
+        if (famPickedLabel) chip.classList.add('picked');
+      }
+      dragChip = null;
+    });
     chip.addEventListener('click', () => {
-      document.querySelectorAll('.fam-label-chip').forEach((c) => c.classList.remove('picked'));
-      famPickedLabel = famPickedLabel === chip ? null : chip;
-      if (famPickedLabel) chip.classList.add('picked');
+      // Repli clic-clic : utile si le glisser n'a pas été détecté (certains trackpads).
+      if (famPickedLabel && famPickedLabel !== chip) return;
     });
   });
+
+  function moveGhost(x, y) {
+    if (!dragGhost) return;
+    dragGhost.style.left = `${x - 40}px`;
+    dragGhost.style.top = `${y - 20}px`;
+  }
+
   document.querySelectorAll('.fam-drop-slot').forEach((slot) => {
     slot.addEventListener('click', () => {
       if (slot.classList.contains('filled')) {
@@ -2028,17 +2092,11 @@ $('fam-validate-artist-button')?.addEventListener('click', () => {
         return;
       }
       if (!famPickedLabel) return;
-      slot.textContent = famPickedLabel.textContent;
-      slot.dataset.labelIndex = famPickedLabel.dataset.labelIndex;
-      slot.classList.add('filled');
-      famPickedLabel.disabled = true;
-      famPickedLabel.classList.remove('picked');
+      dropOn(slot);
       famPickedLabel = null;
-      updateFamValidateTitlesState();
     });
   });
-  updateFamValidateTitlesState();
-});
+}
 
 function detectCenturyYear(dateStr) {
   const m = String(dateStr || '').match(/\b(1[3-9]|20)\d{2}\b/);
@@ -2071,6 +2129,8 @@ $('fam-validate-titles-button')?.addEventListener('click', () => {
     if (!ok) allTitlesCorrect = false;
     slotChecks.push({ slot, work, ok });
   });
+  // La correction, elle, se déroule dans l'ordre chronologique des œuvres, pas l'ordre des barres.
+  slotChecks.sort((a, b) => (detectCenturyYear(a.work.date) ?? 9999) - (detectCenturyYear(b.work.date) ?? 9999));
 
   const pointEarned = (q.imagesCorrect && q.artistCorrect && allTitlesCorrect) ? 1 : 0;
   famScore = Math.round((famScore + pointEarned) * 10) / 10;
@@ -2350,7 +2410,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
   if (q.errorFields.length) {
     vfSpeak(q.errorFields.length > 1 ? 'Deux références sont fausses.' : 'Une référence est fausse.', () => speakNextCorrection(0));
   } else {
-    vfSpeak(`Les références de ${artWord} sont bonnes.`);
+    vfSpeak(q.activeFields.length > 1 ? `Les références de ${artWord} sont bonnes.` : `La référence de ${artWord} est bonne.`);
   }
 
   $('vf-correction').classList.remove('hidden');

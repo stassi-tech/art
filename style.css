@@ -59,7 +59,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .fam-title-row .fam-drop-slot.vf-was-wrong { border-color:var(--wrong); color:var(--wrong); text-decoration:line-through; }
 .fam-title-row .fam-drop-slot.vf-updated { border-color:var(--ok); color:var(--ok); text-decoration:none; }
 .fam-labels-pool { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
-.fam-label-chip { padding:8px 14px; border:1px solid var(--accent); border-radius:20px; background:#fff; color:var(--accent); font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; cursor:pointer; transition:background .15s; }
+.fam-label-chip { padding:8px 14px; border:1px solid var(--accent); border-radius:20px; background:#fff; color:var(--accent); font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; cursor:pointer; transition:background .15s; touch-action:none; }
 .fam-label-chip:hover:not(:disabled) { background:#f7f2ea; }
 .fam-label-chip.picked { background:var(--accent); color:#fff; }
 .fam-label-chip:disabled { opacity:.35; cursor:not-allowed; }
