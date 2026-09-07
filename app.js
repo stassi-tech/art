@@ -225,19 +225,21 @@ async function loadAccountPage() {
           : `<span class="evolution-flat">= stable</span>`;
       }
       lastPercentBySignature[sig] = entry.percent;
+      const timeLabel = entry.timeSpent ? `${Math.floor(entry.timeSpent / 60)}:${String(entry.timeSpent % 60).padStart(2, '0')}` : '—';
       return `<tr>
         <td>${escapeHtml(dateLabel)}</td>
         <td class="col-contenu">${escapeHtml(contentLabel)}</td>
         <td>${levelNum ? `Niveau ${levelNum}` : '—'}</td>
         <td class="rubriques-tested">${escapeHtml(rubriquesText)}</td>
         <td><strong>${entry.correct} / ${entry.possible} (${entry.percent} %)</strong></td>
+        <td>${timeLabel}</td>
         <td>${evolutionHtml}</td>
         <td><button type="button" class="delete-score-button" data-doc-id="${entry.id}" title="Éliminer ce résultat" aria-label="Éliminer ce résultat">✕</button></td>
       </tr>`;
     });
     // Le plus récent en premier, plus naturel à lire.
     groupsBox.innerHTML = `<div class="account-table-scroll"><table class="account-table">
-      <thead><tr><th>Date</th><th class="col-contenu">Contenu</th><th>Niveau</th><th>Rubriques</th><th>Score</th><th>Évolution</th><th></th></tr></thead>
+      <thead><tr><th>Date</th><th class="col-contenu">Contenu</th><th>Niveau</th><th>Rubriques</th><th>Score</th><th>Temps</th><th>Évolution</th><th></th></tr></thead>
       <tbody>${rows.slice().reverse().join('')}</tbody>
     </table></div>`;
     groupsBox.querySelectorAll('.delete-score-button').forEach((button) => {
@@ -412,13 +414,54 @@ const voiceSupported = Boolean(SpeechRecognitionImpl);
 // micro du quiz, mais sans la logique de champ actif multiple : un bouton, un champ.
 // Lit à voix haute l'objectif d'un exercice, affiché en texte sur sa page de configuration.
 function speakObjective(elementId) {
+  // elementId est le préfixe (« imp », « vf »…) — la case « Ne plus entendre » est mémorisée sur
+  // l'appareil, sur ce même préfixe, pour ne pas lasser à force de rejouer.
+  const skipCheckbox = $(`${elementId}-opt-skip-objective`);
+  if (skipCheckbox) {
+    if (localStorage.getItem(`skipObjective_${elementId}`) === 'true') { skipCheckbox.checked = true; return; }
+    skipCheckbox.addEventListener('change', () => {
+      localStorage.setItem(`skipObjective_${elementId}`, skipCheckbox.checked ? 'true' : 'false');
+    }, { once: true });
+  }
   if (!window.speechSynthesis) return;
-  const el = $(elementId);
+  const el = $(`${elementId}-objective`);
   if (!el) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(el.textContent);
   u.lang = 'fr-FR'; u.rate = 0.85;
   speechSynthesis.speak(u);
+}
+
+// Chronomètre partagé : affiche le temps écoulé en direct, renvoie la durée totale (en
+// secondes) à l'arrêt, pour l'enregistrer avec le score.
+function createTimer(labelElementId) {
+  let startTime = null, interval = null;
+  function tick() {
+    const el = $(labelElementId);
+    if (!el || !startTime) return;
+    const s = Math.floor((Date.now() - startTime) / 1000);
+    el.textContent = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+  return {
+    start() { startTime = Date.now(); if (interval) clearInterval(interval); interval = setInterval(tick, 1000); tick(); },
+    stop() { if (interval) clearInterval(interval); interval = null; return startTime ? Math.round((Date.now() - startTime) / 1000) : 0; },
+  };
+}
+
+// Mémorise et restaure la dernière sélection de cases à cocher d'un jeu (art/siècle/niveau/zone…)
+// sur l'appareil, pour éviter de tout recocher à chaque partie. On cible toutes les cases du
+// panneau de configuration plutôt qu'une liste figée d'identifiants, plus robuste aux évolutions.
+function saveLastSelection(panelId) {
+  const state = {};
+  $(panelId)?.querySelectorAll('input[type="checkbox"]').forEach((el) => { state[el.id] = el.checked; });
+  localStorage.setItem(`lastSelection_${panelId}`, JSON.stringify(state));
+}
+function restoreLastSelection(panelId) {
+  let state;
+  try { state = JSON.parse(localStorage.getItem(`lastSelection_${panelId}`) || '{}'); } catch (e) { return; }
+  $(panelId)?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+    if (state[el.id] !== undefined && !el.id.includes('opt-') && !el.id.includes('skip-objective')) el.checked = state[el.id];
+  });
 }
 
 function attachSimpleMic(button, input) {
@@ -865,8 +908,8 @@ function showPanel(name) {
   // quitté en cours de route peut se déclencher plus tard, en plein milieu d'un autre exercice
   // (voix qui parle d'une œuvre sans rapport avec ce qui est affiché).
   if (window.speechSynthesis) speechSynthesis.cancel();
-  [impTimers, vfTimers, famTimers].forEach((arr) => { if (arr) arr.forEach(clearTimeout); });
-  impTimers = []; vfTimers = []; famTimers = [];
+  [impTimers, vfTimers, famTimers, reconTimers, intrusTimers].forEach((arr) => { if (arr) arr.forEach(clearTimeout); });
+  impTimers = []; vfTimers = []; famTimers = []; reconTimers = []; intrusTimers = [];
 
   // name: 'welcome' | 'training-hub' | 'impregnation-setup' | 'impregnation' | 'intrus-setup' |
   // 'intrus' | 'quiz-setup' | 'quiz' | 'results' | 'account' | 'other-works' — centralise
@@ -1359,7 +1402,7 @@ $('quiz-setup-back-button')?.addEventListener('click', () => showPanel('welcome'
 // références (artiste + titre) sont proposées. Même mécanique de correction que Intrus (référence
 // choisie conservée avec son verdict), puis l'image entière est révélée avec la référence complète.
 // ============================================================
-$('open-reconstitution-setup')?.addEventListener('click', () => { showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon-objective'); });
+$('open-reconstitution-setup')?.addEventListener('click', () => { showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon'); restoreLastSelection('reconstitution-setup-panel'); });
 $('reconstitution-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
 $('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
@@ -1370,7 +1413,7 @@ $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercise
 // éléments faux (jamais les dimensions, qui ne sont pas montrées ici). Le joueur juge Vrai/Faux ;
 // en cas d'erreur, la ou les lignes fautives apparaissent en rouge, corrigées en vert en dessous.
 // ============================================================
-$('open-vraifaux-setup')?.addEventListener('click', () => { showPanel('vraifaux-setup'); populateVfVoices(); speakObjective('vf-objective'); });
+$('open-vraifaux-setup')?.addEventListener('click', () => { showPanel('vraifaux-setup'); populateVfVoices(); speakObjective('vf'); restoreLastSelection('vraifaux-setup-panel'); });
 $('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
@@ -1381,7 +1424,7 @@ $('vf-setup-scores-link')?.addEventListener('click', () => { returnToExercisePan
 // (1re validation), puis doit retrouver le titre de chacune des 4 œuvres (2e validation).
 // Tout-ou-rien : 1 point seulement si artiste + les 4 titres sont exacts.
 // ============================================================
-$('open-famille-setup')?.addEventListener('click', () => { showPanel('famille-setup'); populateFamVoices(); speakObjective('fam-objective'); });
+$('open-famille-setup')?.addEventListener('click', () => { showPanel('famille-setup'); populateFamVoices(); speakObjective('fam'); restoreLastSelection('famille-setup-panel'); });
 $('famille-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
 $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
@@ -1486,7 +1529,7 @@ async function fetchEnigmeRows(art, century) {
   return results;
 }
 
-$('open-enigme-setup')?.addEventListener('click', () => { showPanel('enigme-setup'); populateEnigVoices(); speakObjective('enig-objective'); });
+$('open-enigme-setup')?.addEventListener('click', () => { showPanel('enigme-setup'); populateEnigVoices(); speakObjective('enig'); restoreLastSelection('enigme-setup-panel'); });
 $('enigme-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('enig-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('enigme-setup'); });
 $('enig-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'enigme'; showPanel('account'); loadAccountPage(); });
@@ -1515,6 +1558,7 @@ function enigSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e'].fi
 function enigSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`enig-art-${a}`)?.checked); }
 
 let ENIG_SESSION = [], enigIndex = 0, enigScore = 0, enigAnswered = false, enigAudioOn = true, enigSelectedVoiceRef = null;
+const enigTimer = createTimer('enig-timer');
 function enigSpeak(text) {
   if (!enigAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
@@ -1525,6 +1569,7 @@ function enigSpeak(text) {
 }
 
 $('enig-start-button')?.addEventListener('click', async () => {
+  saveLastSelection('enigme-setup-panel');
   const arts = enigSelectedArts();
   const centuries = enigSelectedCenturies();
   const feedback = $('enig-setup-feedback');
@@ -1559,6 +1604,7 @@ $('enig-start-button')?.addEventListener('click', async () => {
   if (usingDemo) { feedback.classList.remove('hidden'); feedback.textContent = 'Mode démonstration (fichier -enigme.xlsx non trouvé en ligne).'; }
   enigIndex = 0; enigScore = 0;
   showPanel('enigme');
+  enigTimer.start();
   enigShowQuestion();
 });
 
@@ -1711,6 +1757,7 @@ $('enig-next-button')?.addEventListener('click', async () => {
         await db.collection('users').doc(currentUser.uid).collection('scores').add({
           type: 'entrainement',
           exerciseName: 'Énigme',
+          timeSpent: enigTimer.stop(),
           correct: enigScore, possible: ENIG_SESSION.length,
           percent: Math.round((enigScore / ENIG_SESSION.length) * 100),
           questionCount: ENIG_SESSION.length,
@@ -1829,6 +1876,7 @@ function detectCenturyFromDate(dateStr) {
 }
 
 let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [], famStep = 1, famTimers = [], famPickedLabel = null;
+const famTimer = createTimer('fam-timer');
 function famSpeak(text, onEnd) {
   if (!famAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
@@ -1846,6 +1894,7 @@ function famSpeak(text, onEnd) {
 }
 
 $('fam-start-button')?.addEventListener('click', async () => {
+  saveLastSelection('famille-setup-panel');
   const arts = famSelectedArts();
   const centuries = famSelectedCenturies();
   const levels = famSelectedLevels();
@@ -1877,7 +1926,6 @@ $('fam-start-button')?.addEventListener('click', async () => {
     famAudioOn = $('fam-opt-audio').checked;
     const famVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
     famSelectedVoiceRef = famVoices[$('fam-opt-voice').value] || null;
-    attachSimpleMic($('fam-artist-mic'), $('fam-artist-input'));
     const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
     const count = Number(countChoice);
     const imgCountChoice = Number(document.querySelector('input[name="fam-images"]:checked').value);
@@ -1898,6 +1946,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
     FAM_SESSION = questions;
     famIndex = 0; famScore = 0;
     showPanel('famille');
+    famTimer.start();
     famShowQuestion();
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
@@ -1917,12 +1966,6 @@ function famShowQuestion() {
   $('fam-progress-bar').style.width = `${(famIndex / FAM_SESSION.length) * 100}%`;
   $('fam-correction').classList.add('hidden');
   $('fam-step0').classList.remove('hidden');
-  $('fam-step1').classList.add('hidden');
-  $('fam-step2').classList.add('hidden');
-  $('fam-step1').querySelectorAll('p.hint').forEach((el) => el.remove());
-  $('fam-artist-input').value = '';
-  $('fam-artist-input').disabled = false;
-  $('fam-validate-artist-button').disabled = false;
   $('fam-validate-selection-button').disabled = false;
 
   $('fam-image-grid').className = `fam-image-grid${q.imgCount === 6 ? ' fam-count-6' : ''}`;
@@ -1947,7 +1990,7 @@ function famShowQuestion() {
     });
   });
 
-  famSpeak('Trouve quatre tableaux d\u2019un même peintre.');
+  famSpeak('Trouve quatre œuvres du même artiste.');
 }
 
 $('fam-validate-selection-button')?.addEventListener('click', () => {
@@ -1959,223 +2002,33 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
   const familyIndexes = q.images.map((w, i) => q.family.includes(w) ? i : -1).filter((i) => i >= 0);
   const selectedSet = new Set(famSelectedImages);
   const familySet = new Set(familyIndexes);
-  q.imagesCorrect = selectedSet.size === familySet.size && [...selectedSet].every((i) => familySet.has(i));
-  document.querySelectorAll('.fam-image-cell').forEach((btn, i) => {
-    if (familySet.has(i)) btn.classList.add('correct');
-    else if (selectedSet.has(i)) btn.classList.add('wrong');
-  });
+  const imagesCorrect = selectedSet.size === familySet.size && [...selectedSet].every((i) => familySet.has(i));
 
-  if (!q.imagesCorrect) {
-    // Erreur de choix : correction immédiate, on ne va pas plus loin sur cette question.
-    famAnswered = true;
-    famSpeak('Voilà les quatre tableaux qu\u2019il fallait choisir.');
-    const note = document.createElement('p');
-    note.className = 'hint';
-    note.style.textAlign = 'center';
-    note.innerHTML = `<span style="color:var(--wrong);font-weight:700;">Il fallait choisir les 4 œuvres de : ${escapeHtml(q.artist)}</span>`;
-    $('fam-step0').appendChild(note);
-    $('fam-correction').classList.remove('hidden');
-    $('fam-next-button').textContent = famIndex === FAM_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
-    return;
-  }
-
-  // Bonne sélection : passage à la question sur le nom du peintre.
-  famStep = 1;
-  $('fam-step1').classList.remove('hidden');
-  famSpeak('Quel est le nom du peintre ?');
-});
-
-function famStepFeedback(stepId, msg) {
-  let el = document.querySelector(`#${stepId} .fam-inline-feedback`);
-  if (!el) {
-    el = document.createElement('p');
-    el.className = 'hint fam-inline-feedback';
-    $(stepId).appendChild(el);
-  }
-  el.textContent = msg;
-}
-
-$('fam-validate-artist-button')?.addEventListener('click', () => {
-  const q = FAM_SESSION[famIndex];
-  $('fam-artist-input').disabled = true;
-  $('fam-validate-artist-button').disabled = true;
-  q.artistCorrect = famAnswerMatches($('fam-artist-input').value, q.artist, 'artist');
-
-  // La correction rajoute éventuellement le prénom : on affiche toujours le nom complet.
-  const note = document.createElement('p');
-  note.className = 'hint';
-  note.style.textAlign = 'center';
-  note.innerHTML = q.artistCorrect
-    ? `<span style="color:var(--ok);font-weight:700;">Exact : ${escapeHtml(q.artist)}</span>`
-    : `<span style="color:var(--wrong);font-weight:700;">À réviser — il s'agissait de : ${escapeHtml(q.artist)}</span>`;
-  $('fam-step1').appendChild(note);
-
-  // On passe à l'étape des titres dans tous les cas (que l'artiste soit juste ou non).
-  famStep = 2;
-  $('fam-step2').classList.remove('hidden');
-
-  // Les barres restent dans l'ordre où le joueur a cliqué les images (ce n'est pas à lui de
-  // deviner l'ordre chronologique) — seule la correction, plus loin, se déroulera dans cet ordre.
-  $('fam-title-rows').innerHTML = famSelectedImages.map((idx, n) =>
-    `<div class="fam-title-row" data-index="${idx}">
-      <span class="fam-num-badge">${n + 1}</span>
-      <button type="button" class="fam-drop-slot" data-index="${idx}">Déposez l'étiquette ici</button>
-    </div>`
-  ).join('');
-  const shuffledTitles = famSelectedImages.map((idx) => ({ idx, title: q.images[idx].title })).sort(() => Math.random() - 0.5);
-  $('fam-title-labels').innerHTML = `<div class="fam-labels-pool">${shuffledTitles.map((t, n) =>
-    `<button type="button" class="fam-label-chip" data-label-index="${n}" data-true-index="${t.idx}">${escapeHtml(t.title)}</button>`
-  ).join('')}</div>`;
-
-  attachFamDragAndDrop();
-  updateFamValidateTitlesState();
-});
-
-// Glisser-déposer compatible souris ET tactile (les événements pointer unifient les deux) :
-// on saisit une étiquette, un « fantôme » suit le doigt/curseur, et on la dépose sur la barre
-// visée. Un simple clic (sans déplacement) reste accepté comme repli, plus facile pour certains.
-function attachFamDragAndDrop() {
-  let dragGhost = null, dragChip = null, dragStartX = 0, dragStartY = 0, dragMoved = false;
-
-  function dropOn(slot) {
-    if (!dragChip) return;
-    if (slot.classList.contains('filled')) {
-      const oldChip = document.querySelector(`.fam-label-chip[data-label-index="${slot.dataset.labelIndex}"]`);
-      if (oldChip) { oldChip.disabled = false; oldChip.classList.remove('picked'); }
-    }
-    slot.textContent = dragChip.textContent;
-    slot.dataset.labelIndex = dragChip.dataset.labelIndex;
-    slot.classList.add('filled');
-    dragChip.disabled = true;
-    dragChip.classList.remove('picked');
-    updateFamValidateTitlesState();
-  }
-
-  document.querySelectorAll('.fam-label-chip').forEach((chip) => {
-    chip.addEventListener('pointerdown', (event) => {
-      if (chip.disabled) return;
-      dragChip = chip; dragMoved = false;
-      dragStartX = event.clientX; dragStartY = event.clientY;
-      dragGhost = chip.cloneNode(true);
-      dragGhost.style.cssText = 'position:fixed;z-index:999;pointer-events:none;opacity:.85;';
-      document.body.appendChild(dragGhost);
-      moveGhost(event.clientX, event.clientY);
-      chip.setPointerCapture(event.pointerId);
-    });
-    chip.addEventListener('pointermove', (event) => {
-      if (!dragGhost || dragChip !== chip) return;
-      if (Math.abs(event.clientX - dragStartX) > 4 || Math.abs(event.clientY - dragStartY) > 4) dragMoved = true;
-      moveGhost(event.clientX, event.clientY);
-    });
-    chip.addEventListener('pointerup', (event) => {
-      if (dragChip !== chip) return;
-      dragGhost?.remove(); dragGhost = null;
-      const target = document.elementFromPoint(event.clientX, event.clientY);
-      const slot = target?.closest('.fam-drop-slot');
-      if (slot && !slot.disabled) dropOn(slot);
-      else if (!dragMoved) {
-        // Simple clic, sans glisser : bascule le mode « sélection puis clic sur la barre ».
-        document.querySelectorAll('.fam-label-chip').forEach((c) => c.classList.remove('picked'));
-        famPickedLabel = famPickedLabel === chip ? null : chip;
-        if (famPickedLabel) chip.classList.add('picked');
-      }
-      dragChip = null;
-    });
-    chip.addEventListener('click', () => {
-      // Repli clic-clic : utile si le glisser n'a pas été détecté (certains trackpads).
-      if (famPickedLabel && famPickedLabel !== chip) return;
-    });
-  });
-
-  function moveGhost(x, y) {
-    if (!dragGhost) return;
-    dragGhost.style.left = `${x - 40}px`;
-    dragGhost.style.top = `${y - 20}px`;
-  }
-
-  document.querySelectorAll('.fam-drop-slot').forEach((slot) => {
-    slot.addEventListener('click', () => {
-      if (slot.classList.contains('filled')) {
-        const chip = document.querySelector(`.fam-label-chip[data-label-index="${slot.dataset.labelIndex}"]`);
-        if (chip) { chip.disabled = false; chip.classList.remove('picked'); }
-        slot.textContent = "Déposez l'étiquette ici";
-        slot.classList.remove('filled');
-        delete slot.dataset.labelIndex;
-        updateFamValidateTitlesState();
-        return;
-      }
-      if (!famPickedLabel) return;
-      dropOn(slot);
-      famPickedLabel = null;
-    });
-  });
-}
-
-function detectCenturyYear(dateStr) {
-  const m = String(dateStr || '').match(/\b(1[3-9]|20)\d{2}\b/);
-  return m ? Number(m[0]) : null;
-}
-
-function updateFamValidateTitlesState() {
-  const allFilled = document.querySelectorAll('.fam-drop-slot.filled').length === 4;
-  $('fam-validate-titles-button').disabled = !allFilled;
-}
-
-$('fam-validate-titles-button')?.addEventListener('click', () => {
-  if (famAnswered) return;
-  famAnswered = true;
-  const q = FAM_SESSION[famIndex];
-  document.querySelectorAll('.fam-label-chip').forEach((chip) => { chip.disabled = true; });
-  document.querySelectorAll('.fam-drop-slot').forEach((slot) => { slot.disabled = true; });
-  $('fam-validate-titles-button').disabled = true;
-
-  let allTitlesCorrect = true;
-  const slotChecks = [];
-  document.querySelectorAll('.fam-title-row').forEach((row) => {
-    const idx = Number(row.dataset.index);
-    const work = q.images[idx];
-    const slot = row.querySelector('.fam-drop-slot');
-    const placedTrueIndex = Number(slot.dataset.labelIndex !== undefined
-      ? document.querySelector(`.fam-label-chip[data-label-index="${slot.dataset.labelIndex}"]`)?.dataset.trueIndex
-      : NaN);
-    const ok = placedTrueIndex === idx;
-    if (!ok) allTitlesCorrect = false;
-    slotChecks.push({ slot, work, ok });
-  });
-  // La correction, elle, se déroule dans l'ordre chronologique des œuvres, pas l'ordre des barres.
-  slotChecks.sort((a, b) => (detectCenturyYear(a.work.date) ?? 9999) - (detectCenturyYear(b.work.date) ?? 9999));
-
-  const pointEarned = (q.imagesCorrect && q.artistCorrect && allTitlesCorrect) ? 1 : 0;
+  const pointEarned = imagesCorrect ? 1 : 0;
   famScore = Math.round((famScore + pointEarned) * 10) / 10;
   $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
 
-  // Une seule phrase pour toute la correction (l'artiste n'est nommé qu'une fois), avec une
-  // écriture progressive des barres calée sur une estimation du rythme de lecture.
-  function famEstimateMs(text) { return Math.max(1200, (text.length / 13) * 1000) + 400; }
-  const parts = slotChecks.map(({ work }) => {
-    const year = detectCenturyYear(work.date);
-    return `${work.title}${year ? ` en ${year}` : ''}`;
-  });
-  const fullSentence = `${q.artist} a peint : ${parts.join(', ')}.`;
-  const prefixLen = `${q.artist} a peint : `.length;
-  const totalMs = famEstimateMs(fullSentence);
-  let offset = prefixLen;
-  slotChecks.forEach(({ slot, work, ok }, i) => {
-    const segment = parts[i];
-    const revealAt = Math.round((offset / fullSentence.length) * totalMs);
-    offset += segment.length + 2; // ", "
-    famTimers.push(setTimeout(() => {
-      if (!ok) slot.classList.add('vf-was-wrong');
-      const year = detectCenturyYear(work.date);
-      setTimeout(() => {
-        slot.textContent = `${work.title}${year ? ` (${year})` : ''}`;
-        slot.classList.remove('vf-was-wrong');
-        slot.classList.add('vf-updated');
-      }, ok ? 0 : 350);
-    }, Math.max(0, revealAt - 300)));
-  });
-  famSpeak(fullSentence);
+  $('fam-verdict').textContent = imagesCorrect ? 'Exact' : 'À réviser';
+  $('fam-verdict').style.color = imagesCorrect ? 'var(--ok)' : 'var(--wrong)';
 
+  // Les 4 bonnes œuvres remontent en haut, seules, avec leur référence en dessous ; le reste
+  // disparaît. « Œuvre » et « artiste » plutôt que « tableau »/« peintre », valable aussi bien
+  // pour une peinture que pour une sculpture.
+  $('fam-image-grid').className = 'fam-result-grid';
+  $('fam-image-grid').innerHTML = q.family.map((work) => {
+    const dims = [work.hauteur, work.longueur].filter(Boolean).join(' × ');
+    const meta = [work.date, work.location].filter(Boolean).join(' — ');
+    return `<div class="fam-result-item">
+      <img src="${escapeHtml(imageSource(work.image))}" alt="" />
+      <span class="fam-result-caption"><strong>${escapeHtml(q.artist)}</strong>« ${escapeHtml(work.title)} »<br>${escapeHtml(meta)}</span>
+    </div>`;
+  }).join('');
+
+  const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
+  const titleList = q.family.map((w, i) => `${ordinals[i]}, ${w.title}`).join('. ');
+  famSpeak(`Ces quatre œuvres sont bien de ${q.artist}. ${titleList}.`);
+
+  $('fam-step0').classList.add('hidden');
   $('fam-correction').classList.remove('hidden');
   $('fam-next-button').textContent = famIndex === FAM_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
 });
@@ -2190,6 +2043,7 @@ $('fam-next-button')?.addEventListener('click', async () => {
         await db.collection('users').doc(currentUser.uid).collection('scores').add({
           type: 'entrainement',
           exerciseName: 'Famille',
+          timeSpent: famTimer.stop(),
           correct: famScore, possible: FAM_SESSION.length,
           percent: Math.round((famScore / FAM_SESSION.length) * 100),
           questionCount: FAM_SESSION.length,
@@ -2249,6 +2103,7 @@ function vfFieldValue(row, key) {
 }
 
 let VF_SESSION = [], vfIndex = 0, vfScore = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null, vfTimers = [];
+const vfTimer = createTimer('vf-timer');
 function vfSpeak(text, onEnd) {
   if (!vfAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
@@ -2269,6 +2124,7 @@ function vfSpeak(text, onEnd) {
 }
 
 $('vf-start-button')?.addEventListener('click', async () => {
+  saveLastSelection('vraifaux-setup-panel');
   const arts = vfSelectedArts();
   const centuries = vfSelectedCenturies();
   const levels = vfSelectedLevels();
@@ -2326,6 +2182,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
     });
     vfIndex = 0; vfScore = 0;
     showPanel('vraifaux');
+    vfTimer.start();
     vfShowQuestion();
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
@@ -2447,6 +2304,7 @@ $('vf-next-button')?.addEventListener('click', async () => {
         await db.collection('users').doc(currentUser.uid).collection('scores').add({
           type: 'entrainement',
           exerciseName: 'Vrai/Faux',
+          timeSpent: vfTimer.stop(),
           correct: vfScore, possible: VF_SESSION.length,
           percent: Math.round((vfScore / VF_SESSION.length) * 100),
           questionCount: VF_SESSION.length,
@@ -2473,7 +2331,7 @@ function populateReconVoices() {
     : '<option value="">Voix par défaut du système</option>';
 }
 
-const RECON_ACCORDIONS = ['recon-toggle-art:recon-body-art', 'recon-toggle-century:recon-body-century', 'recon-toggle-level:recon-body-level', 'recon-toggle-count:recon-body-count'];
+const RECON_ACCORDIONS = ['recon-toggle-art:recon-body-art', 'recon-toggle-century:recon-body-century', 'recon-toggle-level:recon-body-level', 'recon-toggle-count:recon-body-count', 'recon-toggle-rubriques:recon-body-rubriques'];
 RECON_ACCORDIONS.forEach((pair) => {
   const [toggleId, bodyId] = pair.split(':');
   $(toggleId)?.addEventListener('click', () => {
@@ -2488,7 +2346,9 @@ function reconSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '
 function reconSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`recon-zone-${z}`)?.checked); }
 function reconSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`recon-level-${lvl}`)?.checked); }
 
-let RECON_SESSION = [], reconIndex = 0, reconCorrectCount = 0, reconAnswered = false, reconAudioOn = true, reconSelectedVoice = null;
+let RECON_SESSION = [], reconIndex = 0, reconCorrectCount = 0, reconAnswered = false, reconAudioOn = true, reconSelectedVoice = null, reconAutoAdvance = false, reconAutoAdvanceDelay = 5000, reconExtraFields = [], reconTimers = [];
+const reconTimer = createTimer('recon-timer');
+$('recon-opt-autoadvance')?.addEventListener('change', () => { $('recon-delay-row').style.display = $('recon-opt-autoadvance').checked ? 'flex' : 'none'; });
 function reconSpeak(text) {
   if (!reconAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
@@ -2499,6 +2359,7 @@ function reconSpeak(text) {
 }
 
 $('recon-start-button')?.addEventListener('click', async () => {
+  saveLastSelection('reconstitution-setup-panel');
   const arts = reconSelectedArts();
   const centuries = reconSelectedCenturies();
   const levels = reconSelectedLevels();
@@ -2529,6 +2390,9 @@ $('recon-start-button')?.addEventListener('click', async () => {
     reconAudioOn = $('recon-opt-audio').checked;
     const reconVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
     reconSelectedVoice = reconVoices[$('recon-opt-voice').value] || null;
+    reconAutoAdvance = $('recon-opt-autoadvance').checked;
+    reconAutoAdvanceDelay = Number($('recon-opt-delay').value);
+    reconExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`recon-field-${k}`)?.checked);
     RECON_SESSION = pool.slice(0, count).map((correct) => {
       const distractors = pickIntrusDistractors(correct, pool);
       const choices = [correct, ...distractors];
@@ -2541,6 +2405,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
     });
     reconIndex = 0; reconCorrectCount = 0;
     showPanel('reconstitution');
+    reconTimer.start();
     reconShowQuestion();
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
@@ -2549,6 +2414,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
 
 function reconShowQuestion() {
   speechSynthesis.cancel();
+  reconTimers.forEach(clearTimeout); reconTimers = [];
   reconAnswered = false;
   const q = RECON_SESSION[reconIndex];
   $('recon-progress-label').textContent = `Question ${reconIndex + 1} / ${RECON_SESSION.length}`;
@@ -2560,7 +2426,7 @@ function reconShowQuestion() {
   const src = escapeHtml(imageSource(q.correct.image));
   $('recon-prompt-card').innerHTML = `<div class="recon-detail-crop" style="background-image:url('${src}');background-position:${q.cropX}% ${q.cropY}%;"></div>`;
   $('recon-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
-    `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title)} »</em></button>`
+    `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title || c.date || 'œuvre non titrée')} »</em></button>`
   ).join('')}</div>`;
   $('recon-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
     btn.addEventListener('click', () => reconAnswer(Number(btn.dataset.index)));
@@ -2591,14 +2457,15 @@ function reconAnswer(chosenIndex) {
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value">« ${escapeHtml(q.correct.title)} »</span>`);
-  detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if (q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materials)}</span>`);
-  if (dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
-  detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
+  if (reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
+  if (reconExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materials)}</span>`);
+  if (reconExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
+  if (reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
   $('recon-correction-details').innerHTML = detailsParts.join('');
   $('recon-correction').classList.remove('hidden');
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex + 1} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
   $('recon-next-button').textContent = reconIndex === RECON_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
+  if (reconAutoAdvance) reconTimers.push(setTimeout(() => $('recon-next-button')?.click(), reconAutoAdvanceDelay));
 }
 
 $('recon-next-button')?.addEventListener('click', async () => {
@@ -2611,6 +2478,7 @@ $('recon-next-button')?.addEventListener('click', async () => {
         await db.collection('users').doc(currentUser.uid).collection('scores').add({
           type: 'entrainement',
           exerciseName: 'Reconstitution',
+          timeSpent: reconTimer.stop(),
           correct: reconCorrectCount, possible: RECON_SESSION.length,
           percent: Math.round((reconCorrectCount / RECON_SESSION.length) * 100),
           questionCount: RECON_SESSION.length,
@@ -2780,7 +2648,7 @@ document.querySelectorAll('.training-soon').forEach((btn) => {
 // définis pour le quiz ; sélection propre (préfixe imp-), mécanique d'écriture progressive
 // synchronisée à la voix de synthèse, sans notation.
 // ============================================================
-$('open-impregnation-setup')?.addEventListener('click', () => { showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp-objective'); });
+$('open-impregnation-setup')?.addEventListener('click', () => { showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel'); });
 $('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
 ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
@@ -2816,6 +2684,7 @@ function impSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].fi
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
 let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impAdvanceMode = 'auto', impSelectedVoice = null;
+const impTimer = createTimer('imp-timer');
 
 function impClearTimers() { impTimers.forEach(clearTimeout); impTimers = []; }
 function impSpeak(text) {
@@ -2828,6 +2697,7 @@ function impSpeak(text) {
 }
 
 $('imp-start-button')?.addEventListener('click', async () => {
+  saveLastSelection('impregnation-setup-panel');
   const arts = impSelectedArts();
   const centuries = impSelectedCenturies();
   const levels = impSelectedLevels();
@@ -2862,6 +2732,7 @@ $('imp-start-button')?.addEventListener('click', async () => {
     impSelectedVoice = voices[$('imp-opt-voice').value] || null;
     impIndex = 0;
     showPanel('impregnation');
+    impTimer.start();
     impShowCurrent();
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
@@ -2924,7 +2795,7 @@ $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSI
 // MODULE INTRUS — retrouver la bonne image parmi 3 (mode « image »), ou la bonne référence
 // parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
 // ============================================================
-$('open-intrus-setup')?.addEventListener('click', () => { showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus-objective'); });
+$('open-intrus-setup')?.addEventListener('click', () => { showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus'); restoreLastSelection('intrus-setup-panel'); });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
 $('intrus-scores-link')?.addEventListener('click', () => {
   speechSynthesis.cancel();
@@ -2953,7 +2824,7 @@ document.querySelectorAll('.intrus-mode-btn').forEach((btn) => {
   });
 });
 
-const INTRUS_ACCORDIONS = ['intrus-toggle-art:intrus-body-art', 'intrus-toggle-century:intrus-body-century', 'intrus-toggle-level:intrus-body-level', 'intrus-toggle-count:intrus-body-count'];
+const INTRUS_ACCORDIONS = ['intrus-toggle-art:intrus-body-art', 'intrus-toggle-century:intrus-body-century', 'intrus-toggle-level:intrus-body-level', 'intrus-toggle-count:intrus-body-count', 'intrus-toggle-rubriques:intrus-body-rubriques'];
 INTRUS_ACCORDIONS.forEach((pair) => {
   const [toggleId, bodyId] = pair.split(':');
   $(toggleId)?.addEventListener('click', () => {
@@ -2968,7 +2839,9 @@ function intrusSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', 
 function intrusSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`intrus-zone-${z}`)?.checked); }
 function intrusSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`intrus-level-${lvl}`)?.checked); }
 
-let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false, intrusAudioOn = true, intrusSelectedVoice = null;
+let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false, intrusAudioOn = true, intrusSelectedVoice = null, intrusAutoAdvance = false, intrusAutoAdvanceDelay = 5000, intrusExtraFields = [], intrusTimers = [];
+const intrusTimer = createTimer('intrus-timer');
+$('intrus-opt-autoadvance')?.addEventListener('change', () => { $('intrus-delay-row').style.display = $('intrus-opt-autoadvance').checked ? 'flex' : 'none'; });
 function intrusSpeak(text) {
   if (!intrusAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
@@ -2985,15 +2858,22 @@ function pickIntrusDistractors(correct, pool) {
   // Rendre le choix plus exigeant : on préfère des intrus qui partagent un mot significatif du
   // titre (ex. « paysage »), sinon des œuvres d'un AUTRE artiste (pour ne pas trivialiser un
   // choix limité au nom du peintre), sinon n'importe quoi d'autre du réservoir.
+  const contentKey = (r) => `${famNormalize(r.artist)}|${famNormalize(r.title)}`;
+  const correctKey = contentKey(correct);
+  const usedKeys = new Set([correctKey]);
   const correctWords = new Set(intrusTitleWords(correct.title));
-  const others = pool.filter((r) => r !== correct);
+  // On exclut d'emblée les œuvres sans titre exploitable (choix ambigu, illisible dans la liste)
+  // et tout doublon de contenu (même couple auteur+titre, même si ce sont deux lignes distinctes).
+  const others = pool.filter((r) => r !== correct && r.title && r.title.trim() && contentKey(r) !== correctKey);
   let candidates = correctWords.size ? others.filter((r) => intrusTitleWords(r.title).some((w) => correctWords.has(w))) : [];
   const picked = [];
   const drawFrom = (list) => {
-    const copy = list.filter((r) => !picked.includes(r));
+    const copy = list.filter((r) => !picked.includes(r) && !usedKeys.has(contentKey(r)));
     while (picked.length < 2 && copy.length) {
       const idx = Math.floor(Math.random() * copy.length);
-      picked.push(copy.splice(idx, 1)[0]);
+      const chosen = copy.splice(idx, 1)[0];
+      picked.push(chosen);
+      usedKeys.add(contentKey(chosen));
     }
   };
   drawFrom(candidates);
@@ -3003,6 +2883,7 @@ function pickIntrusDistractors(correct, pool) {
 }
 
 $('intrus-start-button')?.addEventListener('click', async () => {
+  saveLastSelection('intrus-setup-panel');
   const arts = intrusSelectedArts();
   const centuries = intrusSelectedCenturies();
   const levels = intrusSelectedLevels();
@@ -3033,6 +2914,9 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     intrusAudioOn = $('intrus-opt-audio').checked;
     const intrusVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
     intrusSelectedVoice = intrusVoices[$('intrus-opt-voice').value] || null;
+    intrusAutoAdvance = $('intrus-opt-autoadvance').checked;
+    intrusAutoAdvanceDelay = Number($('intrus-opt-delay').value);
+    intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`intrus-field-${k}`)?.checked);
     INTRUS_SESSION = pool.slice(0, count).map((correct) => {
       const distractors = pickIntrusDistractors(correct, pool);
       const choices = [correct, ...distractors];
@@ -3045,6 +2929,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     intrusIndex = 0; intrusCorrectCount = 0;
     $('intrus-title-label').textContent = `Intrus — ${intrusMode === 'image' ? 'images intruses' : 'références intruses'}`;
     showPanel('intrus');
+    intrusTimer.start();
     intrusShowQuestion();
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
@@ -3053,6 +2938,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
 
 function intrusShowQuestion() {
   speechSynthesis.cancel();
+  intrusTimers.forEach(clearTimeout); intrusTimers = [];
   intrusAnswered = false;
   const q = INTRUS_SESSION[intrusIndex];
   $('intrus-progress-label').textContent = `Question ${intrusIndex + 1} / ${INTRUS_SESSION.length}`;
@@ -3082,7 +2968,7 @@ function intrusShowQuestion() {
     promptCard.innerHTML = `<img src="${escapeHtml(imageSource(q.correct.image))}" alt="" style="max-width:100%;max-height:min(820px,74vh);display:block;" />`;
     $('intrus-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
       q.titleMode
-        ? `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title)} »</em></button>`
+        ? `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title || c.date || 'œuvre non titrée')} »</em></button>`
         : `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong></button>`
     ).join('')}</div>`;
     $('intrus-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
@@ -3125,14 +3011,15 @@ function intrusAnswer(chosenIndex) {
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value">« ${escapeHtml(q.correct.title)} »</span>`);
-  detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if (q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materials)}</span>`);
-  if (dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
-  detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
+  if (intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
+  if (intrusExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materials)}</span>`);
+  if (intrusExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
+  if (intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
   $('intrus-correction').classList.remove('hidden');
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
   $('intrus-next-button').textContent = intrusIndex === INTRUS_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
+  if (intrusAutoAdvance) intrusTimers.push(setTimeout(() => $('intrus-next-button')?.click(), intrusAutoAdvanceDelay));
 }
 
 $('intrus-next-button')?.addEventListener('click', async () => {
@@ -3146,6 +3033,7 @@ $('intrus-next-button')?.addEventListener('click', async () => {
         await db.collection('users').doc(currentUser.uid).collection('scores').add({
           type: 'entrainement',
           exerciseName: 'Intrus',
+          timeSpent: intrusTimer.stop(),
           correct: intrusCorrectCount, possible: INTRUS_SESSION.length,
           percent: Math.round((intrusCorrectCount / INTRUS_SESSION.length) * 100),
           questionCount: INTRUS_SESSION.length,
@@ -3429,4 +3317,17 @@ $('download-my-report-button')?.addEventListener('click', async () => {
   } finally {
     button.disabled = false; button.textContent = originalText;
   }
+});
+
+// Touche Entrée : clique le bouton d'action principal actuellement visible (Valider, Suivant,
+// Commencer…), pour avancer d'écran en écran sans toucher la souris. On laisse le clavier ouvrir
+// une nouvelle ligne si le joueur est dans un champ multi-ligne (aucun ici, mais par prudence),
+// et on n'intercepte rien si un menu déroulant ou un élément non pertinent a le focus.
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return;
+  if (event.target.tagName === 'TEXTAREA') return;
+  const visiblePanel = [...document.querySelectorAll('main.main-content > section')].find((s) => !s.classList.contains('hidden'));
+  if (!visiblePanel) return;
+  const candidate = [...visiblePanel.querySelectorAll('.primary-button:not(:disabled)')].find((btn) => btn.offsetParent !== null);
+  if (candidate) { event.preventDefault(); candidate.click(); }
 });

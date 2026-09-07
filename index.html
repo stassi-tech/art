@@ -91,11 +91,12 @@
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice d'imprégnation</h2></div>
           <p class="modal-hint" id="imp-objective" style="text-align:center;margin-top:0;">Une image apparaît, puis sa référence s'écrit progressivement pendant que la voix la lit — sans notation, juste pour vous en imprégner par la répétition.</p>
+          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="imp-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="imp-toggle-art">🎨 Choisissez votre art</button>
             <div class="accordion-body hidden" id="imp-body-art">
-              <label class="rubrique-option"><input type="checkbox" id="imp-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-art-sculpture" /><span>Sculpture</span></label>
             </div>
           </div>
@@ -111,7 +112,7 @@
                   <label class="rubrique-option"><input type="checkbox" id="imp-century-16e" /><span>16e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="imp-century-17e" /><span>17e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="imp-century-18e" /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-century-19e" checked /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="imp-century-19e" /><span>19e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="imp-century-20e" /><span>20e siècle</span></label>
                 </div>
                 <div>
@@ -129,7 +130,7 @@
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="imp-toggle-level">⭐ Choisissez votre niveau</button>
             <div class="accordion-body hidden" id="imp-body-level">
-              <label class="rubrique-option"><input type="checkbox" id="imp-level-1" checked /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-level-3" /><span>Niveau 3</span></label>
               <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
@@ -139,12 +140,12 @@
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="imp-toggle-rubriques">📝 Rubriques</button>
             <div class="accordion-body hidden" id="imp-body-rubriques">
-              <label class="rubrique-option"><input type="checkbox" id="imp-field-artist" checked /><span>Auteur</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="imp-field-title" checked /><span>Titre</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="imp-field-date" checked /><span>Date</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-artist" /><span>Auteur</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-title" /><span>Titre</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-date" /><span>Date</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-materiaux" /><span>Matériau</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-dimensions" /><span>Dimensions</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="imp-field-location" checked /><span>Lieu</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-location" /><span>Lieu</span></label>
             </div>
           </div>
 
@@ -174,6 +175,7 @@
         <section id="impregnation-panel" class="quiz-panel hidden">
           <div class="progress-row" id="imp-progress-row">
             <span id="imp-progress-label">Œuvre 1 / 10</span>
+            <span id="imp-timer" class="quiz-reference">⏱ 0:00</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="imp-progress-bar"></div></div>
           <div class="quiz-grid">
@@ -204,6 +206,7 @@
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Intrus</h2></div>
           <p class="modal-hint" id="intrus-objective" style="text-align:center;margin-top:0;">Retrouvez la bonne image ou la bonne référence parmi 3 propositions, sans vous laisser distraire par les intrus.</p>
+          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="intrus-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
           <div class="training-exercise-grid" style="grid-template-columns:1fr 1fr;margin-bottom:20px;">
             <button type="button" class="home-mode-button intrus-mode-btn" id="intrus-mode-image" data-mode="image">Images intruses</button>
@@ -213,7 +216,7 @@
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="intrus-toggle-art">🎨 Choisissez votre art</button>
             <div class="accordion-body hidden" id="intrus-body-art">
-              <label class="rubrique-option"><input type="checkbox" id="intrus-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-art-sculpture" /><span>Sculpture</span></label>
             </div>
           </div>
@@ -229,7 +232,7 @@
                   <label class="rubrique-option"><input type="checkbox" id="intrus-century-16e" /><span>16e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="intrus-century-17e" /><span>17e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="intrus-century-18e" /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-19e" checked /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-19e" /><span>19e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="intrus-century-20e" /><span>20e siècle</span></label>
                 </div>
                 <div>
@@ -247,7 +250,7 @@
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="intrus-toggle-level">⭐ Choisissez votre niveau</button>
             <div class="accordion-body hidden" id="intrus-body-level">
-              <label class="rubrique-option"><input type="checkbox" id="intrus-level-1" checked /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-level-3" /><span>Niveau 3</span></label>
               <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
@@ -263,6 +266,29 @@
             </div>
           </div>
 
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="intrus-toggle-rubriques">📝 Rubriques affichées en correction</button>
+            <div class="accordion-body hidden" id="intrus-body-rubriques">
+              <label class="rubrique-option"><input type="checkbox" id="intrus-field-date" /><span>Date</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-field-materiaux" /><span>Matériau</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-field-dimensions" /><span>Dimensions</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-field-location" /><span>Lieu</span></label>
+              <p class="modal-hint">Auteur et titre apparaissent toujours ; ces rubriques s'ajoutent à la référence complète en correction.</p>
+            </div>
+          </div>
+
+          <div class="opt-row">
+            <label><input type="checkbox" id="intrus-opt-autoadvance" /> Avancement automatique après correction</label>
+          </div>
+          <div class="opt-row" id="intrus-delay-row" style="display:none;">
+            <span>Délai avant de passer à la suite :</span>
+            <select id="intrus-opt-delay">
+              <option value="3000">3 s</option>
+              <option value="5000" selected>5 s</option>
+              <option value="8000">8 s</option>
+            </select>
+          </div>
+
           <div class="opt-row">
             <label><input type="checkbox" id="intrus-opt-audio" checked /> Lecture audio</label>
             <select id="intrus-opt-voice"><option value="">Chargement des voix…</option></select>
@@ -276,6 +302,7 @@
         <section id="intrus-panel" class="quiz-panel hidden">
           <div class="progress-row">
             <span><span id="intrus-title-label" class="quiz-reference"></span> — <span id="intrus-progress-label">Question 1 / 10</span></span>
+            <span id="intrus-timer" class="quiz-reference">⏱ 0:00</span>
             <span id="intrus-score-label" class="score-summary-highlight">0 / 0 réponse correcte</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="intrus-progress-bar"></div></div>
@@ -308,11 +335,12 @@
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Reconstitution</h2></div>
           <p class="modal-hint" id="recon-objective" style="text-align:center;margin-top:0;">Un détail très resserré de l'œuvre (moins de 10 % de la surface) apparaît ; retrouvez la référence complète parmi 3 choix.</p>
+          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="recon-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="recon-toggle-art">🎨 Choisissez votre art</button>
             <div class="accordion-body hidden" id="recon-body-art">
-              <label class="rubrique-option"><input type="checkbox" id="recon-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-art-sculpture" /><span>Sculpture</span></label>
             </div>
           </div>
@@ -328,7 +356,7 @@
                   <label class="rubrique-option"><input type="checkbox" id="recon-century-16e" /><span>16e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="recon-century-17e" /><span>17e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="recon-century-18e" /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-century-19e" checked /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="recon-century-19e" /><span>19e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="recon-century-20e" /><span>20e siècle</span></label>
                 </div>
                 <div>
@@ -346,7 +374,7 @@
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="recon-toggle-level">⭐ Choisissez votre niveau</button>
             <div class="accordion-body hidden" id="recon-body-level">
-              <label class="rubrique-option"><input type="checkbox" id="recon-level-1" checked /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-level-3" /><span>Niveau 3</span></label>
               <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
@@ -362,6 +390,29 @@
             </div>
           </div>
 
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="recon-toggle-rubriques">📝 Rubriques affichées en correction</button>
+            <div class="accordion-body hidden" id="recon-body-rubriques">
+              <label class="rubrique-option"><input type="checkbox" id="recon-field-date" /><span>Date</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-field-materiaux" /><span>Matériau</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-field-dimensions" /><span>Dimensions</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-field-location" /><span>Lieu</span></label>
+              <p class="modal-hint">Auteur et titre apparaissent toujours ; ces rubriques s'ajoutent à la référence complète en correction.</p>
+            </div>
+          </div>
+
+          <div class="opt-row">
+            <label><input type="checkbox" id="recon-opt-autoadvance" /> Avancement automatique après correction</label>
+          </div>
+          <div class="opt-row" id="recon-delay-row" style="display:none;">
+            <span>Délai avant de passer à la suite :</span>
+            <select id="recon-opt-delay">
+              <option value="3000">3 s</option>
+              <option value="5000" selected>5 s</option>
+              <option value="8000">8 s</option>
+            </select>
+          </div>
+
           <div class="opt-row">
             <label><input type="checkbox" id="recon-opt-audio" checked /> Lecture audio</label>
             <select id="recon-opt-voice"><option value="">Chargement des voix…</option></select>
@@ -375,6 +426,7 @@
         <section id="reconstitution-panel" class="quiz-panel hidden">
           <div class="progress-row">
             <span><span class="quiz-reference">Reconstitution</span> — <span id="recon-progress-label">Question 1 / 10</span></span>
+            <span id="recon-timer" class="quiz-reference">⏱ 0:00</span>
             <span id="recon-score-label" class="score-summary-highlight">0 / 0 réponse correcte</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="recon-progress-bar"></div></div>
@@ -405,12 +457,13 @@
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Vrai/Faux</h2></div>
           <p class="modal-hint" id="vf-objective" style="text-align:center;margin-top:0;">Une image apparaît avec sa référence. Elle est soit entièrement exacte, soit comporte <strong>au maximum deux</strong> éléments faux. Cochez « Faux » sur les rubriques que vous pensez erronées, puis validez.</p>
+          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="vf-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
           <p class="modal-hint" style="text-align:center;margin-top:0;">Barème exigeant : 1 point uniquement si vous repérez <strong>exactement</strong> toutes les erreurs réelles (ni oubli, ni fausse alerte) — 0 point sinon, même pour un repérage partiel.</p>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="vf-toggle-art">🎨 Choisissez votre art</button>
             <div class="accordion-body hidden" id="vf-body-art">
-              <label class="rubrique-option"><input type="checkbox" id="vf-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-art-sculpture" /><span>Sculpture</span></label>
             </div>
           </div>
@@ -426,7 +479,7 @@
                   <label class="rubrique-option"><input type="checkbox" id="vf-century-16e" /><span>16e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="vf-century-17e" /><span>17e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="vf-century-18e" /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-century-19e" checked /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="vf-century-19e" /><span>19e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="vf-century-20e" /><span>20e siècle</span></label>
                 </div>
                 <div>
@@ -444,7 +497,7 @@
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="vf-toggle-level">⭐ Choisissez votre niveau</button>
             <div class="accordion-body hidden" id="vf-body-level">
-              <label class="rubrique-option"><input type="checkbox" id="vf-level-1" checked /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-level-3" /><span>Niveau 3</span></label>
               <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
@@ -454,12 +507,12 @@
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="vf-toggle-rubriques">📝 Choisissez vos rubriques</button>
             <div class="accordion-body hidden" id="vf-body-rubriques">
-              <label class="rubrique-option"><input type="checkbox" id="vf-field-artist" checked /><span>Auteur</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="vf-field-title" checked /><span>Titre</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="vf-field-date" checked /><span>Date</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-artist" /><span>Auteur</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-title" /><span>Titre</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-date" /><span>Date</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-materiaux" /><span>Matériau</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-dimensions" /><span>Dimensions</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="vf-field-location" checked /><span>Lieu</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-location" /><span>Lieu</span></label>
               <p class="modal-hint">Si vous cochez Matériau et/ou Dimensions, les fausses références pourront aussi porter sur ces rubriques.</p>
             </div>
           </div>
@@ -486,6 +539,7 @@
         <section id="vraifaux-panel" class="quiz-panel hidden">
           <div class="progress-row">
             <span><span class="quiz-reference">Vrai/Faux</span> — <span id="vf-progress-label">Question 1 / 10</span></span>
+            <span id="vf-timer" class="quiz-reference">⏱ 0:00</span>
             <span id="vf-score-label" class="score-summary-highlight">0 point</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="vf-progress-bar"></div></div>
@@ -518,11 +572,12 @@
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Famille</h2></div>
           <p class="modal-hint" id="fam-objective" style="text-align:center;margin-top:0;">8 images apparaissent ; 4 sont du même artiste. Repérez-les et nommez l'artiste. Une fois validé, retrouvez aussi le titre de chacune des 4 œuvres.</p>
+          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="fam-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="fam-toggle-art">🎨 Choisissez votre art</button>
             <div class="accordion-body hidden" id="fam-body-art">
-              <label class="rubrique-option"><input type="checkbox" id="fam-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-art-sculpture" /><span>Sculpture</span></label>
             </div>
           </div>
@@ -537,8 +592,8 @@
                   <label class="rubrique-option"><input type="checkbox" id="fam-century-15e" /><span>15e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="fam-century-16e" /><span>16e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="fam-century-17e" /><span>17e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-century-18e" checked /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-century-19e" checked /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-century-18e" /><span>18e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="fam-century-19e" /><span>19e siècle</span></label>
                   <label class="rubrique-option"><input type="checkbox" id="fam-century-20e" /><span>20e siècle</span></label>
                 </div>
                 <div>
@@ -556,8 +611,8 @@
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="fam-toggle-level">⭐ Choisissez votre niveau</button>
             <div class="accordion-body hidden" id="fam-body-level">
-              <label class="rubrique-option"><input type="checkbox" id="fam-level-1" checked /><span>Niveau 1</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="fam-level-2" checked /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-level-1" /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-level-3" /><span>Niveau 3</span></label>
               <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
             </div>
@@ -587,6 +642,7 @@
         <section id="famille-panel" class="quiz-panel hidden">
           <div class="progress-row">
             <span><span class="quiz-reference">Famille</span> — <span id="fam-progress-label">Question 1 / 5</span></span>
+            <span id="fam-timer" class="quiz-reference">⏱ 0:00</span>
             <span id="fam-score-label" class="score-summary-highlight">0 point</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="fam-progress-bar"></div></div>
@@ -595,26 +651,12 @@
             <div class="artwork-column">
               <div id="fam-image-grid" class="fam-image-grid"></div>
             </div>
-            <section class="answer-card" aria-label="Artiste et titres">
+            <section class="answer-card" aria-label="Sélection">
               <div id="fam-step0">
                 <button type="button" class="primary-button" id="fam-validate-selection-button" style="width:100%">Valider ma sélection</button>
               </div>
-              <div id="fam-step1" class="hidden">
-                <h2 id="fam-step-title" style="font-family:Arial,sans-serif;font-size:1.15rem;font-weight:700;margin:0 0 12px;">Quel est le nom du peintre ?</h2>
-                <div style="display:flex;gap:8px;align-items:center;">
-                  <input type="text" id="fam-artist-input" placeholder="Nom de l'artiste" style="flex:1;padding:10px;border:1px solid #cfc8bc;border-radius:4px;font-family:Arial,sans-serif;font-size:.95rem;" />
-                  <button type="button" id="fam-artist-mic" class="mic-icon-button hidden" aria-label="Dicter la réponse">🎤</button>
-                </div>
-                <button type="button" class="primary-button" id="fam-validate-artist-button" style="width:100%;margin-top:14px;">Valider l'artiste</button>
-              </div>
-              <div id="fam-step2" class="hidden">
-                <p class="modal-hint" style="margin-top:0;">Glissez chaque étiquette jusqu'à la barre du bon tableau (ou touchez l'étiquette puis la barre).</p>
-                <div id="fam-title-rows"></div>
-                <p class="modal-subheading">Étiquettes à placer</p>
-                <div id="fam-title-labels"></div>
-                <button type="button" class="primary-button" id="fam-validate-titles-button" style="width:100%;margin-top:14px;">Valider les titres</button>
-              </div>
               <div id="fam-correction" class="hidden">
+                <p id="fam-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.3rem;margin:0 0 16px;"></p>
                 <button type="button" class="primary-button" id="fam-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
@@ -632,11 +674,12 @@
           </div>
           <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Énigme</h2></div>
           <p class="modal-hint" id="enig-objective" style="text-align:center;margin-top:0;">L'artiste, la date et le lieu sont donnés d'emblée (le titre reste caché). À vous de retrouver un élément : les personnages représentés, l'événement, ou l'interprétation de l'œuvre.</p>
+          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="enig-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="enig-toggle-art">🎨 Choisissez votre art</button>
             <div class="accordion-body hidden" id="enig-body-art">
-              <label class="rubrique-option"><input type="checkbox" id="enig-art-peinture" checked /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="enig-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="enig-art-sculpture" /><span>Sculpture</span></label>
             </div>
           </div>
@@ -646,9 +689,9 @@
             <div class="accordion-body hidden" id="enig-body-century">
               <label class="rubrique-option"><input type="checkbox" id="enig-century-15e" /><span>15e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="enig-century-16e" /><span>16e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-17e" checked /><span>17e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-18e" checked /><span>18e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-19e" checked /><span>19e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="enig-century-17e" /><span>17e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="enig-century-18e" /><span>18e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="enig-century-19e" /><span>19e siècle</span></label>
               <p class="modal-hint">Seuls les siècles pour lesquels des énigmes existent seront réellement proposés.</p>
             </div>
           </div>
@@ -675,6 +718,7 @@
         <section id="enigme-panel" class="quiz-panel hidden">
           <div class="progress-row">
             <span><span class="quiz-reference">Énigme</span> — <span id="enig-progress-label">Question 1 / 5</span></span>
+            <span id="enig-timer" class="quiz-reference">⏱ 0:00</span>
             <span id="enig-score-label" class="score-summary-highlight">0 point</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="enig-progress-bar"></div></div>
