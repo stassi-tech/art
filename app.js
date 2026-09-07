@@ -2854,26 +2854,31 @@ const INTRUS_STOPWORDS = new Set(['le', 'la', 'les', 'de', 'du', 'des', 'un', 'u
 function intrusTitleWords(title) {
   return String(title || '').toLowerCase().replace(/[«»"',.]/g, '').split(/\s+/).filter((w) => w.length > 3 && !INTRUS_STOPWORDS.has(w));
 }
-function pickIntrusDistractors(correct, pool) {
+function pickIntrusDistractors(correct, pool, requireDistinctArtist) {
   // Rendre le choix plus exigeant : on préfère des intrus qui partagent un mot significatif du
   // titre (ex. « paysage »), sinon des œuvres d'un AUTRE artiste (pour ne pas trivialiser un
   // choix limité au nom du peintre), sinon n'importe quoi d'autre du réservoir.
   const contentKey = (r) => `${famNormalize(r.artist)}|${famNormalize(r.title)}`;
   const correctKey = contentKey(correct);
   const usedKeys = new Set([correctKey]);
+  const usedArtists = new Set([famNormalize(correct.artist)]);
   const correctWords = new Set(intrusTitleWords(correct.title));
   // On exclut d'emblée les œuvres sans titre exploitable (choix ambigu, illisible dans la liste)
   // et tout doublon de contenu (même couple auteur+titre, même si ce sont deux lignes distinctes).
-  const others = pool.filter((r) => r !== correct && r.title && r.title.trim() && contentKey(r) !== correctKey);
+  let others = pool.filter((r) => r !== correct && r.title && r.title.trim() && contentKey(r) !== correctKey);
+  // Quand seul le nom de l'artiste sera affiché (pas de titre pour distinguer), il FAUT trois
+  // artistes différents, sinon deux « Monet » pourraient se retrouver face à face.
+  if (requireDistinctArtist) others = others.filter((r) => !usedArtists.has(famNormalize(r.artist)));
   let candidates = correctWords.size ? others.filter((r) => intrusTitleWords(r.title).some((w) => correctWords.has(w))) : [];
   const picked = [];
   const drawFrom = (list) => {
-    const copy = list.filter((r) => !picked.includes(r) && !usedKeys.has(contentKey(r)));
+    const copy = list.filter((r) => !picked.includes(r) && !usedKeys.has(contentKey(r)) && (!requireDistinctArtist || !usedArtists.has(famNormalize(r.artist))));
     while (picked.length < 2 && copy.length) {
       const idx = Math.floor(Math.random() * copy.length);
       const chosen = copy.splice(idx, 1)[0];
       picked.push(chosen);
       usedKeys.add(contentKey(chosen));
+      usedArtists.add(famNormalize(chosen.artist));
     }
   };
   drawFrom(candidates);
@@ -2918,12 +2923,14 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     intrusAutoAdvanceDelay = Number($('intrus-opt-delay').value);
     intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`intrus-field-${k}`)?.checked);
     INTRUS_SESSION = pool.slice(0, count).map((correct) => {
-      const distractors = pickIntrusDistractors(correct, pool);
+      // En mode « Références intruses », on ne montre le plus souvent que le nom de l'artiste (le
+      // cas le plus fréquent et le plus exigeant), et parfois artiste + titre pour varier. Sans
+      // titre affiché, il faut impérativement 3 artistes différents pour éviter deux choix
+      // identiques (ex. deux « Monet »).
+      const titleMode = intrusMode === 'reference' ? Math.random() < 0.3 : true;
+      const distractors = pickIntrusDistractors(correct, pool, intrusMode === 'reference' && !titleMode);
       const choices = [correct, ...distractors];
       for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [choices[i], choices[j]] = [choices[j], choices[i]]; }
-      // En mode « Références intruses », on ne montre le plus souvent que le nom du peintre (le
-      // cas le plus fréquent et le plus exigeant), et parfois artiste + titre pour varier.
-      const titleMode = Math.random() < 0.3;
       return { correct, choices, titleMode };
     });
     intrusIndex = 0; intrusCorrectCount = 0;
