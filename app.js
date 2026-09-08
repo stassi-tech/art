@@ -384,14 +384,12 @@ async function deleteScore(docId) {
 }
 $('account-page-button')?.addEventListener('click', () => { showPanel('profile'); initProfilePage(); });
 $('profile-back-button')?.addEventListener('click', () => showPanel('welcome'));
-$('account-back-to-profile-button')?.addEventListener('click', () => showPanel('profile'));
-$('profile-go-scores-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
-
-// --- Bascule entre les 3 sections de la page « Mon compte » ---
+// --- Bascule entre les 2 sections restantes (technique/champs), et accès direct aux scores ---
 document.querySelectorAll('.profile-menu-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
+    if (btn.id === 'profile-menu-scores') { showPanel('account'); loadAccountPage(); return; }
     document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
-    ['profile-section-tech', 'profile-section-fields', 'profile-section-scores'].forEach((id) => {
+    ['profile-section-tech', 'profile-section-fields'].forEach((id) => {
       $(id)?.classList.toggle('hidden', id !== btn.dataset.target);
     });
   });
