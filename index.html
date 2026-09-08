@@ -16,6 +16,8 @@
       <button type="button" id="global-home-button" class="global-topbar-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
       <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
       <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
+      <button type="button" id="global-tech-settings-button" class="global-topbar-button" aria-label="Options techniques" title="Options techniques (voix, chronomètre, entrée…)">⚙</button>
+      <button type="button" id="global-field-settings-button" class="global-topbar-button" aria-label="Options de champs" title="Options de champs (siècle, niveau…)">📝</button>
       <div class="hamburger-menu hidden" id="hamburger-menu">
         <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Le fonctionnement des quiz</button>
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 La liste des artistes</button>
@@ -75,6 +77,11 @@
 
           <p class="intro-banner">Choisissez un exercice d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même (art, siècle, niveau). Les exercices sont classés par ordre croissant de difficulté, de gauche à droite puis de haut en bas.</p>
 
+          <div id="training-resume-banner" class="hidden" style="background:#eef2f6;border:1px solid var(--accent);border-radius:6px;padding:14px;margin-bottom:16px;text-align:center;">
+            <p style="margin:0 0 10px;font-family:Arial,sans-serif;font-size:.9rem;" id="training-resume-text"></p>
+            <button type="button" class="primary-button" id="training-resume-button" style="width:100%">▶ Reprendre avec les mêmes réglages</button>
+          </div>
+
           <div class="training-exercise-grid">
             <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="label">Imprégnation</span></button>
             <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="label">Intrus</span></button>
@@ -95,7 +102,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="imp-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body hidden" id="imp-body-art">
+            <div class="accordion-body" id="imp-body-art">
               <label class="rubrique-option"><input type="checkbox" id="imp-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-art-sculpture" /><span>Sculpture</span></label>
             </div>
@@ -103,7 +110,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="imp-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body hidden" id="imp-body-century">
+            <div class="accordion-body" id="imp-body-century">
               <div class="accordion-columns">
                 <div>
                   <p class="modal-subheading" style="margin-top:0">Siècle</p>
@@ -129,7 +136,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="imp-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body hidden" id="imp-body-level">
+            <div class="accordion-body" id="imp-body-level">
               <label class="rubrique-option"><input type="checkbox" id="imp-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-level-3" /><span>Niveau 3</span></label>
@@ -139,7 +146,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="imp-toggle-rubriques">📝 Rubriques</button>
-            <div class="accordion-body hidden" id="imp-body-rubriques">
+            <div class="accordion-body" id="imp-body-rubriques">
               <label class="rubrique-option"><input type="checkbox" id="imp-field-artist" /><span>Auteur</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-title" /><span>Titre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-date" /><span>Date</span></label>
@@ -164,6 +171,8 @@
             </select>
           </div>
 
+          <div class="opt-row"><label><input type="checkbox" id="imp-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
+          <div class="opt-row"><label><input type="checkbox" id="imp-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
           <button type="button" class="primary-button" id="imp-start-button" style="width:100%">Commencer</button>
           <p id="imp-setup-feedback" class="hint hidden"></p>
         </section>
@@ -211,7 +220,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="intrus-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body hidden" id="intrus-body-art">
+            <div class="accordion-body" id="intrus-body-art">
               <label class="rubrique-option"><input type="checkbox" id="intrus-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-art-sculpture" /><span>Sculpture</span></label>
             </div>
@@ -219,7 +228,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="intrus-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body hidden" id="intrus-body-century">
+            <div class="accordion-body" id="intrus-body-century">
               <div class="accordion-columns">
                 <div>
                   <p class="modal-subheading" style="margin-top:0">Siècle</p>
@@ -245,7 +254,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="intrus-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body hidden" id="intrus-body-level">
+            <div class="accordion-body" id="intrus-body-level">
               <label class="rubrique-option"><input type="checkbox" id="intrus-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-level-3" /><span>Niveau 3</span></label>
@@ -255,7 +264,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="intrus-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body hidden" id="intrus-body-count">
+            <div class="accordion-body" id="intrus-body-count">
               <label class="rubrique-option"><input type="radio" name="intrus-count" value="10" checked /><span>10 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="intrus-count" value="20" /><span>20 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="intrus-count" value="max" /><span>Maximum disponible</span></label>
@@ -264,7 +273,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="intrus-toggle-rubriques">📝 Rubriques affichées en correction</button>
-            <div class="accordion-body hidden" id="intrus-body-rubriques">
+            <div class="accordion-body" id="intrus-body-rubriques">
               <label class="rubrique-option"><input type="checkbox" id="intrus-field-date" /><span>Date</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-field-materiaux" /><span>Matériau</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-field-dimensions" /><span>Dimensions</span></label>
@@ -285,6 +294,8 @@
             </select>
           </div>
 
+          <div class="opt-row"><label><input type="checkbox" id="intrus-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
+          <div class="opt-row"><label><input type="checkbox" id="intrus-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
           <button type="button" class="primary-button" id="intrus-start-button" style="width:100%">Commencer</button>
           <p id="intrus-setup-feedback" class="hint hidden"></p>
           <button type="button" class="secondary-button" id="intrus-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
@@ -330,7 +341,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="recon-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body hidden" id="recon-body-art">
+            <div class="accordion-body" id="recon-body-art">
               <label class="rubrique-option"><input type="checkbox" id="recon-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-art-sculpture" /><span>Sculpture</span></label>
             </div>
@@ -338,7 +349,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="recon-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body hidden" id="recon-body-century">
+            <div class="accordion-body" id="recon-body-century">
               <div class="accordion-columns">
                 <div>
                   <p class="modal-subheading" style="margin-top:0">Siècle</p>
@@ -364,7 +375,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="recon-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body hidden" id="recon-body-level">
+            <div class="accordion-body" id="recon-body-level">
               <label class="rubrique-option"><input type="checkbox" id="recon-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-level-3" /><span>Niveau 3</span></label>
@@ -374,7 +385,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="recon-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body hidden" id="recon-body-count">
+            <div class="accordion-body" id="recon-body-count">
               <label class="rubrique-option"><input type="radio" name="recon-count" value="10" checked /><span>10 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="recon-count" value="20" /><span>20 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="recon-count" value="max" /><span>Maximum disponible</span></label>
@@ -383,7 +394,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="recon-toggle-rubriques">📝 Rubriques affichées en correction</button>
-            <div class="accordion-body hidden" id="recon-body-rubriques">
+            <div class="accordion-body" id="recon-body-rubriques">
               <label class="rubrique-option"><input type="checkbox" id="recon-field-date" /><span>Date</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-field-materiaux" /><span>Matériau</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-field-dimensions" /><span>Dimensions</span></label>
@@ -404,6 +415,8 @@
             </select>
           </div>
 
+          <div class="opt-row"><label><input type="checkbox" id="recon-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
+          <div class="opt-row"><label><input type="checkbox" id="recon-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
           <button type="button" class="primary-button" id="recon-start-button" style="width:100%">Commencer</button>
           <p id="recon-setup-feedback" class="hint hidden"></p>
           <button type="button" class="secondary-button" id="recon-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
@@ -448,7 +461,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="vf-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body hidden" id="vf-body-art">
+            <div class="accordion-body" id="vf-body-art">
               <label class="rubrique-option"><input type="checkbox" id="vf-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-art-sculpture" /><span>Sculpture</span></label>
             </div>
@@ -456,7 +469,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="vf-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body hidden" id="vf-body-century">
+            <div class="accordion-body" id="vf-body-century">
               <div class="accordion-columns">
                 <div>
                   <p class="modal-subheading" style="margin-top:0">Siècle</p>
@@ -482,7 +495,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="vf-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body hidden" id="vf-body-level">
+            <div class="accordion-body" id="vf-body-level">
               <label class="rubrique-option"><input type="checkbox" id="vf-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-level-3" /><span>Niveau 3</span></label>
@@ -492,7 +505,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="vf-toggle-rubriques">📝 Choisissez vos rubriques</button>
-            <div class="accordion-body hidden" id="vf-body-rubriques">
+            <div class="accordion-body" id="vf-body-rubriques">
               <label class="rubrique-option"><input type="checkbox" id="vf-field-artist" /><span>Auteur</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-title" /><span>Titre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-date" /><span>Date</span></label>
@@ -505,13 +518,15 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="vf-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body hidden" id="vf-body-count">
+            <div class="accordion-body" id="vf-body-count">
               <label class="rubrique-option"><input type="radio" name="vf-count" value="10" checked /><span>10 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="vf-count" value="20" /><span>20 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="vf-count" value="max" /><span>Maximum disponible</span></label>
             </div>
           </div>
 
+          <div class="opt-row"><label><input type="checkbox" id="vf-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
+          <div class="opt-row"><label><input type="checkbox" id="vf-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
           <button type="button" class="primary-button" id="vf-start-button" style="width:100%">Commencer</button>
           <p id="vf-setup-feedback" class="hint hidden"></p>
           <button type="button" class="secondary-button" id="vf-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
@@ -557,7 +572,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="fam-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body hidden" id="fam-body-art">
+            <div class="accordion-body" id="fam-body-art">
               <label class="rubrique-option"><input type="checkbox" id="fam-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-art-sculpture" /><span>Sculpture</span></label>
             </div>
@@ -565,7 +580,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="fam-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body hidden" id="fam-body-century">
+            <div class="accordion-body" id="fam-body-century">
               <div class="accordion-columns">
                 <div>
                   <p class="modal-subheading" style="margin-top:0">Siècle</p>
@@ -591,7 +606,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="fam-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body hidden" id="fam-body-level">
+            <div class="accordion-body" id="fam-body-level">
               <label class="rubrique-option"><input type="checkbox" id="fam-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-level-3" /><span>Niveau 3</span></label>
@@ -601,7 +616,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="fam-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body hidden" id="fam-body-count">
+            <div class="accordion-body" id="fam-body-count">
               <label class="rubrique-option"><input type="radio" name="fam-count" value="5" checked /><span>5 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="fam-count" value="10" /><span>10 questions</span></label>
               <p class="modal-subheading" style="margin-top:14px;">Nombre d'images par question</p>
@@ -610,6 +625,8 @@
             </div>
           </div>
 
+          <div class="opt-row"><label><input type="checkbox" id="fam-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
+          <div class="opt-row"><label><input type="checkbox" id="fam-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
           <button type="button" class="primary-button" id="fam-start-button" style="width:100%">Commencer</button>
           <p id="fam-setup-feedback" class="hint hidden"></p>
           <button type="button" class="secondary-button" id="fam-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
@@ -654,7 +671,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="enig-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body hidden" id="enig-body-art">
+            <div class="accordion-body" id="enig-body-art">
               <label class="rubrique-option"><input type="checkbox" id="enig-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="enig-art-sculpture" /><span>Sculpture</span></label>
             </div>
@@ -662,7 +679,7 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="enig-toggle-century">🏛️ Choisissez votre siècle</button>
-            <div class="accordion-body hidden" id="enig-body-century">
+            <div class="accordion-body" id="enig-body-century">
               <label class="rubrique-option"><input type="checkbox" id="enig-century-15e" /><span>15e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="enig-century-16e" /><span>16e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="enig-century-17e" /><span>17e siècle</span></label>
@@ -674,12 +691,14 @@
 
           <div class="accordion-group">
             <button type="button" class="accordion-toggle" id="enig-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body hidden" id="enig-body-count">
+            <div class="accordion-body" id="enig-body-count">
               <label class="rubrique-option"><input type="radio" name="enig-count" value="5" checked /><span>5 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="enig-count" value="10" /><span>10 questions</span></label>
             </div>
           </div>
 
+          <div class="opt-row"><label><input type="checkbox" id="enig-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
+          <div class="opt-row"><label><input type="checkbox" id="enig-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
           <button type="button" class="primary-button" id="enig-start-button" style="width:100%">Commencer</button>
           <p id="enig-setup-feedback" class="hint hidden"></p>
           <p class="modal-hint" style="text-align:center;">Module en cours de constitution : quelques énigmes de démonstration en attendant votre fichier de données.</p>
@@ -730,7 +749,7 @@
 
           <div class="accordion-group" id="accordion-art">
             <button type="button" class="accordion-toggle" id="toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body hidden" id="body-art">
+            <div class="accordion-body" id="body-art">
               <label class="rubrique-option"><input type="checkbox" id="art-peinture" /><span title="Tableaux, fresques, retables…">Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="art-sculpture" /><span title="Statues, bustes, bas-reliefs…">Sculpture</span></label>
             </div>
@@ -738,7 +757,7 @@
 
           <div class="accordion-group" id="accordion-century">
             <button type="button" class="accordion-toggle" id="toggle-century">🏛️ Choisissez votre siècle et votre zone géographique</button>
-            <div class="accordion-body hidden" id="body-century">
+            <div class="accordion-body" id="body-century">
               <div class="accordion-columns">
                 <div class="accordion-col">
                   <p class="modal-subheading" style="margin-top:0">🏛️ Siècle</p>
@@ -764,7 +783,7 @@
 
           <div class="accordion-group" id="accordion-rubriques">
             <button type="button" class="accordion-toggle" id="toggle-rubriques">📝 Choisissez vos rubriques</button>
-            <div class="accordion-body hidden" id="body-rubriques">
+            <div class="accordion-body" id="body-rubriques">
               <label class="rubrique-option"><input type="checkbox" id="rubrique-artist" /><span title="Nom du peintre ou du sculpteur">Artiste</span></label>
               <label class="rubrique-option"><input type="checkbox" id="rubrique-title" /><span title="Titre exact de l'œuvre">Titre de l'œuvre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="rubrique-date" /><span title="Année ou période de création">Date de création</span></label>
@@ -775,7 +794,7 @@
 
           <div class="accordion-group" id="accordion-level">
             <button type="button" class="accordion-toggle" id="toggle-level">⭐ Choisissez votre niveau et votre nombre de questions</button>
-            <div class="accordion-body hidden" id="body-level">
+            <div class="accordion-body" id="body-level">
               <div class="accordion-columns">
                 <div class="accordion-col">
                   <p class="modal-subheading" style="margin-top:0">⭐ Niveau</p>
@@ -837,6 +856,66 @@
           </div>
         </div>
 
+        <div class="modal-overlay hidden" id="modal-tech-settings">
+          <div class="modal-box">
+            <h3>⚙ Options techniques</h3>
+            <label class="rubrique-option"><input type="checkbox" id="quick-pref-show-timer" /><span>Afficher le chronomètre dans les exercices</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="quick-pref-enter-validate" /><span>Valider avec la touche Entrée</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="quick-pref-remember-selection" /><span>Mémoriser ma dernière sélection d'options</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="quick-pref-show-explanations" /><span>Afficher les explications d'exercice (texte et voix)</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="quick-pref-audio" /><span>Lecture audio (voix de synthèse)</span></label>
+            <div class="opt-row">
+              <span>Voix utilisée :</span>
+              <select id="quick-pref-voice"><option value="">Chargement des voix…</option></select>
+            </div>
+            <div class="opt-row">
+              <span>Position des boutons de champ :</span>
+              <select id="quick-pref-handedness">
+                <option value="right">Droite (droitier)</option>
+                <option value="left">Gauche (gaucher)</option>
+              </select>
+            </div>
+            <div class="opt-row">
+              <span>Avancement par défaut :</span>
+              <select id="quick-pref-advance">
+                <option value="manual">Clic personnel</option>
+                <option value="auto">Défilement automatique</option>
+              </select>
+            </div>
+            <div class="opt-row" id="quick-pref-delay-row">
+              <span>Délai avant le défilement :</span>
+              <select id="quick-pref-delay">
+                <option value="3000">3 s</option>
+                <option value="5000" selected>5 s</option>
+                <option value="8000">8 s</option>
+              </select>
+            </div>
+            <p class="modal-hint">Ces réglages s'appliquent à tous les exercices d'entraînement et, pour certains, au quiz.</p>
+            <button type="button" class="primary-button modal-close" data-modal="modal-tech-settings">Fermer</button>
+          </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="modal-field-settings">
+          <div class="modal-box">
+            <h3>📝 Options de champs par défaut</h3>
+            <p class="modal-hint" style="margin-top:0;">Ces deux critères existent dans tous les exercices — les régler ici les propose par défaut partout (chaque exercice reste modifiable individuellement ensuite).</p>
+            <p class="modal-subheading" style="margin-top:0;">Siècle</p>
+            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="14e" /><span>14e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="15e" /><span>15e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="16e" /><span>16e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="17e" /><span>17e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="18e" /><span>18e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="19e" /><span>19e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="20e" /><span>20e siècle</span></label>
+            <p class="modal-subheading">Niveau</p>
+            <label class="rubrique-option"><input type="checkbox" class="quick-field-level" value="1" /><span>Niveau 1</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="quick-field-level" value="2" /><span>Niveau 2</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="quick-field-level" value="3" /><span>Niveau 3</span></label>
+            <button type="button" class="primary-button" id="quick-field-apply-button" style="width:100%;margin-top:14px;">Appliquer à tous les exercices</button>
+            <button type="button" class="secondary-button modal-close" data-modal="modal-field-settings" style="width:100%;margin-top:10px;">Fermer sans appliquer</button>
+          </div>
+        </div>
+
         <div class="modal-overlay hidden" id="modal-artist-list">
           <div class="modal-box">
             <h3>Liste des artistes</h3>
@@ -891,6 +970,7 @@
         <section id="quiz-panel" class="quiz-panel hidden" aria-live="polite">
           <div class="progress-row" id="quiz-progress-row">
             <span id="quiz-reference" class="quiz-reference"></span>
+            <span id="quiz-timer" class="quiz-reference">⏱ 0:00</span>
             <span id="score-summary" class="score-summary-highlight">0 / 0 réponse correcte</span>
           </div>
           <div class="progress-track" id="quiz-progress-track"><div id="progress-bar" class="progress-bar"></div></div>
@@ -985,7 +1065,7 @@
 
           <div class="accordion-group" style="max-width:560px;margin:0 auto 20px;text-align:left;">
             <button type="button" class="accordion-toggle" id="settings-toggle">⚙ Mes paramètres (voix, chronomètre, entrée…)</button>
-            <div class="accordion-body hidden" id="settings-body">
+            <div class="accordion-body" id="settings-body">
               <label class="rubrique-option"><input type="checkbox" id="pref-show-timer" checked /><span>Afficher le chronomètre dans les exercices</span></label>
               <label class="rubrique-option"><input type="checkbox" id="pref-enter-validate" checked /><span>Valider avec la touche Entrée</span></label>
               <label class="rubrique-option"><input type="checkbox" id="pref-remember-selection" checked /><span>Mémoriser ma dernière sélection d'options</span></label>

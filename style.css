@@ -241,6 +241,11 @@ body.lefty .hamburger-menu { right:auto; left:0; }
 .quiz-topbar { display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px; }
 .hidden { display:none !important; }.quiz-reference { margin:0; font-family:Arial,sans-serif; font-size:.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }.progress-row { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-family:Arial,sans-serif; font-size:.88rem; color:var(--muted); }.score-summary-highlight { color:#c0392b; font-weight:800; font-size:1rem; white-space:nowrap; }.progress-track { height:7px; overflow:hidden; margin:10px 0 20px; background:#ddd7cd; border-radius:10px; }.progress-bar { height:100%; width:0; background:var(--accent); transition:width .25s; }
 .quiz-grid { display:grid; grid-template-columns:minmax(0,1.9fr) minmax(340px,.6fr); background:var(--paper); box-shadow:0 14px 35px rgba(54,45,31,.1); border-radius:8px; overflow:hidden; }
+/* Gaucher : l'image passe à droite, la marge de réponses/références à gauche — dans tous les
+   exercices, puisqu'ils partagent tous la même structure .artwork-column + .answer-card. */
+body.lefty .quiz-grid { grid-template-columns:minmax(340px,.6fr) minmax(0,1.9fr); }
+body.lefty .quiz-grid .artwork-column { order:2; }
+body.lefty .quiz-grid .answer-card { order:1; }
 .artwork-column { display:flex; flex-direction:column; min-width:0; }
 .artwork-card { position:relative; min-height:min(640px, 72vh); max-height:80vh; margin:0; padding:22px; background:#1b1c1e; display:flex; align-items:center; justify-content:center; transition:min-height .2s; }
 .artwork-card img { display:block; max-width:100%; max-height:min(820px, 74vh); width:auto; height:auto; object-fit:contain; }

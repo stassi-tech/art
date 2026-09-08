@@ -160,6 +160,7 @@ async function saveCurrentScore() {
       quizCenturies: config.centuries || [],
       quizRubriques: config.rubriques || [],
       perField,
+      timeSpent: quizTimer.stop(),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     if (statusEl) { statusEl.textContent = 'Score enregistré automatiquement sur votre compte.'; statusEl.classList.remove('hidden'); }
@@ -417,7 +418,7 @@ const voiceSupported = Boolean(SpeechRecognitionImpl);
 // PARAMÈTRES GLOBAUX (voix, chronomètre, touche Entrée, mémorisation) — communs à tous les
 // exercices d'entraînement, réglables depuis « Mon compte ».
 // ============================================================
-const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '' };
+const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '', showExplanations: true, defaultAdvance: 'manual', defaultDelay: 5000 };
 function getGlobalPrefs() {
   try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem('globalExercisePrefs') || '{}') }; }
   catch (e) { return { ...DEFAULT_PREFS }; }
@@ -461,7 +462,74 @@ function initGlobalPrefsUI() {
 }
 initGlobalPrefsUI();
 
+// --- Modale rapide « Options techniques », accessible depuis n'importe quelle page ---
+$('global-tech-settings-button')?.addEventListener('click', () => {
+  const prefs = getGlobalPrefs();
+  $('quick-pref-show-timer').checked = prefs.showTimer;
+  $('quick-pref-enter-validate').checked = prefs.enterValidate;
+  $('quick-pref-remember-selection').checked = prefs.rememberSelection;
+  $('quick-pref-show-explanations').checked = prefs.showExplanations;
+  $('quick-pref-audio').checked = prefs.audioOn;
+  $('quick-pref-handedness').value = document.body.classList.contains('lefty') ? 'left' : 'right';
+  $('quick-pref-advance').value = prefs.defaultAdvance;
+  $('quick-pref-delay').value = String(prefs.defaultDelay);
+  $('quick-pref-delay-row').style.display = prefs.defaultAdvance === 'auto' ? 'flex' : 'none';
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  $('quick-pref-voice').innerHTML = voices.length
+    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    : '<option value="">Voix par défaut du système</option>';
+  openModal('modal-tech-settings');
+});
+$('quick-pref-show-timer')?.addEventListener('change', () => setGlobalPref('showTimer', $('quick-pref-show-timer').checked));
+$('quick-pref-enter-validate')?.addEventListener('change', () => setGlobalPref('enterValidate', $('quick-pref-enter-validate').checked));
+$('quick-pref-remember-selection')?.addEventListener('change', () => setGlobalPref('rememberSelection', $('quick-pref-remember-selection').checked));
+$('quick-pref-show-explanations')?.addEventListener('change', () => setGlobalPref('showExplanations', $('quick-pref-show-explanations').checked));
+$('quick-pref-audio')?.addEventListener('change', () => setGlobalPref('audioOn', $('quick-pref-audio').checked));
+$('quick-pref-voice')?.addEventListener('change', () => setGlobalPref('voiceName', $('quick-pref-voice').value));
+$('quick-pref-handedness')?.addEventListener('change', () => {
+  const lefty = $('quick-pref-handedness').value === 'left';
+  localStorage.setItem('handedness', lefty ? 'lefty' : 'righty');
+  applyHandedness(lefty);
+});
+$('quick-pref-advance')?.addEventListener('change', () => {
+  setGlobalPref('defaultAdvance', $('quick-pref-advance').value);
+  $('quick-pref-delay-row').style.display = $('quick-pref-advance').value === 'auto' ? 'flex' : 'none';
+});
+$('quick-pref-delay')?.addEventListener('change', () => setGlobalPref('defaultDelay', Number($('quick-pref-delay').value)));
+
+// --- Modale rapide « Options de champs », accessible depuis n'importe quelle page ---
+$('global-field-settings-button')?.addEventListener('click', () => {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) {}
+  document.querySelectorAll('.quick-field-century').forEach((el) => { el.checked = (saved.centuries || []).includes(el.value); });
+  document.querySelectorAll('.quick-field-level').forEach((el) => { el.checked = (saved.levels || []).includes(el.value); });
+  openModal('modal-field-settings');
+});
+$('quick-field-apply-button')?.addEventListener('click', () => {
+  const centuries = [...document.querySelectorAll('.quick-field-century:checked')].map((el) => el.value);
+  const levels = [...document.querySelectorAll('.quick-field-level:checked')].map((el) => el.value);
+  localStorage.setItem('globalFieldDefaults', JSON.stringify({ centuries, levels }));
+  // Applique immédiatement à toutes les pages de configuration déjà présentes dans le DOM.
+  const prefixes = ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'];
+  prefixes.forEach((p) => {
+    document.querySelectorAll(`[id^="${p}-century-"]`).forEach((el) => {
+      const val = el.id.replace(`${p}-century-`, '');
+      if (centuries.length) el.checked = centuries.includes(val);
+    });
+    document.querySelectorAll(`[id^="${p}-level-"]`).forEach((el) => {
+      const val = el.id.replace(`${p}-level-`, '');
+      if (levels.length) el.checked = levels.includes(val);
+    });
+  });
+  closeModal('modal-field-settings');
+});
+
 function speakObjective(elementId) {
+  const el = $(`${elementId}-objective`);
+  const showExplanations = getGlobalPrefs().showExplanations;
+  // Le réglage global « Afficher les explications » masque le texte ET coupe la voix.
+  el?.classList.toggle('hidden', !showExplanations);
+  if (!showExplanations) return;
   // elementId est le préfixe (« imp », « vf »…) — la case « Ne plus entendre » est mémorisée sur
   // l'appareil, sur ce même préfixe, pour ne pas lasser à force de rejouer.
   const skipCheckbox = $(`${elementId}-opt-skip-objective`);
@@ -471,8 +539,7 @@ function speakObjective(elementId) {
       localStorage.setItem(`skipObjective_${elementId}`, skipCheckbox.checked ? 'true' : 'false');
     }, { once: true });
   }
-  if (!window.speechSynthesis) return;
-  const el = $(`${elementId}-objective`);
+  if (!window.speechSynthesis || !getGlobalPrefs().audioOn) return;
   if (!el) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(el.textContent);
@@ -482,6 +549,43 @@ function speakObjective(elementId) {
 
 // Chronomètre partagé : affiche le temps écoulé en direct, renvoie la durée totale (en
 // secondes) à l'arrêt, pour l'enregistrer avec le score.
+// « Étendre à tous les exercices » : reporte le siècle/niveau choisis ici sur les 5 autres
+// panneaux de configuration (mêmes cases à cocher, mêmes identifiants dans chaque exercice).
+// « Mémoriser pour mes prochaines sessions » : propose une reprise en un clic au prochain
+// passage par le menu des exercices d'entraînement (voir buildTrainingHubResume).
+function handleExtendAndRemember(prefix, panelId) {
+  const extendAll = $(`${prefix}-extend-all`)?.checked;
+  const remember = $(`${prefix}-remember-session`)?.checked;
+  if (extendAll) {
+    const centuries = [...document.querySelectorAll(`#${panelId} [id^="${prefix}-century-"]:checked`)].map((el) => el.id.replace(`${prefix}-century-`, ''));
+    const levels = [...document.querySelectorAll(`#${panelId} [id^="${prefix}-level-"]:checked`)].map((el) => el.id.replace(`${prefix}-level-`, ''));
+    localStorage.setItem('globalFieldDefaults', JSON.stringify({ centuries, levels }));
+    const prefixes = ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'];
+    prefixes.forEach((other) => {
+      if (other === prefix) return;
+      document.querySelectorAll(`[id^="${other}-century-"]`).forEach((el) => { if (centuries.length) el.checked = centuries.includes(el.id.replace(`${other}-century-`, '')); });
+      document.querySelectorAll(`[id^="${other}-level-"]`).forEach((el) => { if (levels.length) el.checked = levels.includes(el.id.replace(`${other}-level-`, '')); });
+    });
+  }
+  if (remember) {
+    localStorage.setItem('autoStartExercise', JSON.stringify({ prefix, panelId, savedAt: Date.now() }));
+  } else if (localStorage.getItem('autoStartExercise')) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('autoStartExercise'));
+      if (saved.prefix === prefix) localStorage.removeItem('autoStartExercise');
+    } catch (e) {}
+  }
+}
+
+function applyDefaultAdvance(checkboxId, delayId, delayRowId) {
+  const p = getGlobalPrefs();
+  const checkbox = $(checkboxId);
+  if (!checkbox) return;
+  checkbox.checked = p.defaultAdvance === 'auto';
+  if ($(delayId)) $(delayId).value = String(p.defaultDelay);
+  if ($(delayRowId)) $(delayRowId).style.display = checkbox.checked ? 'flex' : 'none';
+}
+
 function createTimer(labelElementId) {
   let startTime = null, interval = null;
   function tick() {
@@ -501,6 +605,7 @@ function createTimer(labelElementId) {
     stop() { if (interval) clearInterval(interval); interval = null; return startTime ? Math.round((Date.now() - startTime) / 1000) : 0; },
   };
 }
+const quizTimer = createTimer('quiz-timer');
 
 // Mémorise et restaure la dernière sélection de cases à cocher d'un jeu (art/siècle/niveau/zone…)
 // sur l'appareil, pour éviter de tout recocher à chaque partie. On cible toutes les cases du
@@ -1458,7 +1563,7 @@ $('quiz-setup-back-button')?.addEventListener('click', () => showPanel('welcome'
 // références (artiste + titre) sont proposées. Même mécanique de correction que Intrus (référence
 // choisie conservée avec son verdict), puis l'image entière est révélée avec la référence complète.
 // ============================================================
-$('open-reconstitution-setup')?.addEventListener('click', () => { showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon'); restoreLastSelection('reconstitution-setup-panel'); });
+$('open-reconstitution-setup')?.addEventListener('click', () => { showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon'); restoreLastSelection('reconstitution-setup-panel'); applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row'); });
 $('reconstitution-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
 $('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
@@ -1625,6 +1730,7 @@ function enigSpeak(text) {
 }
 
 $('enig-start-button')?.addEventListener('click', async () => {
+  handleExtendAndRemember('enig', 'enigme-setup-panel');
   saveLastSelection('enigme-setup-panel');
   const arts = enigSelectedArts();
   const centuries = enigSelectedCenturies();
@@ -1949,6 +2055,7 @@ function famSpeak(text, onEnd) {
 }
 
 $('fam-start-button')?.addEventListener('click', async () => {
+  handleExtendAndRemember('fam', 'famille-setup-panel');
   saveLastSelection('famille-setup-panel');
   const arts = famSelectedArts();
   const centuries = famSelectedCenturies();
@@ -2178,6 +2285,7 @@ function vfSpeak(text, onEnd) {
 }
 
 $('vf-start-button')?.addEventListener('click', async () => {
+  handleExtendAndRemember('vf', 'vraifaux-setup-panel');
   saveLastSelection('vraifaux-setup-panel');
   const arts = vfSelectedArts();
   const centuries = vfSelectedCenturies();
@@ -2412,6 +2520,7 @@ function reconSpeak(text) {
 }
 
 $('recon-start-button')?.addEventListener('click', async () => {
+  handleExtendAndRemember('recon', 'reconstitution-setup-panel');
   saveLastSelection('reconstitution-setup-panel');
   const arts = reconSelectedArts();
   const centuries = reconSelectedCenturies();
@@ -2689,7 +2798,30 @@ $('load-saved-choice-button')?.addEventListener('click', () => {
 });
 // Info-bulle CSS (survol/focus) plutôt qu'une alerte bloquante ; sur mobile (pas de survol), un
 // tap bascule son affichage.
-$('open-training')?.addEventListener('click', () => showPanel('training-hub'));
+const EXERCISE_INFO = {
+  imp: { name: 'Imprégnation', open: 'open-impregnation-setup', start: 'imp-start-button' },
+  intrus: { name: 'Intrus', open: 'open-intrus-setup', start: 'intrus-start-button' },
+  recon: { name: 'Reconstitution', open: 'open-reconstitution-setup', start: 'recon-start-button' },
+  vf: { name: 'Vrai/Faux', open: 'open-vraifaux-setup', start: 'vf-start-button' },
+  fam: { name: 'Famille', open: 'open-famille-setup', start: 'fam-start-button' },
+  enig: { name: 'Énigme', open: 'open-enigme-setup', start: 'enig-start-button' },
+};
+function checkTrainingResume() {
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem('autoStartExercise') || 'null'); } catch (e) { saved = null; }
+  const banner = $('training-resume-banner');
+  if (!banner) return;
+  if (!saved || !EXERCISE_INFO[saved.prefix]) { banner.classList.add('hidden'); return; }
+  const info = EXERCISE_INFO[saved.prefix];
+  $('training-resume-text').textContent = `Vous aviez demandé à retrouver automatiquement « ${info.name} » avec vos derniers réglages.`;
+  banner.classList.remove('hidden');
+  $('training-resume-button').onclick = () => {
+    $(info.open)?.click();
+    // Laisse la restauration de sélection et les valeurs par défaut s'appliquer avant de lancer.
+    setTimeout(() => $(info.start)?.click(), 150);
+  };
+}
+$('open-training')?.addEventListener('click', () => { showPanel('training-hub'); checkTrainingResume(); });
 $('training-hub-home-button')?.addEventListener('click', () => showPanel('welcome'));
 document.querySelectorAll('.training-soon').forEach((btn) => {
   btn.addEventListener('click', (event) => event.currentTarget.classList.toggle('show-tooltip'));
@@ -2700,11 +2832,11 @@ document.querySelectorAll('.training-soon').forEach((btn) => {
 // définis pour le quiz ; sélection propre (préfixe imp-), mécanique d'écriture progressive
 // synchronisée à la voix de synthèse, sans notation.
 // ============================================================
-$('open-impregnation-setup')?.addEventListener('click', () => { showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel'); });
+$('open-impregnation-setup')?.addEventListener('click', () => { showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel'); const p = getGlobalPrefs(); if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); $('imp-opt-advance').dispatchEvent(new Event('change')); } });
 $('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
 ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
-  $(`${p}-hub-link`)?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); });
+  $(`${p}-hub-link`)?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); checkTrainingResume(); });
 });
 
 const IMP_ACCORDIONS = ['imp-toggle-art:imp-body-art', 'imp-toggle-century:imp-body-century', 'imp-toggle-level:imp-body-level', 'imp-toggle-rubriques:imp-body-rubriques'];
@@ -2749,6 +2881,7 @@ function impSpeak(text) {
 }
 
 $('imp-start-button')?.addEventListener('click', async () => {
+  handleExtendAndRemember('imp', 'impregnation-setup-panel');
   saveLastSelection('impregnation-setup-panel');
   const arts = impSelectedArts();
   const centuries = impSelectedCenturies();
@@ -2846,7 +2979,7 @@ $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSI
 // MODULE INTRUS — retrouver la bonne image parmi 3 (mode « image »), ou la bonne référence
 // parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
 // ============================================================
-$('open-intrus-setup')?.addEventListener('click', () => { showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus'); restoreLastSelection('intrus-setup-panel'); });
+$('open-intrus-setup')?.addEventListener('click', () => { showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus'); restoreLastSelection('intrus-setup-panel'); applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row'); });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
 $('intrus-scores-link')?.addEventListener('click', () => {
   speechSynthesis.cancel();
@@ -2939,6 +3072,7 @@ function pickIntrusDistractors(correct, pool, requireDistinctArtist) {
 }
 
 $('intrus-start-button')?.addEventListener('click', async () => {
+  handleExtendAndRemember('intrus', 'intrus-setup-panel');
   saveLastSelection('intrus-setup-panel');
   const arts = intrusSelectedArts();
   const centuries = intrusSelectedCenturies();
@@ -3301,7 +3435,9 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     };
     const refEl = $('quiz-reference');
     if (refEl) refEl.textContent = quizReference;
-    showPanel('quiz'); renderQuestion();
+    showPanel('quiz');
+    quizTimer.start();
+    renderQuestion();
   } catch (error) {
     // Le message « site en construction » se suffit à lui-même, sans préfixe « Erreur : ».
     feedback.textContent = error.message === 'Ce site est en construction. Le quiz sera bientôt disponible.' ? error.message : `Erreur : ${error.message}`;
