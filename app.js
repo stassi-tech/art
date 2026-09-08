@@ -424,7 +424,6 @@ function initProfilePage() {
   const prefs = getGlobalPrefs();
   $('pf-show-timer').checked = prefs.showTimer;
   $('pf-enter-validate').checked = prefs.enterValidate;
-  $('pf-remember-selection').checked = prefs.rememberSelection;
   $('pf-show-explanations').checked = prefs.showExplanations;
   $('pf-audio').checked = prefs.audioOn;
   $('pf-handedness').value = document.body.classList.contains('lefty') ? 'left' : 'right';
@@ -443,7 +442,6 @@ function initProfilePage() {
 }
 $('pf-show-timer')?.addEventListener('change', () => setGlobalPref('showTimer', $('pf-show-timer').checked));
 $('pf-enter-validate')?.addEventListener('change', () => setGlobalPref('enterValidate', $('pf-enter-validate').checked));
-$('pf-remember-selection')?.addEventListener('change', () => setGlobalPref('rememberSelection', $('pf-remember-selection').checked));
 $('pf-show-explanations')?.addEventListener('change', () => setGlobalPref('showExplanations', $('pf-show-explanations').checked));
 $('pf-audio')?.addEventListener('change', () => setGlobalPref('audioOn', $('pf-audio').checked));
 $('pf-voice')?.addEventListener('change', () => setGlobalPref('voiceName', $('pf-voice').value));
@@ -1635,7 +1633,10 @@ $('quiz-setup-back-button')?.addEventListener('click', () => showPanel('welcome'
 // références (artiste + titre) sont proposées. Même mécanique de correction que Intrus (référence
 // choisie conservée avec son verdict), puis l'image entière est révélée avec la référence complète.
 // ============================================================
-$('open-reconstitution-setup')?.addEventListener('click', () => { showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon'); restoreLastSelection('reconstitution-setup-panel'); applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row'); });
+$('open-reconstitution-setup')?.addEventListener('click', () => {
+  if (shouldAutoStart('recon')) { applyGlobalFieldDefaultsTo('recon'); if (!readGlobalFieldDefaults().remember) restoreLastSelection('reconstitution-setup-panel'); $('recon-start-button')?.click(); return; }
+  showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon'); restoreLastSelection('reconstitution-setup-panel'); applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
+});
 $('reconstitution-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
 $('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
@@ -1646,7 +1647,10 @@ $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercise
 // éléments faux (jamais les dimensions, qui ne sont pas montrées ici). Le joueur juge Vrai/Faux ;
 // en cas d'erreur, la ou les lignes fautives apparaissent en rouge, corrigées en vert en dessous.
 // ============================================================
-$('open-vraifaux-setup')?.addEventListener('click', () => { showPanel('vraifaux-setup'); populateVfVoices(); speakObjective('vf'); restoreLastSelection('vraifaux-setup-panel'); });
+$('open-vraifaux-setup')?.addEventListener('click', () => {
+  if (shouldAutoStart('vf')) { applyGlobalFieldDefaultsTo('vf'); if (!readGlobalFieldDefaults().remember) restoreLastSelection('vraifaux-setup-panel'); $('vf-start-button')?.click(); return; }
+  showPanel('vraifaux-setup'); populateVfVoices(); speakObjective('vf'); restoreLastSelection('vraifaux-setup-panel');
+});
 $('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
@@ -1657,7 +1661,10 @@ $('vf-setup-scores-link')?.addEventListener('click', () => { returnToExercisePan
 // (1re validation), puis doit retrouver le titre de chacune des 4 œuvres (2e validation).
 // Tout-ou-rien : 1 point seulement si artiste + les 4 titres sont exacts.
 // ============================================================
-$('open-famille-setup')?.addEventListener('click', () => { showPanel('famille-setup'); populateFamVoices(); speakObjective('fam'); restoreLastSelection('famille-setup-panel'); });
+$('open-famille-setup')?.addEventListener('click', () => {
+  if (shouldAutoStart('fam')) { applyGlobalFieldDefaultsTo('fam'); if (!readGlobalFieldDefaults().remember) restoreLastSelection('famille-setup-panel'); $('fam-start-button')?.click(); return; }
+  showPanel('famille-setup'); populateFamVoices(); speakObjective('fam'); restoreLastSelection('famille-setup-panel');
+});
 $('famille-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
 $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
@@ -2925,24 +2932,6 @@ function applyGlobalFieldDefaultsTo(prefix) {
   ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`${prefix}-century-${c}`); if (el) el.checked = (g.centuries || []).includes(c); });
   ['1', '2', '3'].forEach((lvl) => { const el = $(`${prefix}-level-${lvl}`); if (el) el.checked = (g.levels || []).includes(lvl); });
 }
-function wireAutoStart(prefix) {
-  $(EXERCISE_INFO[prefix].open)?.addEventListener('click', (event) => {
-    if (!shouldAutoStart(prefix)) return;
-    // Capture + stopImmediatePropagation : empêche le gestionnaire normal (déjà attaché) d'ouvrir
-    // la page de configuration — sinon elle apparaîtrait brièvement avant le démarrage direct.
-    event.stopImmediatePropagation();
-    const g = readGlobalFieldDefaults();
-    if (g.remember && (g.centuries?.length || g.levels?.length)) {
-      applyGlobalFieldDefaultsTo(prefix);
-    } else {
-      // Choix propre à cet exercice : la sélection mémorisée n'a pas encore été restaurée
-      // puisqu'on saute justement l'ouverture normale de sa page de configuration.
-      restoreLastSelection(EXERCISE_INFO[prefix].panel);
-    }
-    $(EXERCISE_INFO[prefix].start)?.click();
-  }, { capture: true });
-}
-Object.keys(EXERCISE_INFO).forEach(wireAutoStart);
 document.querySelectorAll('.exercise-summary-edit').forEach((icon) => {
   icon.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -2960,7 +2949,10 @@ document.querySelectorAll('.training-soon').forEach((btn) => {
 // définis pour le quiz ; sélection propre (préfixe imp-), mécanique d'écriture progressive
 // synchronisée à la voix de synthèse, sans notation.
 // ============================================================
-$('open-impregnation-setup')?.addEventListener('click', () => { showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel'); const p = getGlobalPrefs(); if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); $('imp-opt-advance').dispatchEvent(new Event('change')); } });
+$('open-impregnation-setup')?.addEventListener('click', () => {
+  if (shouldAutoStart('imp')) { applyGlobalFieldDefaultsTo('imp'); if (!readGlobalFieldDefaults().remember) restoreLastSelection('impregnation-setup-panel'); $('imp-start-button')?.click(); return; }
+  showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel'); const p = getGlobalPrefs(); if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); $('imp-opt-advance').dispatchEvent(new Event('change')); }
+});
 $('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
 ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
@@ -3107,7 +3099,10 @@ $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSI
 // MODULE INTRUS — retrouver la bonne image parmi 3 (mode « image »), ou la bonne référence
 // parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
 // ============================================================
-$('open-intrus-setup')?.addEventListener('click', () => { showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus'); restoreLastSelection('intrus-setup-panel'); applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row'); });
+$('open-intrus-setup')?.addEventListener('click', () => {
+  if (shouldAutoStart('intrus')) { applyGlobalFieldDefaultsTo('intrus'); if (!readGlobalFieldDefaults().remember) restoreLastSelection('intrus-setup-panel'); $('intrus-start-button')?.click(); return; }
+  showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus'); restoreLastSelection('intrus-setup-panel'); applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
+});
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
 $('intrus-scores-link')?.addEventListener('click', () => {
   speechSynthesis.cancel();
