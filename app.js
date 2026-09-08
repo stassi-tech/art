@@ -1632,7 +1632,11 @@ $('quiz-setup-back-button')?.addEventListener('click', () => showPanel('welcome'
 // choisie conservée avec son verdict), puis l'image entière est révélée avec la référence complète.
 // ============================================================
 $('open-reconstitution-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('recon')) { applyGlobalFieldDefaultsTo('recon'); if (!readGlobalFieldDefaults().remember) restoreLastSelection('reconstitution-setup-panel'); $('recon-start-button')?.click(); return; }
+  if (shouldAutoStart('recon')) {
+    applyGlobalFieldDefaultsTo('recon');
+    if (!readGlobalFieldDefaults().remember) restoreLastSelection('reconstitution-setup-panel');
+    if (hasValidSelection('recon')) { $('recon-start-button')?.click(); return; }
+  }
   showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon'); restoreLastSelection('reconstitution-setup-panel'); applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
 });
 $('reconstitution-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -1646,7 +1650,11 @@ $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercise
 // en cas d'erreur, la ou les lignes fautives apparaissent en rouge, corrigées en vert en dessous.
 // ============================================================
 $('open-vraifaux-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('vf')) { applyGlobalFieldDefaultsTo('vf'); if (!readGlobalFieldDefaults().remember) restoreLastSelection('vraifaux-setup-panel'); $('vf-start-button')?.click(); return; }
+  if (shouldAutoStart('vf')) {
+    applyGlobalFieldDefaultsTo('vf');
+    if (!readGlobalFieldDefaults().remember) restoreLastSelection('vraifaux-setup-panel');
+    if (hasValidSelection('vf')) { $('vf-start-button')?.click(); return; }
+  }
   showPanel('vraifaux-setup'); populateVfVoices(); speakObjective('vf'); restoreLastSelection('vraifaux-setup-panel');
 });
 $('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -1660,7 +1668,11 @@ $('vf-setup-scores-link')?.addEventListener('click', () => { returnToExercisePan
 // Tout-ou-rien : 1 point seulement si artiste + les 4 titres sont exacts.
 // ============================================================
 $('open-famille-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('fam')) { applyGlobalFieldDefaultsTo('fam'); if (!readGlobalFieldDefaults().remember) restoreLastSelection('famille-setup-panel'); $('fam-start-button')?.click(); return; }
+  if (shouldAutoStart('fam')) {
+    applyGlobalFieldDefaultsTo('fam');
+    if (!readGlobalFieldDefaults().remember) restoreLastSelection('famille-setup-panel');
+    if (hasValidSelection('fam')) { $('fam-start-button')?.click(); return; }
+  }
   showPanel('famille-setup'); populateFamVoices(); speakObjective('fam'); restoreLastSelection('famille-setup-panel');
 });
 $('famille-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -2917,6 +2929,15 @@ function updateExerciseSummaries() {
     if (el) el.textContent = buildExerciseSummary(prefix);
   });
 }
+// Filet de sécurité : si le démarrage automatique est activé mais que la sélection réellement
+// appliquée est vide (réglage ancien ou incomplet resté en mémoire), on n'insiste pas — on
+// affiche normalement la configuration plutôt que de rester silencieusement bloqué.
+function hasValidSelection(prefix) {
+  const hasArt = document.querySelectorAll(`[id^="${prefix}-art-"]:checked`).length > 0;
+  const hasCentury = document.querySelectorAll(`[id^="${prefix}-century-"]:checked`).length > 0;
+  const hasLevel = document.querySelectorAll(`[id^="${prefix}-level-"]:checked`).length > 0;
+  return hasArt && hasCentury && hasLevel;
+}
 // Le bouton d'un exercice démarre directement (sans repasser par sa configuration) si un choix
 // général mémorisé existe, OU si ce choix a été mémorisé spécifiquement pour cet exercice.
 function shouldAutoStart(prefix) {
@@ -2948,7 +2969,11 @@ document.querySelectorAll('.training-soon').forEach((btn) => {
 // synchronisée à la voix de synthèse, sans notation.
 // ============================================================
 $('open-impregnation-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('imp')) { applyGlobalFieldDefaultsTo('imp'); if (!readGlobalFieldDefaults().remember) restoreLastSelection('impregnation-setup-panel'); $('imp-start-button')?.click(); return; }
+  if (shouldAutoStart('imp')) {
+    applyGlobalFieldDefaultsTo('imp');
+    if (!readGlobalFieldDefaults().remember) restoreLastSelection('impregnation-setup-panel');
+    if (hasValidSelection('imp')) { $('imp-start-button')?.click(); return; }
+  }
   showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel'); const p = getGlobalPrefs(); if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); $('imp-opt-advance').dispatchEvent(new Event('change')); }
 });
 $('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -3098,7 +3123,11 @@ $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSI
 // parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
 // ============================================================
 $('open-intrus-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('intrus')) { applyGlobalFieldDefaultsTo('intrus'); if (!readGlobalFieldDefaults().remember) restoreLastSelection('intrus-setup-panel'); $('intrus-start-button')?.click(); return; }
+  if (shouldAutoStart('intrus')) {
+    applyGlobalFieldDefaultsTo('intrus');
+    if (!readGlobalFieldDefaults().remember) restoreLastSelection('intrus-setup-panel');
+    if (hasValidSelection('intrus')) { $('intrus-start-button')?.click(); return; }
+  }
   showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus'); restoreLastSelection('intrus-setup-panel'); applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
 });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
