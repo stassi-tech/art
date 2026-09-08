@@ -1306,30 +1306,38 @@ function formatDimensionsDisplay(work) {
   // est renseignée, est précédée d'un petit "h"/"l"/"p" en grisé. Rien n'est affiché pour une
   // dimension non précisée plutôt que d'inventer une valeur.
   const parts = [];
-  if (work.hauteur) parts.push(`<span class="dim-hl">h</span> ${escapeHtml(work.hauteur)}`);
-  if (work.longueur) parts.push(`<span class="dim-hl">l</span> ${escapeHtml(work.longueur)}`);
-  if (work.profondeur) parts.push(`<span class="dim-hl">p</span> ${escapeHtml(work.profondeur)}`);
+  if (work.hauteur) parts.push(`<span class="dim-hl">h</span> ${escapeHtml(withCm(work.hauteur))}`);
+  if (work.longueur) parts.push(`<span class="dim-hl">l</span> ${escapeHtml(withCm(work.longueur))}`);
+  if (work.profondeur) parts.push(`<span class="dim-hl">p</span> ${escapeHtml(withCm(work.profondeur))}`);
   return parts.join(' × ');
+}
+// Ajoute « cm » si l'unité n'est pas déjà précisée dans la valeur du fichier (certaines lignes
+// ont juste un nombre, d'autres ont déjà « cm » ou « m » écrit).
+function withCm(value) {
+  const v = String(value || '').trim();
+  return /\b(cm|mm|m)\b/i.test(v) ? v : `${v} cm`;
 }
 // Version texte brut (sans balises) de formatDimensionsDisplay, pour les affichages qui écrivent
 // via textContent plutôt qu'innerHTML (Imprégnation, à l'effet d'écriture progressive).
 function formatDimensionsPlainText(work) {
   const parts = [];
-  if (work.hauteur) parts.push(`h ${work.hauteur}`);
-  if (work.longueur) parts.push(`l ${work.longueur}`);
-  if (work.profondeur) parts.push(`p ${work.profondeur}`);
+  if (work.hauteur) parts.push(`h ${withCm(work.hauteur)}`);
+  if (work.longueur) parts.push(`l ${withCm(work.longueur)}`);
+  if (work.profondeur) parts.push(`p ${withCm(work.profondeur)}`);
   return parts.join(' × ');
 }
-// Phrase parlée des dimensions, ex. « de 78 cm de hauteur, 53 de longueur et 30 de profondeur »
-// — n'énumère que les dimensions réellement renseignées, avec la bonne conjonction.
+// Phrase parlée des dimensions, ex. « de 78 centimètres de hauteur, 53 de longueur et 30 de
+// profondeur » — n'énumère que les dimensions réellement renseignées, avec la bonne conjonction,
+// et précise l'unité une seule fois (sur la première dimension citée).
 function spokenDimensionsPhrase(work) {
   const parts = [];
-  if (work.hauteur) parts.push(`${work.hauteur} de hauteur`);
+  if (work.hauteur) parts.push(`${withCm(work.hauteur)} de hauteur`);
   if (work.longueur) parts.push(`${work.longueur} de longueur`);
   if (work.profondeur) parts.push(`${work.profondeur} de profondeur`);
   if (!parts.length) return '';
-  if (parts.length === 1) return `de ${parts[0]}`;
-  return `de ${parts.slice(0, -1).join(', ')} et ${parts[parts.length - 1]}`;
+  const spoken = parts.map((p) => p.replace(/\bcm\b/i, 'centimètres'));
+  if (spoken.length === 1) return `de ${spoken[0]}`;
+  return `de ${spoken.slice(0, -1).join(', ')} et ${spoken[spoken.length - 1]}`;
 }
 // Phrase de référence complète, dans l'ordre demandé : « Artiste, «Titre», Date. Nature en
 // matériau de H cm de hauteur, L de longueur et P de profondeur. Lieu. » — chaque partie
@@ -1683,13 +1691,13 @@ $('quiz-setup-back-button')?.addEventListener('click', () => showPanel('welcome'
 // références (artiste + titre) sont proposées. Même mécanique de correction que Intrus (référence
 // choisie conservée avec son verdict), puis l'image entière est révélée avec la référence complète.
 // ============================================================
-$('open-reconstitution-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('recon')) {
-    applyGlobalFieldDefaultsTo('recon');
-    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('reconstitution-setup-panel');
-    if (hasValidSelection('recon')) { $('recon-start-button')?.click(); return; }
-  }
+function showReconConfig() {
   showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon'); restoreLastSelection('reconstitution-setup-panel'); applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
+}
+$('open-reconstitution-setup')?.addEventListener('click', () => {
+  applyGlobalFieldDefaultsTo('recon');
+  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('reconstitution-setup-panel');
+  $('recon-start-button')?.click();
 });
 $('reconstitution-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
@@ -1701,13 +1709,13 @@ $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercise
 // éléments faux (jamais les dimensions, qui ne sont pas montrées ici). Le joueur juge Vrai/Faux ;
 // en cas d'erreur, la ou les lignes fautives apparaissent en rouge, corrigées en vert en dessous.
 // ============================================================
-$('open-vraifaux-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('vf')) {
-    applyGlobalFieldDefaultsTo('vf');
-    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('vraifaux-setup-panel');
-    if (hasValidSelection('vf')) { $('vf-start-button')?.click(); return; }
-  }
+function showVfConfig() {
   showPanel('vraifaux-setup'); populateVfVoices(); speakObjective('vf'); restoreLastSelection('vraifaux-setup-panel');
+}
+$('open-vraifaux-setup')?.addEventListener('click', () => {
+  applyGlobalFieldDefaultsTo('vf');
+  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('vraifaux-setup-panel');
+  $('vf-start-button')?.click();
 });
 $('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
@@ -1718,13 +1726,13 @@ $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel();
 // (1re validation), puis doit retrouver le titre de chacune des 4 œuvres (2e validation).
 // Tout-ou-rien : 1 point seulement si artiste + les 4 titres sont exacts.
 // ============================================================
-$('open-famille-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('fam')) {
-    applyGlobalFieldDefaultsTo('fam');
-    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('famille-setup-panel');
-    if (hasValidSelection('fam')) { $('fam-start-button')?.click(); return; }
-  }
+function showFamConfig() {
   showPanel('famille-setup'); populateFamVoices(); speakObjective('fam'); restoreLastSelection('famille-setup-panel');
+}
+$('open-famille-setup')?.addEventListener('click', () => {
+  applyGlobalFieldDefaultsTo('fam');
+  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('famille-setup-panel');
+  $('fam-start-button')?.click();
 });
 $('famille-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
@@ -1745,13 +1753,13 @@ function chronoSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $
 function chronoSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`chrono-century-${c}`)?.checked); }
 function chronoSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`chrono-zone-${z}`)?.checked); }
 function chronoSelectedLevels() { return ['1', '2', '3'].filter((l) => $(`chrono-level-${l}`)?.checked); }
-$('open-chrono-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('chrono')) {
-    applyGlobalFieldDefaultsTo('chrono');
-    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('chrono-setup-panel');
-    if (hasValidSelection('chrono')) { $('chrono-start-button')?.click(); return; }
-  }
+function showChronoConfig() {
   showPanel('chrono-setup'); speakObjective('chrono'); restoreLastSelection('chrono-setup-panel');
+}
+$('open-chrono-setup')?.addEventListener('click', () => {
+  applyGlobalFieldDefaultsTo('chrono');
+  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('chrono-setup-panel');
+  $('chrono-start-button')?.click();
 });
 $('chrono-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('chrono-setup'); });
@@ -2914,11 +2922,9 @@ $('vf-validate-button')?.addEventListener('click', () => {
     }, 700));
   }
   if (q.errorFields.length) {
-    vfSpeak(q.errorFields.length > 1 ? 'Deux références sont fausses.' : 'Une référence est fausse.', () => speakNextCorrection(0));
+    vfSpeak(q.errorFields.length > 1 ? 'Deux références étaient fausses.' : 'Une référence était fausse.', () => speakNextCorrection(0));
   } else {
-    vfSpeak(q.activeFields.length > 1
-      ? `Les références que tu as données de ${artWord} étaient bonnes.`
-      : `La référence que tu as donnée de ${artWord} était bonne.`);
+    vfSpeak(q.activeFields.length > 1 ? 'Exact. Bonnes références.' : 'Exact. Bonne référence.');
   }
 
   // Fausses alertes : rubrique marquée Faux par le joueur alors qu'elle est exacte. Le bouton
@@ -3377,11 +3383,12 @@ function applyGlobalFieldDefaultsTo(prefix) {
     }
   }
 }
+const EXERCISE_SHOW_CONFIG = { imp: showImpConfig, intrus: showIntrusConfig, recon: showReconConfig, vf: showVfConfig, fam: showFamConfig, chrono: showChronoConfig };
 document.querySelectorAll('.exercise-summary-edit').forEach((icon) => {
   icon.addEventListener('click', (event) => {
     event.stopPropagation();
     const prefix = icon.id.replace('-hub-edit', '');
-    $(EXERCISE_INFO[prefix]?.open)?.click();
+    EXERCISE_SHOW_CONFIG[prefix]?.();
   });
 });
 $('open-training')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
@@ -3394,13 +3401,13 @@ document.querySelectorAll('.training-soon').forEach((btn) => {
 // définis pour le quiz ; sélection propre (préfixe imp-), mécanique d'écriture progressive
 // synchronisée à la voix de synthèse, sans notation.
 // ============================================================
-$('open-impregnation-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('imp')) {
-    applyGlobalFieldDefaultsTo('imp');
-    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('impregnation-setup-panel');
-    if (hasValidSelection('imp')) { $('imp-start-button')?.click(); return; }
-  }
+function showImpConfig() {
   showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel'); const p = getGlobalPrefs(); if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); $('imp-opt-advance').dispatchEvent(new Event('change')); }
+}
+$('open-impregnation-setup')?.addEventListener('click', () => {
+  applyGlobalFieldDefaultsTo('imp');
+  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('impregnation-setup-panel');
+  $('imp-start-button')?.click();
 });
 $('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
@@ -3546,13 +3553,13 @@ $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSI
 // MODULE INTRUS — retrouver la bonne image parmi 3 (mode « image »), ou la bonne référence
 // parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
 // ============================================================
-$('open-intrus-setup')?.addEventListener('click', () => {
-  if (shouldAutoStart('intrus')) {
-    applyGlobalFieldDefaultsTo('intrus');
-    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('intrus-setup-panel');
-    if (hasValidSelection('intrus')) { $('intrus-start-button')?.click(); return; }
-  }
+function showIntrusConfig() {
   showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus'); restoreLastSelection('intrus-setup-panel'); applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
+}
+$('open-intrus-setup')?.addEventListener('click', () => {
+  applyGlobalFieldDefaultsTo('intrus');
+  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('intrus-setup-panel');
+  $('intrus-start-button')?.click();
 });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
 $('intrus-scores-link')?.addEventListener('click', () => {
