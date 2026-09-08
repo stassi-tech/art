@@ -430,6 +430,7 @@ $('profile-photo-input')?.addEventListener('change', (event) => {
 function initProfilePage() {
   loadProfilePhoto();
   $('profile-email').textContent = currentUser?.email || '';
+  $('profile-resume-exercise-button')?.classList.toggle('hidden', !returnToExercisePanel);
   const prefs = getGlobalPrefs();
   $('pf-show-timer').checked = prefs.showTimer;
   $('pf-enter-validate').checked = prefs.enterValidate;
@@ -455,6 +456,16 @@ function initProfilePage() {
   document.querySelectorAll('.pf-rubrique-level').forEach((el) => { el.checked = (rubriqueDefaults.levels || []).includes(el.value); });
   $('pf-rubriques-remember').checked = !!rubriqueDefaults.remember;
 }
+$('profile-resume-exercise-button')?.addEventListener('click', () => {
+  if (!returnToExercisePanel) return;
+  const panel = returnToExercisePanel;
+  returnToExercisePanel = null;
+  showPanel(panel);
+  // Réapplique tout de suite les réglages qui peuvent avoir changé pendant qu'on était sur
+  // « Mon compte » (voix déjà coupée par showPanel ; ici, la visibilité du chronomètre).
+  const showTimer = getGlobalPrefs().showTimer;
+  document.querySelectorAll('[id$="-timer"]').forEach((el) => { if (el.textContent.includes('⏱')) el.classList.toggle('hidden', !showTimer); });
+});
 $('pf-show-timer')?.addEventListener('change', () => setGlobalPref('showTimer', $('pf-show-timer').checked));
 $('pf-enter-validate')?.addEventListener('change', () => setGlobalPref('enterValidate', $('pf-enter-validate').checked));
 $('pf-show-explanations')?.addEventListener('change', () => setGlobalPref('showExplanations', $('pf-show-explanations').checked));
@@ -567,10 +578,18 @@ $('settings-toggle')?.addEventListener('click', () => {
   populateGlobalVoiceSelect();
 });
 
+const EXERCISE_PLAY_PANELS = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'enigme', 'quiz'];
+function currentActivePanelName() {
+  return EXERCISE_PLAY_PANELS.find((name) => !$(`${name}-panel`)?.classList.contains('hidden'));
+}
 $('global-account-button')?.addEventListener('click', () => {
   // Sans compte, pas de mémorisation possible : on redirige vers la connexion plutôt que
   // d'ouvrir une page « Mon compte » dont les réglages ne pourraient de toute façon rien retenir.
   if (!currentUser) { showPanel('welcome'); $('account-login-button')?.scrollIntoView({ block: 'center' }); return; }
+  // Si on est en plein exercice, on garde le fil pour pouvoir y revenir exactement là où on
+  // était après avoir changé un réglage (la voix, par exemple) — sans relancer la question.
+  const active = currentActivePanelName();
+  if (active) returnToExercisePanel = active;
   showPanel('profile'); initProfilePage();
 });
 
@@ -909,6 +928,11 @@ function normaliseRows(rows) {
 
     const materialsKey = findColumn(row, ['materiaux et technique', 'materiaux', 'technique', 'materials', 'materiau']);
     const materials = materialsKey ? String(row[materialsKey] || '').trim() : '';
+    const natureKey = findColumn(row, ['nature de l objet', 'nature objet', 'nature']);
+    const nature = natureKey ? String(row[natureKey] || '').trim() : '';
+    // Phrase combinée pour le texte et la voix : « Monument funéraire en marbre » plutôt que
+    // « sculpture » ou le matériau seul — se rabat sur ce qui est disponible si l'un manque.
+    const materialsPhrase = nature && materials ? `${nature} en ${materials.charAt(0).toLowerCase()}${materials.slice(1)}` : (nature || materials);
 
     // --- Dimensions : nouvelle structure Hauteur/Longueur/Profondeur si présente, sinon ancienne
     // colonne unique « dimensions » (repliée dans hauteur/longueur via une expression régulière).
@@ -940,7 +964,7 @@ function normaliseRows(rows) {
     return {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, title, cycle, titleOriginal,
-      artistDates, materials, hauteur, longueur, profondeur, nationality, niveau,
+      artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
       row: rowIndex + 2
     };
   }).filter((question) => question.image || question.artist || question.date || question.location || question.title);
@@ -1308,7 +1332,7 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     // Matériaux/technique et dimensions : toujours purement informatifs, jamais quizzés, affichés
     // juste après la ligne « date de création ».
     if (key === 'date') {
-      if (displayedWork.materials) html += correctionInfoRow('Matériaux et technique', displayedWork.materials);
+      if (displayedWork.materials) html += correctionInfoRow('Matériaux et technique', displayedWork.materialsPhrase || displayedWork.materials);
       const dims = formatDimensionsDisplay(displayedWork);
       if (dims) {
         html += `<div class="correction-item correction-extra">
@@ -1771,39 +1795,113 @@ function chronoShowQuestion() {
   speechSynthesis.cancel();
   chronoTimers.forEach(clearTimeout); chronoTimers = [];
   chronoAnswered = false;
-  chronoSelectedOrder = [];
   const q = CHRONO_SESSION[chronoIndex];
   $('chrono-progress-label').textContent = `Question ${chronoIndex + 1} / ${CHRONO_SESSION.length}`;
   $('chrono-progress-bar').style.width = `${(chronoIndex / CHRONO_SESSION.length) * 100}%`;
   $('chrono-score-label').textContent = `${chronoScore} point${chronoScore > 1 ? 's' : ''}`;
   $('chrono-correction').classList.add('hidden');
+  $('chrono-correct-table').classList.add('hidden');
   $('chrono-validate-button').classList.remove('hidden');
-  $('chrono-validate-button').disabled = false;
+  $('chrono-validate-button').disabled = true;
+  $('chrono-source-row').classList.remove('hidden');
+  $('chrono-target-row').classList.remove('hidden');
 
-  // Les 4 vignettes sont affichées dans un ordre mélangé (pas l'ordre chronologique).
+  // Ligne du haut : les 4 œuvres dans le désordre. Ligne du bas : 4 emplacements vides, numérotés
+  // du plus ancien (1) au plus récent (4), où le joueur les dépose.
   const shuffledDisplay = q.works.slice().sort(() => Math.random() - 0.5);
   q.displayOrder = shuffledDisplay;
-  $('chrono-image-grid').innerHTML = shuffledDisplay.map((work, i) =>
-    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSource(work.image))}" alt="" /></button>`
+  $('chrono-source-row').innerHTML = shuffledDisplay.map((work, i) =>
+    `<button type="button" class="fam-image-cell chrono-source-item" data-index="${i}"><img src="${escapeHtml(imageSource(work.image))}" alt="" /></button>`
   ).join('');
-  $('chrono-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if (chronoAnswered) return;
-      const idx = Number(btn.dataset.index);
-      const pos = chronoSelectedOrder.indexOf(idx);
-      if (pos >= 0) {
-        chronoSelectedOrder.splice(pos, 1);
-        btn.classList.remove('selected');
-        btn.removeAttribute('data-num');
-        chronoSelectedOrder.forEach((si, n) => { $('chrono-image-grid').querySelector(`.fam-image-cell[data-index="${si}"]`).dataset.num = n + 1; });
-      } else if (chronoSelectedOrder.length < 4) {
-        chronoSelectedOrder.push(idx);
-        btn.classList.add('selected');
-        btn.dataset.num = chronoSelectedOrder.length;
+  $('chrono-target-row').innerHTML = [0, 1, 2, 3].map((i) =>
+    `<button type="button" class="chrono-target-slot" data-slot="${i}"><span class="chrono-slot-num">${i + 1}</span></button>`
+  ).join('');
+
+  attachChronoDragAndDrop();
+  famSpeak2('Remets ces quatre œuvres dans l\u2019ordre chronologique.');
+}
+
+// Glisser-déposer (souris et tactile) d'une œuvre de la ligne du haut vers un emplacement de la
+// ligne du bas — même principe que celui des étiquettes de Famille. Un simple clic (sans
+// déplacement) reste accepté comme repli : toucher l'œuvre puis toucher l'emplacement visé.
+let chronoPicked = null;
+function attachChronoDragAndDrop() {
+  chronoPicked = null;
+  let dragGhost = null, dragItem = null, dragStartX = 0, dragStartY = 0, dragMoved = false;
+
+  function placeInSlot(slot, sourceBtn) {
+    const idx = Number(sourceBtn.dataset.index);
+    if (slot.classList.contains('filled')) {
+      const oldIdx = Number(slot.dataset.sourceIndex);
+      const oldSource = document.querySelector(`.chrono-source-item[data-index="${oldIdx}"]`);
+      if (oldSource) oldSource.classList.remove('used');
+    }
+    slot.innerHTML = `<span class="chrono-slot-num">${Number(slot.dataset.slot) + 1}</span><img src="${sourceBtn.querySelector('img').src}" alt="" />`;
+    slot.dataset.sourceIndex = idx;
+    slot.classList.add('filled');
+    sourceBtn.classList.add('used');
+    updateChronoValidateState();
+  }
+
+  document.querySelectorAll('.chrono-source-item').forEach((item) => {
+    item.addEventListener('pointerdown', (event) => {
+      if (item.classList.contains('used')) return;
+      dragItem = item; dragMoved = false;
+      dragStartX = event.clientX; dragStartY = event.clientY;
+      dragGhost = item.cloneNode(true);
+      dragGhost.style.cssText = 'position:fixed;z-index:999;pointer-events:none;opacity:.85;width:90px;height:90px;';
+      document.body.appendChild(dragGhost);
+      moveGhost(event.clientX, event.clientY);
+      item.setPointerCapture(event.pointerId);
+    });
+    item.addEventListener('pointermove', (event) => {
+      if (!dragGhost || dragItem !== item) return;
+      if (Math.abs(event.clientX - dragStartX) > 4 || Math.abs(event.clientY - dragStartY) > 4) dragMoved = true;
+      moveGhost(event.clientX, event.clientY);
+    });
+    item.addEventListener('pointerup', (event) => {
+      if (dragItem !== item) return;
+      dragGhost?.remove(); dragGhost = null;
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      const slot = target?.closest('.chrono-target-slot');
+      if (slot) placeInSlot(slot, item);
+      else if (!dragMoved) {
+        document.querySelectorAll('.chrono-source-item').forEach((c) => c.classList.remove('picked'));
+        chronoPicked = chronoPicked === item ? null : item;
+        if (chronoPicked) item.classList.add('picked');
       }
+      dragItem = null;
     });
   });
-  famSpeak2('Remets ces quatre œuvres dans l\u2019ordre chronologique.');
+
+  function moveGhost(x, y) {
+    if (!dragGhost) return;
+    dragGhost.style.left = `${x - 45}px`;
+    dragGhost.style.top = `${y - 45}px`;
+  }
+
+  document.querySelectorAll('.chrono-target-slot').forEach((slot) => {
+    slot.addEventListener('click', () => {
+      if (slot.classList.contains('filled')) {
+        const oldIdx = Number(slot.dataset.sourceIndex);
+        const oldSource = document.querySelector(`.chrono-source-item[data-index="${oldIdx}"]`);
+        if (oldSource) oldSource.classList.remove('used');
+        slot.innerHTML = `<span class="chrono-slot-num">${Number(slot.dataset.slot) + 1}</span>`;
+        slot.classList.remove('filled');
+        delete slot.dataset.sourceIndex;
+        updateChronoValidateState();
+        return;
+      }
+      if (!chronoPicked) return;
+      placeInSlot(slot, chronoPicked);
+      chronoPicked.classList.remove('picked');
+      chronoPicked = null;
+    });
+  });
+}
+function updateChronoValidateState() {
+  const filled = document.querySelectorAll('.chrono-target-slot.filled').length === 4;
+  $('chrono-validate-button').disabled = !filled;
 }
 
 // Petit relais vocal indépendant du module Famille (mêmes réglages que les autres exercices).
@@ -1827,15 +1925,16 @@ function famSpeak2(text, onEnd) {
 
 $('chrono-validate-button')?.addEventListener('click', () => {
   if (chronoAnswered) return;
-  if (chronoSelectedOrder.length !== 4) { chronoStepFeedback('Cliquez les 4 images avant de valider.'); return; }
+  const slots = [...document.querySelectorAll('.chrono-target-slot')];
+  if (slots.some((s) => !s.classList.contains('filled'))) return;
   chronoAnswered = true;
   const q = CHRONO_SESSION[chronoIndex];
-  document.querySelectorAll('#chrono-image-grid .fam-image-cell').forEach((btn) => { btn.disabled = true; });
-  $('chrono-validate-button').disabled = true;
+  $('chrono-validate-button').classList.add('hidden');
 
-  const playerOrder = chronoSelectedOrder.map((i) => q.displayOrder[i]);
+  const playerOrder = slots.map((s) => q.displayOrder[Number(s.dataset.sourceIndex)]);
   const correctOrder = q.chronological;
-  const isCorrect = playerOrder.every((w, i) => w === correctOrder[i]);
+  const rightFlags = playerOrder.map((w, i) => w === correctOrder[i]);
+  const isCorrect = rightFlags.every(Boolean);
   const pointEarned = isCorrect ? 1 : 0;
   chronoScore = Math.round((chronoScore + pointEarned) * 10) / 10;
   $('chrono-score-label').textContent = `${chronoScore} point${chronoScore > 1 ? 's' : ''}`;
@@ -1843,15 +1942,34 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   $('chrono-verdict').textContent = isCorrect ? 'Exact' : 'À réviser';
   $('chrono-verdict').style.color = isCorrect ? 'var(--ok)' : 'var(--wrong)';
 
-  // Fiches de référence dans le bon ordre chronologique, comme en correction de Famille.
-  $('chrono-image-grid').className = 'fam-result-grid';
-  $('chrono-image-grid').innerHTML = correctOrder.map((work) => {
+  // La ligne du haut disparaît ; la ligne du bas prend sa place avec les références, encadrée en
+  // rouge sur toute case où l'ordre était faux.
+  $('chrono-source-row').classList.add('hidden');
+  slots.forEach((slot, i) => {
+    const work = playerOrder[i];
     const meta = [work.date, work.location].filter(Boolean).join(' — ');
-    return `<div class="fam-result-item">
-      <img src="${escapeHtml(imageSource(work.image))}" alt="" />
-      <span class="fam-result-caption"><strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
-    </div>`;
-  }).join('');
+    slot.classList.remove('filled');
+    slot.classList.add(rightFlags[i] ? 'right' : 'wrong');
+    slot.innerHTML = `<span class="chrono-slot-num">${i + 1}</span><img src="${escapeHtml(imageSource(work.image))}" alt="" />
+      <span class="fam-result-caption" style="position:absolute;bottom:-58px;left:0;right:0;">
+        <strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}
+      </span>`;
+    slot.style.position = 'relative';
+    slot.style.marginBottom = '58px';
+  });
+
+  // S'il y a eu une erreur, un second tableau montre le bon ordre (images + références).
+  if (!isCorrect) {
+    $('chrono-correct-table').classList.remove('hidden');
+    $('chrono-correct-table').innerHTML = `<p class="modal-subheading" style="margin:70px 0 8px;">Le bon ordre était :</p>
+      <div class="fam-result-grid">${correctOrder.map((work) => {
+        const meta = [work.date, work.location].filter(Boolean).join(' — ');
+        return `<div class="fam-result-item">
+          <img src="${escapeHtml(imageSource(work.image))}" alt="" />
+          <span class="fam-result-caption"><strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
+        </div>`;
+      }).join('')}</div>`;
+  }
 
   const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
   const list = correctOrder.map((w, i) => `${ordinals[i]}, ${w.title}, en ${chronoYearOf(w)}`).join('. ');
@@ -1860,17 +1978,6 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   $('chrono-correction').classList.remove('hidden');
   $('chrono-next-button').textContent = chronoIndex === CHRONO_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
 });
-
-function chronoStepFeedback(msg) {
-  let el = $('chrono-inline-feedback');
-  if (!el) {
-    el = document.createElement('p');
-    el.id = 'chrono-inline-feedback';
-    el.className = 'hint';
-    $('chrono-validate-button').insertAdjacentElement('afterend', el);
-  }
-  el.textContent = msg;
-}
 
 $('chrono-next-button')?.addEventListener('click', async () => {
   if (chronoIndex < CHRONO_SESSION.length - 1) {
@@ -2495,7 +2602,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
 
   const captionOf = (work) => {
     const meta = [work.date, work.location].filter(Boolean).join(' — ');
-    return `<strong>${escapeHtml(q.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}`;
+    return `<strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}`;
   };
   const cellHtml = (work, revealed) => `<div class="fam-result-item${revealed ? '' : ' fam-result-pending'}">
       ${revealed ? `<img src="${escapeHtml(imageSource(work.image))}" alt="" /><span class="fam-result-caption">${captionOf(work)}</span>` : ''}
@@ -2599,6 +2706,7 @@ function vfActiveFields() {
 }
 function vfFieldValue(row, key) {
   if (key === 'dimensions') return [row.hauteur, row.longueur].filter(Boolean).join(' × ');
+  if (key === 'materials') return row.materialsPhrase || row.materials || '';
   return row[key] || '';
 }
 
@@ -2977,13 +3085,13 @@ function reconAnswer(chosenIndex) {
   $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSource(q.correct.image))}" alt="" />`;
 
   const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
-  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + q.correct.materials : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
+  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + (q.correct.materialsPhrase || q.correct.materials) : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
   reconSpeak(correctFullRef);
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
   if (reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if (reconExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materials)}</span>`);
+  if (reconExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if (reconExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
   if (reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
   $('recon-correction-details').innerHTML = detailsParts.join('');
@@ -3362,7 +3470,7 @@ function impShowCurrent() {
     { key: 'artist', label: 'Auteur', value: work.artist, on: $('imp-field-artist').checked },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `« ${work.title} »`, on: $('imp-field-title').checked },
     { key: 'date', label: 'Date', value: work.date, on: $('imp-field-date').checked },
-    { key: 'materiaux', label: 'Matériau', value: work.materials, on: $('imp-field-materiaux').checked && work.materials },
+    { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: $('imp-field-materiaux').checked && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, on: $('imp-field-dimensions').checked && dims },
     { key: 'location', label: 'Lieu', value: work.location, on: $('imp-field-location').checked },
   ].filter((f) => f.on);
@@ -3623,13 +3731,13 @@ function intrusAnswer(chosenIndex) {
   }
 
   const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
-  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + q.correct.materials : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
+  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + (q.correct.materialsPhrase || q.correct.materials) : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
   intrusSpeak(correctFullRef);
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
   if (intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if (intrusExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materials)}</span>`);
+  if (intrusExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if (intrusExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
   if (intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
@@ -3687,15 +3795,6 @@ $('century-20e')?.addEventListener('change', (event) => {
 $('century-20e-notice-close')?.addEventListener('click', () => {
   if ($('century-20e-notice-dismiss')?.checked) localStorage.setItem('century20eNoticeDismissed', 'true');
 });
-// Réinitialise tous les pop-up explicatifs « Ne plus afficher » (micro, avertissement 20e siècle…).
-$('menu-item-reset-popups')?.addEventListener('click', () => {
-  localStorage.removeItem('micTooltipDismissed');
-  localStorage.removeItem('century20eNoticeDismissed');
-  $('mic-tooltip')?.classList.remove('hidden');
-  closeHamburgerMenu();
-  alert('Les pop-up explicatifs réapparaîtront à nouveau.');
-});
-
 function selectedArts() { return ['peinture', 'sculpture'].filter((art) => $(`art-${art}`).checked); }
 function selectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((century) => $(`century-${century}`).checked); }
 function selectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((zone) => $(`zone-${zone}`)?.checked); }
@@ -3950,4 +4049,24 @@ document.addEventListener('keydown', (event) => {
   if (!visiblePanel) return;
   const candidate = [...visiblePanel.querySelectorAll('.primary-button:not(:disabled)')].find((btn) => btn.offsetParent !== null);
   if (candidate) { event.preventDefault(); candidate.click(); }
+});
+
+// Ouverture directe d'une section via une ancre d'URL (#base, #exercices) — sert à proposer de
+// vrais liens « nouvel onglet » depuis le texte d'accueil et le menu hamburger, plutôt que de
+// simples raccourcis internes qui n'ouvriraient rien dans un nouvel onglet séparé.
+function openPanelFromHash() {
+  if (location.hash === '#base') { renderOtherWorksPanel(); showPanel('other-works'); }
+  else if (location.hash === '#exercices') { showPanel('training-hub'); updateExerciseSummaries(); }
+}
+window.addEventListener('DOMContentLoaded', openPanelFromHash);
+if (document.readyState !== 'loading') openPanelFromHash();
+
+// Le lien « Créez un compte » du texte d'accueil met en évidence le vrai bouton de connexion
+// plutôt que de dupliquer sa logique.
+$('intro-account-link')?.addEventListener('click', (event) => {
+  event.preventDefault();
+  const loginBtn = $('account-login-button');
+  loginBtn?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  loginBtn?.classList.add('intro-highlight');
+  setTimeout(() => loginBtn?.classList.remove('intro-highlight'), 2000);
 });

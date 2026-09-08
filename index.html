@@ -20,8 +20,8 @@
       <div class="hamburger-menu hidden" id="hamburger-menu">
         <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Le fonctionnement des quiz</button>
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 La liste des artistes</button>
+        <a class="hamburger-item" id="menu-item-base" href="#base" target="_blank" rel="noopener" style="display:block;text-decoration:none;">🗂️ La base d'œuvres (nouvel onglet)</a>
         <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
-        <button type="button" class="hamburger-item" id="menu-item-reset-popups">🔔 Réafficher les pop-up explicatifs</button>
       </div>
     </div>
     <div class="app-shell">
@@ -45,7 +45,7 @@
             <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
           </figure>
 
-          <p class="intro-banner">Cette application vous propose de jouer avec une base de plusieurs milliers d'œuvres d'art — peintures et sculptures, du 14e au 20e siècle — à travers des exercices d'entraînement à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. Créez un compte pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
+          <p class="intro-banner">Cette application vous propose de jouer avec <a href="#base" target="_blank" rel="noopener">une base de plusieurs milliers d'œuvres d'art</a> — peintures et sculptures, du 14e au 20e siècle — à travers <a href="#exercices" target="_blank" rel="noopener">des exercices d'entraînement</a> à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. <a href="#" id="intro-account-link">Créez un compte</a> pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
 
           <div class="home-mode-buttons">
             <button type="button" class="home-mode-button" id="open-training">
@@ -83,60 +83,46 @@
         </section>
 
         <section id="impregnation-setup-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="impregnation-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          <button type="button" id="impregnation-setup-back-button" class="home-icon-button hidden" aria-label="Retour" title="Retour">🏠</button>
+          <div class="settings-title-band">
+            <div>
+              <h2 style="margin:0;color:var(--accent);font-size:1.4rem;font-weight:700;">Configurer l'exercice d'imprégnation</h2>
+              <p id="imp-objective" style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:.78rem;color:var(--muted);max-width:520px;">Une image apparaît, sa référence s'écrit progressivement pendant que la voix la lit — sans notation.</p>
+            </div>
+            <button type="button" class="primary-button" id="imp-start-button" style="margin:0;width:auto;padding:10px 24px;white-space:nowrap;">Commencer le jeu →</button>
           </div>
-          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice d'imprégnation</h2></div>
-          <p class="modal-hint" id="imp-objective" style="text-align:center;margin-top:0;">Une image apparaît, puis sa référence s'écrit progressivement pendant que la voix la lit — sans notation, juste pour vous en imprégner par la répétition.</p>
-          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="imp-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="imp-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body" id="imp-body-art">
+          <p class="config-section-title">1. Choisissez vos champs</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Art</p>
               <label class="rubrique-option"><input type="checkbox" id="imp-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-art-sculpture" /><span>Sculpture</span></label>
             </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="imp-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body" id="imp-body-century">
-              <div class="accordion-columns">
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-century-14e" /><span>14e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-century-15e" /><span>15e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-century-16e" /><span>16e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-century-17e" /><span>17e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-century-18e" /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-century-19e" /><span>19e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-century-20e" /><span>20e siècle</span></label>
-                </div>
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-zone-france" /><span>France</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-zone-europe" /><span>Autres pays d'Europe</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-zone-amerique" /><span>Amérique</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="imp-zone-asie" /><span>Asie</span></label>
-                </div>
-              </div>
-              <p class="modal-hint">Rien coché en zone = toutes zones confondues.</p>
+            <div>
+              <p class="config-table-col-title">Siècle</p>
+              <label class="rubrique-option"><input type="checkbox" id="imp-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-century-15e" /><span>15e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-century-16e" /><span>16e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-century-17e" /><span>17e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-century-18e" /><span>18e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-century-19e" /><span>19e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-century-20e" /><span>20e siècle</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Zone géographique</p>
+              <label class="rubrique-option"><input type="checkbox" id="imp-zone-france" /><span>France</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-zone-amerique" /><span>Amérique</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-zone-asie" /><span>Asie</span></label>
+              <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="imp-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body" id="imp-body-level">
-              <label class="rubrique-option"><input type="checkbox" id="imp-level-1" /><span>Niveau 1</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="imp-level-2" /><span>Niveau 2</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="imp-level-3" /><span>Niveau 3</span></label>
-              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="imp-toggle-rubriques">📝 Rubriques</button>
-            <div class="accordion-body" id="imp-body-rubriques">
+          <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Rubriques</p>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-artist" /><span>Auteur</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-title" /><span>Titre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-date" /><span>Date</span></label>
@@ -144,26 +130,29 @@
               <label class="rubrique-option"><input type="checkbox" id="imp-field-dimensions" /><span>Dimensions</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-location" /><span>Lieu</span></label>
             </div>
-          </div>
-
-          <div class="opt-row">
-            <span>Avancement d'une œuvre à l'autre :</span>
-            <select id="imp-opt-advance">
-              <option value="auto">Défilement automatique</option>
-              <option value="manual">Clic personnel</option>
-            </select>
-          </div>
-          <div class="opt-row" id="imp-delay-row">
-            <span>Délai avant le défilement :</span>
-            <select id="imp-opt-delay">
-              <option value="2000">2 s</option>
-              <option value="3000" selected>3 s</option>
-            </select>
+            <div>
+              <p class="config-table-col-title">Niveau</p>
+              <label class="rubrique-option"><input type="checkbox" id="imp-level-1" /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-level-2" /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-level-3" /><span>Niveau 3</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Avancement</p>
+              <select id="imp-opt-advance" style="width:100%;margin-bottom:8px;">
+                <option value="auto">Défilement automatique</option>
+                <option value="manual">Clic personnel</option>
+              </select>
+              <div id="imp-delay-row">
+                <select id="imp-opt-delay" style="width:100%;">
+                  <option value="2000">2 s</option>
+                  <option value="3000" selected>3 s</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div class="opt-row"><label><input type="checkbox" id="imp-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
           <div class="opt-row"><label><input type="checkbox" id="imp-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
-          <button type="button" class="primary-button" id="imp-start-button" style="width:100%">Commencer</button>
           <p id="imp-setup-feedback" class="hint hidden"></p>
         </section>
 
@@ -196,79 +185,68 @@
         </section>
 
         <section id="intrus-setup-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="intrus-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          <button type="button" id="intrus-setup-back-button" class="home-icon-button hidden" aria-label="Retour" title="Retour">🏠</button>
+          <div class="settings-title-band">
+            <div>
+              <h2 style="margin:0;color:var(--accent);font-size:1.4rem;font-weight:700;">Configurer l'exercice Intrus</h2>
+              <p id="intrus-objective" style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:.78rem;color:var(--muted);max-width:520px;">Retrouvez la bonne image ou la bonne référence parmi 3 propositions.</p>
+            </div>
+            <button type="button" class="primary-button" id="intrus-start-button" style="margin:0;width:auto;padding:10px 24px;white-space:nowrap;">Commencer le jeu →</button>
           </div>
-          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Intrus</h2></div>
-          <p class="modal-hint" id="intrus-objective" style="text-align:center;margin-top:0;">Retrouvez la bonne image ou la bonne référence parmi 3 propositions, sans vous laisser distraire par les intrus.</p>
-          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="intrus-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
           <div class="training-exercise-grid" style="grid-template-columns:1fr 1fr;margin-bottom:20px;">
             <button type="button" class="home-mode-button intrus-mode-btn" id="intrus-mode-image" data-mode="image">Images intruses</button>
             <button type="button" class="home-mode-button intrus-mode-btn inactive" id="intrus-mode-ref" data-mode="reference">Références intruses</button>
           </div>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="intrus-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body" id="intrus-body-art">
+          <p class="config-section-title">1. Choisissez vos champs</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Art</p>
               <label class="rubrique-option"><input type="checkbox" id="intrus-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-art-sculpture" /><span>Sculpture</span></label>
             </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="intrus-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body" id="intrus-body-century">
-              <div class="accordion-columns">
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-14e" /><span>14e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-15e" /><span>15e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-16e" /><span>16e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-17e" /><span>17e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-18e" /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-19e" /><span>19e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-century-20e" /><span>20e siècle</span></label>
-                </div>
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-zone-france" /><span>France</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-zone-europe" /><span>Autres pays d'Europe</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-zone-amerique" /><span>Amérique</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="intrus-zone-asie" /><span>Asie</span></label>
-                </div>
-              </div>
-              <p class="modal-hint">Rien coché en zone = toutes zones confondues.</p>
+            <div>
+              <p class="config-table-col-title">Siècle</p>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-century-15e" /><span>15e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-century-16e" /><span>16e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-century-17e" /><span>17e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-century-18e" /><span>18e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-century-19e" /><span>19e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-century-20e" /><span>20e siècle</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Zone géographique</p>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-france" /><span>France</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-amerique" /><span>Amérique</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-asie" /><span>Asie</span></label>
+              <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="intrus-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body" id="intrus-body-level">
-              <label class="rubrique-option"><input type="checkbox" id="intrus-level-1" /><span>Niveau 1</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="intrus-level-2" /><span>Niveau 2</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="intrus-level-3" /><span>Niveau 3</span></label>
-              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="intrus-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body" id="intrus-body-count">
-              <label class="rubrique-option"><input type="radio" name="intrus-count" value="10" checked /><span>10 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="intrus-count" value="20" /><span>20 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="intrus-count" value="max" /><span>Maximum disponible</span></label>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="intrus-toggle-rubriques">📝 Rubriques affichées en correction</button>
-            <div class="accordion-body" id="intrus-body-rubriques">
+          <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Rubriques en correction</p>
               <label class="rubrique-option"><input type="checkbox" id="intrus-field-date" /><span>Date</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-field-materiaux" /><span>Matériau</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-field-dimensions" /><span>Dimensions</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-field-location" /><span>Lieu</span></label>
-              <p class="modal-hint">Auteur et titre apparaissent toujours ; ces rubriques s'ajoutent à la référence complète en correction.</p>
+              <p class="modal-hint" style="margin-bottom:0;">Auteur et titre toujours affichés.</p>
+            </div>
+            <div>
+              <p class="config-table-col-title">Niveau</p>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-level-1" /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-level-2" /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-level-3" /><span>Niveau 3</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Nb de questions</p>
+              <label class="rubrique-option"><input type="radio" name="intrus-count" value="10" checked /><span>10 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="intrus-count" value="20" /><span>20 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="intrus-count" value="max" /><span>Maximum disponible</span></label>
             </div>
           </div>
 
@@ -286,9 +264,7 @@
 
           <div class="opt-row"><label><input type="checkbox" id="intrus-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
           <div class="opt-row"><label><input type="checkbox" id="intrus-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
-          <button type="button" class="primary-button" id="intrus-start-button" style="width:100%">Commencer</button>
           <p id="intrus-setup-feedback" class="hint hidden"></p>
-          <button type="button" class="secondary-button" id="intrus-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
         </section>
 
         <section id="intrus-panel" class="quiz-panel hidden">
@@ -322,74 +298,63 @@
         </section>
 
         <section id="reconstitution-setup-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="reconstitution-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          <button type="button" id="reconstitution-setup-back-button" class="home-icon-button hidden" aria-label="Retour" title="Retour">🏠</button>
+          <div class="settings-title-band">
+            <div>
+              <h2 style="margin:0;color:var(--accent);font-size:1.4rem;font-weight:700;">Configurer l'exercice Reconstitution</h2>
+              <p id="recon-objective" style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:.78rem;color:var(--muted);max-width:520px;">Un détail très resserré de l'œuvre apparaît ; retrouvez la référence complète parmi 3 choix.</p>
+            </div>
+            <button type="button" class="primary-button" id="recon-start-button" style="margin:0;width:auto;padding:10px 24px;white-space:nowrap;">Commencer le jeu →</button>
           </div>
-          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Reconstitution</h2></div>
-          <p class="modal-hint" id="recon-objective" style="text-align:center;margin-top:0;">Un détail très resserré de l'œuvre (moins de 10 % de la surface) apparaît ; retrouvez la référence complète parmi 3 choix.</p>
-          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="recon-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="recon-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body" id="recon-body-art">
+          <p class="config-section-title">1. Choisissez vos champs</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Art</p>
               <label class="rubrique-option"><input type="checkbox" id="recon-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-art-sculpture" /><span>Sculpture</span></label>
             </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="recon-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body" id="recon-body-century">
-              <div class="accordion-columns">
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-century-14e" /><span>14e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-century-15e" /><span>15e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-century-16e" /><span>16e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-century-17e" /><span>17e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-century-18e" /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-century-19e" /><span>19e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-century-20e" /><span>20e siècle</span></label>
-                </div>
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-zone-france" /><span>France</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-zone-europe" /><span>Autres pays d'Europe</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-zone-amerique" /><span>Amérique</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="recon-zone-asie" /><span>Asie</span></label>
-                </div>
-              </div>
-              <p class="modal-hint">Rien coché en zone = toutes zones confondues.</p>
+            <div>
+              <p class="config-table-col-title">Siècle</p>
+              <label class="rubrique-option"><input type="checkbox" id="recon-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-century-15e" /><span>15e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-century-16e" /><span>16e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-century-17e" /><span>17e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-century-18e" /><span>18e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-century-19e" /><span>19e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-century-20e" /><span>20e siècle</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Zone géographique</p>
+              <label class="rubrique-option"><input type="checkbox" id="recon-zone-france" /><span>France</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-zone-amerique" /><span>Amérique</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-zone-asie" /><span>Asie</span></label>
+              <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="recon-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body" id="recon-body-level">
-              <label class="rubrique-option"><input type="checkbox" id="recon-level-1" /><span>Niveau 1</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="recon-level-2" /><span>Niveau 2</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="recon-level-3" /><span>Niveau 3</span></label>
-              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="recon-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body" id="recon-body-count">
-              <label class="rubrique-option"><input type="radio" name="recon-count" value="10" checked /><span>10 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="recon-count" value="20" /><span>20 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="recon-count" value="max" /><span>Maximum disponible</span></label>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="recon-toggle-rubriques">📝 Rubriques affichées en correction</button>
-            <div class="accordion-body" id="recon-body-rubriques">
+          <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Rubriques en correction</p>
               <label class="rubrique-option"><input type="checkbox" id="recon-field-date" /><span>Date</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-field-materiaux" /><span>Matériau</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-field-dimensions" /><span>Dimensions</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-field-location" /><span>Lieu</span></label>
-              <p class="modal-hint">Auteur et titre apparaissent toujours ; ces rubriques s'ajoutent à la référence complète en correction.</p>
+              <p class="modal-hint" style="margin-bottom:0;">Auteur et titre toujours affichés.</p>
+            </div>
+            <div>
+              <p class="config-table-col-title">Niveau</p>
+              <label class="rubrique-option"><input type="checkbox" id="recon-level-1" /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-level-2" /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-level-3" /><span>Niveau 3</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Nb de questions</p>
+              <label class="rubrique-option"><input type="radio" name="recon-count" value="10" checked /><span>10 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="recon-count" value="20" /><span>20 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="recon-count" value="max" /><span>Maximum disponible</span></label>
             </div>
           </div>
 
@@ -407,9 +372,7 @@
 
           <div class="opt-row"><label><input type="checkbox" id="recon-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
           <div class="opt-row"><label><input type="checkbox" id="recon-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
-          <button type="button" class="primary-button" id="recon-start-button" style="width:100%">Commencer</button>
           <p id="recon-setup-feedback" class="hint hidden"></p>
-          <button type="button" class="secondary-button" id="recon-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
         </section>
 
         <section id="reconstitution-panel" class="quiz-panel hidden">
@@ -441,17 +404,16 @@
         </section>
 
         <section id="vraifaux-setup-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="vraifaux-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
-          </div>
+          <button type="button" id="vraifaux-setup-back-button" class="home-icon-button hidden" aria-label="Retour" title="Retour">🏠</button>
           <div class="settings-title-band">
-            <h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Vrai/Faux</h2>
-            <button type="button" class="primary-button" id="vf-start-button" style="margin:0;width:auto;padding:10px 24px;">Commencer →</button>
+            <div>
+              <h2 style="margin:0;color:var(--accent);font-size:1.4rem;font-weight:700;">Configurer l'exercice Vrai/Faux</h2>
+              <p id="vf-objective" style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:.78rem;color:var(--muted);max-width:520px;">Une image apparaît avec sa référence, entièrement exacte ou comportant jusqu'à deux éléments faux à repérer.</p>
+            </div>
+            <button type="button" class="primary-button" id="vf-start-button" style="margin:0;width:auto;padding:10px 24px;white-space:nowrap;">Commencer le jeu →</button>
           </div>
-          <p class="modal-hint" id="vf-objective" style="text-align:center;margin-top:0;">Une image apparaît avec sa référence. Elle est soit entièrement exacte, soit comporte <strong>au maximum deux</strong> éléments faux. Cochez « Faux » sur les rubriques que vous pensez erronées, puis validez.</p>
-          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="vf-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
-          <p class="config-section-title">1. Choisissez votre champ</p>
+          <p class="config-section-title">1. Choisissez vos champs</p>
           <div class="config-table config-table-3">
             <div>
               <p class="config-table-col-title">Art</p>
@@ -478,7 +440,7 @@
             </div>
           </div>
 
-          <p class="config-section-title">2. Choisissez votre rubrique et niveau</p>
+          <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div class="config-table config-table-3">
             <div>
               <p class="config-table-col-title">Rubriques</p>
@@ -539,73 +501,65 @@
         </section>
 
         <section id="famille-setup-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="famille-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          <button type="button" id="famille-setup-back-button" class="home-icon-button hidden" aria-label="Retour" title="Retour">🏠</button>
+          <div class="settings-title-band">
+            <div>
+              <h2 style="margin:0;color:var(--accent);font-size:1.4rem;font-weight:700;">Configurer l'exercice Famille</h2>
+              <p id="fam-objective" style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:.78rem;color:var(--muted);max-width:520px;">Repérez les œuvres d'un même artiste parmi d'autres, puis retrouvez leur titre.</p>
+            </div>
+            <button type="button" class="primary-button" id="fam-start-button" style="margin:0;width:auto;padding:10px 24px;white-space:nowrap;">Commencer le jeu →</button>
           </div>
-          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Famille</h2></div>
-          <p class="modal-hint" id="fam-objective" style="text-align:center;margin-top:0;">8 images apparaissent ; 4 sont du même artiste. Repérez-les et nommez l'artiste. Une fois validé, retrouvez aussi le titre de chacune des 4 œuvres.</p>
-          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="fam-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="fam-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body" id="fam-body-art">
+          <p class="config-section-title">1. Choisissez vos champs</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Art</p>
               <label class="rubrique-option"><input type="checkbox" id="fam-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-art-sculpture" /><span>Sculpture</span></label>
             </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="fam-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body" id="fam-body-century">
-              <div class="accordion-columns">
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-century-14e" /><span>14e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-century-15e" /><span>15e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-century-16e" /><span>16e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-century-17e" /><span>17e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-century-18e" /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-century-19e" /><span>19e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-century-20e" /><span>20e siècle</span></label>
-                </div>
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-zone-france" /><span>France</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-zone-europe" /><span>Autres pays d'Europe</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-zone-amerique" /><span>Amérique</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="fam-zone-asie" /><span>Asie</span></label>
-                </div>
-              </div>
-              <p class="modal-hint">Rien coché en zone = toutes zones confondues.</p>
+            <div>
+              <p class="config-table-col-title">Siècle</p>
+              <label class="rubrique-option"><input type="checkbox" id="fam-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-century-15e" /><span>15e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-century-16e" /><span>16e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-century-17e" /><span>17e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-century-18e" /><span>18e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-century-19e" /><span>19e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-century-20e" /><span>20e siècle</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Zone géographique</p>
+              <label class="rubrique-option"><input type="checkbox" id="fam-zone-france" /><span>France</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-zone-amerique" /><span>Amérique</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-zone-asie" /><span>Asie</span></label>
+              <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="fam-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body" id="fam-body-level">
+          <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Images par question</p>
+              <label class="rubrique-option"><input type="radio" name="fam-images" value="6" /><span>6 images (3 en commun)</span></label>
+              <label class="rubrique-option"><input type="radio" name="fam-images" value="8" checked /><span>8 images (4 en commun)</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Niveau</p>
               <label class="rubrique-option"><input type="checkbox" id="fam-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-level-3" /><span>Niveau 3</span></label>
-              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
             </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="fam-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body" id="fam-body-count">
+            <div>
+              <p class="config-table-col-title">Nb de questions</p>
               <label class="rubrique-option"><input type="radio" name="fam-count" value="5" checked /><span>5 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="fam-count" value="10" /><span>10 questions</span></label>
-              <p class="modal-subheading" style="margin-top:14px;">Nombre d'images par question</p>
-              <label class="rubrique-option"><input type="radio" name="fam-images" value="6" /><span>6 images, dont 3 en commun (plus confortable sur smartphone)</span></label>
-              <label class="rubrique-option"><input type="radio" name="fam-images" value="8" checked /><span>8 images, dont 4 en commun (mieux sur PC)</span></label>
             </div>
           </div>
 
           <div class="opt-row"><label><input type="checkbox" id="fam-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
           <div class="opt-row"><label><input type="checkbox" id="fam-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
-          <button type="button" class="primary-button" id="fam-start-button" style="width:100%">Commencer</button>
           <p id="fam-setup-feedback" class="hint hidden"></p>
-          <button type="button" class="secondary-button" id="fam-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
         </section>
 
         <section id="famille-panel" class="quiz-panel hidden">
@@ -638,69 +592,61 @@
         </section>
 
         <section id="chrono-setup-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="chrono-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          <button type="button" id="chrono-setup-back-button" class="home-icon-button hidden" aria-label="Retour" title="Retour">🏠</button>
+          <div class="settings-title-band">
+            <div>
+              <h2 style="margin:0;color:var(--accent);font-size:1.4rem;font-weight:700;">Configurer l'exercice Chronologie</h2>
+              <p id="chrono-objective" style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:.78rem;color:var(--muted);max-width:520px;">4 œuvres apparaissent : remettez-les dans l'ordre chronologique.</p>
+            </div>
+            <button type="button" class="primary-button" id="chrono-start-button" style="margin:0;width:auto;padding:10px 24px;white-space:nowrap;">Commencer le jeu →</button>
           </div>
-          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Chronologie</h2></div>
-          <p class="modal-hint" id="chrono-objective" style="text-align:center;margin-top:0;">4 œuvres apparaissent : remettez-les dans l'ordre chronologique, de la plus ancienne à la plus récente.</p>
-          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="chrono-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="chrono-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body" id="chrono-body-art">
+          <p class="config-section-title">1. Choisissez vos champs</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Art</p>
               <label class="rubrique-option"><input type="checkbox" id="chrono-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="chrono-art-sculpture" /><span>Sculpture</span></label>
             </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="chrono-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body" id="chrono-body-century">
-              <div class="accordion-columns">
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-14e" /><span>14e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-15e" /><span>15e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-16e" /><span>16e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-17e" /><span>17e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-18e" /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-19e" /><span>19e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-20e" /><span>20e siècle</span></label>
-                </div>
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-zone-france" /><span>France</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-zone-europe" /><span>Autres pays d'Europe</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-zone-amerique" /><span>Amérique</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="chrono-zone-asie" /><span>Asie</span></label>
-                </div>
-              </div>
-              <p class="modal-hint">Rien coché en zone = toutes zones confondues. Cocher plusieurs siècles est nécessaire pour un vrai classement chronologique.</p>
+            <div>
+              <p class="config-table-col-title">Siècle</p>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-century-15e" /><span>15e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-century-16e" /><span>16e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-century-17e" /><span>17e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-century-18e" /><span>18e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-century-19e" /><span>19e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-century-20e" /><span>20e siècle</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Zone géographique</p>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-france" /><span>France</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-amerique" /><span>Amérique</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-asie" /><span>Asie</span></label>
+              <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones. Plusieurs siècles nécessaires pour un vrai classement.</p>
             </div>
           </div>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="chrono-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body" id="chrono-body-level">
+          <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Niveau</p>
               <label class="rubrique-option"><input type="checkbox" id="chrono-level-1" /><span>Niveau 1</span></label>
               <label class="rubrique-option"><input type="checkbox" id="chrono-level-2" /><span>Niveau 2</span></label>
               <label class="rubrique-option"><input type="checkbox" id="chrono-level-3" /><span>Niveau 3</span></label>
             </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="chrono-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body" id="chrono-body-count">
+            <div>
+              <p class="config-table-col-title">Nb de questions</p>
               <label class="rubrique-option"><input type="radio" name="chrono-count" value="5" checked /><span>5 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="chrono-count" value="10" /><span>10 questions</span></label>
             </div>
+            <div></div>
           </div>
 
           <div class="opt-row"><label><input type="checkbox" id="chrono-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
           <div class="opt-row"><label><input type="checkbox" id="chrono-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
-          <button type="button" class="primary-button" id="chrono-start-button" style="width:100%">Commencer</button>
           <p id="chrono-setup-feedback" class="hint hidden"></p>
-          <button type="button" class="secondary-button" id="chrono-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
         </section>
 
         <section id="chrono-panel" class="quiz-panel hidden">
@@ -713,11 +659,15 @@
 
           <div class="quiz-grid">
             <div class="artwork-column">
-              <div id="chrono-image-grid" class="fam-image-grid" style="grid-template-columns:repeat(4,1fr);grid-template-rows:1fr;"></div>
+              <div id="chrono-image-grid">
+                <div id="chrono-source-row" class="fam-image-grid" style="grid-template-columns:repeat(4,1fr);"></div>
+                <div id="chrono-target-row" class="fam-image-grid" style="grid-template-columns:repeat(4,1fr);margin-top:14px;"></div>
+                <div id="chrono-correct-table" class="hidden"></div>
+              </div>
             </div>
             <section class="answer-card" aria-label="Ordre chronologique">
-              <h2 style="font-family:Arial,sans-serif;font-size:1rem;font-weight:700;margin:0 0 12px;">Remets ces images dans l'ordre chronologique</h2>
-              <p class="modal-hint" style="margin-top:0;">Cliquez les images de la plus ancienne à la plus récente : la première cliquée reçoit le n° 1, etc.</p>
+              <h2 style="font-family:Arial,sans-serif;font-size:1rem;font-weight:700;margin:0 0 12px;">Remets ces œuvres dans l'ordre chronologique</h2>
+              <p class="modal-hint" style="margin-top:0;">Glissez chaque œuvre (ou touchez-la puis touchez l'emplacement) de la ligne du haut vers la case du bas qui correspond à son rang, du plus ancien au plus récent.</p>
               <button type="button" class="primary-button" id="chrono-validate-button" style="width:100%">Valider l'ordre</button>
               <div id="chrono-correction" class="hidden">
                 <p id="chrono-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.3rem;margin:16px 0;"></p>
@@ -1072,9 +1022,6 @@
         </section>
 
         <section id="profile-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="profile-back-button" class="home-icon-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
-          </div>
           <p class="eyebrow">MON COMPTE</p>
           <div style="text-align:center;margin-bottom:20px;">
             <label for="profile-photo-input" style="cursor:pointer;display:inline-block;">
@@ -1084,6 +1031,7 @@
             </label>
             <input type="file" id="profile-photo-input" accept="image/*" class="hidden" />
             <p id="profile-email" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);margin-top:8px;"></p>
+            <button type="button" id="profile-resume-exercise-button" class="primary-button hidden" style="margin-top:10px;">↩ Revenir à l'exercice en cours</button>
           </div>
 
           <div class="training-exercise-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
@@ -1171,6 +1119,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=63"></script>
+    <script src="app.js?v=68"></script>
   </body>
 </html>
