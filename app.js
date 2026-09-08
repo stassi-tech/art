@@ -453,6 +453,7 @@ function initProfilePage() {
   try { rubriqueDefaults = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) {}
   document.querySelectorAll('.pf-rubrique-field').forEach((el) => { el.checked = (rubriqueDefaults.rubriques || []).includes(el.value); });
   document.querySelectorAll('.pf-rubrique-level').forEach((el) => { el.checked = (rubriqueDefaults.levels || []).includes(el.value); });
+  if (rubriqueDefaults.count) { const el = document.querySelector(`input[name="pf-count"][value="${rubriqueDefaults.count}"]`); if (el) el.checked = true; }
 }
 $('profile-resume-exercise-button')?.addEventListener('click', () => {
   if (!returnToExercisePanel) return;
@@ -499,7 +500,8 @@ $('pf-fields-clear')?.addEventListener('click', () => {
 $('pf-rubriques-apply')?.addEventListener('click', () => {
   const rubriques = [...document.querySelectorAll('.pf-rubrique-field:checked')].map((el) => el.value);
   const levels = [...document.querySelectorAll('.pf-rubrique-level:checked')].map((el) => el.value);
-  localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, remember: true }));
+  const count = document.querySelector('input[name="pf-count"]:checked')?.value || '';
+  localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, count, remember: true }));
   updateExerciseSummaries();
 });
 $('pf-rubriques-clear')?.addEventListener('click', () => {
@@ -1754,19 +1756,36 @@ $('chrono-start-button')?.addEventListener('click', async () => {
     const countChoice = Number(document.querySelector('input[name="chrono-count"]:checked').value);
     const questions = [];
     const usedKeys = new Set();
+    // Répartit les œuvres du siècle choisi en 4 tranches d'environ 25 ans (début, ~30 ans,
+    // ~60 ans, fin) et tire une œuvre dans chaque tranche : un vrai écart chronologique entre
+    // elles, plus facile à ordonner qu'un tirage totalement aléatoire.
+    const centuriesPresent = [...new Set(dated.map((w) => Math.floor(chronoYearOf(w) / 100)))];
     let attempts = 0;
-    while (questions.length < countChoice && attempts < countChoice * 20) {
+    while (questions.length < countChoice && attempts < countChoice * 30) {
       attempts++;
-      const shuffled = dated.slice().sort(() => Math.random() - 0.5).slice(0, 4);
-      const years = shuffled.map(chronoYearOf);
+      const centuryBase = centuriesPresent[Math.floor(Math.random() * centuriesPresent.length)] * 100;
+      const inCentury = dated.filter((w) => { const y = chronoYearOf(w); return y >= centuryBase && y < centuryBase + 100; });
+      let picked = [];
+      if (inCentury.length >= 4) {
+        const buckets = [[], [], [], []];
+        inCentury.forEach((w) => { const slot = Math.min(3, Math.floor((chronoYearOf(w) - centuryBase) / 25)); buckets[slot].push(w); });
+        if (buckets.every((b) => b.length)) {
+          picked = buckets.map((b) => b[Math.floor(Math.random() * b.length)]);
+        }
+      }
+      if (picked.length !== 4) {
+        // Repli si une tranche est vide pour ce siècle : tirage large mais toujours daté.
+        picked = dated.slice().sort(() => Math.random() - 0.5).slice(0, 4);
+      }
+      const years = picked.map(chronoYearOf);
       // Rejette un tirage où deux œuvres auraient la même année (ordre ambigu) ou un tirage déjà
       // utilisé dans cette session.
       if (new Set(years).size < 4) continue;
-      const key = shuffled.map((w) => w.image).sort().join('|');
+      const key = picked.map((w) => w.image).sort().join('|');
       if (usedKeys.has(key)) continue;
       usedKeys.add(key);
-      const chronological = shuffled.slice().sort((a, b) => chronoYearOf(a) - chronoYearOf(b));
-      questions.push({ works: shuffled, chronological });
+      const chronological = picked.slice().sort((a, b) => chronoYearOf(a) - chronoYearOf(b));
+      questions.push({ works: picked, chronological });
     }
     if (!questions.length) { feedback.textContent = "Impossible de constituer un exercice avec ces critères — essayez d'élargir le choix."; return; }
     CHRONO_SESSION = questions;
@@ -1857,7 +1876,7 @@ function attachChronoDragAndDrop() {
     });
     item.addEventListener('pointermove', (event) => {
       if (!dragGhost || dragItem !== item) return;
-      if (Math.abs(event.clientX - dragStartX) > 4 || Math.abs(event.clientY - dragStartY) > 4) dragMoved = true;
+      if (Math.abs(event.clientX - dragStartX) > 12 || Math.abs(event.clientY - dragStartY) > 12) dragMoved = true;
       moveGhost(event.clientX, event.clientY);
     });
     item.addEventListener('pointerup', (event) => {
@@ -1866,7 +1885,9 @@ function attachChronoDragAndDrop() {
       const slot = target?.closest('.chrono-target-slot');
       cleanupGhost();
       if (slot) placeInSlot(slot, item);
-      else if (!dragMoved) {
+      else {
+        // Repli systématique dès que le relâchement n'est pas tombé pile sur un emplacement (pas
+        // seulement en l'absence de mouvement) : plus fiable au toucher qu'un seuil de distance.
         document.querySelectorAll('.chrono-source-item').forEach((c) => c.classList.remove('picked'));
         chronoPicked = chronoPicked === item ? null : item;
         if (chronoPicked) item.classList.add('picked');
@@ -2701,7 +2722,8 @@ function vfActiveFields() {
     { key: 'location', label: 'Lieu' },
   ];
   const checkboxMap = { artist: 'vf-field-artist', title: 'vf-field-title', date: 'vf-field-date', materials: 'vf-field-materiaux', dimensions: 'vf-field-dimensions', location: 'vf-field-location' };
-  return all.filter((f) => $(checkboxMap[f.key])?.checked);
+  const filtered = all.filter((f) => $(checkboxMap[f.key])?.checked);
+  return filtered.length ? filtered : all;
 }
 function vfFieldValue(row, key) {
   if (key === 'dimensions') return [row.hauteur, row.longueur].filter(Boolean).join(' × ');
@@ -2893,16 +2915,18 @@ $('vf-validate-button')?.addEventListener('click', () => {
   if (q.errorFields.length) {
     vfSpeak(q.errorFields.length > 1 ? 'Deux références sont fausses.' : 'Une référence est fausse.', () => speakNextCorrection(0));
   } else {
-    vfSpeak(q.activeFields.length > 1 ? `Les références de ${artWord} sont bonnes.` : `La référence de ${artWord} est bonne.`);
+    vfSpeak(q.activeFields.length > 1
+      ? `Les références que tu as données de ${artWord} étaient bonnes.`
+      : `La référence que tu as donnée de ${artWord} était bonne.`);
   }
 
-  // Fausses alertes : rubrique marquée Faux par le joueur alors qu'elle est exacte. Rien ne les
-  // traitait jusqu'ici — le bouton restait sur Faux sans explication. On l'indique clairement et
-  // on réaffirme visuellement l'état Faux (certains navigateurs estompent les boutons désactivés).
+  // Fausses alertes : rubrique marquée Faux par le joueur alors qu'elle est exacte. Le bouton
+  // reste sur Faux sans jamais se corriger, ce qui est ambigu — on le fait donc revenir sur Vrai
+  // (avec la même temporisation que les vraies erreurs) et on l'explique.
   q.activeFields.forEach((f) => {
     const btn = document.querySelector(`.vf-toggle[data-key="${f.key}"] button[data-val="false"].active`);
     if (btn && !q.errorFields.includes(f.key)) {
-      btn.classList.add('active');
+      const trueBtn = document.querySelector(`.vf-toggle[data-key="${f.key}"] button[data-val="true"]`);
       const row = btn.closest('.vf-field-row');
       if (row && !row.querySelector('.vf-false-alarm-note')) {
         const note = document.createElement('span');
@@ -2910,6 +2934,10 @@ $('vf-validate-button')?.addEventListener('click', () => {
         note.textContent = 'Cette rubrique était en fait exacte.';
         row.appendChild(note);
       }
+      vfTimers.push(setTimeout(() => {
+        btn.classList.remove('active');
+        trueBtn?.classList.add('active');
+      }, 700));
     }
   });
 
@@ -3017,6 +3045,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
     reconAutoAdvance = $('recon-opt-autoadvance').checked;
     reconAutoAdvanceDelay = Number($('recon-opt-delay').value);
     reconExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`recon-field-${k}`)?.checked);
+    if (!reconExtraFields.length) reconExtraFields = ['date', 'materiaux', 'dimensions', 'location'];
     RECON_SESSION = pool.slice(0, count).map((correct) => {
       const distractors = pickIntrusDistractors(correct, pool);
       const choices = [correct, ...distractors];
@@ -3326,6 +3355,21 @@ function applyGlobalFieldDefaultsTo(prefix) {
   }
   if (gr.remember) {
     ['1', '2', '3'].forEach((lvl) => { const el = $(`${prefix}-level-${lvl}`); if (el) el.checked = (gr.levels || []).includes(lvl); });
+    if (gr.count) {
+      const radios = [...document.querySelectorAll(`input[name="${prefix}-count"]`)];
+      const exact = radios.find((r) => r.value === gr.count);
+      if (exact) exact.checked = true;
+      else if (radios.length) {
+        // Se rabat sur la valeur numérique la plus proche disponible pour cet exercice (ex. « max »
+        // ou des paliers différents comme 5/10 au lieu de 10/20).
+        const numeric = radios.filter((r) => !isNaN(Number(r.value)));
+        if (numeric.length) {
+          const target = Number(gr.count);
+          numeric.sort((a, b) => Math.abs(Number(a.value) - target) - Math.abs(Number(b.value) - target));
+          numeric[0].checked = true;
+        }
+      }
+    }
   }
 }
 document.querySelectorAll('.exercise-summary-edit').forEach((icon) => {
@@ -3456,13 +3500,14 @@ function impShowCurrent() {
   $('imp-stage-img').src = imageSource(work.image);
 
   const dims = [work.hauteur, work.longueur].filter(Boolean).join(' × ');
+  const anyFieldChecked = ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].some((k) => $(`imp-field-${k}`)?.checked);
   const fields = [
-    { key: 'artist', label: 'Auteur', value: work.artist, on: $('imp-field-artist').checked },
-    { key: 'title', label: 'Titre de l\u2019œuvre', value: `« ${work.title} »`, on: $('imp-field-title').checked },
-    { key: 'date', label: 'Date', value: work.date, on: $('imp-field-date').checked },
-    { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: $('imp-field-materiaux').checked && work.materials },
-    { key: 'dimensions', label: 'Dimensions', value: dims, on: $('imp-field-dimensions').checked && dims },
-    { key: 'location', label: 'Lieu', value: work.location, on: $('imp-field-location').checked },
+    { key: 'artist', label: 'Auteur', value: work.artist, on: anyFieldChecked ? $('imp-field-artist').checked : true },
+    { key: 'title', label: 'Titre de l\u2019œuvre', value: `« ${work.title} »`, on: anyFieldChecked ? $('imp-field-title').checked : true },
+    { key: 'date', label: 'Date', value: work.date, on: anyFieldChecked ? $('imp-field-date').checked : true },
+    { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: (anyFieldChecked ? $('imp-field-materiaux').checked : true) && work.materials },
+    { key: 'dimensions', label: 'Dimensions', value: dims, on: (anyFieldChecked ? $('imp-field-dimensions').checked : true) && dims },
+    { key: 'location', label: 'Lieu', value: work.location, on: anyFieldChecked ? $('imp-field-location').checked : true },
   ].filter((f) => f.on);
 
   $('imp-correction-details').innerHTML = fields.map((f) =>
@@ -3627,6 +3672,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     intrusAutoAdvance = $('intrus-opt-autoadvance').checked;
     intrusAutoAdvanceDelay = Number($('intrus-opt-delay').value);
     intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`intrus-field-${k}`)?.checked);
+    if (!intrusExtraFields.length) intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'];
     INTRUS_SESSION = pool.slice(0, count).map((correct) => {
       // En mode « Références intruses », on ne montre le plus souvent que le nom de l'artiste (le
       // cas le plus fréquent et le plus exigeant), et parfois artiste + titre pour varier. Sans

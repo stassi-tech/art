@@ -50,7 +50,6 @@
           <div class="home-mode-buttons">
             <button type="button" class="home-mode-button" id="open-training">
               <span class="label">Entraînement à la mémoire</span>
-              <span class="tooltip-bubble" role="tooltip">Exercices en construction. Les quiz sont disponibles dès maintenant.</span>
             </button>
             <button type="button" class="home-mode-button" id="open-quiz-setup">
               <span class="label">Quiz</span>
@@ -1107,7 +1106,13 @@
                 <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="2" /><span>Niveau 2</span></label>
                 <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="3" /><span>Niveau 3</span></label>
               </div>
-              <div></div>
+              <div>
+                <p class="config-table-col-title">Nb de questions</p>
+                <label class="rubrique-option"><input type="radio" name="pf-count" value="5" /><span>5 questions</span></label>
+                <label class="rubrique-option"><input type="radio" name="pf-count" value="10" /><span>10 questions</span></label>
+                <label class="rubrique-option"><input type="radio" name="pf-count" value="20" /><span>20 questions</span></label>
+                <p class="modal-hint" style="margin-bottom:0;">Appliqué à la valeur la plus proche disponible dans chaque exercice.</p>
+              </div>
             </div>
             <button type="button" class="primary-button" id="pf-rubriques-apply" style="width:100%;margin-top:14px;">Appliquer ce choix</button>
             <button type="button" class="secondary-button" id="pf-rubriques-clear" style="width:100%;margin-top:8px;">Effacer ce choix</button>
@@ -1132,6 +1137,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=69"></script>
+    <script src="app.js?v=70"></script>
   </body>
 </html>
