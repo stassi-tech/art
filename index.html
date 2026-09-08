@@ -4,7 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Révision d'histoire de l'art</title>
-    <link rel="stylesheet" href="style.css?v=56" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
+    <meta name="theme-color" content="#1f3a5f" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="style.css?v=75" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -13,6 +18,7 @@
   <body>
     <div class="bg-mosaic" aria-hidden="true" id="bg-mosaic"></div>
     <div class="hamburger-wrap" id="global-topbar">
+      <span id="global-topbar-handle" class="global-topbar-handle" title="Glisser pour déplacer">⠿</span>
       <button type="button" id="global-home-button" class="global-topbar-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
       <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
       <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
@@ -52,7 +58,7 @@
               <span class="label">Entraînement à la mémoire</span>
             </button>
             <button type="button" class="home-mode-button" id="open-quiz-setup">
-              <span class="label">Quiz</span>
+              <span class="label">Quiz final</span>
             </button>
           </div>
 
@@ -72,12 +78,12 @@
           <p class="intro-banner">Choisissez un exercice d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même (art, siècle, niveau). Les exercices sont classés par ordre croissant de difficulté, de gauche à droite puis de haut en bas.</p>
 
           <div class="training-exercise-grid">
-            <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="label">Imprégnation</span><span class="exercise-summary" id="imp-hub-summary"></span><span class="exercise-summary-edit" id="imp-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="label">Intrus</span><span class="exercise-summary" id="intrus-hub-summary"></span><span class="exercise-summary-edit" id="intrus-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button" id="open-famille-setup"><span class="label">Famille</span><span class="exercise-summary" id="fam-hub-summary"></span><span class="exercise-summary-edit" id="fam-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="label">Reconstitution</span><span class="exercise-summary" id="recon-hub-summary"></span><span class="exercise-summary-edit" id="recon-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="label">Vrai/Faux</span><span class="exercise-summary" id="vf-hub-summary"></span><span class="exercise-summary-edit" id="vf-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button" id="open-chrono-setup"><span class="label">Chronologie</span><span class="exercise-summary" id="chrono-hub-summary"></span><span class="exercise-summary-edit" id="chrono-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="exercise-num">Exercice 1</span><span class="label">Imprégnation</span><span class="exercise-summary" id="imp-hub-summary"></span><span class="exercise-summary-edit" id="imp-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="exercise-num">Exercice 2</span><span class="label">Intrus</span><span class="exercise-summary" id="intrus-hub-summary"></span><span class="exercise-summary-edit" id="intrus-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-famille-setup"><span class="exercise-num">Exercice 3</span><span class="label">Famille</span><span class="exercise-summary" id="fam-hub-summary"></span><span class="exercise-summary-edit" id="fam-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="exercise-num">Exercice 4</span><span class="label">Reconstitution</span><span class="exercise-summary" id="recon-hub-summary"></span><span class="exercise-summary-edit" id="recon-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="exercise-num">Exercice 5</span><span class="label">Vrai/Faux</span><span class="exercise-summary" id="vf-hub-summary"></span><span class="exercise-summary-edit" id="vf-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-chrono-setup"><span class="exercise-num">Exercice 6</span><span class="label">Chronologie</span><span class="exercise-summary" id="chrono-hub-summary"></span><span class="exercise-summary-edit" id="chrono-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
           </div>
         </section>
 
@@ -407,7 +413,7 @@
           <div class="settings-title-band">
             <div>
               <h2 style="margin:0;color:var(--accent);font-size:1.4rem;font-weight:700;">Configurer l'exercice Vrai/Faux</h2>
-              <p id="vf-objective" style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:.78rem;color:var(--muted);max-width:520px;">Une image apparaît avec sa référence, entièrement exacte ou comportant jusqu'à deux éléments faux à repérer.</p>
+              <p id="vf-objective" style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:.78rem;color:var(--muted);max-width:520px;">Une image apparaît avec sa référence, entièrement exacte ou comportant jusqu'à deux détails faux à repérer.</p>
             </div>
             <button type="button" class="primary-button" id="vf-start-button" style="margin:0;width:auto;padding:10px 24px;white-space:nowrap;">Commencer le jeu →</button>
           </div>
@@ -1059,7 +1065,7 @@
           </div>
 
           <div id="profile-section-fields" class="hidden">
-            <p class="modal-hint" style="margin-top:0;">Le champ, c'est l'art et le siècle. Si vous les cochez ici, tous les exercices et le quiz démarreront directement dessus, sans repasser par leur configuration.</p>
+            <p class="modal-hint" style="margin-top:0;">Le champ, c'est l'art et le siècle. Si vous les cochez ici, tous les exercices et le quiz démarreront directement dessus, sans repasser par leur configuration. Rien coché = toutes les possibilités (art, siècle, zone confondus).</p>
             <div class="config-table config-table-3">
               <div>
                 <p class="config-table-col-title">Art</p>
@@ -1086,10 +1092,11 @@
             </div>
             <button type="button" class="primary-button" id="pf-fields-apply" style="width:100%;margin-top:14px;">Appliquer ce choix de champ</button>
             <button type="button" class="secondary-button" id="pf-fields-clear" style="width:100%;margin-top:8px;">Effacer le choix de champ</button>
+            <div id="pf-fields-overrides" style="margin-top:14px;"></div>
           </div>
 
           <div id="profile-section-rubriques" class="hidden">
-            <p class="modal-hint" style="margin-top:0;">La rubrique, c'est ce qui est testé (artiste, titre, date…) ; le niveau va avec. Utilisé là où l'exercice le permet.</p>
+            <p class="modal-hint" style="margin-top:0;">La rubrique, c'est ce qui est testé (artiste, titre, date…) ; le niveau va avec. Utilisé là où l'exercice le permet. Rien coché = tout est proposé (toutes rubriques, tous niveaux).</p>
             <div class="config-table config-table-3">
               <div>
                 <p class="config-table-col-title">Rubriques</p>
@@ -1120,6 +1127,7 @@
             </div>
             <button type="button" class="primary-button" id="pf-rubriques-apply" style="width:100%;margin-top:14px;">Appliquer ce choix</button>
             <button type="button" class="secondary-button" id="pf-rubriques-clear" style="width:100%;margin-top:8px;">Effacer ce choix</button>
+            <div id="pf-rubriques-overrides" style="margin-top:14px;"></div>
           </div>
         </section>
 
@@ -1141,6 +1149,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=72"></script>
+    <script src="app.js?v=74"></script>
   </body>
 </html>

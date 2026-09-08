@@ -462,6 +462,45 @@ function initProfilePage() {
       document.querySelector('input[name="pf-count"][value="custom"]').checked = true;
     }
   }
+  renderExerciseOverrides();
+}
+// Liste, sous chaque tableau (champ / rubrique), les exercices pour lesquels une sélection
+// spécifique a été mémorisée (via l'icône ✏️ sur leur bouton) — avec un bouton pour l'oublier.
+function renderExerciseOverrides() {
+  const artLabel = { peinture: 'Peinture', sculpture: 'Sculpture' };
+  const rows = { fields: [], rubriques: [] };
+  Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
+    let state;
+    try { state = JSON.parse(localStorage.getItem(`lastSelection_${info.panel}`) || '{}'); } catch (e) { state = {}; }
+    const checkedKeys = Object.keys(state).filter((k) => state[k]);
+    if (!checkedKeys.length) return;
+    const arts = checkedKeys.filter((k) => k.startsWith(`${prefix}-art-`)).map((k) => artLabel[k.replace(`${prefix}-art-`, '')]);
+    const centuries = checkedKeys.filter((k) => k.startsWith(`${prefix}-century-`)).map((k) => k.replace(`${prefix}-century-`, ''));
+    const zones = checkedKeys.filter((k) => k.startsWith(`${prefix}-zone-`)).map((k) => k.replace(`${prefix}-zone-`, ''));
+    const levels = checkedKeys.filter((k) => k.startsWith(`${prefix}-level-`)).map((k) => k.replace(`${prefix}-level-`, ''));
+    const fieldsList = checkedKeys.filter((k) => k.startsWith(`${prefix}-field-`)).map((k) => k.replace(`${prefix}-field-`, ''));
+    if (arts.length || centuries.length || zones.length) {
+      const summary = [arts.join('/'), centuries.length ? `${centuries.join('/')}e siècle` : '', zones.length ? `en ${zones.join('/')}` : ''].filter(Boolean).join(', ');
+      rows.fields.push({ prefix, name: info.name, summary, panel: info.panel });
+    }
+    if (levels.length || fieldsList.length) {
+      const summary = [fieldsList.length ? fieldsList.join(', ') : '', levels.length ? `niveau ${levels.join('/')}` : ''].filter(Boolean).join(' — ');
+      rows.rubriques.push({ prefix, name: info.name, summary, panel: info.panel });
+    }
+  });
+  const renderList = (list) => list.length ? list.map((r) =>
+    `<p class="hint" style="text-align:left;">Vous avez enregistré un choix différent pour <strong>${escapeHtml(r.name.toUpperCase())}</strong> : ${escapeHtml(r.summary)}
+      <button type="button" class="secondary-button override-delete-btn" data-panel="${r.panel}" style="padding:2px 10px;margin-left:8px;">Supprimer</button></p>`
+  ).join('') : '';
+  $('pf-fields-overrides').innerHTML = renderList(rows.fields);
+  $('pf-rubriques-overrides').innerHTML = renderList(rows.rubriques);
+  document.querySelectorAll('.override-delete-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      localStorage.removeItem(`lastSelection_${btn.dataset.panel}`);
+      renderExerciseOverrides();
+      updateExerciseSummaries();
+    });
+  });
 }
 $('profile-resume-exercise-button')?.addEventListener('click', () => {
   if (!returnToExercisePanel) return;
@@ -1146,6 +1185,7 @@ function selectedRubriquesLabel() {
   const labels = activeFields().map((field) => field.label);
   return labels.join(', ');
 }
+let currentPanelName = null, suppressHistoryPush = false;
 function showPanel(name) {
   // Coupe systématiquement toute voix en cours ET tous les minuteurs différés de chaque
   // exercice dès qu'on change de page — sinon un rappel programmé (setTimeout) d'un exercice
@@ -1154,6 +1194,16 @@ function showPanel(name) {
   if (window.speechSynthesis) speechSynthesis.cancel();
   document.querySelectorAll('.chrono-drag-ghost').forEach((g) => g.remove());
   [impTimers, vfTimers, famTimers, reconTimers, intrusTimers, chronoTimers].forEach((arr) => { if (arr) arr.forEach(clearTimeout); });
+  // Prend la main sur les flèches avant/arrière du navigateur : chaque changement de page ajoute
+  // une entrée d'historique interne, pour que « précédent » ramène dans l'appli au lieu d'en
+  // sortir directement. Écrit après le nettoyage ci-dessus mais avant tout le reste, pour rester
+  // fiable même si un panneau finit par lever une erreur plus loin.
+  if (name !== currentPanelName) {
+    currentPanelName = name;
+    if (!suppressHistoryPush) {
+      try { history.pushState({ panel: name }, '', `#${name}`); } catch (e) { /* ignoré si l'historique est indisponible */ }
+    }
+  }
   impTimers = []; vfTimers = []; famTimers = []; reconTimers = []; intrusTimers = []; chronoTimers = [];
 
   // name: 'welcome' | 'training-hub' | 'impregnation-setup' | 'impregnation' | 'intrus-setup' |
@@ -1326,18 +1376,17 @@ function formatDimensionsPlainText(work) {
   if (work.profondeur) parts.push(`p ${withCm(work.profondeur)}`);
   return parts.join(' × ');
 }
-// Phrase parlée des dimensions, ex. « de 78 centimètres de hauteur, 53 de longueur et 30 de
-// profondeur » — n'énumère que les dimensions réellement renseignées, avec la bonne conjonction,
-// et précise l'unité une seule fois (sur la première dimension citée).
+// Phrase parlée des dimensions, ex. « de 300 centimètres de hauteur, 50 centimètres de largeur,
+// et 30 centimètres de profondeur » — l'unité est répétée sur chaque dimension (plus naturel à
+// l'oral qu'une seule mention en tête), et on dit « largeur » plutôt que « longueur ».
 function spokenDimensionsPhrase(work) {
   const parts = [];
-  if (work.hauteur) parts.push(`${withCm(work.hauteur)} de hauteur`);
-  if (work.longueur) parts.push(`${work.longueur} de longueur`);
-  if (work.profondeur) parts.push(`${work.profondeur} de profondeur`);
+  if (work.hauteur) parts.push(`${withCm(work.hauteur).replace(/\bcm\b/i, 'centimètres')} de hauteur`);
+  if (work.longueur) parts.push(`${withCm(work.longueur).replace(/\bcm\b/i, 'centimètres')} de largeur`);
+  if (work.profondeur) parts.push(`${withCm(work.profondeur).replace(/\bcm\b/i, 'centimètres')} de profondeur`);
   if (!parts.length) return '';
-  const spoken = parts.map((p) => p.replace(/\bcm\b/i, 'centimètres'));
-  if (spoken.length === 1) return `de ${spoken[0]}`;
-  return `de ${spoken.slice(0, -1).join(', ')} et ${spoken[spoken.length - 1]}`;
+  if (parts.length === 1) return `de ${parts[0]}`;
+  return `de ${parts.slice(0, -1).join(', ')}, et ${parts[parts.length - 1]}`;
 }
 // Phrase de référence complète, dans l'ordre demandé : « Artiste, «Titre», Date. Nature en
 // matériau de H cm de hauteur, L de longueur et P de profondeur. Lieu. » — chaque partie
@@ -1697,6 +1746,7 @@ function showReconConfig() {
 $('open-reconstitution-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('recon');
   if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('reconstitution-setup-panel');
+  applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
   $('recon-start-button')?.click();
 });
 $('reconstitution-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -2896,7 +2946,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
       title: `Le titre exact de ${artWord} est : « ${value} »`,
       date: `La date exacte de ${artWord} est : ${value}`,
       materials: `Le matériau exact de ${artWord} est : ${value}`,
-      dimensions: `Les dimensions exactes de ${artWord} sont : ${value}`,
+      dimensions: `Les dimensions exactes de ${artWord} sont ${spokenDimensionsPhrase(q.correct)}`,
       location: `Le lieu exact de ${artWord} est : ${value}`,
     };
     return phrases[key] || `${value}`;
@@ -3178,6 +3228,45 @@ function applyHandedness(lefty) {
   document.body.classList.toggle('lefty', lefty);
 }
 applyHandedness(localStorage.getItem('handedness') === 'lefty');
+
+// Bandeau du haut déplaçable : glisser la poignée ⠿, position mémorisée sur l'appareil.
+(function initDraggableTopbar() {
+  const wrap = $('global-topbar');
+  const handle = $('global-topbar-handle');
+  if (!wrap || !handle) return;
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('topbarPosition') || 'null'); } catch (e) {}
+  if (saved && typeof saved.top === 'number' && typeof saved.left === 'number') {
+    wrap.style.top = `${saved.top}px`;
+    wrap.style.left = `${saved.left}px`;
+    wrap.style.right = 'auto';
+  }
+  let dragging = false, startX = 0, startY = 0, startTop = 0, startLeft = 0;
+  handle.addEventListener('pointerdown', (event) => {
+    dragging = true;
+    const rect = wrap.getBoundingClientRect();
+    startX = event.clientX; startY = event.clientY;
+    startTop = rect.top; startLeft = rect.left;
+    try { handle.setPointerCapture(event.pointerId); } catch (e) { /* ignoré volontairement */ }
+  });
+  handle.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const newTop = Math.max(0, Math.min(window.innerHeight - 40, startTop + (event.clientY - startY)));
+    const newLeft = Math.max(0, Math.min(window.innerWidth - 40, startLeft + (event.clientX - startX)));
+    wrap.style.top = `${newTop}px`;
+    wrap.style.left = `${newLeft}px`;
+    wrap.style.right = 'auto';
+  });
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    const rect = wrap.getBoundingClientRect();
+    localStorage.setItem('topbarPosition', JSON.stringify({ top: rect.top, left: rect.left }));
+  }
+  handle.addEventListener('pointerup', endDrag);
+  handle.addEventListener('pointercancel', endDrag);
+})();
+
 $('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
 $('other-works-back-button')?.addEventListener('click', () => showPanel('quiz'));
 $('other-works-next-button')?.addEventListener('click', () => { showPanel('quiz'); goToNextOrResults(); });
@@ -3407,6 +3496,11 @@ function showImpConfig() {
 $('open-impregnation-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('imp');
   if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('impregnation-setup-panel');
+  // Synchronise l'avancement (auto/manuel) et son délai depuis les préférences générales, comme
+  // le faisait la page de configuration qu'on ne montre plus — sinon la valeur par défaut du
+  // formulaire (auto) est utilisée à chaque fois, quel que soit le choix du joueur.
+  const p = getGlobalPrefs();
+  if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); }
   $('imp-start-button')?.click();
 });
 $('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -3559,6 +3653,7 @@ function showIntrusConfig() {
 $('open-intrus-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('intrus');
   if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('intrus-setup-panel');
+  applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
   $('intrus-start-button')?.click();
 });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
@@ -4104,6 +4199,15 @@ function openPanelFromHash() {
 }
 window.addEventListener('DOMContentLoaded', openPanelFromHash);
 if (document.readyState !== 'loading') openPanelFromHash();
+
+// Écoute les flèches précédent/suivant du navigateur : on rejoue le panneau mémorisé dans l'état
+// d'historique plutôt que de laisser le navigateur quitter l'application. Le drapeau évite de
+// réempiler une entrée d'historique en retour, ce qui romprait la pile précédent/suivant.
+window.addEventListener('popstate', (event) => {
+  suppressHistoryPush = true;
+  showPanel(event.state?.panel || 'welcome');
+  suppressHistoryPush = false;
+});
 
 // Le lien « Créez un compte » du texte d'accueil met en évidence le vrai bouton de connexion
 // plutôt que de dupliquer sa logique.
