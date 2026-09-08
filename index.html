@@ -16,12 +16,11 @@
       <button type="button" id="global-home-button" class="global-topbar-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
       <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
       <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
-      <button type="button" id="global-tech-settings-button" class="global-topbar-button" aria-label="Options techniques" title="Options techniques (voix, chronomètre, entrée…)">⚙</button>
+      <button type="button" id="global-account-button" class="global-topbar-button" aria-label="Mon compte" title="Mon compte">👤</button>
       <div class="hamburger-menu hidden" id="hamburger-menu">
         <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Le fonctionnement des quiz</button>
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 La liste des artistes</button>
         <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
-        <button type="button" class="hamburger-item" id="menu-item-handedness">✋ Boutons de champ : droite (droitier)</button>
         <button type="button" class="hamburger-item" id="menu-item-reset-popups">🔔 Réafficher les pop-up explicatifs</button>
       </div>
     </div>
@@ -79,7 +78,7 @@
             <button type="button" class="home-mode-button" id="open-famille-setup"><span class="label">Famille</span><span class="exercise-summary" id="fam-hub-summary"></span><span class="exercise-summary-edit" id="fam-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
             <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="label">Reconstitution</span><span class="exercise-summary" id="recon-hub-summary"></span><span class="exercise-summary-edit" id="recon-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
             <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="label">Vrai/Faux</span><span class="exercise-summary" id="vf-hub-summary"></span><span class="exercise-summary-edit" id="vf-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button training-soon" id="open-training-enigme"><span class="label">Énigme</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
+            <button type="button" class="home-mode-button" id="open-chrono-setup"><span class="label">Chronologie</span><span class="exercise-summary" id="chrono-hub-summary"></span><span class="exercise-summary-edit" id="chrono-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
           </div>
         </section>
 
@@ -445,71 +444,59 @@
           <div class="quiz-topbar">
             <button type="button" id="vraifaux-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
           </div>
-          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Vrai/Faux</h2></div>
-          <p class="modal-hint" id="vf-objective" style="text-align:center;margin-top:0;">Une image apparaît avec sa référence. Elle est soit entièrement exacte, soit comporte <strong>au maximum deux</strong> éléments faux. Cochez « Faux » sur les rubriques que vous pensez erronées, puis validez.</p>
+          <div class="settings-title-band">
+            <h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Vrai/Faux</h2>
+            <button type="button" class="primary-button" id="vf-start-button" style="margin:0;width:auto;padding:10px 24px;">Commencer →</button>
+          </div>
+          <p class="modal-hint" id="vf-objective" style="text-align:center;margin-top:0;">Une image apparaît avec sa référence. Elle est soit entièrement exacte, soit comporte <strong>au maximum deux</strong> éléments faux. Cochez « Faux » sur les rubriques que vous pensez erronées, puis validez.</p>
           <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="vf-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
-          <p class="modal-hint" style="text-align:center;margin-top:0;">Barème exigeant : 1 point uniquement si vous repérez <strong>exactement</strong> toutes les erreurs réelles (ni oubli, ni fausse alerte) — 0 point sinon, même pour un repérage partiel.</p>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="vf-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body" id="vf-body-art">
+          <p class="config-section-title">1. Choisissez votre champ</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Art</p>
               <label class="rubrique-option"><input type="checkbox" id="vf-art-peinture" /><span>Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-art-sculpture" /><span>Sculpture</span></label>
             </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="vf-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
-            <div class="accordion-body" id="vf-body-century">
-              <div class="accordion-columns">
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-century-14e" /><span>14e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-century-15e" /><span>15e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-century-16e" /><span>16e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-century-17e" /><span>17e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-century-18e" /><span>18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-century-19e" /><span>19e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-century-20e" /><span>20e siècle</span></label>
-                </div>
-                <div>
-                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-zone-france" /><span>France</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-zone-europe" /><span>Autres pays d'Europe</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-zone-amerique" /><span>Amérique</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="vf-zone-asie" /><span>Asie</span></label>
-                </div>
-              </div>
-              <p class="modal-hint">Rien coché en zone = toutes zones confondues.</p>
+            <div>
+              <p class="config-table-col-title">Siècle</p>
+              <label class="rubrique-option"><input type="checkbox" id="vf-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-century-15e" /><span>15e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-century-16e" /><span>16e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-century-17e" /><span>17e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-century-18e" /><span>18e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-century-19e" /><span>19e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-century-20e" /><span>20e siècle</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Zone géographique</p>
+              <label class="rubrique-option"><input type="checkbox" id="vf-zone-france" /><span>France</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-zone-amerique" /><span>Amérique</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-zone-asie" /><span>Asie</span></label>
+              <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
 
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="vf-toggle-level">⭐ Choisissez votre niveau</button>
-            <div class="accordion-body" id="vf-body-level">
-              <label class="rubrique-option"><input type="checkbox" id="vf-level-1" /><span>Niveau 1</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="vf-level-2" /><span>Niveau 2</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="vf-level-3" /><span>Niveau 3</span></label>
-              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="vf-toggle-rubriques">📝 Choisissez vos rubriques</button>
-            <div class="accordion-body" id="vf-body-rubriques">
+          <p class="config-section-title">2. Choisissez votre rubrique et niveau</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Rubriques</p>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-artist" /><span>Auteur</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-title" /><span>Titre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-date" /><span>Date</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-materiaux" /><span>Matériau</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-dimensions" /><span>Dimensions</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-location" /><span>Lieu</span></label>
-              <p class="modal-hint">Si vous cochez Matériau et/ou Dimensions, les fausses références pourront aussi porter sur ces rubriques.</p>
             </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="vf-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body" id="vf-body-count">
+            <div>
+              <p class="config-table-col-title">Niveau</p>
+              <label class="rubrique-option"><input type="checkbox" id="vf-level-1" /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-level-2" /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-level-3" /><span>Niveau 3</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Nb de questions</p>
               <label class="rubrique-option"><input type="radio" name="vf-count" value="10" checked /><span>10 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="vf-count" value="20" /><span>20 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="vf-count" value="max" /><span>Maximum disponible</span></label>
@@ -518,9 +505,7 @@
 
           <div class="opt-row"><label><input type="checkbox" id="vf-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
           <div class="opt-row"><label><input type="checkbox" id="vf-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
-          <button type="button" class="primary-button" id="vf-start-button" style="width:100%">Commencer</button>
           <p id="vf-setup-feedback" class="hint hidden"></p>
-          <button type="button" class="secondary-button" id="vf-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
         </section>
 
         <section id="vraifaux-panel" class="quiz-panel hidden">
@@ -611,8 +596,8 @@
               <label class="rubrique-option"><input type="radio" name="fam-count" value="5" checked /><span>5 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="fam-count" value="10" /><span>10 questions</span></label>
               <p class="modal-subheading" style="margin-top:14px;">Nombre d'images par question</p>
-              <label class="rubrique-option"><input type="radio" name="fam-images" value="6" /><span>6 images (plus confortable sur smartphone)</span></label>
-              <label class="rubrique-option"><input type="radio" name="fam-images" value="8" checked /><span>8 images (mieux sur PC)</span></label>
+              <label class="rubrique-option"><input type="radio" name="fam-images" value="6" /><span>6 images, dont 3 en commun (plus confortable sur smartphone)</span></label>
+              <label class="rubrique-option"><input type="radio" name="fam-images" value="8" checked /><span>8 images, dont 4 en commun (mieux sur PC)</span></label>
             </div>
           </div>
 
@@ -647,6 +632,101 @@
                 <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="fam-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
                 <button type="button" class="home-icon-button exercise-icon-button" id="fam-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
                 <button type="button" class="home-icon-button exercise-icon-button exercise-icon-scores" id="fam-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="chrono-setup-panel" class="welcome-panel hidden">
+          <div class="quiz-topbar">
+            <button type="button" id="chrono-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
+          </div>
+          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Chronologie</h2></div>
+          <p class="modal-hint" id="chrono-objective" style="text-align:center;margin-top:0;">4 œuvres apparaissent : remettez-les dans l'ordre chronologique, de la plus ancienne à la plus récente.</p>
+          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="chrono-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="chrono-toggle-art">🎨 Choisissez votre art</button>
+            <div class="accordion-body" id="chrono-body-art">
+              <label class="rubrique-option"><input type="checkbox" id="chrono-art-peinture" /><span>Peinture</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-art-sculpture" /><span>Sculpture</span></label>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="chrono-toggle-century">🏛️ Choisissez votre siècle et votre zone</button>
+            <div class="accordion-body" id="chrono-body-century">
+              <div class="accordion-columns">
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Siècle</p>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-14e" /><span>14e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-15e" /><span>15e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-16e" /><span>16e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-17e" /><span>17e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-18e" /><span>18e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-19e" /><span>19e siècle</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-century-20e" /><span>20e siècle</span></label>
+                </div>
+                <div>
+                  <p class="modal-subheading" style="margin-top:0">Zone géographique</p>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-zone-france" /><span>France</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-zone-europe" /><span>Autres pays d'Europe</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-zone-amerique" /><span>Amérique</span></label>
+                  <label class="rubrique-option"><input type="checkbox" id="chrono-zone-asie" /><span>Asie</span></label>
+                </div>
+              </div>
+              <p class="modal-hint">Rien coché en zone = toutes zones confondues. Cocher plusieurs siècles est nécessaire pour un vrai classement chronologique.</p>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="chrono-toggle-level">⭐ Choisissez votre niveau</button>
+            <div class="accordion-body" id="chrono-body-level">
+              <label class="rubrique-option"><input type="checkbox" id="chrono-level-1" /><span>Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-level-2" /><span>Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-level-3" /><span>Niveau 3</span></label>
+            </div>
+          </div>
+
+          <div class="accordion-group">
+            <button type="button" class="accordion-toggle" id="chrono-toggle-count">🔢 Nombre de questions</button>
+            <div class="accordion-body" id="chrono-body-count">
+              <label class="rubrique-option"><input type="radio" name="chrono-count" value="5" checked /><span>5 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="chrono-count" value="10" /><span>10 questions</span></label>
+            </div>
+          </div>
+
+          <div class="opt-row"><label><input type="checkbox" id="chrono-extend-all" /><span>Étendre cette sélection de siècle/niveau à tous les exercices ?</span></label></div>
+          <div class="opt-row"><label><input type="checkbox" id="chrono-remember-session" /><span>Mémoriser cette sélection pour mes prochaines sessions ?</span></label></div>
+          <button type="button" class="primary-button" id="chrono-start-button" style="width:100%">Commencer</button>
+          <p id="chrono-setup-feedback" class="hint hidden"></p>
+          <button type="button" class="secondary-button" id="chrono-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
+        </section>
+
+        <section id="chrono-panel" class="quiz-panel hidden">
+          <div class="progress-row">
+            <span><span class="quiz-reference">Chronologie</span> — <span id="chrono-progress-label">Question 1 / 5</span></span>
+            <span id="chrono-timer" class="quiz-reference">⏱ 0:00</span>
+            <span id="chrono-score-label" class="score-summary-highlight">0 point</span>
+          </div>
+          <div class="progress-track"><div class="progress-bar" id="chrono-progress-bar"></div></div>
+
+          <div class="quiz-grid">
+            <div class="artwork-column">
+              <div id="chrono-image-grid" class="fam-image-grid" style="grid-template-columns:repeat(4,1fr);grid-template-rows:1fr;"></div>
+            </div>
+            <section class="answer-card" aria-label="Ordre chronologique">
+              <h2 style="font-family:Arial,sans-serif;font-size:1rem;font-weight:700;margin:0 0 12px;">Remets ces images dans l'ordre chronologique</h2>
+              <p class="modal-hint" style="margin-top:0;">Cliquez les images de la plus ancienne à la plus récente : la première cliquée reçoit le n° 1, etc.</p>
+              <button type="button" class="primary-button" id="chrono-validate-button" style="width:100%">Valider l'ordre</button>
+              <div id="chrono-correction" class="hidden">
+                <p id="chrono-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.3rem;margin:16px 0;"></p>
+                <button type="button" class="primary-button" id="chrono-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
+              </div>
+              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
+                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="chrono-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
+                <button type="button" class="home-icon-button exercise-icon-button" id="chrono-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
+                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-scores" id="chrono-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
               </div>
             </section>
           </div>
@@ -821,8 +901,8 @@
             <h3>Le fonctionnement des quiz</h3>
             <p>Vous choisissez : l'<strong>art</strong> (peinture et/ou sculpture), le <strong>siècle</strong> (et, si vous le souhaitez, une zone géographique), les <strong>rubriques</strong> sur lesquelles vous voulez être noté (artiste, titre, date de création, lieu de conservation), le <strong>nombre de questions</strong> et le <strong>niveau</strong> (chaque niveau est un réservoir d'œuvres distinct et indépendant des autres ; si vous souhaitez mélanger plusieurs niveaux, sélectionnez-les conjointement).</p>
             <p>Le niveau reflète en général la notoriété de l'<strong>artiste</strong> dans son ensemble, pas celle de chaque œuvre individuellement. Il arrive qu'une œuvre isolée soit bien plus (ou moins) célèbre que le reste de la production du même artiste : dans ces cas, elle est reclassée à son propre niveau, indépendamment de celui de l'artiste. C'est une estimation, pas une science exacte — si un classement vous semble discutable, c'est probablement voulu plutôt qu'une erreur.</p>
-            <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les 4 informations, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d'orthographe, surnoms, titres en langue d'origine) sont tolérées dans une certaine mesure.</p>
-            <p>Un bouton micro (🎤) permet de dicter votre réponse : appuyez d'abord sur le bouton de la rubrique concernée (Artiste/Titre/Date/Lieu, qui n'ouvre pas le clavier) pour la sélectionner, puis sur le micro juste avant de parler. Pour l'artiste, dictez le prénom complet plutôt que le seul nom de famille : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » seul, souvent retranscrit en « monnaie ».</p>
+            <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les 4 informations, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d'orthographe, surnoms, titres en langue d'origine) sont tolérées dans une certaine mesure.</p>
+            <p>Un bouton micro (🎤) permet de dicter votre réponse : appuyez d'abord sur le bouton de la rubrique concernée (Artiste/Titre/Date/Lieu, qui n'ouvre pas le clavier) pour la sélectionner, puis sur le micro juste avant de parler. Pour l'artiste, dictez le prénom complet plutôt que le seul nom de famille : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » seul, souvent retranscrit en « monnaie ».</p>
             <p>Bon travail de mémoire et de culture !</p>
             <button type="button" class="primary-button modal-close" data-modal="modal-fonctionnement">Fermer</button>
           </div>
@@ -847,65 +927,6 @@
           </div>
         </div>
 
-        <div class="modal-overlay hidden" id="modal-tech-settings">
-          <div class="modal-box">
-            <h3>⚙ Options techniques</h3>
-            <label class="rubrique-option"><input type="checkbox" id="quick-pref-show-timer" /><span>Afficher le chronomètre dans les exercices</span></label>
-            <label class="rubrique-option"><input type="checkbox" id="quick-pref-enter-validate" /><span>Valider avec la touche Entrée</span></label>
-            <label class="rubrique-option"><input type="checkbox" id="quick-pref-remember-selection" /><span>Mémoriser ma dernière sélection d'options</span></label>
-            <label class="rubrique-option"><input type="checkbox" id="quick-pref-show-explanations" /><span>Afficher les explications d'exercice (texte et voix)</span></label>
-            <label class="rubrique-option"><input type="checkbox" id="quick-pref-audio" /><span>Lecture audio (voix de synthèse)</span></label>
-            <div class="opt-row">
-              <span>Voix utilisée :</span>
-              <select id="quick-pref-voice"><option value="">Chargement des voix…</option></select>
-            </div>
-            <div class="opt-row">
-              <span>Position des boutons de champ :</span>
-              <select id="quick-pref-handedness">
-                <option value="right">Droite (droitier)</option>
-                <option value="left">Gauche (gaucher)</option>
-              </select>
-            </div>
-            <div class="opt-row">
-              <span>Avancement par défaut :</span>
-              <select id="quick-pref-advance">
-                <option value="manual">Clic personnel</option>
-                <option value="auto">Défilement automatique</option>
-              </select>
-            </div>
-            <div class="opt-row" id="quick-pref-delay-row">
-              <span>Délai avant le défilement :</span>
-              <select id="quick-pref-delay">
-                <option value="3000">3 s</option>
-                <option value="5000" selected>5 s</option>
-                <option value="8000">8 s</option>
-              </select>
-            </div>
-            <p class="modal-hint">Ces réglages s'appliquent à tous les exercices d'entraînement et, pour certains, au quiz.</p>
-            <button type="button" class="primary-button modal-close" data-modal="modal-tech-settings">Fermer</button>
-          </div>
-        </div>
-
-        <div class="modal-overlay hidden" id="modal-field-settings">
-          <div class="modal-box">
-            <h3>📝 Options de champs par défaut</h3>
-            <p class="modal-hint" style="margin-top:0;">Ces deux critères existent dans tous les exercices — les régler ici les propose par défaut partout (chaque exercice reste modifiable individuellement ensuite).</p>
-            <p class="modal-subheading" style="margin-top:0;">Siècle</p>
-            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="14e" /><span>14e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="15e" /><span>15e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="16e" /><span>16e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="17e" /><span>17e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="18e" /><span>18e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="19e" /><span>19e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="quick-field-century" value="20e" /><span>20e siècle</span></label>
-            <p class="modal-subheading">Niveau</p>
-            <label class="rubrique-option"><input type="checkbox" class="quick-field-level" value="1" /><span>Niveau 1</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="quick-field-level" value="2" /><span>Niveau 2</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="quick-field-level" value="3" /><span>Niveau 3</span></label>
-            <button type="button" class="primary-button" id="quick-field-apply-button" style="width:100%;margin-top:14px;">Appliquer à tous les exercices</button>
-            <button type="button" class="secondary-button modal-close" data-modal="modal-field-settings" style="width:100%;margin-top:10px;">Fermer sans appliquer</button>
-          </div>
-        </div>
 
         <div class="modal-overlay hidden" id="modal-artist-list">
           <div class="modal-box">
@@ -984,7 +1005,7 @@
               </div>
               <div class="mic-wrap">
                 <div class="mic-tooltip hidden" id="mic-tooltip">
-                  <p>Appuyez d'abord sur le bouton de la rubrique concernée (Artiste, Titre, Date ou Lieu) pour la sélectionner, puis sur ce bouton micro juste avant de parler. Vous pouvez toujours corriger au clavier ensuite. Pour l'artiste, dictez le prénom complet (« Claude Monet », pas « Monet » seul).</p>
+                  <p>Appuyez d'abord sur le bouton de la rubrique concernée (Artiste, Titre, Date ou Lieu) pour la sélectionner, puis sur ce bouton micro juste avant de parler. Vous pouvez toujours corriger au clavier ensuite. Pour l'artiste, dictez le prénom complet (« Claude Monet », pas « Monet » seul).</p>
                   <label class="rubrique-option"><input type="checkbox" id="mic-tooltip-dismiss" /><span>Ne plus afficher ce message</span></label>
                   <button type="button" class="secondary-button" id="mic-tooltip-close">Fermer</button>
                 </div>
@@ -1065,19 +1086,21 @@
             <p id="profile-email" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);margin-top:8px;"></p>
           </div>
 
-          <div class="training-exercise-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px;">
+          <div class="training-exercise-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
             <button type="button" class="home-mode-button profile-menu-btn" id="profile-menu-tech" data-target="profile-section-tech">Mes paramètres techniques</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-fields" data-target="profile-section-fields">Mes choix de champ</button>
+            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-rubriques" data-target="profile-section-rubriques">Mes choix de rubrique et de niveau</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-scores" data-target="profile-section-scores">Mes scores</button>
           </div>
 
           <div id="profile-section-tech">
+            <p class="modal-hint" style="margin-top:0;">Emplacement des boutons, touche Entrée, chronomètre — réglages purement techniques, sans rapport avec le contenu des exercices.</p>
             <label class="rubrique-option"><input type="checkbox" id="pf-show-timer" /><span>Afficher le chronomètre dans les exercices</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-enter-validate" /><span>Valider les réponses dans les jeux avec la touche Entrée</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-show-explanations" /><span>Afficher les explications d'exercice dans leur configuration</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-audio" /><span>Lecture audio (voix de synthèse)</span></label>
             <div class="opt-row"><span>Voix utilisée :</span><select id="pf-voice"><option value="">Chargement des voix…</option></select></div>
-            <div class="opt-row"><span>Position des boutons de champ :</span>
+            <div class="opt-row"><span>Emplacement des boutons :</span>
               <select id="pf-handedness"><option value="right">Droite (droitier)</option><option value="left">Gauche (gaucher)</option></select>
             </div>
             <div class="opt-row"><span>Avancement par défaut :</span>
@@ -1089,8 +1112,11 @@
           </div>
 
           <div id="profile-section-fields" class="hidden">
-            <p class="modal-hint" style="margin-top:0;">Si vous cochez un siècle et un niveau ici et que vous activez la mémorisation, <strong>tous</strong> les exercices et le quiz démarreront directement sur ce choix en appuyant sur leur bouton — plus besoin de repasser par leur configuration.</p>
-            <p class="modal-subheading" style="margin-top:0;">Siècle</p>
+            <p class="modal-hint" style="margin-top:0;">Le champ, c'est l'art et le siècle. Si vous les cochez ici et activez la mémorisation, tous les exercices et le quiz démarreront directement dessus.</p>
+            <p class="modal-subheading" style="margin-top:0;">Art</p>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-art" value="peinture" /><span>Peinture</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-art" value="sculpture" /><span>Sculpture</span></label>
+            <p class="modal-subheading">Siècle</p>
             <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="14e" /><span>14e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="15e" /><span>15e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="16e" /><span>16e siècle</span></label>
@@ -1098,13 +1124,32 @@
             <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="18e" /><span>18e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="19e" /><span>19e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="20e" /><span>20e siècle</span></label>
+            <p class="modal-subheading">Zone géographique</p>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="france" /><span>France</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="europe" /><span>Europe (hors France)</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="amerique" /><span>Amérique</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="asie" /><span>Asie</span></label>
+            <label class="rubrique-option" style="margin-top:10px;"><input type="checkbox" id="pf-fields-remember" /><span>Mémoriser ce choix de champ pour mes prochaines sessions (démarrage automatique)</span></label>
+            <button type="button" class="primary-button" id="pf-fields-apply" style="width:100%;margin-top:14px;">Appliquer ce choix de champ</button>
+            <button type="button" class="secondary-button" id="pf-fields-clear" style="width:100%;margin-top:8px;">Effacer le choix de champ</button>
+          </div>
+
+          <div id="profile-section-rubriques" class="hidden">
+            <p class="modal-hint" style="margin-top:0;">La rubrique, c'est ce qui est testé (artiste, titre, date…) ; le niveau va avec. Utilisé là où l'exercice le permet.</p>
+            <p class="modal-subheading" style="margin-top:0;">Rubriques</p>
+            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="artist" /><span>Artiste</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="title" /><span>Titre</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="date" /><span>Date</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="materiaux" /><span>Matériau</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="dimensions" /><span>Dimensions</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="location" /><span>Lieu</span></label>
             <p class="modal-subheading">Niveau</p>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-level" value="1" /><span>Niveau 1</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-level" value="2" /><span>Niveau 2</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-level" value="3" /><span>Niveau 3</span></label>
-            <label class="rubrique-option" style="margin-top:10px;"><input type="checkbox" id="pf-fields-remember" /><span>Mémoriser ce choix général pour mes prochaines sessions (démarrage automatique)</span></label>
-            <button type="button" class="primary-button" id="pf-fields-apply" style="width:100%;margin-top:14px;">Appliquer ce choix général</button>
-            <button type="button" class="secondary-button" id="pf-fields-clear" style="width:100%;margin-top:8px;">Effacer le choix général</button>
+            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="1" /><span>Niveau 1</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="2" /><span>Niveau 2</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="3" /><span>Niveau 3</span></label>
+            <label class="rubrique-option" style="margin-top:10px;"><input type="checkbox" id="pf-rubriques-remember" /><span>Mémoriser ce choix de rubrique et de niveau pour mes prochaines sessions</span></label>
+            <button type="button" class="primary-button" id="pf-rubriques-apply" style="width:100%;margin-top:14px;">Appliquer ce choix</button>
+            <button type="button" class="secondary-button" id="pf-rubriques-clear" style="width:100%;margin-top:8px;">Effacer ce choix</button>
           </div>
         </section>
 
@@ -1126,6 +1171,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=58"></script>
+    <script src="app.js?v=63"></script>
   </body>
 </html>

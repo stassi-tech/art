@@ -31,11 +31,22 @@ if (firebaseReady) {
   db = firebase.firestore();
 }
 
+// La mémorisation (des choix comme des scores) est un service lié au compte : sans connexion,
+// les cases correspondantes sont visibles mais désactivées, avec une info-bulle explicative.
+function updateRememberCheckboxesAvailability() {
+  const disabled = !currentUser;
+  const title = disabled ? 'Connectez-vous pour mémoriser vos choix' : '';
+  document.querySelectorAll('[id$="-extend-all"], [id$="-remember-session"]').forEach((el) => {
+    el.disabled = disabled;
+    el.closest('label').title = title;
+  });
+}
 function updateAccountBar() {
   const statusEl = $('account-status');
   const loginBtn = $('account-login-button');
   const logoutBtn = $('account-logout-button');
   const pageBtn = $('account-page-button');
+  updateRememberCheckboxesAvailability();
   if (!statusEl) return;
   if (!firebaseReady) {
     statusEl.textContent = "Comptes non configurés pour l'instant";
@@ -57,9 +68,9 @@ function updateAccountBar() {
     loginBtn.classList.remove('hidden');
     logoutBtn.classList.add('hidden');
     pageBtn.classList.add('hidden');
-    if (!$('account-panel')?.classList.contains('hidden')) showPanel('welcome'); // déconnecté pendant qu'on consultait « Mon compte »
+    if (!$('account-panel')?.classList.contains('hidden')) showPanel('welcome'); // déconnecté pendant qu'on consultait « Mon compte »
   }
-  // La page de résultats affiche « Voir mes résultats » / « Télécharger mon bilan » selon la connexion.
+  // La page de résultats affiche « Voir mes résultats » / « Télécharger mon bilan » selon la connexion.
   $('view-my-results-button')?.classList.toggle('hidden', !firebaseReady || !currentUser);
   $('download-my-report-button')?.classList.toggle('hidden', !firebaseReady || !currentUser);
 }
@@ -84,7 +95,7 @@ if (firebaseReady) {
     const errorEl = $('account-error'); const noticeEl = $('account-notice');
     errorEl.classList.add('hidden'); noticeEl.classList.add('hidden');
     if (!email) {
-      errorEl.textContent = "Indiquez d'abord votre adresse e-mail dans le champ ci-dessus, puis recliquez sur « Mot de passe oublié ? ».";
+      errorEl.textContent = "Indiquez d'abord votre adresse e-mail dans le champ ci-dessus, puis recliquez sur « Mot de passe oublié ? ».";
       errorEl.classList.remove('hidden');
       return;
     }
@@ -169,7 +180,7 @@ async function saveCurrentScore() {
   }
 }
 
-// --- Page « Mon compte » : historique complet, groupé par type de quiz, avec évolution ---
+// --- Page « Mon compte » : historique complet, groupé par type de quiz, avec évolution ---
 let accountScoreFilter = 'quiz'; // 'quiz' | 'entrainement' — bascule via les 2 boutons de la page compte
 async function fetchScoreLevelGroups() {
   if (!firebaseReady || !currentUser) return null;
@@ -179,7 +190,7 @@ async function fetchScoreLevelGroups() {
   const levelGroups = new Map(); // niveau -> liste des scores (docs Firestore)
   snapshot.docs.forEach((doc) => {
     const d = { id: doc.id, ...doc.data() };
-    // Les scores enregistrés avant l'ajout du champ « type » sont considérés comme des quiz.
+    // Les scores enregistrés avant l'ajout du champ « type » sont considérés comme des quiz.
     const scoreType = d.type || 'quiz';
     if (scoreType !== accountScoreFilter) return;
     const level = d.quizLevel || 'Autre';
@@ -389,7 +400,7 @@ document.querySelectorAll('.profile-menu-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (btn.id === 'profile-menu-scores') { showPanel('account'); loadAccountPage(); return; }
     document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
-    ['profile-section-tech', 'profile-section-fields'].forEach((id) => {
+    ['profile-section-tech', 'profile-section-fields', 'profile-section-rubriques'].forEach((id) => {
       $(id)?.classList.toggle('hidden', id !== btn.dataset.target);
     });
   });
@@ -434,9 +445,15 @@ function initProfilePage() {
     : '<option value="">Voix par défaut du système</option>';
   let fieldDefaults = {};
   try { fieldDefaults = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) {}
+  document.querySelectorAll('.pf-field-art').forEach((el) => { el.checked = (fieldDefaults.arts || []).includes(el.value); });
   document.querySelectorAll('.pf-field-century').forEach((el) => { el.checked = (fieldDefaults.centuries || []).includes(el.value); });
-  document.querySelectorAll('.pf-field-level').forEach((el) => { el.checked = (fieldDefaults.levels || []).includes(el.value); });
+  document.querySelectorAll('.pf-field-zone').forEach((el) => { el.checked = (fieldDefaults.zones || []).includes(el.value); });
   $('pf-fields-remember').checked = !!fieldDefaults.remember;
+  let rubriqueDefaults = {};
+  try { rubriqueDefaults = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) {}
+  document.querySelectorAll('.pf-rubrique-field').forEach((el) => { el.checked = (rubriqueDefaults.rubriques || []).includes(el.value); });
+  document.querySelectorAll('.pf-rubrique-level').forEach((el) => { el.checked = (rubriqueDefaults.levels || []).includes(el.value); });
+  $('pf-rubriques-remember').checked = !!rubriqueDefaults.remember;
 }
 $('pf-show-timer')?.addEventListener('change', () => setGlobalPref('showTimer', $('pf-show-timer').checked));
 $('pf-enter-validate')?.addEventListener('change', () => setGlobalPref('enterValidate', $('pf-enter-validate').checked));
@@ -454,19 +471,34 @@ $('pf-advance')?.addEventListener('change', () => {
 });
 $('pf-delay')?.addEventListener('change', () => setGlobalPref('defaultDelay', Number($('pf-delay').value)));
 
-// --- Choix de champ général (section 2) : si mémorisé, chaque bouton d'exercice démarre
+// --- Choix de champ (art/siècle/zone) : si mémorisé, chaque bouton d'exercice démarre
 // directement dessus, sans repasser par sa page de configuration. ---
 $('pf-fields-apply')?.addEventListener('click', () => {
+  const arts = [...document.querySelectorAll('.pf-field-art:checked')].map((el) => el.value);
   const centuries = [...document.querySelectorAll('.pf-field-century:checked')].map((el) => el.value);
-  const levels = [...document.querySelectorAll('.pf-field-level:checked')].map((el) => el.value);
+  const zones = [...document.querySelectorAll('.pf-field-zone:checked')].map((el) => el.value);
   const remember = $('pf-fields-remember').checked;
-  localStorage.setItem('globalFieldDefaults', JSON.stringify({ centuries, levels, remember }));
+  localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember }));
   updateExerciseSummaries();
 });
 $('pf-fields-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalFieldDefaults');
-  document.querySelectorAll('.pf-field-century, .pf-field-level').forEach((el) => { el.checked = false; });
+  document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => { el.checked = false; });
   $('pf-fields-remember').checked = false;
+  updateExerciseSummaries();
+});
+// --- Choix de rubrique et de niveau : idem, sur ce qui est testé et le niveau. ---
+$('pf-rubriques-apply')?.addEventListener('click', () => {
+  const rubriques = [...document.querySelectorAll('.pf-rubrique-field:checked')].map((el) => el.value);
+  const levels = [...document.querySelectorAll('.pf-rubrique-level:checked')].map((el) => el.value);
+  const remember = $('pf-rubriques-remember').checked;
+  localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, remember }));
+  updateExerciseSummaries();
+});
+$('pf-rubriques-clear')?.addEventListener('click', () => {
+  localStorage.removeItem('globalRubriqueDefaults');
+  document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => { el.checked = false; });
+  $('pf-rubriques-remember').checked = false;
   updateExerciseSummaries();
 });
 $('account-scores-quiz-button')?.addEventListener('click', () => {
@@ -502,7 +534,7 @@ const voiceSupported = Boolean(SpeechRecognitionImpl);
 // Lit à voix haute l'objectif d'un exercice, affiché en texte sur sa page de configuration.
 // ============================================================
 // PARAMÈTRES GLOBAUX (voix, chronomètre, touche Entrée, mémorisation) — communs à tous les
-// exercices d'entraînement, réglables depuis « Mon compte ».
+// exercices d'entraînement, réglables depuis « Mon compte ».
 // ============================================================
 const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '', showExplanations: true, defaultAdvance: 'manual', defaultDelay: 5000 };
 function getGlobalPrefs() {
@@ -535,75 +567,21 @@ $('settings-toggle')?.addEventListener('click', () => {
   populateGlobalVoiceSelect();
 });
 
-// --- Modale rapide « Options techniques », accessible depuis n'importe quelle page ---
-$('global-tech-settings-button')?.addEventListener('click', () => {
-  const prefs = getGlobalPrefs();
-  $('quick-pref-show-timer').checked = prefs.showTimer;
-  $('quick-pref-enter-validate').checked = prefs.enterValidate;
-  $('quick-pref-remember-selection').checked = prefs.rememberSelection;
-  $('quick-pref-show-explanations').checked = prefs.showExplanations;
-  $('quick-pref-audio').checked = prefs.audioOn;
-  $('quick-pref-handedness').value = document.body.classList.contains('lefty') ? 'left' : 'right';
-  $('quick-pref-advance').value = prefs.defaultAdvance;
-  $('quick-pref-delay').value = String(prefs.defaultDelay);
-  $('quick-pref-delay-row').style.display = prefs.defaultAdvance === 'auto' ? 'flex' : 'none';
-  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
-  $('quick-pref-voice').innerHTML = voices.length
-    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
-    : '<option value="">Voix par défaut du système</option>';
-  openModal('modal-tech-settings');
+$('global-account-button')?.addEventListener('click', () => {
+  // Sans compte, pas de mémorisation possible : on redirige vers la connexion plutôt que
+  // d'ouvrir une page « Mon compte » dont les réglages ne pourraient de toute façon rien retenir.
+  if (!currentUser) { showPanel('welcome'); $('account-login-button')?.scrollIntoView({ block: 'center' }); return; }
+  showPanel('profile'); initProfilePage();
 });
-$('quick-pref-show-timer')?.addEventListener('change', () => setGlobalPref('showTimer', $('quick-pref-show-timer').checked));
-$('quick-pref-enter-validate')?.addEventListener('change', () => setGlobalPref('enterValidate', $('quick-pref-enter-validate').checked));
-$('quick-pref-remember-selection')?.addEventListener('change', () => setGlobalPref('rememberSelection', $('quick-pref-remember-selection').checked));
-$('quick-pref-show-explanations')?.addEventListener('change', () => setGlobalPref('showExplanations', $('quick-pref-show-explanations').checked));
-$('quick-pref-audio')?.addEventListener('change', () => setGlobalPref('audioOn', $('quick-pref-audio').checked));
-$('quick-pref-voice')?.addEventListener('change', () => setGlobalPref('voiceName', $('quick-pref-voice').value));
-$('quick-pref-handedness')?.addEventListener('change', () => {
-  const lefty = $('quick-pref-handedness').value === 'left';
-  localStorage.setItem('handedness', lefty ? 'lefty' : 'righty');
-  applyHandedness(lefty);
-});
-$('quick-pref-advance')?.addEventListener('change', () => {
-  setGlobalPref('defaultAdvance', $('quick-pref-advance').value);
-  $('quick-pref-delay-row').style.display = $('quick-pref-advance').value === 'auto' ? 'flex' : 'none';
-});
-$('quick-pref-delay')?.addEventListener('change', () => setGlobalPref('defaultDelay', Number($('quick-pref-delay').value)));
 
-// --- Modale rapide « Options de champs », accessible depuis n'importe quelle page ---
-$('global-field-settings-button')?.addEventListener('click', () => {
-  let saved = {};
-  try { saved = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) {}
-  document.querySelectorAll('.quick-field-century').forEach((el) => { el.checked = (saved.centuries || []).includes(el.value); });
-  document.querySelectorAll('.quick-field-level').forEach((el) => { el.checked = (saved.levels || []).includes(el.value); });
-  openModal('modal-field-settings');
-});
-$('quick-field-apply-button')?.addEventListener('click', () => {
-  const centuries = [...document.querySelectorAll('.quick-field-century:checked')].map((el) => el.value);
-  const levels = [...document.querySelectorAll('.quick-field-level:checked')].map((el) => el.value);
-  localStorage.setItem('globalFieldDefaults', JSON.stringify({ centuries, levels }));
-  // Applique immédiatement à toutes les pages de configuration déjà présentes dans le DOM.
-  const prefixes = ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'];
-  prefixes.forEach((p) => {
-    document.querySelectorAll(`[id^="${p}-century-"]`).forEach((el) => {
-      const val = el.id.replace(`${p}-century-`, '');
-      if (centuries.length) el.checked = centuries.includes(val);
-    });
-    document.querySelectorAll(`[id^="${p}-level-"]`).forEach((el) => {
-      const val = el.id.replace(`${p}-level-`, '');
-      if (levels.length) el.checked = levels.includes(val);
-    });
-  });
-  closeModal('modal-field-settings');
-});
 
 function speakObjective(elementId) {
   const el = $(`${elementId}-objective`);
   const showExplanations = getGlobalPrefs().showExplanations;
-  // Le réglage global « Afficher les explications » masque le texte ET coupe la voix.
+  // Le réglage global « Afficher les explications » masque le texte ET coupe la voix.
   el?.classList.toggle('hidden', !showExplanations);
   if (!showExplanations) return;
-  // elementId est le préfixe (« imp », « vf »…) — la case « Ne plus entendre » est mémorisée sur
+  // elementId est le préfixe (« imp », « vf »…) — la case « Ne plus entendre » est mémorisée sur
   // l'appareil, sur ce même préfixe, pour ne pas lasser à force de rejouer.
   const skipCheckbox = $(`${elementId}-opt-skip-objective`);
   if (skipCheckbox) {
@@ -622,21 +600,29 @@ function speakObjective(elementId) {
 
 // Chronomètre partagé : affiche le temps écoulé en direct, renvoie la durée totale (en
 // secondes) à l'arrêt, pour l'enregistrer avec le score.
-// « Étendre à tous les exercices » : reporte le siècle/niveau choisis ici sur les 5 autres
+// « Étendre à tous les exercices » : reporte le siècle/niveau choisis ici sur les 5 autres
 // panneaux de configuration (mêmes cases à cocher, mêmes identifiants dans chaque exercice).
-// « Mémoriser pour mes prochaines sessions » : propose une reprise en un clic au prochain
+// « Mémoriser pour mes prochaines sessions » : propose une reprise en un clic au prochain
 // passage par le menu des exercices d'entraînement (voir buildTrainingHubResume).
 function handleExtendAndRemember(prefix, panelId) {
+  // La mémorisation est un service lié au compte : sans connexion, on ignore ces cases (le choix
+  // du jour s'applique quand même à la partie en cours, simplement rien n'est retenu ensuite).
+  if (!currentUser) return;
   const extendAll = $(`${prefix}-extend-all`)?.checked;
   const remember = $(`${prefix}-remember-session`)?.checked;
   if (extendAll) {
+    const arts = [...document.querySelectorAll(`#${panelId} [id^="${prefix}-art-"]:checked`)].map((el) => el.id.replace(`${prefix}-art-`, ''));
     const centuries = [...document.querySelectorAll(`#${panelId} [id^="${prefix}-century-"]:checked`)].map((el) => el.id.replace(`${prefix}-century-`, ''));
+    const zones = [...document.querySelectorAll(`#${panelId} [id^="${prefix}-zone-"]:checked`)].map((el) => el.id.replace(`${prefix}-zone-`, ''));
     const levels = [...document.querySelectorAll(`#${panelId} [id^="${prefix}-level-"]:checked`)].map((el) => el.id.replace(`${prefix}-level-`, ''));
-    localStorage.setItem('globalFieldDefaults', JSON.stringify({ centuries, levels, remember: true }));
+    localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember: true }));
+    localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques: [], levels, remember: true }));
     const prefixes = ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'];
     prefixes.forEach((other) => {
       if (other === prefix) return;
+      document.querySelectorAll(`[id^="${other}-art-"]`).forEach((el) => { if (arts.length) el.checked = arts.includes(el.id.replace(`${other}-art-`, '')); });
       document.querySelectorAll(`[id^="${other}-century-"]`).forEach((el) => { if (centuries.length) el.checked = centuries.includes(el.id.replace(`${other}-century-`, '')); });
+      document.querySelectorAll(`[id^="${other}-zone-"]`).forEach((el) => { if (zones.length) el.checked = zones.includes(el.id.replace(`${other}-zone-`, '')); });
       document.querySelectorAll(`[id^="${other}-level-"]`).forEach((el) => { if (levels.length) el.checked = levels.includes(el.id.replace(`${other}-level-`, '')); });
     });
   }
@@ -798,7 +784,7 @@ function startDictation() {
   recognition.addEventListener('end', () => {
     if (manualStopRequested || activeRecognition !== recognition) return;
     // Certains navigateurs referment la session après un silence ou au bout d'un moment :
-    // on la relance automatiquement pour que la dictée reste active « sur plusieurs pages ».
+    // on la relance automatiquement pour que la dictée reste active « sur plusieurs pages ».
     try { recognition.start(); } catch (error) { forget(); }
   });
   recognition.addEventListener('error', (event) => {
@@ -846,10 +832,10 @@ function findColumn(row, names) {
 function normaliseRows(rows) {
   return rows.map((row, rowIndex) => {
     const imageKey = findColumn(row, ['image', 'url image', 'image url', 'lien image', 'visuel']);
-    if (!imageKey) throw new Error("La colonne « image » est introuvable dans ce fichier.");
+    if (!imageKey) throw new Error("La colonne « image » est introuvable dans ce fichier.");
 
     // --- Identité de l'artiste : nouvelle structure (Prénom/Patronyme/Surnom) si présente,
-    // sinon on retombe sur l'ancienne colonne unique « Artiste » pour rester compatible avec
+    // sinon on retombe sur l'ancienne colonne unique « Artiste » pour rester compatible avec
     // d'anciens fichiers pas encore convertis.
     const prenomKey = findColumn(row, ['prenom']);
     const patronymeKey = findColumn(row, ['patronyme']);
@@ -864,12 +850,12 @@ function normaliseRows(rows) {
       artist = [prenom, patronyme].filter(Boolean).join(' ') || surnomFr;
     } else {
       const legacyArtistKey = findColumn(row, ['artiste', 'nom artiste', 'artist', 'auteur']);
-      if (!legacyArtistKey) throw new Error("Ni « Prénom/Patronyme », ni « Artiste » n'ont été trouvés dans ce fichier.");
+      if (!legacyArtistKey) throw new Error("Ni « Prénom/Patronyme », ni « Artiste » n'ont été trouvés dans ce fichier.");
       artist = String(row[legacyArtistKey] || '').trim();
     }
 
     // --- Dates de naissance/mort : nouvelle structure à deux colonnes si présente, sinon ancienne
-    // colonne combinée « dates artiste ». Règle : si l'une des deux dates manque, on n'affiche
+    // colonne combinée « dates artiste ». Règle : si l'une des deux dates manque, on n'affiche
     // rien plutôt qu'une date incomplète.
     const naissanceKey = findColumn(row, ['date de naissance', 'naissance']);
     const mortKey = findColumn(row, ['date de mort', 'mort', 'deces', 'décès']);
@@ -884,10 +870,10 @@ function normaliseRows(rows) {
     }
 
     const dateKey = findColumn(row, ['date de creation', 'date creation', 'date', 'annee', 'année']);
-    if (!dateKey) throw new Error("La colonne « date de création » est introuvable dans ce fichier.");
+    if (!dateKey) throw new Error("La colonne « date de création » est introuvable dans ce fichier.");
 
     // --- Lieu : nouvelle structure Ville/Lieu précis/Sous-lieu si présente, sinon ancienne
-    // colonne unique « lieu de conservation ». Affichage : Sous-lieu, Lieu précis, Ville.
+    // colonne unique « lieu de conservation ». Affichage : Sous-lieu, Lieu précis, Ville.
     const villeKey = findColumn(row, ['ville']);
     const lieuPrecisKey = findColumn(row, ['lieu precis']);
     const sousLieuKey = findColumn(row, ['sous lieu']);
@@ -899,12 +885,12 @@ function normaliseRows(rows) {
       location = [sousLieu, lieuPrecis, ville].filter(Boolean).join(', ');
     } else {
       const legacyLocationKey = findColumn(row, ['lieu de conservation', 'lieu', 'conservation', 'musee', 'musée', 'location']);
-      if (!legacyLocationKey) throw new Error("Ni « Ville/Lieu précis », ni « Lieu de conservation » n'ont été trouvés dans ce fichier.");
+      if (!legacyLocationKey) throw new Error("Ni « Ville/Lieu précis », ni « Lieu de conservation » n'ont été trouvés dans ce fichier.");
       location = String(row[legacyLocationKey] || '').trim();
     }
 
     // --- Titre : nouvelle structure Titre (français) + Cycle + Titre (langue d'origine), sinon
-    // ancienne colonne unique « titre de l'œuvre ». Les guillemets déjà présents dans le fichier
+    // ancienne colonne unique « titre de l'œuvre ». Les guillemets déjà présents dans le fichier
     // (convention d'affichage du tableau) sont retirés ici : l'appli les rajoute elle-même.
     const stripQuotes = (s) => String(s || '').trim().replace(/^["«]\s*/, '').replace(/\s*["»]$/, '');
     const titreFrKey = findColumn(row, ['titre francais']);
@@ -917,7 +903,7 @@ function normaliseRows(rows) {
       titleOriginal = titreOrigKey ? stripQuotes(row[titreOrigKey]) : '';
     } else {
       const legacyTitleKey = findColumn(row, ["titre de l oeuvre", 'titre oeuvre', 'titre', 'title', 'œuvre', 'oeuvre']);
-      if (!legacyTitleKey) throw new Error("Ni « Titre (français) », ni « Titre de l'œuvre » n'ont été trouvés dans ce fichier.");
+      if (!legacyTitleKey) throw new Error("Ni « Titre (français) », ni « Titre de l'œuvre » n'ont été trouvés dans ce fichier.");
       title = stripQuotes(row[legacyTitleKey]);
     }
 
@@ -925,7 +911,7 @@ function normaliseRows(rows) {
     const materials = materialsKey ? String(row[materialsKey] || '').trim() : '';
 
     // --- Dimensions : nouvelle structure Hauteur/Longueur/Profondeur si présente, sinon ancienne
-    // colonne unique « dimensions » (repliée dans hauteur/longueur via une expression régulière).
+    // colonne unique « dimensions » (repliée dans hauteur/longueur via une expression régulière).
     const hauteurKey = findColumn(row, ['hauteur']);
     const longueurKey = findColumn(row, ['longueur']);
     const profondeurKey = findColumn(row, ['profondeur']);
@@ -1056,8 +1042,8 @@ function isMatch(actual, expected, fieldKey) {
   const answer = keyName(actual); const target = keyName(expected);
   if (!answer || !target) return false;
   if (answer === target) return true;
-  // Dates : uniquement pour le champ « date de création ». Si on appliquait cette règle à tous
-  // les champs, un titre contenant une année (« Le 3 mai 1810 », « ... en 1890 ») basculerait à
+  // Dates : uniquement pour le champ « date de création ». Si on appliquait cette règle à tous
+  // les champs, un titre contenant une année (« Le 3 mai 1810 », « ... en 1890 ») basculerait à
   // tort en comparaison d'année au lieu d'une comparaison de texte normale.
   if (fieldKey === 'date') {
     const targetYears = yearsOf(target);
@@ -1067,11 +1053,11 @@ function isMatch(actual, expected, fieldKey) {
       return targetYears.some((targetYear) => answerYears.some((answerYear) => withinDateTolerance(targetYear, answerYear)));
     }
   }
-  // Accepte un élément significatif de la réponse attendue : « Monet » ou « Orsay ».
+  // Accepte un élément significatif de la réponse attendue : « Monet » ou « Orsay ».
   if (answer.length >= 3 && (target.includes(answer) || answer.includes(target))) return true;
   // Artiste : le prénom n'est pas pris en compte du tout — seul le nom de famille (dernier mot)
-  // compte, avec la même tolérance orthographique qu'ailleurs. « Dominique Ingres » ou
-  // « Ingres » valident donc tous deux pour « Jean-Auguste-Dominique Ingres ».
+  // compte, avec la même tolérance orthographique qu'ailleurs. « Dominique Ingres » ou
+  // « Ingres » valident donc tous deux pour « Jean-Auguste-Dominique Ingres ».
   if (fieldKey === 'artist') {
     const targetLastWord = target.split(' ').filter(Boolean).pop();
     const answerLastWord = answer.split(' ').filter(Boolean).pop();
@@ -1081,11 +1067,11 @@ function isMatch(actual, expected, fieldKey) {
   if (isCloseEnough(answer, target)) return true;
   const targetWords = target.split(' ').filter(Boolean);
   const answerWords = answer.split(' ').filter(Boolean);
-  // Réponse en un mot avec une faute (ex. « Monnet » pour « Claude Monet »).
+  // Réponse en un mot avec une faute (ex. « Monnet » pour « Claude Monet »).
   if (answerWords.length === 1 && targetWords.some((word) => word.length >= 4 && isCloseEnough(answer, word))) return true;
-  // Réponse partielle en plusieurs mots avec une faute (ex. « Van Googh » pour « Vincent van Gogh »).
-  // Limité à un seul mot manquant : une réponse à « Jean-Auguste-Dominique Ingres » ne doit pas
-  // valider avec juste « Dominique Ingres », qui tronque le prénom composé sans le dire.
+  // Réponse partielle en plusieurs mots avec une faute (ex. « Van Googh » pour « Vincent van Gogh »).
+  // Limité à un seul mot manquant : une réponse à « Jean-Auguste-Dominique Ingres » ne doit pas
+  // valider avec juste « Dominique Ingres », qui tronque le prénom composé sans le dire.
   if (answerWords.length > 1 && answerWords.length < targetWords.length && answerWords.length >= targetWords.length - 1) {
     for (let start = 0; start <= targetWords.length - answerWords.length; start += 1) {
       const windowText = targetWords.slice(start, start + answerWords.length).join(' ');
@@ -1136,8 +1122,8 @@ function showPanel(name) {
   // quitté en cours de route peut se déclencher plus tard, en plein milieu d'un autre exercice
   // (voix qui parle d'une œuvre sans rapport avec ce qui est affiché).
   if (window.speechSynthesis) speechSynthesis.cancel();
-  [impTimers, vfTimers, famTimers, reconTimers, intrusTimers].forEach((arr) => { if (arr) arr.forEach(clearTimeout); });
-  impTimers = []; vfTimers = []; famTimers = []; reconTimers = []; intrusTimers = [];
+  [impTimers, vfTimers, famTimers, reconTimers, intrusTimers, chronoTimers].forEach((arr) => { if (arr) arr.forEach(clearTimeout); });
+  impTimers = []; vfTimers = []; famTimers = []; reconTimers = []; intrusTimers = []; chronoTimers = [];
 
   // name: 'welcome' | 'training-hub' | 'impregnation-setup' | 'impregnation' | 'intrus-setup' |
   // 'intrus' | 'quiz-setup' | 'quiz' | 'results' | 'account' | 'other-works' — centralise
@@ -1157,6 +1143,8 @@ function showPanel(name) {
   $('famille-panel')?.classList.toggle('hidden', name !== 'famille');
   $('enigme-setup-panel')?.classList.toggle('hidden', name !== 'enigme-setup');
   $('enigme-panel')?.classList.toggle('hidden', name !== 'enigme');
+  $('chrono-setup-panel')?.classList.toggle('hidden', name !== 'chrono-setup');
+  $('chrono-panel')?.classList.toggle('hidden', name !== 'chrono');
   $('quiz-setup-panel')?.classList.toggle('hidden', name !== 'quiz-setup');
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
@@ -1223,7 +1211,7 @@ function renderQuestion() {
   } else {
     // On ramène la cible du micro sur la première rubrique disponible (évite que la dictée
     // continue vers la dernière ligne de la question précédente), mais SANS focus() réel :
-    // sur mobile, focus() rouvrirait le clavier à chaque clic sur « Suivante ».
+    // sur mobile, focus() rouvrirait le clavier à chaque clic sur « Suivante ».
     const first = activeFields()[0];
     if (first) setFocusedField(first.key, { focusInput: false, scroll: false });
     // La nouvelle question repart du haut de la page (l'image d'abord), plutôt que de rester
@@ -1235,7 +1223,7 @@ function renderQuestion() {
 }
 function formatArtistName(name) {
   // Convention des légendes muséales : prénom normal, nom de famille en MAJUSCULES
-  // (ex. « Auguste RENOIR »). Heuristique : le dernier mot est considéré comme le nom de famille.
+  // (ex. « Auguste RENOIR »). Heuristique : le dernier mot est considéré comme le nom de famille.
   const parts = String(name).trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return name;
   if (parts.length === 1) return parts[0].toLocaleUpperCase('fr-FR');
@@ -1249,7 +1237,7 @@ function formatCorrectionValue(key, rawValue) {
 }
 function formatArtistDisplayName(work) {
   // Prénom NOM (nom de famille en majuscules) ; si un surnom (français) existe, on l'ajoute
-  // en italique entre guillemets : « Prénom NOM, dit "Surnom" ». Pour les mononymes sans nom
+  // en italique entre guillemets : « Prénom NOM, dit "Surnom" ». Pour les mononymes sans nom
   // civil connu (Donatello, Masaccio...), seul le surnom s'affiche, sans virgule ni "dit".
   const civilName = [work.prenom, work.patronyme].filter(Boolean).join(' ');
   const displayName = civilName ? formatArtistName(civilName) : '';
@@ -1277,7 +1265,7 @@ function correctionInfoRow(label, value) {
 }
 function formatTitleWithCycle(work) {
   // Titre entre guillemets et en italique ; si l'œuvre est extraite d'un cycle (ex. un
-  // manuscrit ou une série de fresques), on ajoute « extrait du "Cycle" », lui aussi en italique.
+  // manuscrit ou une série de fresques), on ajoute « extrait du "Cycle" », lui aussi en italique.
   const titlePart = `<em>"${escapeHtml(work.title)}"</em>`;
   if (!work.cycle) return titlePart;
   return `${titlePart}, extrait du <em>"${escapeHtml(work.cycle)}"</em>`;
@@ -1292,7 +1280,7 @@ function formatDimensionsDisplay(work) {
   if (work.profondeur) parts.push(`<span class="dim-hl">p</span> ${escapeHtml(work.profondeur)}`);
   return parts.join(' × ');
 }
-let correctionMainWork = null; // œuvre actuellement affichée en grand dans la correction (question testée, ou une « autre œuvre » cliquée)
+let correctionMainWork = null; // œuvre actuellement affichée en grand dans la correction (question testée, ou une « autre œuvre » cliquée)
 function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
   const isTestedWork = displayedWork === testedQuestion;
   displayArtworkImage(displayedWork, isTestedWork ? `Œuvre ${state.index + 1}` : `Autre œuvre du même peintre : ${displayedWork.title}`, true);
@@ -1301,7 +1289,7 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     if (key === 'artist') value = formatArtistWithDates(displayedWork);
     else if (key === 'title') value = formatTitleWithCycle(displayedWork);
     else value = formatCorrectionValue(key, displayedWork[key]);
-    // Une « autre œuvre » cliquée n'a pas été répondue par l'utilisateur : on l'affiche
+    // Une « autre œuvre » cliquée n'a pas été répondue par l'utilisateur : on l'affiche
     // uniquement à titre d'information, sans notation ✓/✕.
     const tested = isTestedWork && state.selectedFieldKeys.includes(key);
     let html;
@@ -1318,7 +1306,7 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
       </div>`;
     }
     // Matériaux/technique et dimensions : toujours purement informatifs, jamais quizzés, affichés
-    // juste après la ligne « date de création ».
+    // juste après la ligne « date de création ».
     if (key === 'date') {
       if (displayedWork.materials) html += correctionInfoRow('Matériaux et technique', displayedWork.materials);
       const dims = formatDimensionsDisplay(displayedWork);
@@ -1358,7 +1346,7 @@ function renderCorrection(answer, question) {
     });
   const otherWorksBox = $('other-works');
   // Les autres œuvres ne s'affichent plus automatiquement en ligne : le bloc ne montre qu'un
-  // bouton (« Voir les autres œuvres… »), et le détail (images plus grandes, triées et
+  // bouton (« Voir les autres œuvres… »), et le détail (images plus grandes, triées et
   // regroupées par niveau) s'ouvre dans une page dédiée sur demande — cf. #other-works-panel.
   state.currentOtherWorks = otherWorks;
   if (!otherWorks.length) {
@@ -1634,7 +1622,7 @@ $('quiz-setup-back-button')?.addEventListener('click', () => showPanel('welcome'
 $('open-reconstitution-setup')?.addEventListener('click', () => {
   if (shouldAutoStart('recon')) {
     applyGlobalFieldDefaultsTo('recon');
-    if (!readGlobalFieldDefaults().remember) restoreLastSelection('reconstitution-setup-panel');
+    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('reconstitution-setup-panel');
     if (hasValidSelection('recon')) { $('recon-start-button')?.click(); return; }
   }
   showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon'); restoreLastSelection('reconstitution-setup-panel'); applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
@@ -1652,7 +1640,7 @@ $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercise
 $('open-vraifaux-setup')?.addEventListener('click', () => {
   if (shouldAutoStart('vf')) {
     applyGlobalFieldDefaultsTo('vf');
-    if (!readGlobalFieldDefaults().remember) restoreLastSelection('vraifaux-setup-panel');
+    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('vraifaux-setup-panel');
     if (hasValidSelection('vf')) { $('vf-start-button')?.click(); return; }
   }
   showPanel('vraifaux-setup'); populateVfVoices(); speakObjective('vf'); restoreLastSelection('vraifaux-setup-panel');
@@ -1660,7 +1648,6 @@ $('open-vraifaux-setup')?.addEventListener('click', () => {
 $('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
-$('vf-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
 // ============================================================
 // MODULE FAMILLE — 8 images, 4 sont du même artiste. Le joueur les repère et nomme l'artiste
@@ -1670,7 +1657,7 @@ $('vf-setup-scores-link')?.addEventListener('click', () => { returnToExercisePan
 $('open-famille-setup')?.addEventListener('click', () => {
   if (shouldAutoStart('fam')) {
     applyGlobalFieldDefaultsTo('fam');
-    if (!readGlobalFieldDefaults().remember) restoreLastSelection('famille-setup-panel');
+    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('famille-setup-panel');
     if (hasValidSelection('fam')) { $('fam-start-button')?.click(); return; }
   }
   showPanel('famille-setup'); populateFamVoices(); speakObjective('fam'); restoreLastSelection('famille-setup-panel');
@@ -1681,9 +1668,241 @@ $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel()
 $('fam-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
 // ============================================================
+// MODULE CHRONOLOGIE — 4 œuvres, à remettre dans l'ordre chronologique en cliquant dans l'ordre
+// (la première cliquée = la plus ancienne). Correction façon Famille : fiches de référence
+// complètes affichées dans le bon ordre. Score tout-ou-rien (0 ou 1).
+// ============================================================
+const CHRONO_ACCORDIONS = ['chrono-toggle-art:chrono-body-art', 'chrono-toggle-century:chrono-body-century', 'chrono-toggle-level:chrono-body-level', 'chrono-toggle-count:chrono-body-count'];
+CHRONO_ACCORDIONS.forEach((pair) => {
+  const [toggleId, bodyId] = pair.split(':');
+  $(toggleId)?.addEventListener('click', () => { $(bodyId)?.classList.toggle('hidden'); });
+});
+function chronoSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`chrono-art-${a}`)?.checked); }
+function chronoSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`chrono-century-${c}`)?.checked); }
+function chronoSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`chrono-zone-${z}`)?.checked); }
+function chronoSelectedLevels() { return ['1', '2', '3'].filter((l) => $(`chrono-level-${l}`)?.checked); }
+$('open-chrono-setup')?.addEventListener('click', () => {
+  if (shouldAutoStart('chrono')) {
+    applyGlobalFieldDefaultsTo('chrono');
+    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('chrono-setup-panel');
+    if (hasValidSelection('chrono')) { $('chrono-start-button')?.click(); return; }
+  }
+  showPanel('chrono-setup'); speakObjective('chrono'); restoreLastSelection('chrono-setup-panel');
+});
+$('chrono-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('chrono-setup'); });
+$('chrono-hub-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
+$('chrono-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'chrono'; showPanel('account'); loadAccountPage(); });
+$('chrono-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
+
+let CHRONO_SESSION = [], chronoIndex = 0, chronoScore = 0, chronoAnswered = false, chronoSelectedOrder = [], chronoTimers = [];
+const chronoTimer = createTimer('chrono-timer');
+
+$('chrono-start-button')?.addEventListener('click', async () => {
+  handleExtendAndRemember('chrono', 'chrono-setup-panel');
+  saveLastSelection('chrono-setup-panel');
+  const arts = chronoSelectedArts();
+  const centuries = chronoSelectedCenturies();
+  const levels = chronoSelectedLevels();
+  const feedback = $('chrono-setup-feedback');
+  feedback.classList.remove('hidden');
+  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
+  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
+  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
+  feedback.textContent = 'Chargement des œuvres…';
+  try {
+    const zones = chronoSelectedZones();
+    let allRows = [];
+    for (const art of arts) {
+      for (const century of centuries) {
+        try {
+          const rows = await fetchQuizRows(art, century);
+          rows.forEach((r) => { r.century = century; });
+          allRows.push(...rows);
+        } catch (e) { /* fichier absent, ignoré */ }
+      }
+    }
+    if (allRows.length < 4) { feedback.textContent = "Pas assez d'œuvres disponibles pour ce choix (4 minimum)."; return; }
+    let pool = allRows.filter((r) => levels.includes(String(r.niveau || 1)));
+    if (pool.length < 4) pool = allRows;
+    if (zones.length) {
+      const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
+      if (zoned.length >= 4) pool = zoned;
+    }
+    // Ne garde que les œuvres dont on peut extraire une année exploitable — indispensable pour
+    // établir un ordre chronologique sans ambiguïté.
+    const dated = pool.filter((r) => chronoYearOf(r) !== null);
+    if (dated.length < 4) { feedback.textContent = "Pas assez d'œuvres avec une date exploitable pour ce choix — essayez d'élargir la sélection."; return; }
+
+    const countChoice = Number(document.querySelector('input[name="chrono-count"]:checked').value);
+    const questions = [];
+    const usedKeys = new Set();
+    let attempts = 0;
+    while (questions.length < countChoice && attempts < countChoice * 20) {
+      attempts++;
+      const shuffled = dated.slice().sort(() => Math.random() - 0.5).slice(0, 4);
+      const years = shuffled.map(chronoYearOf);
+      // Rejette un tirage où deux œuvres auraient la même année (ordre ambigu) ou un tirage déjà
+      // utilisé dans cette session.
+      if (new Set(years).size < 4) continue;
+      const key = shuffled.map((w) => w.image).sort().join('|');
+      if (usedKeys.has(key)) continue;
+      usedKeys.add(key);
+      const chronological = shuffled.slice().sort((a, b) => chronoYearOf(a) - chronoYearOf(b));
+      questions.push({ works: shuffled, chronological });
+    }
+    if (!questions.length) { feedback.textContent = "Impossible de constituer un exercice avec ces critères — essayez d'élargir le choix."; return; }
+    CHRONO_SESSION = questions;
+    chronoIndex = 0; chronoScore = 0;
+    showPanel('chrono');
+    chronoTimer.start();
+    chronoShowQuestion();
+  } catch (error) {
+    feedback.textContent = `Erreur : ${error.message}`;
+  }
+});
+
+function chronoYearOf(w) {
+  const m = String(w.date || '').match(/\b(1[3-9]|20)\d{2}\b/);
+  return m ? Number(m[0]) : null;
+}
+
+function chronoShowQuestion() {
+  speechSynthesis.cancel();
+  chronoTimers.forEach(clearTimeout); chronoTimers = [];
+  chronoAnswered = false;
+  chronoSelectedOrder = [];
+  const q = CHRONO_SESSION[chronoIndex];
+  $('chrono-progress-label').textContent = `Question ${chronoIndex + 1} / ${CHRONO_SESSION.length}`;
+  $('chrono-progress-bar').style.width = `${(chronoIndex / CHRONO_SESSION.length) * 100}%`;
+  $('chrono-score-label').textContent = `${chronoScore} point${chronoScore > 1 ? 's' : ''}`;
+  $('chrono-correction').classList.add('hidden');
+  $('chrono-validate-button').classList.remove('hidden');
+  $('chrono-validate-button').disabled = false;
+
+  // Les 4 vignettes sont affichées dans un ordre mélangé (pas l'ordre chronologique).
+  const shuffledDisplay = q.works.slice().sort(() => Math.random() - 0.5);
+  q.displayOrder = shuffledDisplay;
+  $('chrono-image-grid').innerHTML = shuffledDisplay.map((work, i) =>
+    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSource(work.image))}" alt="" /></button>`
+  ).join('');
+  $('chrono-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (chronoAnswered) return;
+      const idx = Number(btn.dataset.index);
+      const pos = chronoSelectedOrder.indexOf(idx);
+      if (pos >= 0) {
+        chronoSelectedOrder.splice(pos, 1);
+        btn.classList.remove('selected');
+        btn.removeAttribute('data-num');
+        chronoSelectedOrder.forEach((si, n) => { $('chrono-image-grid').querySelector(`.fam-image-cell[data-index="${si}"]`).dataset.num = n + 1; });
+      } else if (chronoSelectedOrder.length < 4) {
+        chronoSelectedOrder.push(idx);
+        btn.classList.add('selected');
+        btn.dataset.num = chronoSelectedOrder.length;
+      }
+    });
+  });
+  famSpeak2('Remets ces quatre œuvres dans l\u2019ordre chronologique.');
+}
+
+// Petit relais vocal indépendant du module Famille (mêmes réglages que les autres exercices).
+let chronoAudioOn = true, chronoSelectedVoiceRef = null;
+function famSpeak2(text, onEnd) {
+  chronoAudioOn = getGlobalPrefs().audioOn;
+  chronoSelectedVoiceRef = getGlobalVoice();
+  if (!chronoAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'fr-FR'; u.rate = 0.85;
+  if (chronoSelectedVoiceRef) u.voice = chronoSelectedVoiceRef;
+  if (onEnd) {
+    let done = false;
+    const finish = () => { if (!done) { done = true; onEnd(); } };
+    u.onend = finish; u.onerror = finish;
+    chronoTimers.push(setTimeout(finish, Math.max(1200, (text.length / 13) * 1000) + 400));
+  }
+  speechSynthesis.speak(u);
+}
+
+$('chrono-validate-button')?.addEventListener('click', () => {
+  if (chronoAnswered) return;
+  if (chronoSelectedOrder.length !== 4) { chronoStepFeedback('Cliquez les 4 images avant de valider.'); return; }
+  chronoAnswered = true;
+  const q = CHRONO_SESSION[chronoIndex];
+  document.querySelectorAll('#chrono-image-grid .fam-image-cell').forEach((btn) => { btn.disabled = true; });
+  $('chrono-validate-button').disabled = true;
+
+  const playerOrder = chronoSelectedOrder.map((i) => q.displayOrder[i]);
+  const correctOrder = q.chronological;
+  const isCorrect = playerOrder.every((w, i) => w === correctOrder[i]);
+  const pointEarned = isCorrect ? 1 : 0;
+  chronoScore = Math.round((chronoScore + pointEarned) * 10) / 10;
+  $('chrono-score-label').textContent = `${chronoScore} point${chronoScore > 1 ? 's' : ''}`;
+
+  $('chrono-verdict').textContent = isCorrect ? 'Exact' : 'À réviser';
+  $('chrono-verdict').style.color = isCorrect ? 'var(--ok)' : 'var(--wrong)';
+
+  // Fiches de référence dans le bon ordre chronologique, comme en correction de Famille.
+  $('chrono-image-grid').className = 'fam-result-grid';
+  $('chrono-image-grid').innerHTML = correctOrder.map((work) => {
+    const meta = [work.date, work.location].filter(Boolean).join(' — ');
+    return `<div class="fam-result-item">
+      <img src="${escapeHtml(imageSource(work.image))}" alt="" />
+      <span class="fam-result-caption"><strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
+    </div>`;
+  }).join('');
+
+  const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
+  const list = correctOrder.map((w, i) => `${ordinals[i]}, ${w.title}, en ${chronoYearOf(w)}`).join('. ');
+  famSpeak2(`${isCorrect ? 'Exact.' : 'À réviser.'} Voici l'ordre chronologique. ${list}.`);
+
+  $('chrono-correction').classList.remove('hidden');
+  $('chrono-next-button').textContent = chronoIndex === CHRONO_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
+});
+
+function chronoStepFeedback(msg) {
+  let el = $('chrono-inline-feedback');
+  if (!el) {
+    el = document.createElement('p');
+    el.id = 'chrono-inline-feedback';
+    el.className = 'hint';
+    $('chrono-validate-button').insertAdjacentElement('afterend', el);
+  }
+  el.textContent = msg;
+}
+
+$('chrono-next-button')?.addEventListener('click', async () => {
+  if (chronoIndex < CHRONO_SESSION.length - 1) {
+    chronoIndex++;
+    chronoShowQuestion();
+  } else {
+    if (firebaseReady && currentUser) {
+      try {
+        await db.collection('users').doc(currentUser.uid).collection('scores').add({
+          type: 'entrainement',
+          exerciseName: 'Chronologie',
+          correct: chronoScore, possible: CHRONO_SESSION.length,
+          percent: Math.round((chronoScore / CHRONO_SESSION.length) * 100),
+          questionCount: CHRONO_SESSION.length,
+          quizLabel: 'Chronologie',
+          quizLevel: chronoSelectedLevels().map((lvl) => `Niveau ${lvl}`).join(' + '),
+          quizArts: chronoSelectedArts(), quizCenturies: chronoSelectedCenturies(),
+          timeSpent: chronoTimer.stop(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (e) { /* enregistrement du score best-effort */ }
+    } else {
+      chronoTimer.stop();
+    }
+    showPanel('chrono-setup');
+  }
+});
+
+// ============================================================
 // MODULE ÉNIGME — artiste/date/lieu donnés d'emblée (titre caché) ; deux éléments à retrouver
 // par œuvre parmi : personnages (cercles lettrés), événement (QCM), interprétation (QCM).
-// Données de démonstration en dur ci-dessous, en attendant un fichier « -enigme.xlsx » réel
+// Données de démonstration en dur ci-dessous, en attendant un fichier « -enigme.xlsx » réel
 // (même principe de lecture que les autres modules à brancher plus tard, clé = lien d'image).
 // ============================================================
 const ENIGME_DEMO_DATA = [
@@ -1712,7 +1931,7 @@ const ENIGME_DEMO_DATA = [
 ];
 
 // Position approximative (en % de l'image) pour chacune des 6 zones fixes utilisées dans le
-// fichier -enigme.xlsx (colonnes « Personnage A Haut/gauche » etc.).
+// fichier -enigme.xlsx (colonnes « Personnage A Haut/gauche » etc.).
 const ENIG_POSITIONS = {
   A: { x: 25, y: 25 }, B: { x: 25, y: 75 }, C: { x: 50, y: 25 },
   D: { x: 50, y: 75 }, E: { x: 75, y: 25 }, F: { x: 75, y: 75 },
@@ -2062,8 +2281,8 @@ function famAnswerMatches(input, correct, type) {
   const b = famNormalize(correctForCompare);
   if (!a) return false;
   if (a === b || b.includes(a) || a.includes(b)) return true;
-  // Tolérance spécifique aux siècles : « 18 », « 18e », « 18eme », avec ou sans « siecle »,
-  // doivent tous valider pour « 18e siecle ».
+  // Tolérance spécifique aux siècles : « 18 », « 18e », « 18eme », avec ou sans « siecle »,
+  // doivent tous valider pour « 18e siecle ».
   const stripCentury = (s2) => s2.replace(/\bsiecles?\b/g, '').replace(/eme\b|e\b/g, '').replace(/\s+/g, '').trim();
   const na = stripCentury(a), nb = stripCentury(b);
   return na && na === nb;
@@ -2071,20 +2290,21 @@ function famAnswerMatches(input, correct, type) {
 
 // Cherche, pour un type donné, un groupe de 4 œuvres partageant un trait commun, avec assez
 // d'œuvres différentes en dehors du groupe pour servir d'intrus.
-function famFindGroup(type, pool, distractorCount) {
+function famFindGroup(type, pool, distractorCount, familySize) {
+  familySize = familySize || 4;
   if (type === 'artist') {
     const byArtist = new Map();
     pool.forEach((r) => { if (!byArtist.has(r.artist)) byArtist.set(r.artist, []); byArtist.get(r.artist).push(r); });
-    const candidates = [...byArtist.entries()].filter(([, works]) => works.length >= 4 && pool.length - works.length >= distractorCount);
+    const candidates = [...byArtist.entries()].filter(([, works]) => works.length >= familySize && pool.length - works.length >= distractorCount);
     if (!candidates.length) return null;
     const [artist, works] = candidates[Math.floor(Math.random() * candidates.length)];
     const shuffled = works.slice().sort(() => Math.random() - 0.5);
-    const family = shuffled.slice(0, 4);
-    // Les intrus ne doivent pas partager le même siècle que la famille : sinon « tel siècle »
+    const family = shuffled.slice(0, familySize);
+    // Les intrus ne doivent pas partager le même siècle que la famille : sinon « tel siècle »
     // serait aussi une réponse juste, mais refusée puisqu'on cherche l'artiste.
     const familyCenturies = new Set(family.map((r) => r.century || detectCenturyFromDate(r.date)));
     const otherCentury = pool.filter((r) => r.artist !== artist && !familyCenturies.has(r.century || detectCenturyFromDate(r.date)));
-    const outsiders = otherCentury.length >= 4 ? otherCentury : pool.filter((r) => r.artist !== artist);
+    const outsiders = otherCentury.length >= distractorCount ? otherCentury : pool.filter((r) => r.artist !== artist);
     return { family, answer: artist, outsiders };
   }
   if (type === 'century') {
@@ -2179,13 +2399,15 @@ $('fam-start-button')?.addEventListener('click', async () => {
     const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
     const count = Number(countChoice);
     const imgCountChoice = Number(document.querySelector('input[name="fam-images"]:checked').value);
-    const distractorCount = imgCountChoice - 4;
+    // La moitié des images ont le point commun (règle simple, quel que soit le nombre choisi).
+    const familySize = imgCountChoice / 2;
+    const distractorCount = imgCountChoice - familySize;
 
     const questions = [];
     let attempts = 0;
     while (questions.length < count && attempts < count * 15) {
       attempts++;
-      const group = famFindGroup('artist', pool, distractorCount);
+      const group = famFindGroup('artist', pool, distractorCount, familySize);
       if (!group) continue;
       const distractors = group.outsiders.slice().sort(() => Math.random() - 0.5).slice(0, distractorCount);
       if (distractors.length < distractorCount) continue;
@@ -2203,6 +2425,10 @@ $('fam-start-button')?.addEventListener('click', async () => {
   }
 });
 
+function famNumberWord(n) {
+  const words = { 2: 'deux', 3: 'trois', 4: 'quatre', 5: 'cinq', 6: 'six' };
+  return words[n] || String(n);
+}
 function famShowQuestion() {
   speechSynthesis.cancel();
   famTimers.forEach(clearTimeout); famTimers = [];
@@ -2232,7 +2458,7 @@ function famShowQuestion() {
         btn.classList.remove('selected');
         btn.removeAttribute('data-num');
         famSelectedImages.forEach((si, n) => { $('fam-image-grid').querySelector(`.fam-image-cell[data-index="${si}"]`).dataset.num = n + 1; });
-      } else if (famSelectedImages.length < 4) {
+      } else if (famSelectedImages.length < q.family.length) {
         famSelectedImages.push(idx);
         btn.classList.add('selected');
         btn.dataset.num = famSelectedImages.length;
@@ -2240,12 +2466,12 @@ function famShowQuestion() {
     });
   });
 
-  famSpeak('Trouve quatre œuvres du même artiste.');
+  famSpeak(`Trouve ${famNumberWord(q.family.length)} œuvres du même artiste.`);
 }
 
 $('fam-validate-selection-button')?.addEventListener('click', () => {
   const q = FAM_SESSION[famIndex];
-  if (famSelectedImages.length !== 4) { famStepFeedback('fam-step0', 'Sélectionnez exactement 4 œuvres avant de valider.'); return; }
+  if (famSelectedImages.length !== q.family.length) { famStepFeedback('fam-step0', `Sélectionnez exactement ${q.family.length} œuvres avant de valider.`); return; }
   document.querySelectorAll('.fam-image-cell').forEach((btn) => { btn.disabled = true; });
   $('fam-validate-selection-button').disabled = true;
 
@@ -2261,24 +2487,56 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
   $('fam-verdict').textContent = imagesCorrect ? 'Exact' : 'À réviser';
   $('fam-verdict').style.color = imagesCorrect ? 'var(--ok)' : 'var(--wrong)';
 
-  // Les 4 bonnes œuvres remontent en haut, seules, avec leur référence en dessous ; le reste
-  // disparaît. « Œuvre » et « artiste » plutôt que « tableau »/« peintre », valable aussi bien
-  // pour une peinture que pour une sculpture.
-  $('fam-image-grid').className = 'fam-result-grid';
   const yearOf = (w) => { const m = String(w.date || '').match(/\b(1[3-9]|20)\d{2}\b/); return m ? Number(m[0]) : 9999; };
   const chronological = q.family.slice().sort((a, b) => yearOf(a) - yearOf(b));
-  $('fam-image-grid').innerHTML = chronological.map((work) => {
-    const dims = [work.hauteur, work.longueur].filter(Boolean).join(' × ');
-    const meta = [work.date, work.location].filter(Boolean).join(' — ');
-    return `<div class="fam-result-item">
-      <img src="${escapeHtml(imageSource(work.image))}" alt="" />
-      <span class="fam-result-caption"><strong>${escapeHtml(q.artist)}</strong>« ${escapeHtml(work.title)} »<br>${escapeHtml(meta)}</span>
-    </div>`;
-  }).join('');
+  const wrongSelected = famSelectedImages.map((i) => q.images[i]).filter((w) => !q.family.includes(w));
+  const foundFamily = chronological.filter((w) => q.family.indexOf(w) >= 0 && famSelectedImages.includes(q.images.indexOf(w)));
+  const missedFamily = chronological.filter((w) => !foundFamily.includes(w));
 
-  const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
-  const titleList = chronological.map((w, i) => `${ordinals[i]}, ${w.title}`).join('. ');
-  famSpeak(`Ces quatre œuvres sont bien de ${q.artist}. ${titleList}.`);
+  const captionOf = (work) => {
+    const meta = [work.date, work.location].filter(Boolean).join(' — ');
+    return `<strong>${escapeHtml(q.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}`;
+  };
+  const cellHtml = (work, revealed) => `<div class="fam-result-item${revealed ? '' : ' fam-result-pending'}">
+      ${revealed ? `<img src="${escapeHtml(imageSource(work.image))}" alt="" /><span class="fam-result-caption">${captionOf(work)}</span>` : ''}
+    </div>`;
+
+  if (!wrongSelected.length && !missedFamily.length) {
+    $('fam-image-grid').className = 'fam-result-grid';
+    $('fam-image-grid').innerHTML = chronological.map((w) => cellHtml(w, true)).join('');
+    const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
+    const titleList = chronological.map((w, i) => `${ordinals[i]}, ${w.title}`).join('. ');
+    famSpeak(`Ces ${famNumberWord(chronological.length)} œuvres sont bien de ${q.artist}. ${titleList}.`);
+  } else {
+    $('fam-image-grid').className = 'fam-result-rows';
+    $('fam-image-grid').innerHTML = `
+      <div class="fam-result-grid" id="fam-result-top">${chronological.map(() => cellHtml(null, false)).join('')}</div>
+      ${wrongSelected.length ? `<div class="fam-result-grid fam-result-row-wrong" id="fam-result-bottom"></div>` : ''}`;
+    const topCells = [...document.querySelectorAll('#fam-result-top .fam-result-item')];
+
+    function revealTop(work) {
+      const idx = chronological.indexOf(work);
+      topCells[idx].outerHTML = cellHtml(work, true);
+    }
+    function announceWrong(next) {
+      if (!wrongSelected.length) { next(); return; }
+      $('fam-result-bottom').innerHTML = wrongSelected.map((w) => cellHtml(w, true)).join('');
+      const titles = wrongSelected.map((w) => w.title).join(', ');
+      famSpeak(`Tu as fait ${famNumberWord(wrongSelected.length)} erreur${wrongSelected.length > 1 ? 's' : ''} : ${titles}.`, next);
+    }
+    function announceFound(next) {
+      if (!foundFamily.length) { next(); return; }
+      foundFamily.forEach(revealTop);
+      famSpeak(`Tu avais bien repéré ${famNumberWord(foundFamily.length)} œuvre${foundFamily.length > 1 ? 's' : ''} de ${q.artist}.`, next);
+    }
+    function announceMissed() {
+      if (!missedFamily.length) return;
+      missedFamily.forEach(revealTop);
+      const titles = missedFamily.map((w) => w.title).join(', ');
+      famSpeak(`${missedFamily.length > 1 ? 'Les autres étaient' : "L'autre était"} : ${titles}.`);
+    }
+    announceWrong(() => announceFound(announceMissed));
+  }
 
   $('fam-step0').classList.add('hidden');
   $('fam-correction').classList.remove('hidden');
@@ -2321,16 +2579,6 @@ function populateVfVoices() {
     ? voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('')
     : '<option value="">Voix par défaut du système</option>';
 }
-
-const VF_ACCORDIONS = ['vf-toggle-art:vf-body-art', 'vf-toggle-century:vf-body-century', 'vf-toggle-level:vf-body-level', 'vf-toggle-rubriques:vf-body-rubriques', 'vf-toggle-count:vf-body-count'];
-VF_ACCORDIONS.forEach((pair) => {
-  const [toggleId, bodyId] = pair.split(':');
-  $(toggleId)?.addEventListener('click', () => {
-    const opening = $(bodyId).classList.contains('hidden');
-    VF_ACCORDIONS.forEach((p) => $(p.split(':')[1])?.classList.add('hidden'));
-    if (opening) $(bodyId).classList.remove('hidden');
-  });
-});
 
 function vfSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`vf-art-${a}`)?.checked); }
 function vfSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`vf-century-${c}`)?.checked); }
@@ -2456,10 +2704,12 @@ function vfShowQuestion() {
 
   // Chaque rubrique a son propre bouton Vrai/Faux, réglé sur Vrai par défaut.
   $('vf-field-rows').innerHTML = q.activeFields.map((f) => {
-    const shown = f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key];
+    const isTitle = f.key === 'title';
+    const shown = isTitle ? `« ${q.displayed[f.key]} »` : q.displayed[f.key];
+    const shownHtml = isTitle ? `<em>${escapeHtml(shown)}</em>` : escapeHtml(shown);
     return `<div class="vf-field-row" data-key="${f.key}">
       <span class="vf-field-label">${f.label}</span>
-      <span class="vf-field-value" id="vf-value-${f.key}">${escapeHtml(shown)}</span>
+      <span class="vf-field-value" id="vf-value-${f.key}">${shownHtml}</span>
       <div class="vf-toggle" data-key="${f.key}">
         <button type="button" class="active" data-val="true">Vrai</button>
         <button type="button" data-val="false">Faux</button>
@@ -2475,7 +2725,7 @@ function vfShowQuestion() {
     });
   });
 
-  const spokenText = q.activeFields.map((f) => f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key]).join(' — ');
+  const spokenText = q.activeFields.map((f) => f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key]).join(' — ');
   vfSpeak(spokenText);
 }
 
@@ -2508,7 +2758,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
   const naturalPhrase = (key, value) => {
     const phrases = {
       artist: `L'auteur exact de ${artWord} est : ${value}`,
-      title: `Le titre exact de ${artWord} est : « ${value} »`,
+      title: `Le titre exact de ${artWord} est : « ${value} »`,
       date: `La date exacte de ${artWord} est : ${value}`,
       materials: `Le matériau exact de ${artWord} est : ${value}`,
       dimensions: `Les dimensions exactes de ${artWord} sont : ${value}`,
@@ -2524,12 +2774,12 @@ $('vf-validate-button')?.addEventListener('click', () => {
     if (i >= q.errorFields.length) return;
     const key = q.errorFields[i];
     const correctVal = vfFieldValue(q.correct, key) || '—';
-    const shownCorrect = key === 'title' ? `« ${correctVal} »` : correctVal;
+    const shownCorrect = key === 'title' ? `<em>« ${escapeHtml(correctVal)} »</em>` : escapeHtml(correctVal);
     const el = $(`vf-value-${key}`);
     if (el) el.classList.add('vf-was-wrong');
     vfTimers.push(setTimeout(() => {
       if (el) {
-        el.textContent = shownCorrect;
+        el.innerHTML = shownCorrect;
         el.classList.remove('vf-was-wrong');
         el.classList.add('vf-updated');
       }
@@ -2541,6 +2791,23 @@ $('vf-validate-button')?.addEventListener('click', () => {
   } else {
     vfSpeak(q.activeFields.length > 1 ? `Les références de ${artWord} sont bonnes.` : `La référence de ${artWord} est bonne.`);
   }
+
+  // Fausses alertes : rubrique marquée Faux par le joueur alors qu'elle est exacte. Rien ne les
+  // traitait jusqu'ici — le bouton restait sur Faux sans explication. On l'indique clairement et
+  // on réaffirme visuellement l'état Faux (certains navigateurs estompent les boutons désactivés).
+  q.activeFields.forEach((f) => {
+    const btn = document.querySelector(`.vf-toggle[data-key="${f.key}"] button[data-val="false"].active`);
+    if (btn && !q.errorFields.includes(f.key)) {
+      btn.classList.add('active');
+      const row = btn.closest('.vf-field-row');
+      if (row && !row.querySelector('.vf-false-alarm-note')) {
+        const note = document.createElement('span');
+        note.className = 'vf-false-alarm-note';
+        note.textContent = 'Cette rubrique était en fait exacte.';
+        row.appendChild(note);
+      }
+    }
+  });
 
   $('vf-correction').classList.remove('hidden');
   $('vf-next-button').textContent = vfIndex === VF_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
@@ -2684,7 +2951,7 @@ function reconShowQuestion() {
   const src = escapeHtml(imageSource(q.correct.image));
   $('recon-prompt-card').innerHTML = `<div class="recon-detail-crop" style="background-image:url('${src}');background-position:${q.cropX}% ${q.cropY}%;"></div>`;
   $('recon-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
-    `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title || c.date || 'œuvre non titrée')} »</em></button>`
+    `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title || c.date || 'œuvre non titrée')} »</em></button>`
   ).join('')}</div>`;
   $('recon-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
     btn.addEventListener('click', () => reconAnswer(Number(btn.dataset.index)));
@@ -2710,11 +2977,11 @@ function reconAnswer(chosenIndex) {
   $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSource(q.correct.image))}" alt="" />`;
 
   const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
-  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + q.correct.materials : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
+  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + q.correct.materials : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
   reconSpeak(correctFullRef);
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
-  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value">« ${escapeHtml(q.correct.title)} »</span>`);
+  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
   if (reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if (reconExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materials)}</span>`);
   if (reconExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
@@ -2753,7 +3020,7 @@ $('recon-next-button')?.addEventListener('click', async () => {
     feedback.textContent = `Terminé : ${reconCorrectCount} / ${RECON_SESSION.length} bonnes réponses.`;
   }
 });
-// Boutons « Artiste / Titre / Date / Lieu » à côté de chaque champ : sélectionnent le champ comme
+// Boutons « Artiste / Titre / Date / Lieu » à côté de chaque champ : sélectionnent le champ comme
 // cible de dictée sans lui donner le focus réel, pour éviter l'ouverture systématique du clavier
 // virtuel sur mobile.
 document.querySelectorAll('.field-label-button').forEach((button) => {
@@ -2773,16 +3040,8 @@ $('global-fullscreen-button')?.addEventListener('click', toggleFullscreen);
 // gauchers) : préférence locale mémorisée sur l'appareil. Pourra migrer vers le compte personnel.
 function applyHandedness(lefty) {
   document.body.classList.toggle('lefty', lefty);
-  const item = $('menu-item-handedness');
-  if (item) item.textContent = lefty ? '✋ Boutons de champ : gauche (gaucher)' : '✋ Boutons de champ : droite (droitier)';
 }
 applyHandedness(localStorage.getItem('handedness') === 'lefty');
-$('menu-item-handedness')?.addEventListener('click', () => {
-  const lefty = !document.body.classList.contains('lefty');
-  localStorage.setItem('handedness', lefty ? 'lefty' : 'righty');
-  applyHandedness(lefty);
-  closeHamburgerMenu();
-});
 $('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
 $('other-works-back-button')?.addEventListener('click', () => showPanel('quiz'));
 $('other-works-next-button')?.addEventListener('click', () => { showPanel('quiz'); goToNextOrResults(); });
@@ -2821,7 +3080,7 @@ function initBackgroundMosaic() {
     const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
     return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" /></div>`;
   }).join('');
-  // Sur smartphone il n'y a pas de vrai survol à la souris : « :hover » seul ne suffit pas.
+  // Sur smartphone il n'y a pas de vrai survol à la souris : « :hover » seul ne suffit pas.
   // On bascule une classe au toucher/clic pour obtenir le même effet net + agrandi, et on la
   // retire des autres vignettes pour n'en montrer qu'une nette à la fois.
   container.querySelectorAll('.bg-tile').forEach((tile) => {
@@ -2838,7 +3097,7 @@ function initBackgroundMosaic() {
 }
 initBackgroundMosaic();
 // Quatre accordéons indépendants (art / siècle+zone / rubriques / niveau+nombre) : chacun a son
-// propre bouton, qui affiche « Choisissez… » tant que rien n'est coché, puis « Modifiez : … » une
+// propre bouton, qui affiche « Choisissez… » tant que rien n'est coché, puis « Modifiez : … » une
 // fois une sélection faite. Cliquer sur le bouton ouvre/ferme sa propre section ; les autres ne
 // sont pas affectées. Plus de repli automatique ni de récapitulatif séparé.
 const ACCORDIONS = [
@@ -2901,18 +3160,26 @@ const EXERCISE_INFO = {
   recon: { name: 'Reconstitution', open: 'open-reconstitution-setup', start: 'recon-start-button', panel: 'reconstitution-setup-panel' },
   vf: { name: 'Vrai/Faux', open: 'open-vraifaux-setup', start: 'vf-start-button', panel: 'vraifaux-setup-panel' },
   fam: { name: 'Famille', open: 'open-famille-setup', start: 'fam-start-button', panel: 'famille-setup-panel' },
+  chrono: { name: 'Chronologie', open: 'open-chrono-setup', start: 'chrono-start-button', panel: 'chrono-setup-panel' },
 };
-// Résumé abrégé (ex. « Peinture17 ») de la sélection mémorisée d'un exercice, affiché
+// Résumé abrégé (ex. « Peinture17 ») de la sélection mémorisée d'un exercice, affiché
 // directement sur son bouton dans le menu — évite d'avoir à rouvrir la configuration pour
-// se rappeler ce qui était choisi la dernière fois. Le choix général (depuis « Mon compte »)
+// se rappeler ce qui était choisi la dernière fois. Le choix général (depuis « Mon compte »)
 // est prioritaire sur un choix propre à l'exercice, et affiché différemment (icône 🌐).
 function readGlobalFieldDefaults() {
   try { return JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) { return {}; }
 }
+function readGlobalRubriqueDefaults() {
+  try { return JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) { return {}; }
+}
 function buildExerciseSummary(prefix) {
-  const g = readGlobalFieldDefaults();
-  if (g.remember && (g.centuries?.length || g.levels?.length)) {
-    return `🌐 ${(g.centuries || []).join('+')}${g.levels?.length ? ' N' + g.levels.join('+') : ''}`;
+  const gf = readGlobalFieldDefaults();
+  const gr = readGlobalRubriqueDefaults();
+  const hasGlobalField = gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length);
+  const hasGlobalRubrique = gr.remember && (gr.rubriques?.length || gr.levels?.length);
+  if (hasGlobalField || hasGlobalRubrique) {
+    const artLabel = (gf.arts || []).map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
+    return `🌐 ${artLabel}${(gf.centuries || []).join('+')}${gr.levels?.length ? ' N' + gr.levels.join('+') : ''}`;
   }
   let state;
   try { state = JSON.parse(localStorage.getItem(`lastSelection_${EXERCISE_INFO[prefix].panel}`) || '{}'); } catch (e) { return ''; }
@@ -2939,17 +3206,26 @@ function hasValidSelection(prefix) {
   return hasArt && hasCentury && hasLevel;
 }
 // Le bouton d'un exercice démarre directement (sans repasser par sa configuration) si un choix
-// général mémorisé existe, OU si ce choix a été mémorisé spécifiquement pour cet exercice.
+// général (champ ET/OU rubrique-niveau) mémorisé existe, OU si ce choix a été mémorisé
+// spécifiquement pour cet exercice.
 function shouldAutoStart(prefix) {
-  const g = readGlobalFieldDefaults();
-  if (g.remember && (g.centuries?.length || g.levels?.length)) return true;
+  const gf = readGlobalFieldDefaults();
+  const gr = readGlobalRubriqueDefaults();
+  if (gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length)) return true;
+  if (gr.remember && (gr.rubriques?.length || gr.levels?.length)) return true;
   return localStorage.getItem(`autoStart_${prefix}`) === 'true';
 }
 function applyGlobalFieldDefaultsTo(prefix) {
-  const g = readGlobalFieldDefaults();
-  if (!g.remember) return;
-  ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`${prefix}-century-${c}`); if (el) el.checked = (g.centuries || []).includes(c); });
-  ['1', '2', '3'].forEach((lvl) => { const el = $(`${prefix}-level-${lvl}`); if (el) el.checked = (g.levels || []).includes(lvl); });
+  const gf = readGlobalFieldDefaults();
+  const gr = readGlobalRubriqueDefaults();
+  if (gf.remember) {
+    ['peinture', 'sculpture'].forEach((a) => { const el = $(`${prefix}-art-${a}`); if (el) el.checked = (gf.arts || []).includes(a); });
+    ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`${prefix}-century-${c}`); if (el) el.checked = (gf.centuries || []).includes(c); });
+    ['france', 'europe', 'amerique', 'asie'].forEach((z) => { const el = $(`${prefix}-zone-${z}`); if (el) el.checked = (gf.zones || []).includes(z); });
+  }
+  if (gr.remember) {
+    ['1', '2', '3'].forEach((lvl) => { const el = $(`${prefix}-level-${lvl}`); if (el) el.checked = (gr.levels || []).includes(lvl); });
+  }
 }
 document.querySelectorAll('.exercise-summary-edit').forEach((icon) => {
   icon.addEventListener('click', (event) => {
@@ -2971,7 +3247,7 @@ document.querySelectorAll('.training-soon').forEach((btn) => {
 $('open-impregnation-setup')?.addEventListener('click', () => {
   if (shouldAutoStart('imp')) {
     applyGlobalFieldDefaultsTo('imp');
-    if (!readGlobalFieldDefaults().remember) restoreLastSelection('impregnation-setup-panel');
+    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('impregnation-setup-panel');
     if (hasValidSelection('imp')) { $('imp-start-button')?.click(); return; }
   }
   showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel'); const p = getGlobalPrefs(); if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); $('imp-opt-advance').dispatchEvent(new Event('change')); }
@@ -3084,7 +3360,7 @@ function impShowCurrent() {
   const dims = [work.hauteur, work.longueur].filter(Boolean).join(' × ');
   const fields = [
     { key: 'artist', label: 'Auteur', value: work.artist, on: $('imp-field-artist').checked },
-    { key: 'title', label: 'Titre de l\u2019œuvre', value: `« ${work.title} »`, on: $('imp-field-title').checked },
+    { key: 'title', label: 'Titre de l\u2019œuvre', value: `« ${work.title} »`, on: $('imp-field-title').checked },
     { key: 'date', label: 'Date', value: work.date, on: $('imp-field-date').checked },
     { key: 'materiaux', label: 'Matériau', value: work.materials, on: $('imp-field-materiaux').checked && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, on: $('imp-field-dimensions').checked && dims },
@@ -3119,13 +3395,13 @@ $('imp-prev-button')?.addEventListener('click', () => { if (impIndex > 0) { impI
 $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSION.length - 1) { impIndex++; impShowCurrent(); } });
 
 // ============================================================
-// MODULE INTRUS — retrouver la bonne image parmi 3 (mode « image »), ou la bonne référence
-// parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
+// MODULE INTRUS — retrouver la bonne image parmi 3 (mode « image »), ou la bonne référence
+// parmi 3 (mode « reference »). Noté, comptabilisé à part dans les scores (type: 'entrainement').
 // ============================================================
 $('open-intrus-setup')?.addEventListener('click', () => {
   if (shouldAutoStart('intrus')) {
     applyGlobalFieldDefaultsTo('intrus');
-    if (!readGlobalFieldDefaults().remember) restoreLastSelection('intrus-setup-panel');
+    if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('intrus-setup-panel');
     if (hasValidSelection('intrus')) { $('intrus-start-button')?.click(); return; }
   }
   showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus'); restoreLastSelection('intrus-setup-panel'); applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
@@ -3190,7 +3466,7 @@ function intrusTitleWords(title) {
 }
 function pickIntrusDistractors(correct, pool, requireDistinctArtist) {
   // Rendre le choix plus exigeant : on préfère des intrus qui partagent un mot significatif du
-  // titre (ex. « paysage »), sinon des œuvres d'un AUTRE artiste (pour ne pas trivialiser un
+  // titre (ex. « paysage »), sinon des œuvres d'un AUTRE artiste (pour ne pas trivialiser un
   // choix limité au nom du peintre), sinon n'importe quoi d'autre du réservoir.
   const contentKey = (r) => `${famNormalize(r.artist)}|${famNormalize(r.title)}`;
   const correctKey = contentKey(correct);
@@ -3201,7 +3477,7 @@ function pickIntrusDistractors(correct, pool, requireDistinctArtist) {
   // et tout doublon de contenu (même couple auteur+titre, même si ce sont deux lignes distinctes).
   let others = pool.filter((r) => r !== correct && r.title && r.title.trim() && contentKey(r) !== correctKey);
   // Quand seul le nom de l'artiste sera affiché (pas de titre pour distinguer), il FAUT trois
-  // artistes différents, sinon deux « Monet » pourraient se retrouver face à face.
+  // artistes différents, sinon deux « Monet » pourraient se retrouver face à face.
   if (requireDistinctArtist) others = others.filter((r) => !usedArtists.has(famNormalize(r.artist)));
   let candidates = correctWords.size ? others.filter((r) => intrusTitleWords(r.title).some((w) => correctWords.has(w))) : [];
   const picked = [];
@@ -3257,10 +3533,10 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     intrusAutoAdvanceDelay = Number($('intrus-opt-delay').value);
     intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`intrus-field-${k}`)?.checked);
     INTRUS_SESSION = pool.slice(0, count).map((correct) => {
-      // En mode « Références intruses », on ne montre le plus souvent que le nom de l'artiste (le
+      // En mode « Références intruses », on ne montre le plus souvent que le nom de l'artiste (le
       // cas le plus fréquent et le plus exigeant), et parfois artiste + titre pour varier. Sans
       // titre affiché, il faut impérativement 3 artistes différents pour éviter deux choix
-      // identiques (ex. deux « Monet »).
+      // identiques (ex. deux « Monet »).
       const titleMode = intrusMode === 'reference' ? Math.random() < 0.3 : true;
       const distractors = pickIntrusDistractors(correct, pool, intrusMode === 'reference' && !titleMode);
       const choices = [correct, ...distractors];
@@ -3300,16 +3576,16 @@ function intrusShowQuestion() {
     });
     $('intrus-choices').innerHTML = `<div class="correction-details">
       <span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>
-      <span class="correction-label">Titre de l'œuvre</span><span class="correction-value">« ${escapeHtml(q.correct.title)} »</span>
+      <span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>
     </div>`;
-    intrusSpeak(`${q.correct.artist} — « ${q.correct.title} »`);
+    intrusSpeak(`${q.correct.artist} — « ${q.correct.title} »`);
   } else {
     // Image en haut à gauche. Choix à droite : le plus souvent le nom du peintre seul (le cas
     // le plus exigeant), parfois artiste + titre pour varier (q.titleMode).
     promptCard.innerHTML = `<img src="${escapeHtml(imageSource(q.correct.image))}" alt="" style="max-width:100%;max-height:min(820px,74vh);display:block;" />`;
     $('intrus-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
       q.titleMode
-        ? `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title || c.date || 'œuvre non titrée')} »</em></button>`
+        ? `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title || c.date || 'œuvre non titrée')} »</em></button>`
         : `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong></button>`
     ).join('')}</div>`;
     $('intrus-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
@@ -3347,11 +3623,11 @@ function intrusAnswer(chosenIndex) {
   }
 
   const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
-  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + q.correct.materials : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
+  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + q.correct.materials : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
   intrusSpeak(correctFullRef);
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
-  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value">« ${escapeHtml(q.correct.title)} »</span>`);
+  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
   if (intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if (intrusExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materials)}</span>`);
   if (intrusExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
@@ -3399,7 +3675,7 @@ document.querySelectorAll('.modal-overlay').forEach((overlay) => {
   overlay.addEventListener('click', (event) => { if (event.target === overlay) { overlay.classList.add('hidden'); updateSelectorSummaries(); } });
 });
 
-// Avertissement affiché une fois (par session, ou définitivement si « Ne plus afficher » a été
+// Avertissement affiché une fois (par session, ou définitivement si « Ne plus afficher » a été
 // coché — mémorisé sur l'appareil) dès que le 20e siècle est coché.
 let century20eNoticeShown = false;
 $('century-20e')?.addEventListener('change', (event) => {
@@ -3411,7 +3687,7 @@ $('century-20e')?.addEventListener('change', (event) => {
 $('century-20e-notice-close')?.addEventListener('click', () => {
   if ($('century-20e-notice-dismiss')?.checked) localStorage.setItem('century20eNoticeDismissed', 'true');
 });
-// Réinitialise tous les pop-up explicatifs « Ne plus afficher » (micro, avertissement 20e siècle…).
+// Réinitialise tous les pop-up explicatifs « Ne plus afficher » (micro, avertissement 20e siècle…).
 $('menu-item-reset-popups')?.addEventListener('click', () => {
   localStorage.removeItem('micTooltipDismissed');
   localStorage.removeItem('century20eNoticeDismissed');
@@ -3492,10 +3768,10 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
   const chosenKeys = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.key);
   const feedback = $('launch-feedback');
   feedback.classList.remove('hidden');
-  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art (« Choisissez votre art »).'; return; }
-  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle (« Choisissez votre siècle »).'; return; }
-  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau (« Choisissez votre niveau »).'; return; }
-  if (!chosenKeys.length) { feedback.textContent = 'Choisissez au moins une rubrique à réviser (« Choisissez vos rubriques »).'; return; }
+  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art (« Choisissez votre art »).'; return; }
+  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle (« Choisissez votre siècle »).'; return; }
+  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau (« Choisissez votre niveau »).'; return; }
+  if (!chosenKeys.length) { feedback.textContent = 'Choisissez au moins une rubrique à réviser (« Choisissez vos rubriques »).'; return; }
   // Mémorise la configuration choisie (sur l'appareil) si la case est cochée, pour la retrouver
   // au prochain jeu sans repasser par tout le menu de sélection.
   if ($('remember-choice-checkbox')?.checked) {
@@ -3527,7 +3803,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     if (missing.length) {
       alert(`Ce site est en construction pour : ${missing.join(', ')}. Le quiz continue avec les autres choix disponibles.`);
     }
-    // Conservé pour la page « autres œuvres » : elle doit retrouver tout ce que la base connaît
+    // Conservé pour la page « autres œuvres » : elle doit retrouver tout ce que la base connaît
     // d'un artiste, même les œuvres d'un autre niveau que celui choisi pour ce quiz.
     state.allRowsForArtistLookup = allRows;
     // Filtre par niveau (indépendant) : seules les œuvres des niveaux sélectionnés sont gardées.
@@ -3589,7 +3865,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     quizTimer.start();
     renderQuestion();
   } catch (error) {
-    // Le message « site en construction » se suffit à lui-même, sans préfixe « Erreur : ».
+    // Le message « site en construction » se suffit à lui-même, sans préfixe « Erreur : ».
     feedback.textContent = error.message === 'Ce site est en construction. Le quiz sera bientôt disponible.' ? error.message : `Erreur : ${error.message}`;
   }
 });
@@ -3610,8 +3886,8 @@ function goToNextOrResults() {
 }
 $('answer-form').addEventListener('submit', (event) => {
   event.preventDefault();
-  finalizeCurrentAnswer(); // note la réponse même si on ne clique jamais sur « Suivante »
-  renderQuestion(); // affiche la correction ; on attend le clic sur « Suivante »
+  finalizeCurrentAnswer(); // note la réponse même si on ne clique jamais sur « Suivante »
+  renderQuestion(); // affiche la correction ; on attend le clic sur « Suivante »
 });
 $('previous-button-overlay').addEventListener('click', () => {
   if (!answerFor(state.index).checked) saveInputs(); // ne pas écraser une réponse déjà validée (champs vidés depuis)
