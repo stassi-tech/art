@@ -480,7 +480,7 @@ function renderExerciseOverrides() {
     const levels = checkedKeys.filter((k) => k.startsWith(`${prefix}-level-`)).map((k) => k.replace(`${prefix}-level-`, ''));
     const fieldsList = checkedKeys.filter((k) => k.startsWith(`${prefix}-field-`)).map((k) => k.replace(`${prefix}-field-`, ''));
     if (arts.length || centuries.length || zones.length) {
-      const summary = [arts.join('/'), centuries.length ? `${centuries.join('/')}e siècle` : '', zones.length ? `en ${zones.join('/')}` : ''].filter(Boolean).join(', ');
+      const summary = [arts.join('/'), centuries.length ? `${centuries.join('/')} siècle` : '', zones.length ? `en ${zones.join('/')}` : ''].filter(Boolean).join(', ');
       rows.fields.push({ prefix, name: info.name, summary, panel: info.panel });
     }
     if (levels.length || fieldsList.length) {
@@ -727,8 +727,14 @@ const quizTimer = createTimer('quiz-timer');
 // Mémorise et restaure la dernière sélection de cases à cocher d'un jeu (art/siècle/niveau/zone…)
 // sur l'appareil, pour éviter de tout recocher à chaque partie. On cible toutes les cases du
 // panneau de configuration plutôt qu'une liste figée d'identifiants, plus robuste aux évolutions.
+let suppressSaveLastSelection = false;
 function saveLastSelection(panelId) {
   if (!getGlobalPrefs().rememberSelection) return;
+  // Quand le démarrage automatique vient d'appliquer le choix général (Mon compte) à cet
+  // exercice, on n'enregistre pas cet état comme s'il s'agissait d'un choix propre au jeu —
+  // sinon ça écraserait silencieusement toute personnalisation faite via l'icône ✏️ à chaque
+  // clic sur le bouton principal.
+  if (suppressSaveLastSelection) { suppressSaveLastSelection = false; return; }
   const state = {};
   $(panelId)?.querySelectorAll('input[type="checkbox"]').forEach((el) => { state[el.id] = el.checked; });
   localStorage.setItem(`lastSelection_${panelId}`, JSON.stringify(state));
@@ -1746,6 +1752,7 @@ function showReconConfig() {
 $('open-reconstitution-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('recon');
   if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('reconstitution-setup-panel');
+  else suppressSaveLastSelection = true;
   applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
   $('recon-start-button')?.click();
 });
@@ -1765,6 +1772,7 @@ function showVfConfig() {
 $('open-vraifaux-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('vf');
   if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('vraifaux-setup-panel');
+  else suppressSaveLastSelection = true;
   $('vf-start-button')?.click();
 });
 $('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -1782,6 +1790,7 @@ function showFamConfig() {
 $('open-famille-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('fam');
   if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('famille-setup-panel');
+  else suppressSaveLastSelection = true;
   $('fam-start-button')?.click();
 });
 $('famille-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -1809,6 +1818,7 @@ function showChronoConfig() {
 $('open-chrono-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('chrono');
   if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('chrono-setup-panel');
+  else suppressSaveLastSelection = true;
   $('chrono-start-button')?.click();
 });
 $('chrono-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -3496,6 +3506,7 @@ function showImpConfig() {
 $('open-impregnation-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('imp');
   if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('impregnation-setup-panel');
+  else suppressSaveLastSelection = true;
   // Synchronise l'avancement (auto/manuel) et son délai depuis les préférences générales, comme
   // le faisait la page de configuration qu'on ne montre plus — sinon la valeur par défaut du
   // formulaire (auto) est utilisée à chaque fois, quel que soit le choix du joueur.
@@ -3653,6 +3664,7 @@ function showIntrusConfig() {
 $('open-intrus-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('intrus');
   if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('intrus-setup-panel');
+  else suppressSaveLastSelection = true;
   applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
   $('intrus-start-button')?.click();
 });
