@@ -381,7 +381,7 @@ async function deleteScore(docId) {
     alert('Impossible de supprimer ce résultat pour le moment.');
   }
 }
-$('account-page-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+$('account-page-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); populateGlobalVoiceSelect(); });
 $('account-scores-quiz-button')?.addEventListener('click', () => {
   accountScoreFilter = 'quiz';
   $('account-scores-quiz-button').classList.remove('inactive');
@@ -413,6 +413,54 @@ const voiceSupported = Boolean(SpeechRecognitionImpl);
 // Micro simple et autonome pour un champ texte unique (Famille, Énigme) — même moteur que le
 // micro du quiz, mais sans la logique de champ actif multiple : un bouton, un champ.
 // Lit à voix haute l'objectif d'un exercice, affiché en texte sur sa page de configuration.
+// ============================================================
+// PARAMÈTRES GLOBAUX (voix, chronomètre, touche Entrée, mémorisation) — communs à tous les
+// exercices d'entraînement, réglables depuis « Mon compte ».
+// ============================================================
+const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '' };
+function getGlobalPrefs() {
+  try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem('globalExercisePrefs') || '{}') }; }
+  catch (e) { return { ...DEFAULT_PREFS }; }
+}
+function setGlobalPref(key, value) {
+  const prefs = getGlobalPrefs();
+  prefs[key] = value;
+  localStorage.setItem('globalExercisePrefs', JSON.stringify(prefs));
+}
+function getGlobalVoice() {
+  if (!window.speechSynthesis) return null;
+  const prefs = getGlobalPrefs();
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  return voices.find((v) => v.name === prefs.voiceName) || null;
+}
+function populateGlobalVoiceSelect() {
+  const select = $('pref-voice');
+  if (!select) return;
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  const prefs = getGlobalPrefs();
+  select.innerHTML = voices.length
+    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    : '<option value="">Voix par défaut du système</option>';
+}
+speechSynthesis.onvoiceschanged = populateGlobalVoiceSelect;
+$('settings-toggle')?.addEventListener('click', () => {
+  $('settings-body')?.classList.toggle('hidden');
+  populateGlobalVoiceSelect();
+});
+function initGlobalPrefsUI() {
+  const prefs = getGlobalPrefs();
+  $('pref-show-timer').checked = prefs.showTimer;
+  $('pref-enter-validate').checked = prefs.enterValidate;
+  $('pref-remember-selection').checked = prefs.rememberSelection;
+  $('pref-audio').checked = prefs.audioOn;
+  $('pref-show-timer')?.addEventListener('change', () => setGlobalPref('showTimer', $('pref-show-timer').checked));
+  $('pref-enter-validate')?.addEventListener('change', () => setGlobalPref('enterValidate', $('pref-enter-validate').checked));
+  $('pref-remember-selection')?.addEventListener('change', () => setGlobalPref('rememberSelection', $('pref-remember-selection').checked));
+  $('pref-audio')?.addEventListener('change', () => setGlobalPref('audioOn', $('pref-audio').checked));
+  $('pref-voice')?.addEventListener('change', () => setGlobalPref('voiceName', $('pref-voice').value));
+}
+initGlobalPrefsUI();
+
 function speakObjective(elementId) {
   // elementId est le préfixe (« imp », « vf »…) — la case « Ne plus entendre » est mémorisée sur
   // l'appareil, sur ce même préfixe, pour ne pas lasser à force de rejouer.
@@ -443,7 +491,13 @@ function createTimer(labelElementId) {
     el.textContent = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
   return {
-    start() { startTime = Date.now(); if (interval) clearInterval(interval); interval = setInterval(tick, 1000); tick(); },
+    start() {
+      startTime = Date.now();
+      $(labelElementId)?.classList.toggle('hidden', !getGlobalPrefs().showTimer);
+      if (interval) clearInterval(interval);
+      interval = setInterval(tick, 1000);
+      tick();
+    },
     stop() { if (interval) clearInterval(interval); interval = null; return startTime ? Math.round((Date.now() - startTime) / 1000) : 0; },
   };
 }
@@ -452,11 +506,13 @@ function createTimer(labelElementId) {
 // sur l'appareil, pour éviter de tout recocher à chaque partie. On cible toutes les cases du
 // panneau de configuration plutôt qu'une liste figée d'identifiants, plus robuste aux évolutions.
 function saveLastSelection(panelId) {
+  if (!getGlobalPrefs().rememberSelection) return;
   const state = {};
   $(panelId)?.querySelectorAll('input[type="checkbox"]').forEach((el) => { state[el.id] = el.checked; });
   localStorage.setItem(`lastSelection_${panelId}`, JSON.stringify(state));
 }
 function restoreLastSelection(panelId) {
+  if (!getGlobalPrefs().rememberSelection) return;
   let state;
   try { state = JSON.parse(localStorage.getItem(`lastSelection_${panelId}`) || '{}'); } catch (e) { return; }
   $(panelId)?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
@@ -1576,9 +1632,8 @@ $('enig-start-button')?.addEventListener('click', async () => {
   feedback.classList.remove('hidden');
   if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
   feedback.textContent = 'Chargement des énigmes…';
-  enigAudioOn = $('enig-opt-audio').checked;
-  const enigVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
-  enigSelectedVoiceRef = enigVoices[$('enig-opt-voice').value] || null;
+  enigAudioOn = getGlobalPrefs().audioOn;
+  enigSelectedVoiceRef = getGlobalVoice();
   const countChoice = Number(document.querySelector('input[name="enig-count"]:checked').value);
 
   // Essaie d'abord les vrais fichiers -enigme.xlsx (un par art/siècle) ; si aucun n'est encore
@@ -1923,9 +1978,8 @@ $('fam-start-button')?.addEventListener('click', async () => {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 8) pool = zoned;
     }
-    famAudioOn = $('fam-opt-audio').checked;
-    const famVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
-    famSelectedVoiceRef = famVoices[$('fam-opt-voice').value] || null;
+    famAudioOn = getGlobalPrefs().audioOn;
+    famSelectedVoiceRef = getGlobalVoice();
     const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
     const count = Number(countChoice);
     const imgCountChoice = Number(document.querySelector('input[name="fam-images"]:checked').value);
@@ -2156,9 +2210,8 @@ $('vf-start-button')?.addEventListener('click', async () => {
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const countChoice = document.querySelector('input[name="vf-count"]:checked').value;
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
-    vfAudioOn = $('vf-opt-audio').checked;
-    const vfVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
-    vfSelectedVoiceRef = vfVoices[$('vf-opt-voice').value] || null;
+    vfAudioOn = getGlobalPrefs().audioOn;
+    vfSelectedVoiceRef = getGlobalVoice();
     const activeFields = vfActiveFields();
     if (!activeFields.length) { feedback.textContent = 'Choisissez au moins une rubrique.'; return; }
     VF_SESSION = pool.slice(0, count).map((correct) => {
@@ -2387,9 +2440,8 @@ $('recon-start-button')?.addEventListener('click', async () => {
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const countChoice = document.querySelector('input[name="recon-count"]:checked').value;
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
-    reconAudioOn = $('recon-opt-audio').checked;
-    const reconVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
-    reconSelectedVoice = reconVoices[$('recon-opt-voice').value] || null;
+    reconAudioOn = getGlobalPrefs().audioOn;
+    reconSelectedVoice = getGlobalVoice();
     reconAutoAdvance = $('recon-opt-autoadvance').checked;
     reconAutoAdvanceDelay = Number($('recon-opt-delay').value);
     reconExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`recon-field-${k}`)?.checked);
@@ -2726,10 +2778,9 @@ $('imp-start-button')?.addEventListener('click', async () => {
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     IMP_SESSION = pool;
     impAdvanceMode = $('imp-opt-advance').value;
-    impAudioOn = $('imp-opt-audio').checked;
+    impAudioOn = getGlobalPrefs().audioOn;
     impDelayMs = Number($('imp-opt-delay').value);
-    const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
-    impSelectedVoice = voices[$('imp-opt-voice').value] || null;
+    impSelectedVoice = getGlobalVoice();
     impIndex = 0;
     showPanel('impregnation');
     impTimer.start();
@@ -2916,9 +2967,8 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const countChoice = document.querySelector('input[name="intrus-count"]:checked').value;
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
-    intrusAudioOn = $('intrus-opt-audio').checked;
-    const intrusVoices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
-    intrusSelectedVoice = intrusVoices[$('intrus-opt-voice').value] || null;
+    intrusAudioOn = getGlobalPrefs().audioOn;
+    intrusSelectedVoice = getGlobalVoice();
     intrusAutoAdvance = $('intrus-opt-autoadvance').checked;
     intrusAutoAdvanceDelay = Number($('intrus-opt-delay').value);
     intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`intrus-field-${k}`)?.checked);
@@ -3332,6 +3382,7 @@ $('download-my-report-button')?.addEventListener('click', async () => {
 // et on n'intercepte rien si un menu déroulant ou un élément non pertinent a le focus.
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter') return;
+  if (!getGlobalPrefs().enterValidate) return;
   if (event.target.tagName === 'TEXTAREA') return;
   const visiblePanel = [...document.querySelectorAll('main.main-content > section')].find((s) => !s.classList.contains('hidden'));
   if (!visiblePanel) return;
