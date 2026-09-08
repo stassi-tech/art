@@ -17,7 +17,6 @@
       <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
       <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
       <button type="button" id="global-tech-settings-button" class="global-topbar-button" aria-label="Options techniques" title="Options techniques (voix, chronomètre, entrée…)">⚙</button>
-      <button type="button" id="global-field-settings-button" class="global-topbar-button" aria-label="Options de champs" title="Options de champs (siècle, niveau…)">📝</button>
       <div class="hamburger-menu hidden" id="hamburger-menu">
         <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Le fonctionnement des quiz</button>
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 La liste des artistes</button>
@@ -47,7 +46,7 @@
             <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
           </figure>
 
-          <p class="intro-banner">Cette application vous propose de jouer avec une base de plusieurs milliers d'œuvres d'art — peintures et sculptures, du 14e au 20e siècle — à travers des exercices d'entraînement à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer.</p>
+          <p class="intro-banner">Cette application vous propose de jouer avec une base de plusieurs milliers d'œuvres d'art — peintures et sculptures, du 14e au 20e siècle — à travers des exercices d'entraînement à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. Créez un compte pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
 
           <div class="home-mode-buttons">
             <button type="button" class="home-mode-button" id="open-training">
@@ -63,9 +62,6 @@
         </section>
 
         <section id="training-hub-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="training-hub-home-button" class="home-icon-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
-          </div>
 
           <p class="eyebrow home-eyebrow">Peinture &amp; sculpture — 14e au 20e siècle</p>
           <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
@@ -77,17 +73,12 @@
 
           <p class="intro-banner">Choisissez un exercice d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même (art, siècle, niveau). Les exercices sont classés par ordre croissant de difficulté, de gauche à droite puis de haut en bas.</p>
 
-          <div id="training-resume-banner" class="hidden" style="background:#eef2f6;border:1px solid var(--accent);border-radius:6px;padding:14px;margin-bottom:16px;text-align:center;">
-            <p style="margin:0 0 10px;font-family:Arial,sans-serif;font-size:.9rem;" id="training-resume-text"></p>
-            <button type="button" class="primary-button" id="training-resume-button" style="width:100%">▶ Reprendre avec les mêmes réglages</button>
-          </div>
-
           <div class="training-exercise-grid">
-            <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="label">Imprégnation</span></button>
-            <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="label">Intrus</span></button>
-            <button type="button" class="home-mode-button" id="open-famille-setup"><span class="label">Famille</span></button>
-            <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="label">Reconstitution</span></button>
-            <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="label">Vrai/Faux</span></button>
+            <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="label">Imprégnation</span><span class="exercise-summary" id="imp-hub-summary"></span><span class="exercise-summary-edit" id="imp-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="label">Intrus</span><span class="exercise-summary" id="intrus-hub-summary"></span><span class="exercise-summary-edit" id="intrus-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-famille-setup"><span class="label">Famille</span><span class="exercise-summary" id="fam-hub-summary"></span><span class="exercise-summary-edit" id="fam-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="label">Reconstitution</span><span class="exercise-summary" id="recon-hub-summary"></span><span class="exercise-summary-edit" id="recon-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="label">Vrai/Faux</span><span class="exercise-summary" id="vf-hub-summary"></span><span class="exercise-summary-edit" id="vf-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
             <button type="button" class="home-mode-button training-soon" id="open-training-enigme"><span class="label">Énigme</span><span class="tooltip-bubble" role="tooltip">En construction.</span></button>
           </div>
         </section>
@@ -1061,22 +1052,13 @@
 
         <section id="account-panel" class="results-panel account-panel hidden">
           <p class="eyebrow">MON COMPTE</p>
-          <h2>Historique de mes scores</h2>
-
-          <div class="accordion-group" style="max-width:560px;margin:0 auto 20px;text-align:left;">
-            <button type="button" class="accordion-toggle" id="settings-toggle">⚙ Mes paramètres (voix, chronomètre, entrée…)</button>
-            <div class="accordion-body" id="settings-body">
-              <label class="rubrique-option"><input type="checkbox" id="pref-show-timer" checked /><span>Afficher le chronomètre dans les exercices</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="pref-enter-validate" checked /><span>Valider avec la touche Entrée</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="pref-remember-selection" checked /><span>Mémoriser ma dernière sélection d'options</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="pref-audio" checked /><span>Lecture audio (voix de synthèse)</span></label>
-              <div class="opt-row">
-                <span>Voix utilisée :</span>
-                <select id="pref-voice"><option value="">Chargement des voix…</option></select>
-              </div>
-              <p class="modal-hint">Ces réglages s'appliquent à tous les exercices d'entraînement.</p>
-            </div>
+          <div class="opt-row" style="max-width:420px;margin:0 auto 16px;justify-content:center;">
+            <select id="account-view-select">
+              <option value="scores">Historique de mes scores</option>
+              <option value="params">⚙ Mes paramètres techniques</option>
+            </select>
           </div>
+          <h2 id="account-scores-title">Historique de mes scores</h2>
 
           <div class="account-page-actions">
             <button type="button" id="account-resume-exercise-button" class="primary-button hidden">↩ Revenir à l'exercice en cours</button>

@@ -449,18 +449,16 @@ $('settings-toggle')?.addEventListener('click', () => {
   populateGlobalVoiceSelect();
 });
 function initGlobalPrefsUI() {
-  const prefs = getGlobalPrefs();
-  $('pref-show-timer').checked = prefs.showTimer;
-  $('pref-enter-validate').checked = prefs.enterValidate;
-  $('pref-remember-selection').checked = prefs.rememberSelection;
-  $('pref-audio').checked = prefs.audioOn;
-  $('pref-show-timer')?.addEventListener('change', () => setGlobalPref('showTimer', $('pref-show-timer').checked));
-  $('pref-enter-validate')?.addEventListener('change', () => setGlobalPref('enterValidate', $('pref-enter-validate').checked));
-  $('pref-remember-selection')?.addEventListener('change', () => setGlobalPref('rememberSelection', $('pref-remember-selection').checked));
-  $('pref-audio')?.addEventListener('change', () => setGlobalPref('audioOn', $('pref-audio').checked));
-  $('pref-voice')?.addEventListener('change', () => setGlobalPref('voiceName', $('pref-voice').value));
+  // La page « Mon compte » redirige désormais vers la même modale que l'icône ⚙ du bandeau
+  // (voir account-view-select plus bas) — plus de doublon de contrôles à synchroniser ici.
 }
 initGlobalPrefsUI();
+$('account-view-select')?.addEventListener('change', () => {
+  if ($('account-view-select').value === 'params') {
+    $('global-tech-settings-button')?.click();
+    $('account-view-select').value = 'scores';
+  }
+});
 
 // --- Modale rapide « Options techniques », accessible depuis n'importe quelle page ---
 $('global-tech-settings-button')?.addEventListener('click', () => {
@@ -2176,7 +2174,9 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
   // disparaît. « Œuvre » et « artiste » plutôt que « tableau »/« peintre », valable aussi bien
   // pour une peinture que pour une sculpture.
   $('fam-image-grid').className = 'fam-result-grid';
-  $('fam-image-grid').innerHTML = q.family.map((work) => {
+  const yearOf = (w) => { const m = String(w.date || '').match(/\b(1[3-9]|20)\d{2}\b/); return m ? Number(m[0]) : 9999; };
+  const chronological = q.family.slice().sort((a, b) => yearOf(a) - yearOf(b));
+  $('fam-image-grid').innerHTML = chronological.map((work) => {
     const dims = [work.hauteur, work.longueur].filter(Boolean).join(' × ');
     const meta = [work.date, work.location].filter(Boolean).join(' — ');
     return `<div class="fam-result-item">
@@ -2186,7 +2186,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
   }).join('');
 
   const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
-  const titleList = q.family.map((w, i) => `${ordinals[i]}, ${w.title}`).join('. ');
+  const titleList = chronological.map((w, i) => `${ordinals[i]}, ${w.title}`).join('. ');
   famSpeak(`Ces quatre œuvres sont bien de ${q.artist}. ${titleList}.`);
 
   $('fam-step0').classList.add('hidden');
@@ -2799,30 +2799,38 @@ $('load-saved-choice-button')?.addEventListener('click', () => {
 // Info-bulle CSS (survol/focus) plutôt qu'une alerte bloquante ; sur mobile (pas de survol), un
 // tap bascule son affichage.
 const EXERCISE_INFO = {
-  imp: { name: 'Imprégnation', open: 'open-impregnation-setup', start: 'imp-start-button' },
-  intrus: { name: 'Intrus', open: 'open-intrus-setup', start: 'intrus-start-button' },
-  recon: { name: 'Reconstitution', open: 'open-reconstitution-setup', start: 'recon-start-button' },
-  vf: { name: 'Vrai/Faux', open: 'open-vraifaux-setup', start: 'vf-start-button' },
-  fam: { name: 'Famille', open: 'open-famille-setup', start: 'fam-start-button' },
-  enig: { name: 'Énigme', open: 'open-enigme-setup', start: 'enig-start-button' },
+  imp: { name: 'Imprégnation', open: 'open-impregnation-setup', start: 'imp-start-button', panel: 'impregnation-setup-panel' },
+  intrus: { name: 'Intrus', open: 'open-intrus-setup', start: 'intrus-start-button', panel: 'intrus-setup-panel' },
+  recon: { name: 'Reconstitution', open: 'open-reconstitution-setup', start: 'recon-start-button', panel: 'reconstitution-setup-panel' },
+  vf: { name: 'Vrai/Faux', open: 'open-vraifaux-setup', start: 'vf-start-button', panel: 'vraifaux-setup-panel' },
+  fam: { name: 'Famille', open: 'open-famille-setup', start: 'fam-start-button', panel: 'famille-setup-panel' },
 };
-function checkTrainingResume() {
-  let saved;
-  try { saved = JSON.parse(localStorage.getItem('autoStartExercise') || 'null'); } catch (e) { saved = null; }
-  const banner = $('training-resume-banner');
-  if (!banner) return;
-  if (!saved || !EXERCISE_INFO[saved.prefix]) { banner.classList.add('hidden'); return; }
-  const info = EXERCISE_INFO[saved.prefix];
-  $('training-resume-text').textContent = `Vous aviez demandé à retrouver automatiquement « ${info.name} » avec vos derniers réglages.`;
-  banner.classList.remove('hidden');
-  $('training-resume-button').onclick = () => {
-    $(info.open)?.click();
-    // Laisse la restauration de sélection et les valeurs par défaut s'appliquer avant de lancer.
-    setTimeout(() => $(info.start)?.click(), 150);
-  };
+// Résumé abrégé (ex. « Peinture17 ») de la sélection mémorisée d'un exercice, affiché
+// directement sur son bouton dans le menu — évite d'avoir à rouvrir la configuration pour
+// se rappeler ce qui était choisi la dernière fois.
+function buildExerciseSummary(prefix) {
+  let state;
+  try { state = JSON.parse(localStorage.getItem(`lastSelection_${EXERCISE_INFO[prefix].panel}`) || '{}'); } catch (e) { return ''; }
+  const arts = Object.keys(state).filter((k) => k.startsWith(`${prefix}-art-`) && state[k]).map((k) => k.replace(`${prefix}-art-`, ''));
+  const centuries = Object.keys(state).filter((k) => k.startsWith(`${prefix}-century-`) && state[k]).map((k) => k.replace(`${prefix}-century-`, '').replace('e', ''));
+  if (!arts.length && !centuries.length) return '';
+  const artLabel = arts.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
+  return `${artLabel}${centuries.join('+')}`;
 }
-$('open-training')?.addEventListener('click', () => { showPanel('training-hub'); checkTrainingResume(); });
-$('training-hub-home-button')?.addEventListener('click', () => showPanel('welcome'));
+function updateExerciseSummaries() {
+  Object.keys(EXERCISE_INFO).forEach((prefix) => {
+    const el = $(`${prefix}-hub-summary`);
+    if (el) el.textContent = buildExerciseSummary(prefix);
+  });
+}
+document.querySelectorAll('.exercise-summary-edit').forEach((icon) => {
+  icon.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const prefix = icon.id.replace('-hub-edit', '');
+    $(EXERCISE_INFO[prefix]?.open)?.click();
+  });
+});
+$('open-training')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 document.querySelectorAll('.training-soon').forEach((btn) => {
   btn.addEventListener('click', (event) => event.currentTarget.classList.toggle('show-tooltip'));
 });
@@ -2836,7 +2844,7 @@ $('open-impregnation-setup')?.addEventListener('click', () => { showPanel('impre
 $('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
 ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
-  $(`${p}-hub-link`)?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); checkTrainingResume(); });
+  $(`${p}-hub-link`)?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
 });
 
 const IMP_ACCORDIONS = ['imp-toggle-art:imp-body-art', 'imp-toggle-century:imp-body-century', 'imp-toggle-level:imp-body-level', 'imp-toggle-rubriques:imp-body-rubriques'];
