@@ -382,7 +382,97 @@ async function deleteScore(docId) {
     alert('Impossible de supprimer ce résultat pour le moment.');
   }
 }
-$('account-page-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); populateGlobalVoiceSelect(); });
+$('account-page-button')?.addEventListener('click', () => { showPanel('profile'); initProfilePage(); });
+$('profile-back-button')?.addEventListener('click', () => showPanel('welcome'));
+$('account-back-to-profile-button')?.addEventListener('click', () => showPanel('profile'));
+$('profile-go-scores-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+
+// --- Bascule entre les 3 sections de la page « Mon compte » ---
+document.querySelectorAll('.profile-menu-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
+    ['profile-section-tech', 'profile-section-fields', 'profile-section-scores'].forEach((id) => {
+      $(id)?.classList.toggle('hidden', id !== btn.dataset.target);
+    });
+  });
+});
+
+// --- Photo de profil (mémorisée localement, en base64) ---
+function loadProfilePhoto() {
+  const saved = localStorage.getItem('profilePhoto');
+  if (saved) {
+    $('profile-photo-preview').src = saved;
+    $('profile-photo-preview').style.display = 'block';
+    $('profile-photo-placeholder').style.display = 'none';
+  }
+}
+$('profile-photo-input')?.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    localStorage.setItem('profilePhoto', reader.result);
+    loadProfilePhoto();
+  };
+  reader.readAsDataURL(file);
+});
+
+// --- Réglages techniques (section 1), reliés aux mêmes préférences globales que l'icône ⚙ ---
+function initProfilePage() {
+  loadProfilePhoto();
+  $('profile-email').textContent = currentUser?.email || '';
+  const prefs = getGlobalPrefs();
+  $('pf-show-timer').checked = prefs.showTimer;
+  $('pf-enter-validate').checked = prefs.enterValidate;
+  $('pf-remember-selection').checked = prefs.rememberSelection;
+  $('pf-show-explanations').checked = prefs.showExplanations;
+  $('pf-audio').checked = prefs.audioOn;
+  $('pf-handedness').value = document.body.classList.contains('lefty') ? 'left' : 'right';
+  $('pf-advance').value = prefs.defaultAdvance;
+  $('pf-delay').value = String(prefs.defaultDelay);
+  $('pf-delay-row').style.display = prefs.defaultAdvance === 'auto' ? 'flex' : 'none';
+  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
+  $('pf-voice').innerHTML = voices.length
+    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    : '<option value="">Voix par défaut du système</option>';
+  let fieldDefaults = {};
+  try { fieldDefaults = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) {}
+  document.querySelectorAll('.pf-field-century').forEach((el) => { el.checked = (fieldDefaults.centuries || []).includes(el.value); });
+  document.querySelectorAll('.pf-field-level').forEach((el) => { el.checked = (fieldDefaults.levels || []).includes(el.value); });
+  $('pf-fields-remember').checked = !!fieldDefaults.remember;
+}
+$('pf-show-timer')?.addEventListener('change', () => setGlobalPref('showTimer', $('pf-show-timer').checked));
+$('pf-enter-validate')?.addEventListener('change', () => setGlobalPref('enterValidate', $('pf-enter-validate').checked));
+$('pf-remember-selection')?.addEventListener('change', () => setGlobalPref('rememberSelection', $('pf-remember-selection').checked));
+$('pf-show-explanations')?.addEventListener('change', () => setGlobalPref('showExplanations', $('pf-show-explanations').checked));
+$('pf-audio')?.addEventListener('change', () => setGlobalPref('audioOn', $('pf-audio').checked));
+$('pf-voice')?.addEventListener('change', () => setGlobalPref('voiceName', $('pf-voice').value));
+$('pf-handedness')?.addEventListener('change', () => {
+  const lefty = $('pf-handedness').value === 'left';
+  localStorage.setItem('handedness', lefty ? 'lefty' : 'righty');
+  applyHandedness(lefty);
+});
+$('pf-advance')?.addEventListener('change', () => {
+  setGlobalPref('defaultAdvance', $('pf-advance').value);
+  $('pf-delay-row').style.display = $('pf-advance').value === 'auto' ? 'flex' : 'none';
+});
+$('pf-delay')?.addEventListener('change', () => setGlobalPref('defaultDelay', Number($('pf-delay').value)));
+
+// --- Choix de champ général (section 2) : si mémorisé, chaque bouton d'exercice démarre
+// directement dessus, sans repasser par sa page de configuration. ---
+$('pf-fields-apply')?.addEventListener('click', () => {
+  const centuries = [...document.querySelectorAll('.pf-field-century:checked')].map((el) => el.value);
+  const levels = [...document.querySelectorAll('.pf-field-level:checked')].map((el) => el.value);
+  const remember = $('pf-fields-remember').checked;
+  localStorage.setItem('globalFieldDefaults', JSON.stringify({ centuries, levels, remember }));
+  updateExerciseSummaries();
+});
+$('pf-fields-clear')?.addEventListener('click', () => {
+  localStorage.removeItem('globalFieldDefaults');
+  document.querySelectorAll('.pf-field-century, .pf-field-level').forEach((el) => { el.checked = false; });
+  $('pf-fields-remember').checked = false;
+  updateExerciseSummaries();
+});
 $('account-scores-quiz-button')?.addEventListener('click', () => {
   accountScoreFilter = 'quiz';
   $('account-scores-quiz-button').classList.remove('inactive');
@@ -447,17 +537,6 @@ speechSynthesis.onvoiceschanged = populateGlobalVoiceSelect;
 $('settings-toggle')?.addEventListener('click', () => {
   $('settings-body')?.classList.toggle('hidden');
   populateGlobalVoiceSelect();
-});
-function initGlobalPrefsUI() {
-  // La page « Mon compte » redirige désormais vers la même modale que l'icône ⚙ du bandeau
-  // (voir account-view-select plus bas) — plus de doublon de contrôles à synchroniser ici.
-}
-initGlobalPrefsUI();
-$('account-view-select')?.addEventListener('change', () => {
-  if ($('account-view-select').value === 'params') {
-    $('global-tech-settings-button')?.click();
-    $('account-view-select').value = 'scores';
-  }
 });
 
 // --- Modale rapide « Options techniques », accessible depuis n'importe quelle page ---
@@ -557,7 +636,7 @@ function handleExtendAndRemember(prefix, panelId) {
   if (extendAll) {
     const centuries = [...document.querySelectorAll(`#${panelId} [id^="${prefix}-century-"]:checked`)].map((el) => el.id.replace(`${prefix}-century-`, ''));
     const levels = [...document.querySelectorAll(`#${panelId} [id^="${prefix}-level-"]:checked`)].map((el) => el.id.replace(`${prefix}-level-`, ''));
-    localStorage.setItem('globalFieldDefaults', JSON.stringify({ centuries, levels }));
+    localStorage.setItem('globalFieldDefaults', JSON.stringify({ centuries, levels, remember: true }));
     const prefixes = ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'];
     prefixes.forEach((other) => {
       if (other === prefix) return;
@@ -565,14 +644,8 @@ function handleExtendAndRemember(prefix, panelId) {
       document.querySelectorAll(`[id^="${other}-level-"]`).forEach((el) => { if (levels.length) el.checked = levels.includes(el.id.replace(`${other}-level-`, '')); });
     });
   }
-  if (remember) {
-    localStorage.setItem('autoStartExercise', JSON.stringify({ prefix, panelId, savedAt: Date.now() }));
-  } else if (localStorage.getItem('autoStartExercise')) {
-    try {
-      const saved = JSON.parse(localStorage.getItem('autoStartExercise'));
-      if (saved.prefix === prefix) localStorage.removeItem('autoStartExercise');
-    } catch (e) {}
-  }
+  localStorage.setItem(`autoStart_${prefix}`, remember ? 'true' : 'false');
+  updateExerciseSummaries();
 }
 
 function applyDefaultAdvance(checkboxId, delayId, delayRowId) {
@@ -1092,6 +1165,7 @@ function showPanel(name) {
   $('quiz-panel').classList.toggle('hidden', name !== 'quiz');
   $('results-panel').classList.toggle('hidden', name !== 'results');
   $('account-panel')?.classList.toggle('hidden', name !== 'account');
+  $('profile-panel')?.classList.toggle('hidden', name !== 'profile');
   $('other-works-panel')?.classList.toggle('hidden', name !== 'other-works');
   $('sidebar')?.classList.toggle('hidden', name !== 'welcome');
   $('bg-mosaic')?.classList.toggle('hidden', name !== 'welcome');
@@ -2536,7 +2610,11 @@ $('recon-start-button')?.addEventListener('click', async () => {
     let allRows = [];
     for (const art of arts) {
       for (const century of centuries) {
-        try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+        try {
+          const rows = await fetchQuizRows(art, century);
+          rows.forEach((r) => { r.artType = art; });
+          allRows.push(...rows);
+        } catch (e) { /* fichier absent, ignoré */ }
       }
     }
     if (allRows.length < 3) { feedback.textContent = "Pas assez d'œuvres disponibles pour ce choix (3 minimum)."; return; }
@@ -2558,10 +2636,12 @@ $('recon-start-button')?.addEventListener('click', async () => {
       const distractors = pickIntrusDistractors(correct, pool);
       const choices = [correct, ...distractors];
       for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [choices[i], choices[j]] = [choices[j], choices[i]]; }
-      // Position aléatoire du détail rogné : avec un fond à 340% de taille, la zone visible
-      // représente environ 1/3.4 de chaque dimension, soit ~8-9 % de la surface totale.
-      const cropX = Math.floor(Math.random() * 101);
-      const cropY = Math.floor(Math.random() * 101);
+      // Position du détail rogné biaisée vers le centre de l'image, où l'œuvre est visible —
+      // plus resserré encore pour les sculptures, souvent entourées d'un socle ou d'un fond vide.
+      const isSculpture = correct.artType === 'sculpture';
+      const [minPos, maxPos] = isSculpture ? [30, 70] : [20, 80];
+      const cropX = minPos + Math.floor(Math.random() * (maxPos - minPos + 1));
+      const cropY = minPos + Math.floor(Math.random() * (maxPos - minPos + 1));
       return { correct, choices, cropX, cropY };
     });
     reconIndex = 0; reconCorrectCount = 0;
@@ -2807,15 +2887,24 @@ const EXERCISE_INFO = {
 };
 // Résumé abrégé (ex. « Peinture17 ») de la sélection mémorisée d'un exercice, affiché
 // directement sur son bouton dans le menu — évite d'avoir à rouvrir la configuration pour
-// se rappeler ce qui était choisi la dernière fois.
+// se rappeler ce qui était choisi la dernière fois. Le choix général (depuis « Mon compte »)
+// est prioritaire sur un choix propre à l'exercice, et affiché différemment (icône 🌐).
+function readGlobalFieldDefaults() {
+  try { return JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) { return {}; }
+}
 function buildExerciseSummary(prefix) {
+  const g = readGlobalFieldDefaults();
+  if (g.remember && (g.centuries?.length || g.levels?.length)) {
+    return `🌐 ${(g.centuries || []).join('+')}${g.levels?.length ? ' N' + g.levels.join('+') : ''}`;
+  }
   let state;
   try { state = JSON.parse(localStorage.getItem(`lastSelection_${EXERCISE_INFO[prefix].panel}`) || '{}'); } catch (e) { return ''; }
   const arts = Object.keys(state).filter((k) => k.startsWith(`${prefix}-art-`) && state[k]).map((k) => k.replace(`${prefix}-art-`, ''));
   const centuries = Object.keys(state).filter((k) => k.startsWith(`${prefix}-century-`) && state[k]).map((k) => k.replace(`${prefix}-century-`, '').replace('e', ''));
   if (!arts.length && !centuries.length) return '';
   const artLabel = arts.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
-  return `${artLabel}${centuries.join('+')}`;
+  const autoIcon = localStorage.getItem(`autoStart_${prefix}`) === 'true' ? '▶ ' : '';
+  return `${autoIcon}${artLabel}${centuries.join('+')}`;
 }
 function updateExerciseSummaries() {
   Object.keys(EXERCISE_INFO).forEach((prefix) => {
@@ -2823,6 +2912,37 @@ function updateExerciseSummaries() {
     if (el) el.textContent = buildExerciseSummary(prefix);
   });
 }
+// Le bouton d'un exercice démarre directement (sans repasser par sa configuration) si un choix
+// général mémorisé existe, OU si ce choix a été mémorisé spécifiquement pour cet exercice.
+function shouldAutoStart(prefix) {
+  const g = readGlobalFieldDefaults();
+  if (g.remember && (g.centuries?.length || g.levels?.length)) return true;
+  return localStorage.getItem(`autoStart_${prefix}`) === 'true';
+}
+function applyGlobalFieldDefaultsTo(prefix) {
+  const g = readGlobalFieldDefaults();
+  if (!g.remember) return;
+  ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`${prefix}-century-${c}`); if (el) el.checked = (g.centuries || []).includes(c); });
+  ['1', '2', '3'].forEach((lvl) => { const el = $(`${prefix}-level-${lvl}`); if (el) el.checked = (g.levels || []).includes(lvl); });
+}
+function wireAutoStart(prefix) {
+  $(EXERCISE_INFO[prefix].open)?.addEventListener('click', (event) => {
+    if (!shouldAutoStart(prefix)) return;
+    // Capture + stopImmediatePropagation : empêche le gestionnaire normal (déjà attaché) d'ouvrir
+    // la page de configuration — sinon elle apparaîtrait brièvement avant le démarrage direct.
+    event.stopImmediatePropagation();
+    const g = readGlobalFieldDefaults();
+    if (g.remember && (g.centuries?.length || g.levels?.length)) {
+      applyGlobalFieldDefaultsTo(prefix);
+    } else {
+      // Choix propre à cet exercice : la sélection mémorisée n'a pas encore été restaurée
+      // puisqu'on saute justement l'ouverture normale de sa page de configuration.
+      restoreLastSelection(EXERCISE_INFO[prefix].panel);
+    }
+    $(EXERCISE_INFO[prefix].start)?.click();
+  }, { capture: true });
+}
+Object.keys(EXERCISE_INFO).forEach(wireAutoStart);
 document.querySelectorAll('.exercise-summary-edit').forEach((icon) => {
   icon.addEventListener('click', (event) => {
     event.stopPropagation();

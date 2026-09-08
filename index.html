@@ -1050,28 +1050,86 @@
           </div>
         </section>
 
-        <section id="account-panel" class="results-panel account-panel hidden">
-          <p class="eyebrow">MON COMPTE</p>
-          <div class="opt-row" style="max-width:420px;margin:0 auto 16px;justify-content:center;">
-            <select id="account-view-select">
-              <option value="scores">Historique de mes scores</option>
-              <option value="params">⚙ Mes paramètres techniques</option>
-            </select>
+        <section id="profile-panel" class="welcome-panel hidden">
+          <div class="quiz-topbar">
+            <button type="button" id="profile-back-button" class="home-icon-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
           </div>
+          <p class="eyebrow">MON COMPTE</p>
+          <div style="text-align:center;margin-bottom:20px;">
+            <label for="profile-photo-input" style="cursor:pointer;display:inline-block;">
+              <img id="profile-photo-preview" src="" alt="" style="width:96px;height:96px;border-radius:50%;object-fit:cover;background:#e9e5dc;display:none;" />
+              <div id="profile-photo-placeholder" style="width:96px;height:96px;border-radius:50%;background:#e9e5dc;display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--muted);margin:0 auto;">📷</div>
+              <span style="display:block;font-family:Arial,sans-serif;font-size:.78rem;color:var(--muted);margin-top:6px;">Ajouter une photo</span>
+            </label>
+            <input type="file" id="profile-photo-input" accept="image/*" class="hidden" />
+            <p id="profile-email" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);margin-top:8px;"></p>
+          </div>
+
+          <div class="training-exercise-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px;">
+            <button type="button" class="home-mode-button profile-menu-btn" id="profile-menu-tech" data-target="profile-section-tech">Mes paramètres techniques</button>
+            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-fields" data-target="profile-section-fields">Mes choix de champ</button>
+            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-scores" data-target="profile-section-scores">Mes scores</button>
+          </div>
+
+          <div id="profile-section-tech">
+            <label class="rubrique-option"><input type="checkbox" id="pf-show-timer" /><span>Afficher le chronomètre dans les exercices</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="pf-enter-validate" /><span>Valider avec la touche Entrée</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="pf-remember-selection" /><span>Mémoriser ma dernière sélection d'options par exercice</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="pf-show-explanations" /><span>Afficher les explications d'exercice (texte et voix)</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="pf-audio" /><span>Lecture audio (voix de synthèse)</span></label>
+            <div class="opt-row"><span>Voix utilisée :</span><select id="pf-voice"><option value="">Chargement des voix…</option></select></div>
+            <div class="opt-row"><span>Position des boutons de champ :</span>
+              <select id="pf-handedness"><option value="right">Droite (droitier)</option><option value="left">Gauche (gaucher)</option></select>
+            </div>
+            <div class="opt-row"><span>Avancement par défaut :</span>
+              <select id="pf-advance"><option value="manual">Clic personnel</option><option value="auto">Défilement automatique</option></select>
+            </div>
+            <div class="opt-row" id="pf-delay-row"><span>Délai avant le défilement :</span>
+              <select id="pf-delay"><option value="3000">3 s</option><option value="5000" selected>5 s</option><option value="8000">8 s</option></select>
+            </div>
+          </div>
+
+          <div id="profile-section-fields" class="hidden">
+            <p class="modal-hint" style="margin-top:0;">Si vous cochez un siècle et un niveau ici et que vous activez la mémorisation, <strong>tous</strong> les exercices et le quiz démarreront directement sur ce choix en appuyant sur leur bouton — plus besoin de repasser par leur configuration.</p>
+            <p class="modal-subheading" style="margin-top:0;">Siècle</p>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="14e" /><span>14e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="15e" /><span>15e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="16e" /><span>16e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="17e" /><span>17e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="18e" /><span>18e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="19e" /><span>19e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="20e" /><span>20e siècle</span></label>
+            <p class="modal-subheading">Niveau</p>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-level" value="1" /><span>Niveau 1</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-level" value="2" /><span>Niveau 2</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="pf-field-level" value="3" /><span>Niveau 3</span></label>
+            <label class="rubrique-option" style="margin-top:10px;"><input type="checkbox" id="pf-fields-remember" /><span>Mémoriser ce choix général pour mes prochaines sessions (démarrage automatique)</span></label>
+            <button type="button" class="primary-button" id="pf-fields-apply" style="width:100%;margin-top:14px;">Appliquer ce choix général</button>
+            <button type="button" class="secondary-button" id="pf-fields-clear" style="width:100%;margin-top:8px;">Effacer le choix général</button>
+          </div>
+
+          <div id="profile-section-scores" class="hidden">
+            <p class="modal-hint" style="margin-top:0;">Consultez l'historique complet de vos scores.</p>
+            <button type="button" class="primary-button" id="profile-go-scores-button" style="width:100%;">Voir mes scores →</button>
+          </div>
+        </section>
+
+        <section id="account-panel" class="results-panel account-panel hidden">
+          <p class="eyebrow">MES SCORES</p>
           <h2 id="account-scores-title">Historique de mes scores</h2>
 
+          <div class="training-exercise-grid" style="grid-template-columns:repeat(3,1fr);max-width:640px;margin:0 auto 20px;">
+            <button type="button" class="home-mode-button score-filter-btn inactive" id="account-scores-training-button">Scores d'entraînement</button>
+            <button type="button" class="home-mode-button score-filter-btn" id="account-scores-quiz-button">Scores de quiz</button>
+            <button type="button" id="account-page-download-button" class="home-mode-button hidden">Télécharger mon bilan</button>
+          </div>
           <div class="account-page-actions">
             <button type="button" id="account-resume-exercise-button" class="primary-button hidden">↩ Revenir à l'exercice en cours</button>
-            <button type="button" id="account-page-download-button" class="secondary-button hidden">Télécharger mon bilan</button>
-            <button type="button" id="account-page-back-button" class="secondary-button">← Retour à l'accueil</button>
-          </div>
-          <div class="training-exercise-grid" style="grid-template-columns:1fr 1fr;max-width:420px;margin:0 auto 20px;">
-            <button type="button" class="home-mode-button score-filter-btn" id="account-scores-quiz-button">Scores de quiz</button>
-            <button type="button" class="home-mode-button score-filter-btn inactive" id="account-scores-training-button">Scores d'entraînement</button>
           </div>
           <p id="account-page-empty" class="hint hidden">Vous n'avez pas encore de score enregistré. Terminez un quiz : votre score s'enregistrera automatiquement et apparaîtra ici.</p>
           <div id="account-page-groups"></div>
           <p class="hint account-page-footnote">Chaque score s'enregistre automatiquement à la fin d'un quiz. Cliquez sur la croix rouge (✕) à côté d'un résultat pour l'éliminer définitivement de votre historique.</p>
+          <button type="button" id="account-back-to-profile-button" class="secondary-button" style="width:100%;margin-top:16px;">← Retour à mon compte</button>
         </section>
       </main>
     </div>
