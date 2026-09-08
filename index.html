@@ -666,7 +666,7 @@
             </div>
             <section class="answer-card" aria-label="Ordre chronologique">
               <h2 style="font-family:Arial,sans-serif;font-size:1rem;font-weight:700;margin:0 0 12px;">Remets ces œuvres dans l'ordre chronologique</h2>
-              <p class="modal-hint" style="margin-top:0;">Glissez chaque œuvre (ou touchez-la puis touchez l'emplacement) de la ligne du haut vers la case du bas qui correspond à son rang, du plus ancien au plus récent.</p>
+              <p class="modal-hint" style="margin-top:0;">Touchez une œuvre de la ligne du haut, puis touchez la case du bas qui correspond à son rang, du plus ancien au plus récent.</p>
               <button type="button" class="primary-button" id="chrono-validate-button" style="width:100%">Valider l'ordre</button>
               <div id="chrono-correction" class="hidden">
                 <p id="chrono-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.3rem;margin:16px 0;"></p>
@@ -1111,6 +1111,10 @@
                 <label class="rubrique-option"><input type="radio" name="pf-count" value="5" /><span>5 questions</span></label>
                 <label class="rubrique-option"><input type="radio" name="pf-count" value="10" /><span>10 questions</span></label>
                 <label class="rubrique-option"><input type="radio" name="pf-count" value="20" /><span>20 questions</span></label>
+                <label class="rubrique-option"><input type="radio" name="pf-count" value="max" /><span>Maximum disponible pour chaque jeu</span></label>
+                <label class="rubrique-option"><input type="radio" name="pf-count" value="custom" /><span>Nombre personnalisé :</span>
+                  <input type="number" id="pf-count-custom" min="1" max="200" style="width:70px;margin-left:6px;padding:4px;" />
+                </label>
                 <p class="modal-hint" style="margin-bottom:0;">Appliqué à la valeur la plus proche disponible dans chaque exercice.</p>
               </div>
             </div>
@@ -1137,6 +1141,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=70"></script>
+    <script src="app.js?v=71"></script>
   </body>
 </html>

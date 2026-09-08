@@ -73,6 +73,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .chrono-target-slot img { width:100%; height:100%; object-fit:contain; border-radius:4px; }
 .chrono-target-slot .chrono-slot-num { position:absolute; top:4px; left:4px; width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:.8rem; display:flex; align-items:center; justify-content:center; }
 .chrono-source-item.used { opacity:.25; pointer-events:none; }
+.chrono-source-item.picked { border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,58,95,.35); }
 .chrono-source-item { touch-action:none; }
 .chrono-target-slot.wrong { border-color:var(--wrong); }
 .chrono-target-slot.right { border-color:var(--ok); }

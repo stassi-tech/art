@@ -453,7 +453,15 @@ function initProfilePage() {
   try { rubriqueDefaults = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) {}
   document.querySelectorAll('.pf-rubrique-field').forEach((el) => { el.checked = (rubriqueDefaults.rubriques || []).includes(el.value); });
   document.querySelectorAll('.pf-rubrique-level').forEach((el) => { el.checked = (rubriqueDefaults.levels || []).includes(el.value); });
-  if (rubriqueDefaults.count) { const el = document.querySelector(`input[name="pf-count"][value="${rubriqueDefaults.count}"]`); if (el) el.checked = true; }
+  if (rubriqueDefaults.count) {
+    if (rubriqueDefaults.count === 'max' || rubriqueDefaults.count === '5' || rubriqueDefaults.count === '10' || rubriqueDefaults.count === '20') {
+      const el = document.querySelector(`input[name="pf-count"][value="${rubriqueDefaults.count}"]`);
+      if (el) el.checked = true;
+    } else {
+      $('pf-count-custom').value = rubriqueDefaults.count;
+      document.querySelector('input[name="pf-count"][value="custom"]').checked = true;
+    }
+  }
 }
 $('profile-resume-exercise-button')?.addEventListener('click', () => {
   if (!returnToExercisePanel) return;
@@ -500,7 +508,8 @@ $('pf-fields-clear')?.addEventListener('click', () => {
 $('pf-rubriques-apply')?.addEventListener('click', () => {
   const rubriques = [...document.querySelectorAll('.pf-rubrique-field:checked')].map((el) => el.value);
   const levels = [...document.querySelectorAll('.pf-rubrique-level:checked')].map((el) => el.value);
-  const count = document.querySelector('input[name="pf-count"]:checked')?.value || '';
+  let count = document.querySelector('input[name="pf-count"]:checked')?.value || '';
+  if (count === 'custom') count = $('pf-count-custom').value?.trim() || '';
   localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, count, remember: true }));
   updateExerciseSummaries();
 });
@@ -1302,6 +1311,39 @@ function formatDimensionsDisplay(work) {
   if (work.profondeur) parts.push(`<span class="dim-hl">p</span> ${escapeHtml(work.profondeur)}`);
   return parts.join(' × ');
 }
+// Version texte brut (sans balises) de formatDimensionsDisplay, pour les affichages qui écrivent
+// via textContent plutôt qu'innerHTML (Imprégnation, à l'effet d'écriture progressive).
+function formatDimensionsPlainText(work) {
+  const parts = [];
+  if (work.hauteur) parts.push(`h ${work.hauteur}`);
+  if (work.longueur) parts.push(`l ${work.longueur}`);
+  if (work.profondeur) parts.push(`p ${work.profondeur}`);
+  return parts.join(' × ');
+}
+// Phrase parlée des dimensions, ex. « de 78 cm de hauteur, 53 de longueur et 30 de profondeur »
+// — n'énumère que les dimensions réellement renseignées, avec la bonne conjonction.
+function spokenDimensionsPhrase(work) {
+  const parts = [];
+  if (work.hauteur) parts.push(`${work.hauteur} de hauteur`);
+  if (work.longueur) parts.push(`${work.longueur} de longueur`);
+  if (work.profondeur) parts.push(`${work.profondeur} de profondeur`);
+  if (!parts.length) return '';
+  if (parts.length === 1) return `de ${parts[0]}`;
+  return `de ${parts.slice(0, -1).join(', ')} et ${parts[parts.length - 1]}`;
+}
+// Phrase de référence complète, dans l'ordre demandé : « Artiste, «Titre», Date. Nature en
+// matériau de H cm de hauteur, L de longueur et P de profondeur. Lieu. » — chaque partie
+// manquante est simplement omise plutôt que de laisser un blanc ou une ponctuation orpheline.
+function spokenFullReference(work) {
+  const dimsPhrase = spokenDimensionsPhrase(work);
+  const matDims = [work.materialsPhrase || work.materials, dimsPhrase].filter(Boolean).join(' ');
+  const parts = [
+    `${work.artist}, « ${work.title} », ${work.date}.`,
+    matDims ? `${matDims}.` : '',
+    work.location ? `${work.location}.` : '',
+  ].filter(Boolean);
+  return parts.join(' ');
+}
 let correctionMainWork = null; // œuvre actuellement affichée en grand dans la correction (question testée, ou une « autre œuvre » cliquée)
 function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
   const isTestedWork = displayedWork === testedQuestion;
@@ -1833,18 +1875,12 @@ function chronoShowQuestion() {
   famSpeak2('Remets ces quatre œuvres dans l\u2019ordre chronologique.');
 }
 
-// Glisser-déposer (souris et tactile) d'une œuvre de la ligne du haut vers un emplacement de la
-// ligne du bas — même principe que celui des étiquettes de Famille. Un simple clic (sans
-// déplacement) reste accepté comme repli : toucher l'œuvre puis toucher l'emplacement visé.
+// Sélection par clic (toucher l'œuvre puis l'emplacement) : plus sobre qu'un vrai glisser, mais
+// bien plus fiable d'un navigateur à l'autre — le glisser au pointeur posait trop de problèmes
+// selon les appareils, on l'a donc retiré au profit de ce mécanisme simple et robuste.
 let chronoPicked = null;
 function attachChronoDragAndDrop() {
   chronoPicked = null;
-  document.querySelectorAll('.chrono-drag-ghost').forEach((g) => g.remove()); // filet de sécurité
-  let dragGhost = null, dragItem = null, dragStartX = 0, dragStartY = 0, dragMoved = false;
-
-  function cleanupGhost() {
-    dragGhost?.remove(); dragGhost = null; dragItem = null;
-  }
 
   function placeInSlot(slot, sourceBtn) {
     const idx = Number(sourceBtn.dataset.index);
@@ -1861,48 +1897,13 @@ function attachChronoDragAndDrop() {
   }
 
   document.querySelectorAll('.chrono-source-item').forEach((item) => {
-    item.addEventListener('pointerdown', (event) => {
+    item.addEventListener('click', () => {
       if (item.classList.contains('used')) return;
-      dragItem = item; dragMoved = false;
-      dragStartX = event.clientX; dragStartY = event.clientY;
-      dragGhost = item.cloneNode(true);
-      dragGhost.className = 'chrono-drag-ghost';
-      dragGhost.style.cssText = 'position:fixed;z-index:999;pointer-events:none;opacity:.85;width:64px;height:64px;';
-      document.body.appendChild(dragGhost);
-      moveGhost(event.clientX, event.clientY);
-      // Certains navigateurs refusent la capture sur ce type d'élément : on continue sans, le
-      // glisser reste fonctionnel via les événements pointermove classiques.
-      try { item.setPointerCapture(event.pointerId); } catch (e) { /* ignoré volontairement */ }
+      document.querySelectorAll('.chrono-source-item').forEach((c) => c.classList.remove('picked'));
+      chronoPicked = chronoPicked === item ? null : item;
+      if (chronoPicked) item.classList.add('picked');
     });
-    item.addEventListener('pointermove', (event) => {
-      if (!dragGhost || dragItem !== item) return;
-      if (Math.abs(event.clientX - dragStartX) > 12 || Math.abs(event.clientY - dragStartY) > 12) dragMoved = true;
-      moveGhost(event.clientX, event.clientY);
-    });
-    item.addEventListener('pointerup', (event) => {
-      if (dragItem !== item) return;
-      const target = document.elementFromPoint(event.clientX, event.clientY);
-      const slot = target?.closest('.chrono-target-slot');
-      cleanupGhost();
-      if (slot) placeInSlot(slot, item);
-      else {
-        // Repli systématique dès que le relâchement n'est pas tombé pile sur un emplacement (pas
-        // seulement en l'absence de mouvement) : plus fiable au toucher qu'un seuil de distance.
-        document.querySelectorAll('.chrono-source-item').forEach((c) => c.classList.remove('picked'));
-        chronoPicked = chronoPicked === item ? null : item;
-        if (chronoPicked) item.classList.add('picked');
-      }
-    });
-    // Filet de sécurité : si le pointeur est annulé (changement de fenêtre, geste système…),
-    // on retire quand même le fantôme au lieu de le laisser figé à l'écran.
-    item.addEventListener('pointercancel', () => { if (dragItem === item) cleanupGhost(); });
   });
-
-  function moveGhost(x, y) {
-    if (!dragGhost) return;
-    dragGhost.style.left = `${x - 32}px`;
-    dragGhost.style.top = `${y - 32}px`;
-  }
 
   document.querySelectorAll('.chrono-target-slot').forEach((slot) => {
     slot.addEventListener('click', () => {
@@ -2726,7 +2727,7 @@ function vfActiveFields() {
   return filtered.length ? filtered : all;
 }
 function vfFieldValue(row, key) {
-  if (key === 'dimensions') return [row.hauteur, row.longueur].filter(Boolean).join(' × ');
+  if (key === 'dimensions') return formatDimensionsPlainText(row) || [row.hauteur, row.longueur].filter(Boolean).join(' × ');
   if (key === 'materials') return row.materialsPhrase || row.materials || '';
   return row[key] || '';
 }
@@ -3106,15 +3107,14 @@ function reconAnswer(chosenIndex) {
   // L'image entière est révélée, avec la référence complète.
   $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSource(q.correct.image))}" alt="" />`;
 
-  const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
-  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + (q.correct.materialsPhrase || q.correct.materials) : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
-  reconSpeak(correctFullRef);
+  const dims = formatDimensionsDisplay(q.correct);
+  reconSpeak(spokenFullReference(q.correct));
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
   if (reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if (reconExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
-  if (reconExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
+  if (reconExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
   if (reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
   $('recon-correction-details').innerHTML = detailsParts.join('');
   $('recon-correction').classList.remove('hidden');
@@ -3360,12 +3360,17 @@ function applyGlobalFieldDefaultsTo(prefix) {
       const exact = radios.find((r) => r.value === gr.count);
       if (exact) exact.checked = true;
       else if (radios.length) {
-        // Se rabat sur la valeur numérique la plus proche disponible pour cet exercice (ex. « max »
-        // ou des paliers différents comme 5/10 au lieu de 10/20).
         const numeric = radios.filter((r) => !isNaN(Number(r.value)));
         if (numeric.length) {
-          const target = Number(gr.count);
-          numeric.sort((a, b) => Math.abs(Number(a.value) - target) - Math.abs(Number(b.value) - target));
+          if (gr.count === 'max') {
+            // Pas d'option « maximum » sur cet exercice : on prend la plus grande valeur proposée.
+            numeric.sort((a, b) => Number(b.value) - Number(a.value));
+          } else {
+            // Se rabat sur la valeur numérique la plus proche disponible pour cet exercice (ex.
+            // des paliers différents comme 5/10 au lieu de 10/20).
+            const target = Number(gr.count);
+            numeric.sort((a, b) => Math.abs(Number(a.value) - target) - Math.abs(Number(b.value) - target));
+          }
           numeric[0].checked = true;
         }
       }
@@ -3499,14 +3504,14 @@ function impShowCurrent() {
   $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
   $('imp-stage-img').src = imageSource(work.image);
 
-  const dims = [work.hauteur, work.longueur].filter(Boolean).join(' × ');
+  const dims = formatDimensionsPlainText(work);
   const anyFieldChecked = ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].some((k) => $(`imp-field-${k}`)?.checked);
   const fields = [
     { key: 'artist', label: 'Auteur', value: work.artist, on: anyFieldChecked ? $('imp-field-artist').checked : true },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `« ${work.title} »`, on: anyFieldChecked ? $('imp-field-title').checked : true },
     { key: 'date', label: 'Date', value: work.date, on: anyFieldChecked ? $('imp-field-date').checked : true },
     { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: (anyFieldChecked ? $('imp-field-materiaux').checked : true) && work.materials },
-    { key: 'dimensions', label: 'Dimensions', value: dims, on: (anyFieldChecked ? $('imp-field-dimensions').checked : true) && dims },
+    { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: (anyFieldChecked ? $('imp-field-dimensions').checked : true) && dims },
     { key: 'location', label: 'Lieu', value: work.location, on: anyFieldChecked ? $('imp-field-location').checked : true },
   ].filter((f) => f.on);
 
@@ -3514,7 +3519,7 @@ function impShowCurrent() {
     `<span class="correction-label">${f.label}</span><span class="correction-value" id="imp-val-${f.key}"></span>`
   ).join('');
 
-  const refText = fields.map((f) => f.value).join(' — ') || work.artist;
+  const refText = fields.map((f) => f.spoken || f.value).join(' — ') || work.artist;
   impSpeak(refText);
 
   const STAGGER = impDelayMs * 0.5;
@@ -3763,15 +3768,14 @@ function intrusAnswer(chosenIndex) {
     $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
   }
 
-  const dims = [q.correct.hauteur, q.correct.longueur].filter(Boolean).join(' × ');
-  const correctFullRef = `${q.correct.artist} — « ${q.correct.title} », ${q.correct.date}${q.correct.materials ? ', ' + (q.correct.materialsPhrase || q.correct.materials) : ''}${dims ? ', ' + dims : ''} — ${q.correct.location}`;
-  intrusSpeak(correctFullRef);
+  const dims = formatDimensionsDisplay(q.correct);
+  intrusSpeak(spokenFullReference(q.correct));
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
   if (intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if (intrusExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
-  if (intrusExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${escapeHtml(dims)}</span>`);
+  if (intrusExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
   if (intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
   $('intrus-correction').classList.remove('hidden');
