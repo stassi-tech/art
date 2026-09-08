@@ -449,12 +449,10 @@ function initProfilePage() {
   document.querySelectorAll('.pf-field-art').forEach((el) => { el.checked = (fieldDefaults.arts || []).includes(el.value); });
   document.querySelectorAll('.pf-field-century').forEach((el) => { el.checked = (fieldDefaults.centuries || []).includes(el.value); });
   document.querySelectorAll('.pf-field-zone').forEach((el) => { el.checked = (fieldDefaults.zones || []).includes(el.value); });
-  $('pf-fields-remember').checked = !!fieldDefaults.remember;
   let rubriqueDefaults = {};
   try { rubriqueDefaults = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) {}
   document.querySelectorAll('.pf-rubrique-field').forEach((el) => { el.checked = (rubriqueDefaults.rubriques || []).includes(el.value); });
   document.querySelectorAll('.pf-rubrique-level').forEach((el) => { el.checked = (rubriqueDefaults.levels || []).includes(el.value); });
-  $('pf-rubriques-remember').checked = !!rubriqueDefaults.remember;
 }
 $('profile-resume-exercise-button')?.addEventListener('click', () => {
   if (!returnToExercisePanel) return;
@@ -488,28 +486,25 @@ $('pf-fields-apply')?.addEventListener('click', () => {
   const arts = [...document.querySelectorAll('.pf-field-art:checked')].map((el) => el.value);
   const centuries = [...document.querySelectorAll('.pf-field-century:checked')].map((el) => el.value);
   const zones = [...document.querySelectorAll('.pf-field-zone:checked')].map((el) => el.value);
-  const remember = $('pf-fields-remember').checked;
-  localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember }));
+  localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember: true }));
   updateExerciseSummaries();
 });
 $('pf-fields-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalFieldDefaults');
   document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => { el.checked = false; });
-  $('pf-fields-remember').checked = false;
   updateExerciseSummaries();
 });
-// --- Choix de rubrique et de niveau : idem, sur ce qui est testé et le niveau. ---
+// --- Choix de rubrique et de niveau : idem, sur ce qui est testé et le niveau. La mémorisation
+// est désormais automatique dès qu'on clique « Appliquer » — plus besoin de case séparée. ---
 $('pf-rubriques-apply')?.addEventListener('click', () => {
   const rubriques = [...document.querySelectorAll('.pf-rubrique-field:checked')].map((el) => el.value);
   const levels = [...document.querySelectorAll('.pf-rubrique-level:checked')].map((el) => el.value);
-  const remember = $('pf-rubriques-remember').checked;
-  localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, remember }));
+  localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, remember: true }));
   updateExerciseSummaries();
 });
 $('pf-rubriques-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalRubriqueDefaults');
   document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => { el.checked = false; });
-  $('pf-rubriques-remember').checked = false;
   updateExerciseSummaries();
 });
 $('account-scores-quiz-button')?.addEventListener('click', () => {
@@ -1146,6 +1141,7 @@ function showPanel(name) {
   // quitté en cours de route peut se déclencher plus tard, en plein milieu d'un autre exercice
   // (voix qui parle d'une œuvre sans rapport avec ce qui est affiché).
   if (window.speechSynthesis) speechSynthesis.cancel();
+  document.querySelectorAll('.chrono-drag-ghost').forEach((g) => g.remove());
   [impTimers, vfTimers, famTimers, reconTimers, intrusTimers, chronoTimers].forEach((arr) => { if (arr) arr.forEach(clearTimeout); });
   impTimers = []; vfTimers = []; famTimers = []; reconTimers = []; intrusTimers = []; chronoTimers = [];
 
@@ -1725,14 +1721,11 @@ const chronoTimer = createTimer('chrono-timer');
 $('chrono-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('chrono', 'chrono-setup-panel');
   saveLastSelection('chrono-setup-panel');
-  const arts = chronoSelectedArts();
-  const centuries = chronoSelectedCenturies();
-  const levels = chronoSelectedLevels();
+  let arts = chronoSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
+  let centuries = chronoSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let levels = chronoSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('chrono-setup-feedback');
   feedback.classList.remove('hidden');
-  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
-  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
-  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
   feedback.textContent = 'Chargement des œuvres…';
   try {
     const zones = chronoSelectedZones();
@@ -1827,7 +1820,12 @@ function chronoShowQuestion() {
 let chronoPicked = null;
 function attachChronoDragAndDrop() {
   chronoPicked = null;
+  document.querySelectorAll('.chrono-drag-ghost').forEach((g) => g.remove()); // filet de sécurité
   let dragGhost = null, dragItem = null, dragStartX = 0, dragStartY = 0, dragMoved = false;
+
+  function cleanupGhost() {
+    dragGhost?.remove(); dragGhost = null; dragItem = null;
+  }
 
   function placeInSlot(slot, sourceBtn) {
     const idx = Number(sourceBtn.dataset.index);
@@ -1849,10 +1847,13 @@ function attachChronoDragAndDrop() {
       dragItem = item; dragMoved = false;
       dragStartX = event.clientX; dragStartY = event.clientY;
       dragGhost = item.cloneNode(true);
-      dragGhost.style.cssText = 'position:fixed;z-index:999;pointer-events:none;opacity:.85;width:90px;height:90px;';
+      dragGhost.className = 'chrono-drag-ghost';
+      dragGhost.style.cssText = 'position:fixed;z-index:999;pointer-events:none;opacity:.85;width:64px;height:64px;';
       document.body.appendChild(dragGhost);
       moveGhost(event.clientX, event.clientY);
-      item.setPointerCapture(event.pointerId);
+      // Certains navigateurs refusent la capture sur ce type d'élément : on continue sans, le
+      // glisser reste fonctionnel via les événements pointermove classiques.
+      try { item.setPointerCapture(event.pointerId); } catch (e) { /* ignoré volontairement */ }
     });
     item.addEventListener('pointermove', (event) => {
       if (!dragGhost || dragItem !== item) return;
@@ -1861,23 +1862,25 @@ function attachChronoDragAndDrop() {
     });
     item.addEventListener('pointerup', (event) => {
       if (dragItem !== item) return;
-      dragGhost?.remove(); dragGhost = null;
       const target = document.elementFromPoint(event.clientX, event.clientY);
       const slot = target?.closest('.chrono-target-slot');
+      cleanupGhost();
       if (slot) placeInSlot(slot, item);
       else if (!dragMoved) {
         document.querySelectorAll('.chrono-source-item').forEach((c) => c.classList.remove('picked'));
         chronoPicked = chronoPicked === item ? null : item;
         if (chronoPicked) item.classList.add('picked');
       }
-      dragItem = null;
     });
+    // Filet de sécurité : si le pointeur est annulé (changement de fenêtre, geste système…),
+    // on retire quand même le fantôme au lieu de le laisser figé à l'écran.
+    item.addEventListener('pointercancel', () => { if (dragItem === item) cleanupGhost(); });
   });
 
   function moveGhost(x, y) {
     if (!dragGhost) return;
-    dragGhost.style.left = `${x - 45}px`;
-    dragGhost.style.top = `${y - 45}px`;
+    dragGhost.style.left = `${x - 32}px`;
+    dragGhost.style.top = `${y - 32}px`;
   }
 
   document.querySelectorAll('.chrono-target-slot').forEach((slot) => {
@@ -2151,7 +2154,6 @@ $('enig-start-button')?.addEventListener('click', async () => {
   const centuries = enigSelectedCenturies();
   const feedback = $('enig-setup-feedback');
   feedback.classList.remove('hidden');
-  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
   feedback.textContent = 'Chargement des énigmes…';
   enigAudioOn = getGlobalPrefs().audioOn;
   enigSelectedVoiceRef = getGlobalVoice();
@@ -2473,14 +2475,11 @@ function famSpeak(text, onEnd) {
 $('fam-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('fam', 'famille-setup-panel');
   saveLastSelection('famille-setup-panel');
-  const arts = famSelectedArts();
-  const centuries = famSelectedCenturies();
-  const levels = famSelectedLevels();
+  let arts = famSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
+  let centuries = famSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let levels = famSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('fam-setup-feedback');
   feedback.classList.remove('hidden');
-  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
-  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
-  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
   feedback.textContent = 'Chargement des œuvres…';
   try {
     const zones = famSelectedZones();
@@ -2734,14 +2733,11 @@ function vfSpeak(text, onEnd) {
 $('vf-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('vf', 'vraifaux-setup-panel');
   saveLastSelection('vraifaux-setup-panel');
-  const arts = vfSelectedArts();
-  const centuries = vfSelectedCenturies();
-  const levels = vfSelectedLevels();
+  let arts = vfSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
+  let centuries = vfSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let levels = vfSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('vf-setup-feedback');
   feedback.classList.remove('hidden');
-  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
-  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
-  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
   feedback.textContent = 'Chargement des œuvres…';
   try {
     const zones = vfSelectedZones();
@@ -2988,14 +2984,11 @@ function reconSpeak(text) {
 $('recon-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('recon', 'reconstitution-setup-panel');
   saveLastSelection('reconstitution-setup-panel');
-  const arts = reconSelectedArts();
-  const centuries = reconSelectedCenturies();
-  const levels = reconSelectedLevels();
+  let arts = reconSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
+  let centuries = reconSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let levels = reconSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('recon-setup-feedback');
   feedback.classList.remove('hidden');
-  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
-  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
-  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
   feedback.textContent = 'Chargement des œuvres…';
   try {
     const zones = reconSelectedZones();
@@ -3410,14 +3403,11 @@ function impSpeak(text) {
 $('imp-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('imp', 'impregnation-setup-panel');
   saveLastSelection('impregnation-setup-panel');
-  const arts = impSelectedArts();
-  const centuries = impSelectedCenturies();
-  const levels = impSelectedLevels();
+  let arts = impSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
+  let centuries = impSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let levels = impSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('imp-setup-feedback');
   feedback.classList.remove('hidden');
-  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
-  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
-  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
   feedback.textContent = 'Chargement des œuvres…';
   try {
     const zones = impSelectedZones();
@@ -3608,14 +3598,11 @@ function pickIntrusDistractors(correct, pool, requireDistinctArtist) {
 $('intrus-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('intrus', 'intrus-setup-panel');
   saveLastSelection('intrus-setup-panel');
-  const arts = intrusSelectedArts();
-  const centuries = intrusSelectedCenturies();
-  const levels = intrusSelectedLevels();
+  let arts = intrusSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
+  let centuries = intrusSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let levels = intrusSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('intrus-setup-feedback');
   feedback.classList.remove('hidden');
-  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art.'; return; }
-  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle.'; return; }
-  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau.'; return; }
   feedback.textContent = 'Chargement des œuvres…';
   try {
     const zones = intrusSelectedZones();
@@ -4055,7 +4042,7 @@ document.addEventListener('keydown', (event) => {
 // vrais liens « nouvel onglet » depuis le texte d'accueil et le menu hamburger, plutôt que de
 // simples raccourcis internes qui n'ouvriraient rien dans un nouvel onglet séparé.
 function openPanelFromHash() {
-  if (location.hash === '#base') { renderOtherWorksPanel(); showPanel('other-works'); }
+  if (location.hash === '#base') { showPanel('welcome'); $('menu-item-artistes')?.click(); }
   else if (location.hash === '#exercices') { showPanel('training-hub'); updateExerciseSummaries(); }
 }
 window.addEventListener('DOMContentLoaded', openPanelFromHash);

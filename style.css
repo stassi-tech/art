@@ -47,6 +47,14 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .enig-correct-note { display:block; margin-top:6px; color:var(--ok); font-weight:700; font-family:Arial,sans-serif; font-size:.85rem; }
 .fam-image-grid { display:grid; grid-template-columns:repeat(4, 1fr); grid-auto-rows:1fr; gap:10px; width:100%; min-height:min(640px,72vh); padding:10px; background:#1b1c1e; }
 .fam-image-grid.fam-count-6 { grid-template-columns:repeat(3, 1fr); }
+.chrono-row { display:grid; gap:10px; padding:10px; background:#1b1c1e; min-height:130px; }
+.chrono-row .fam-image-cell, .chrono-row .chrono-target-slot { min-height:110px; max-height:130px; }
+.chrono-row img { max-height:120px; width:100%; object-fit:contain; }
+@media (max-width:640px) {
+  .chrono-row { min-height:90px; gap:6px; padding:6px; }
+  .chrono-row .fam-image-cell, .chrono-row .chrono-target-slot { min-height:80px; max-height:90px; }
+  .chrono-row img { max-height:80px; }
+}
 .fam-result-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; width:100%; padding:14px; background:#1b1c1e; min-height:min(500px,60vh); }
 .fam-result-rows { display:flex; flex-direction:column; gap:14px; width:100%; background:#1b1c1e; padding:14px 0; }
 .fam-result-rows .fam-result-grid { min-height:min(230px,28vh); padding:0 14px; }

@@ -660,8 +660,8 @@
           <div class="quiz-grid">
             <div class="artwork-column">
               <div id="chrono-image-grid">
-                <div id="chrono-source-row" class="fam-image-grid" style="grid-template-columns:repeat(4,1fr);"></div>
-                <div id="chrono-target-row" class="fam-image-grid" style="grid-template-columns:repeat(4,1fr);margin-top:14px;"></div>
+                <div id="chrono-source-row" class="chrono-row" style="grid-template-columns:repeat(4,1fr);"></div>
+                <div id="chrono-target-row" class="chrono-row" style="grid-template-columns:repeat(4,1fr);margin-top:14px;"></div>
                 <div id="chrono-correct-table" class="hidden"></div>
               </div>
             </div>
@@ -1060,42 +1060,55 @@
           </div>
 
           <div id="profile-section-fields" class="hidden">
-            <p class="modal-hint" style="margin-top:0;">Le champ, c'est l'art et le siècle. Si vous les cochez ici et activez la mémorisation, tous les exercices et le quiz démarreront directement dessus.</p>
-            <p class="modal-subheading" style="margin-top:0;">Art</p>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-art" value="peinture" /><span>Peinture</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-art" value="sculpture" /><span>Sculpture</span></label>
-            <p class="modal-subheading">Siècle</p>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="14e" /><span>14e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="15e" /><span>15e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="16e" /><span>16e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="17e" /><span>17e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="18e" /><span>18e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="19e" /><span>19e siècle</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="20e" /><span>20e siècle</span></label>
-            <p class="modal-subheading">Zone géographique</p>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="france" /><span>France</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="europe" /><span>Europe (hors France)</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="amerique" /><span>Amérique</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="asie" /><span>Asie</span></label>
-            <label class="rubrique-option" style="margin-top:10px;"><input type="checkbox" id="pf-fields-remember" /><span>Mémoriser ce choix de champ pour mes prochaines sessions (démarrage automatique)</span></label>
+            <p class="modal-hint" style="margin-top:0;">Le champ, c'est l'art et le siècle. Si vous les cochez ici, tous les exercices et le quiz démarreront directement dessus, sans repasser par leur configuration.</p>
+            <div class="config-table config-table-3">
+              <div>
+                <p class="config-table-col-title">Art</p>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-art" value="peinture" /><span>Peinture</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-art" value="sculpture" /><span>Sculpture</span></label>
+              </div>
+              <div>
+                <p class="config-table-col-title">Siècle</p>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="14e" /><span>14e siècle</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="15e" /><span>15e siècle</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="16e" /><span>16e siècle</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="17e" /><span>17e siècle</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="18e" /><span>18e siècle</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="19e" /><span>19e siècle</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="20e" /><span>20e siècle</span></label>
+              </div>
+              <div>
+                <p class="config-table-col-title">Zone géographique</p>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="france" /><span>France</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="europe" /><span>Europe (hors France)</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="amerique" /><span>Amérique</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="asie" /><span>Asie</span></label>
+              </div>
+            </div>
             <button type="button" class="primary-button" id="pf-fields-apply" style="width:100%;margin-top:14px;">Appliquer ce choix de champ</button>
             <button type="button" class="secondary-button" id="pf-fields-clear" style="width:100%;margin-top:8px;">Effacer le choix de champ</button>
           </div>
 
           <div id="profile-section-rubriques" class="hidden">
             <p class="modal-hint" style="margin-top:0;">La rubrique, c'est ce qui est testé (artiste, titre, date…) ; le niveau va avec. Utilisé là où l'exercice le permet.</p>
-            <p class="modal-subheading" style="margin-top:0;">Rubriques</p>
-            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="artist" /><span>Artiste</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="title" /><span>Titre</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="date" /><span>Date</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="materiaux" /><span>Matériau</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="dimensions" /><span>Dimensions</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="location" /><span>Lieu</span></label>
-            <p class="modal-subheading">Niveau</p>
-            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="1" /><span>Niveau 1</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="2" /><span>Niveau 2</span></label>
-            <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="3" /><span>Niveau 3</span></label>
-            <label class="rubrique-option" style="margin-top:10px;"><input type="checkbox" id="pf-rubriques-remember" /><span>Mémoriser ce choix de rubrique et de niveau pour mes prochaines sessions</span></label>
+            <div class="config-table config-table-3">
+              <div>
+                <p class="config-table-col-title">Rubriques</p>
+                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="artist" /><span>Artiste</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="title" /><span>Titre</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="date" /><span>Date</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="materiaux" /><span>Matériau</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="dimensions" /><span>Dimensions</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="location" /><span>Lieu</span></label>
+              </div>
+              <div>
+                <p class="config-table-col-title">Niveau</p>
+                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="1" /><span>Niveau 1</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="2" /><span>Niveau 2</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-level" value="3" /><span>Niveau 3</span></label>
+              </div>
+              <div></div>
+            </div>
             <button type="button" class="primary-button" id="pf-rubriques-apply" style="width:100%;margin-top:14px;">Appliquer ce choix</button>
             <button type="button" class="secondary-button" id="pf-rubriques-clear" style="width:100%;margin-top:8px;">Effacer ce choix</button>
           </div>
@@ -1119,6 +1132,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=68"></script>
+    <script src="app.js?v=69"></script>
   </body>
 </html>
