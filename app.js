@@ -470,15 +470,16 @@ function renderExerciseOverrides() {
   const artLabel = { peinture: 'Peinture', sculpture: 'Sculpture' };
   const rows = { fields: [], rubriques: [] };
   Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
+    const idPrefix = prefix === 'quiz' ? '' : `${prefix}-`;
     let state;
     try { state = JSON.parse(localStorage.getItem(`lastSelection_${info.panel}`) || '{}'); } catch (e) { state = {}; }
     const checkedKeys = Object.keys(state).filter((k) => state[k]);
     if (!checkedKeys.length) return;
-    const arts = checkedKeys.filter((k) => k.startsWith(`${prefix}-art-`)).map((k) => artLabel[k.replace(`${prefix}-art-`, '')]);
-    const centuries = checkedKeys.filter((k) => k.startsWith(`${prefix}-century-`)).map((k) => k.replace(`${prefix}-century-`, ''));
-    const zones = checkedKeys.filter((k) => k.startsWith(`${prefix}-zone-`)).map((k) => k.replace(`${prefix}-zone-`, ''));
-    const levels = checkedKeys.filter((k) => k.startsWith(`${prefix}-level-`)).map((k) => k.replace(`${prefix}-level-`, ''));
-    const fieldsList = checkedKeys.filter((k) => k.startsWith(`${prefix}-field-`)).map((k) => k.replace(`${prefix}-field-`, ''));
+    const arts = checkedKeys.filter((k) => k.startsWith(`${idPrefix}art-`)).map((k) => artLabel[k.replace(`${idPrefix}art-`, '')]);
+    const centuries = checkedKeys.filter((k) => k.startsWith(`${idPrefix}century-`)).map((k) => k.replace(`${idPrefix}century-`, ''));
+    const zones = checkedKeys.filter((k) => k.startsWith(`${idPrefix}zone-`)).map((k) => k.replace(`${idPrefix}zone-`, ''));
+    const levels = checkedKeys.filter((k) => k.startsWith(`${idPrefix}level-`)).map((k) => k.replace(`${idPrefix}level-`, ''));
+    const fieldsList = checkedKeys.filter((k) => k.startsWith(`${idPrefix}field-`) || k.startsWith('rubrique-')).map((k) => k.replace(`${idPrefix}field-`, '').replace('rubrique-', ''));
     if (arts.length || centuries.length || zones.length) {
       const summary = [arts.join('/'), centuries.length ? `${centuries.join('/')} siècle` : '', zones.length ? `en ${zones.join('/')}` : ''].filter(Boolean).join(', ');
       rows.fields.push({ prefix, name: info.name, summary, panel: info.panel });
@@ -756,6 +757,7 @@ const VALIDATE_CHOICE_PANELS = {
   'vf-validate-choice-button': 'vraifaux-setup-panel',
   'fam-validate-choice-button': 'famille-setup-panel',
   'chrono-validate-choice-button': 'chrono-setup-panel',
+  'quiz-validate-choice-button': 'quiz-setup-panel',
 };
 Object.entries(VALIDATE_CHOICE_PANELS).forEach(([btnId, panelId]) => {
   $(btnId)?.addEventListener('click', () => {
@@ -1770,7 +1772,6 @@ $('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerM
 $('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
 $('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
 $('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
-$('quiz-setup-back-button')?.addEventListener('click', () => showPanel('welcome'));
 
 // ============================================================
 // MODULE RECONSTITUTION — un détail très resserré (< 10 % de la surface) sert d'indice ; 3
@@ -3422,7 +3423,15 @@ function refreshSavedChoiceButton() {
   $('load-saved-choice-button')?.toggleAttribute('hidden', !localStorage.getItem('savedQuizConfig'));
 }
 refreshSavedChoiceButton();
-$('open-quiz-setup')?.addEventListener('click', () => { showPanel('quiz-setup'); refreshSavedChoiceButton(); });
+$('open-quiz-setup')?.addEventListener('click', () => {
+  if (hasPerExerciseFieldOverride('quiz-setup-panel') || hasPerExerciseRubriqueOverride('quiz-setup-panel')) {
+    restoreLastSelection('quiz-setup-panel');
+  } else {
+    applyGlobalDefaultsToQuiz();
+  }
+  suppressSaveLastSelection = true;
+  $('launch-quiz-button')?.click();
+});
 $('load-saved-choice-button')?.addEventListener('click', () => {
   const raw = localStorage.getItem('savedQuizConfig');
   if (!raw) return;
@@ -3450,6 +3459,7 @@ const EXERCISE_INFO = {
   vf: { name: 'Vrai/Faux', open: 'open-vraifaux-setup', start: 'vf-start-button', panel: 'vraifaux-setup-panel' },
   fam: { name: 'Famille', open: 'open-famille-setup', start: 'fam-start-button', panel: 'famille-setup-panel' },
   chrono: { name: 'Chronologie', open: 'open-chrono-setup', start: 'chrono-start-button', panel: 'chrono-setup-panel' },
+  quiz: { name: 'Quiz final', open: 'open-quiz-setup', start: 'launch-quiz-button', panel: 'quiz-setup-panel' },
 };
 // Résumé abrégé (ex. « Peinture17 ») de la sélection mémorisée d'un exercice, affiché
 // directement sur son bouton dans le menu — évite d'avoir à rouvrir la configuration pour
@@ -3464,10 +3474,12 @@ function readGlobalRubriqueDefaults() {
 function buildExerciseSummary(prefix) {
   // Même priorité qu'au démarrage : un choix propre à cet exercice l'emporte sur le choix
   // général — sinon le badge du bouton ne refléterait jamais ce qui va réellement se lancer.
+  // Le quiz n'a pas de préfixe sur ses identifiants (art-peinture, pas quiz-art-peinture).
+  const idPrefix = prefix === 'quiz' ? '' : `${prefix}-`;
   let state;
   try { state = JSON.parse(localStorage.getItem(`lastSelection_${EXERCISE_INFO[prefix].panel}`) || '{}'); } catch (e) { state = {}; }
-  const ownArts = Object.keys(state).filter((k) => k.startsWith(`${prefix}-art-`) && state[k]).map((k) => k.replace(`${prefix}-art-`, ''));
-  const ownCenturies = Object.keys(state).filter((k) => k.startsWith(`${prefix}-century-`) && state[k]).map((k) => k.replace(`${prefix}-century-`, '').replace('e', ''));
+  const ownArts = Object.keys(state).filter((k) => k.startsWith(`${idPrefix}art-`) && state[k]).map((k) => k.replace(`${idPrefix}art-`, ''));
+  const ownCenturies = Object.keys(state).filter((k) => k.startsWith(`${idPrefix}century-`) && state[k]).map((k) => k.replace(`${idPrefix}century-`, '').replace('e', ''));
   if (ownArts.length || ownCenturies.length) {
     const artLabel = ownArts.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
     return `▶ ${artLabel}${ownCenturies.join('+')}`;
@@ -3512,12 +3524,41 @@ function shouldAutoStart(prefix) {
 function hasPerExerciseFieldOverride(panelId) {
   let state;
   try { state = JSON.parse(localStorage.getItem(`lastSelection_${panelId}`) || '{}'); } catch (e) { return false; }
-  return Object.keys(state).some((k) => state[k] && /-(art|century|zone)-/.test(k));
+  return Object.keys(state).some((k) => state[k] && /(^|-)(art|century|zone)-/.test(k));
 }
 function hasPerExerciseRubriqueOverride(panelId) {
   let state;
   try { state = JSON.parse(localStorage.getItem(`lastSelection_${panelId}`) || '{}'); } catch (e) { return false; }
-  return Object.keys(state).some((k) => state[k] && /-(field|level)-/.test(k));
+  return Object.keys(state).some((k) => state[k] && /(^|-)(field|rubrique|level)-/.test(k));
+}
+// Le quiz n'utilise pas le même schéma d'identifiants que les 6 jeux (pas de préfixe, « rubrique-
+// » au lieu de « field- », « nb-questions » au lieu de « quiz-count »…) — on lui dédie donc sa
+// propre application du choix général plutôt que de forcer applyGlobalFieldDefaultsTo à gérer un
+// cas particulier de plus.
+function applyGlobalDefaultsToQuiz() {
+  const gf = readGlobalFieldDefaults();
+  const gr = readGlobalRubriqueDefaults();
+  if (gf.remember) {
+    ['peinture', 'sculpture'].forEach((a) => { const el = $(`art-${a}`); if (el) el.checked = (gf.arts || []).includes(a); });
+    ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`century-${c}`); if (el) el.checked = (gf.centuries || []).includes(c); });
+    ['france', 'europe', 'amerique', 'asie'].forEach((z) => { const el = $(`zone-${z}`); if (el) el.checked = (gf.zones || []).includes(z); });
+  }
+  if (gr.remember) {
+    ['1', '2', '3'].forEach((lvl) => { const el = $(`level-${lvl}`); if (el) el.checked = (gr.levels || []).includes(lvl); });
+    if (gr.count) {
+      const radios = [...document.querySelectorAll('input[name="nb-questions"]')];
+      const exact = radios.find((r) => r.value === gr.count);
+      if (exact) exact.checked = true;
+      else if (radios.length) {
+        const numeric = radios.filter((r) => !isNaN(Number(r.value)));
+        if (numeric.length) {
+          if (gr.count === 'max') numeric.sort((a, b) => Number(b.value) - Number(a.value));
+          else { const target = Number(gr.count); numeric.sort((a, b) => Math.abs(Number(a.value) - target) - Math.abs(Number(b.value) - target)); }
+          numeric[0].checked = true;
+        }
+      }
+    }
+  }
 }
 function applyGlobalFieldDefaultsTo(prefix) {
   const gf = readGlobalFieldDefaults();
@@ -3551,7 +3592,12 @@ function applyGlobalFieldDefaultsTo(prefix) {
     }
   }
 }
-const EXERCISE_SHOW_CONFIG = { imp: showImpConfig, intrus: showIntrusConfig, recon: showReconConfig, vf: showVfConfig, fam: showFamConfig, chrono: showChronoConfig };
+function showQuizConfig() {
+  showPanel('quiz-setup');
+  restoreLastSelection('quiz-setup-panel');
+  refreshSavedChoiceButton();
+}
+const EXERCISE_SHOW_CONFIG = { imp: showImpConfig, intrus: showIntrusConfig, recon: showReconConfig, vf: showVfConfig, fam: showFamConfig, chrono: showChronoConfig, quiz: showQuizConfig };
 // Ouvre la configuration d'un exercice en petite fenêtre superposée, par-dessus le menu des
 // exercices resté visible en fond (assombri) — plutôt que de le remplacer entièrement. Referme
 // via la croix, en cliquant à côté, ou en validant/lançant depuis cette fenêtre.
@@ -4120,16 +4166,14 @@ async function fetchQuizRows(art, century) {
 }
 
 $('launch-quiz-button')?.addEventListener('click', async () => {
-  const arts = selectedArts();
-  const centuries = selectedCenturies();
-  const levels = selectedLevels();
-  const chosenKeys = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.key);
+  let arts = selectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
+  let centuries = selectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let levels = selectedLevels(); if (!levels.length) levels = ['1','2','3'];
+  let chosenKeys = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.key);
+  if (!chosenKeys.length) chosenKeys = allFields.map((field) => field.key);
   const feedback = $('launch-feedback');
   feedback.classList.remove('hidden');
-  if (!arts.length) { feedback.textContent = 'Choisissez au moins un art (« Choisissez votre art »).'; return; }
-  if (!centuries.length) { feedback.textContent = 'Choisissez au moins un siècle (« Choisissez votre siècle »).'; return; }
-  if (!levels.length) { feedback.textContent = 'Choisissez au moins un niveau (« Choisissez votre niveau »).'; return; }
-  if (!chosenKeys.length) { feedback.textContent = 'Choisissez au moins une rubrique à réviser (« Choisissez vos rubriques »).'; return; }
+  saveLastSelection('quiz-setup-panel');
   // Mémorise la configuration choisie (sur l'appareil) si la case est cochée, pour la retrouver
   // au prochain jeu sans repasser par tout le menu de sélection.
   if ($('remember-choice-checkbox')?.checked) {

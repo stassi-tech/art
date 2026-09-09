@@ -9,7 +9,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=78" />
+    <link rel="stylesheet" href="style.css?v=79" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -55,10 +55,7 @@
 
           <div class="home-mode-buttons">
             <button type="button" class="home-mode-button" id="open-training">
-              <span class="label">Entraînement à la mémoire</span>
-            </button>
-            <button type="button" class="home-mode-button" id="open-quiz-setup">
-              <span class="label">Quiz final</span>
+              <span class="label">Accès aux jeux</span>
             </button>
           </div>
 
@@ -75,7 +72,7 @@
             <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
           </figure>
 
-          <p class="intro-banner">Choisissez un exercice d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même (art, siècle, niveau). Les exercices sont classés par ordre croissant de difficulté, de gauche à droite puis de haut en bas.</p>
+          <p class="intro-banner">Choisissez un exercice d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même (art, siècle, niveau). Les exercices sont classés par ordre croissant de difficulté, de gauche à droite puis de haut en bas. Le quiz final vous permet ensuite de vous autoévaluer sur ce même échantillon.</p>
 
           <div class="training-exercise-grid">
             <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="exercise-num">Exercice 1</span><span class="label">Imprégnation</span><span class="exercise-summary" id="imp-hub-summary"></span><span class="exercise-summary-edit" id="imp-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
@@ -85,6 +82,8 @@
             <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="exercise-num">Exercice 5</span><span class="label">Vrai/Faux</span><span class="exercise-summary" id="vf-hub-summary"></span><span class="exercise-summary-edit" id="vf-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
             <button type="button" class="home-mode-button" id="open-chrono-setup"><span class="exercise-num">Exercice 6</span><span class="label">Chronologie</span><span class="exercise-summary" id="chrono-hub-summary"></span><span class="exercise-summary-edit" id="chrono-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
           </div>
+
+          <button type="button" class="home-mode-button quiz-final-button" id="open-quiz-setup"><span class="exercise-num">Autoévaluation</span><span class="label">Quiz final</span><span class="exercise-summary" id="quiz-hub-summary"></span><span class="exercise-summary-edit" id="quiz-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
         </section>
 
         <section id="impregnation-setup-panel" class="welcome-panel hidden">
@@ -715,89 +714,71 @@
         </section>
 
         <section id="quiz-setup-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="quiz-setup-back-button" class="home-icon-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
+          <button type="button" id="quiz-setup-back-button" class="modal-close-x" aria-label="Fermer" title="Fermer">✕</button>
+          <div class="settings-title-band">
+            <div>
+              <h2 style="margin:0;color:var(--accent);font-size:1.4rem;font-weight:700;">Configurer le quiz final</h2>
+              <p id="quiz-objective" style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:.78rem;color:var(--muted);max-width:520px;">Une œuvre apparaît ; répondez aux rubriques choisies puis validez pour vous autoévaluer.</p>
+            </div>
+            <button type="button" class="primary-button" id="launch-quiz-button" style="margin:0;width:auto;padding:10px 24px;white-space:nowrap;">Commencer le quiz →</button>
           </div>
-          <figure class="home-illustration">
-            <img src="assets/accueil.jpg" alt="" />
-            <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
-          </figure>
 
-          <div class="accordion-group" id="accordion-art">
-            <button type="button" class="accordion-toggle" id="toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body" id="body-art">
+          <p class="config-section-title">1. Choisissez vos champs</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Art</p>
               <label class="rubrique-option"><input type="checkbox" id="art-peinture" /><span title="Tableaux, fresques, retables…">Peinture</span></label>
               <label class="rubrique-option"><input type="checkbox" id="art-sculpture" /><span title="Statues, bustes, bas-reliefs…">Sculpture</span></label>
             </div>
-          </div>
-
-          <div class="accordion-group" id="accordion-century">
-            <button type="button" class="accordion-toggle" id="toggle-century">🏛️ Choisissez votre siècle et votre zone géographique</button>
-            <div class="accordion-body" id="body-century">
-              <div class="accordion-columns">
-                <div class="accordion-col">
-                  <p class="modal-subheading" style="margin-top:0">🏛️ Siècle</p>
-                  <label class="rubrique-option"><input type="checkbox" id="century-14e" /><span title="Œuvres créées entre 1301 et 1400">14e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="century-15e" /><span title="Œuvres créées entre 1401 et 1500">15e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="century-16e" /><span title="Œuvres créées entre 1501 et 1600">16e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="century-17e" /><span title="Œuvres créées entre 1601 et 1700">17e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="century-18e" /><span title="Œuvres créées entre 1701 et 1800">18e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="century-19e" /><span title="Œuvres créées entre 1801 et 1900">19e siècle</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="century-20e" /><span title="Artistes morts avant 1955 uniquement, pour raisons de droits">20e siècle</span></label>
-                </div>
-                <div class="accordion-col">
-                  <p class="modal-subheading" style="margin-top:0">🌍 Zone géographique</p>
-                  <label class="rubrique-option"><input type="checkbox" id="zone-france" /><span title="Artistes d'origine française">France</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="zone-europe" /><span title="Artistes d'origine européenne hors France">Autres pays d'Europe</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="zone-amerique" /><span title="Artistes d'origine américaine (Nord et Sud)">Amérique</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="zone-asie" /><span title="Artistes d'origine asiatique">Asie</span></label>
-                </div>
-              </div>
-              <p class="modal-hint">Cocher plusieurs siècles mélange aléatoirement leurs œuvres dans un même quiz. Rien coché en zone = toutes zones confondues ; les œuvres sans nationalité connue sont incluses quel que soit le choix.</p>
+            <div>
+              <p class="config-table-col-title">Siècle</p>
+              <label class="rubrique-option"><input type="checkbox" id="century-14e" /><span title="Œuvres créées entre 1301 et 1400">14e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-15e" /><span title="Œuvres créées entre 1401 et 1500">15e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-16e" /><span title="Œuvres créées entre 1501 et 1600">16e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-17e" /><span title="Œuvres créées entre 1601 et 1700">17e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-18e" /><span title="Œuvres créées entre 1701 et 1800">18e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-19e" /><span title="Œuvres créées entre 1801 et 1900">19e siècle</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="century-20e" /><span title="Artistes morts avant 1955 uniquement, pour raisons de droits">20e siècle</span></label>
+            </div>
+            <div>
+              <p class="config-table-col-title">Zone géographique</p>
+              <label class="rubrique-option"><input type="checkbox" id="zone-france" /><span title="Artistes d'origine française">France</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-europe" /><span title="Artistes d'origine européenne hors France">Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-amerique" /><span title="Artistes d'origine américaine (Nord et Sud)">Amérique</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-asie" /><span title="Artistes d'origine asiatique">Asie</span></label>
+              <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones. Cocher plusieurs siècles les mélange aléatoirement.</p>
             </div>
           </div>
 
-          <div class="accordion-group" id="accordion-rubriques">
-            <button type="button" class="accordion-toggle" id="toggle-rubriques">📝 Choisissez vos rubriques</button>
-            <div class="accordion-body" id="body-rubriques">
+          <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
+          <div class="config-table config-table-3">
+            <div>
+              <p class="config-table-col-title">Rubriques notées</p>
               <label class="rubrique-option"><input type="checkbox" id="rubrique-artist" /><span title="Nom du peintre ou du sculpteur">Artiste</span></label>
               <label class="rubrique-option"><input type="checkbox" id="rubrique-title" /><span title="Titre exact de l'œuvre">Titre de l'œuvre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="rubrique-date" /><span title="Année ou période de création">Date de création</span></label>
               <label class="rubrique-option"><input type="checkbox" id="rubrique-location" /><span title="Musée ou lieu où l'œuvre est conservée">Lieu de conservation</span></label>
-              <p class="modal-hint">La correction affichera toujours les 4 informations, mais seules les rubriques cochées sont notées.</p>
+              <p class="modal-hint" style="margin-bottom:0;">La correction affiche toujours les 4 informations ; seules les rubriques cochées sont notées.</p>
+            </div>
+            <div>
+              <p class="config-table-col-title">Niveau</p>
+              <label class="rubrique-option"><input type="checkbox" id="level-1" value="1" /><span title="Œuvres les plus connues">Niveau 1</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="level-2" value="2" /><span title="Œuvres moins connues">Niveau 2</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="level-3" value="3" /><span title="Œuvres rares, plus difficiles">Niveau 3</span></label>
+              <p class="modal-hint" style="margin-bottom:0;">Pour mélanger plusieurs niveaux, cochez-les ensemble.</p>
+            </div>
+            <div>
+              <p class="config-table-col-title">Nb de questions</p>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-10" value="10" /><span>10 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-20" value="20" /><span>20 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-30" value="30" checked /><span>30 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-60" value="60" /><span>60 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-120" value="120" /><span>120 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-max" value="max" /><span title="Toutes les œuvres disponibles pour ce choix">Maximum disponible</span></label>
             </div>
           </div>
 
-          <div class="accordion-group" id="accordion-level">
-            <button type="button" class="accordion-toggle" id="toggle-level">⭐ Choisissez votre niveau et votre nombre de questions</button>
-            <div class="accordion-body" id="body-level">
-              <div class="accordion-columns">
-                <div class="accordion-col">
-                  <p class="modal-subheading" style="margin-top:0">⭐ Niveau</p>
-                  <label class="rubrique-option"><input type="checkbox" id="level-1" value="1" /><span title="Œuvres les plus connues">Niveau 1</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="level-2" value="2" /><span title="Œuvres moins connues">Niveau 2</span></label>
-                  <label class="rubrique-option"><input type="checkbox" id="level-3" value="3" /><span title="Œuvres rares, plus difficiles">Niveau 3</span></label>
-                </div>
-                <div class="accordion-col">
-                  <p class="modal-subheading" style="margin-top:0">🔢 Nombre de questions</p>
-                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-10" value="10" /><span>10 questions</span></label>
-                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-20" value="20" /><span>20 questions</span></label>
-                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-30" value="30" checked /><span>30 questions</span></label>
-                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-60" value="60" /><span>60 questions</span></label>
-                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-120" value="120" /><span>120 questions</span></label>
-                  <label class="rubrique-option"><input type="radio" name="nb-questions" id="count-max" value="max" /><span title="Toutes les œuvres disponibles pour ce choix">Maximum disponible</span></label>
-                </div>
-              </div>
-              <p class="modal-hint">Pour mélanger plusieurs niveaux, sélectionnez-les conjointement.</p>
-            </div>
-          </div>
-
-          <label class="rubrique-option" style="justify-content:center; margin-bottom:10px;"><input type="checkbox" id="remember-choice-checkbox" /><span>💾 Mémoriser ce choix pour un prochain jeu</span></label>
-          <button type="button" class="secondary-button" id="load-saved-choice-button" style="width:100%; margin-bottom:14px;" hidden>📂 Charger le dernier choix mémorisé</button>
-
-          <div class="quiz-action-row quiz-action-row-single">
-            <button id="launch-quiz-button" class="primary-button" type="button">Lancez le quiz</button>
-          </div>
+          <button type="button" class="secondary-button" id="quiz-validate-choice-button" style="width:100%;margin-top:14px;">Valider mon choix pour ce jeu →</button>
           <p id="launch-feedback" class="hint hidden"></p>
         </section>
 
@@ -1099,6 +1080,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=84"></script>
+    <script src="app.js?v=85"></script>
   </body>
 </html>
