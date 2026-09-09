@@ -3425,6 +3425,16 @@ function readGlobalRubriqueDefaults() {
   try { return JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) { return {}; }
 }
 function buildExerciseSummary(prefix) {
+  // Même priorité qu'au démarrage : un choix propre à cet exercice l'emporte sur le choix
+  // général — sinon le badge du bouton ne refléterait jamais ce qui va réellement se lancer.
+  let state;
+  try { state = JSON.parse(localStorage.getItem(`lastSelection_${EXERCISE_INFO[prefix].panel}`) || '{}'); } catch (e) { state = {}; }
+  const ownArts = Object.keys(state).filter((k) => k.startsWith(`${prefix}-art-`) && state[k]).map((k) => k.replace(`${prefix}-art-`, ''));
+  const ownCenturies = Object.keys(state).filter((k) => k.startsWith(`${prefix}-century-`) && state[k]).map((k) => k.replace(`${prefix}-century-`, '').replace('e', ''));
+  if (ownArts.length || ownCenturies.length) {
+    const artLabel = ownArts.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
+    return `▶ ${artLabel}${ownCenturies.join('+')}`;
+  }
   const gf = readGlobalFieldDefaults();
   const gr = readGlobalRubriqueDefaults();
   const hasGlobalField = gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length);
@@ -3433,14 +3443,7 @@ function buildExerciseSummary(prefix) {
     const artLabel = (gf.arts || []).map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
     return `🌐 ${artLabel}${(gf.centuries || []).join('+')}${gr.levels?.length ? ' N' + gr.levels.join('+') : ''}`;
   }
-  let state;
-  try { state = JSON.parse(localStorage.getItem(`lastSelection_${EXERCISE_INFO[prefix].panel}`) || '{}'); } catch (e) { return ''; }
-  const arts = Object.keys(state).filter((k) => k.startsWith(`${prefix}-art-`) && state[k]).map((k) => k.replace(`${prefix}-art-`, ''));
-  const centuries = Object.keys(state).filter((k) => k.startsWith(`${prefix}-century-`) && state[k]).map((k) => k.replace(`${prefix}-century-`, '').replace('e', ''));
-  if (!arts.length && !centuries.length) return '';
-  const artLabel = arts.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
-  const autoIcon = localStorage.getItem(`autoStart_${prefix}`) === 'true' ? '▶ ' : '';
-  return `${autoIcon}${artLabel}${centuries.join('+')}`;
+  return '';
 }
 function updateExerciseSummaries() {
   Object.keys(EXERCISE_INFO).forEach((prefix) => {
