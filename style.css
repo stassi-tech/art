@@ -25,6 +25,12 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .secondary-button { color:var(--accent); background:transparent; border:1px solid var(--accent); } .secondary-button:hover { background:#fff; color:var(--accent-dark); border-color:var(--accent-dark); }.secondary-button:disabled { cursor:not-allowed; opacity:.45; }
 
 .welcome-panel { max-width:640px; width:100%; margin:auto; padding:52px 46px; text-align:center; background:rgba(255,253,249,.97); border:1px solid var(--border); box-shadow:0 16px 35px rgba(54,45,31,.08); border-radius:8px; position:relative; z-index:1; }
+
+/* Mode « fenêtre superposée » : la page de configuration d'un exercice s'affiche par-dessus le
+   menu des exercices (resté visible en fond, assombri), plutôt que de le remplacer entièrement —
+   pour voir tout de suite l'effet sur le bouton en refermant. */
+.config-popup-backdrop { position:fixed; inset:0; background:rgba(20,20,20,.55); z-index:150; }
+.config-popup-mode { position:fixed !important; top:50%; left:50%; transform:translate(-50%, -50%); z-index:151; max-height:88vh; overflow-y:auto; width:min(680px, 92vw); box-shadow:0 20px 60px rgba(0,0,0,.4); }
 /* Panneaux "hauts" (plusieurs accordéons empilés) : marge fixe en haut plutôt que centrage
    vertical automatique, sinon leur partie supérieure dépasse au-dessus de l'écran et tout
    semble tassé vers le bas. Plus larges aussi, pour respirer davantage. */

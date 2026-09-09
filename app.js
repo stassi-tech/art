@@ -1226,6 +1226,10 @@ function showPanel(name) {
   // (voix qui parle d'une œuvre sans rapport avec ce qui est affiché).
   if (window.speechSynthesis) speechSynthesis.cancel();
   document.querySelectorAll('.chrono-drag-ghost').forEach((g) => g.remove());
+  // Nettoie le mode « fenêtre superposée » (configuration d'un jeu ouverte par-dessus le menu) à
+  // chaque vraie navigation — sinon la classe et le fond assombri resteraient collés au panneau.
+  document.querySelectorAll('.config-popup-mode').forEach((el) => el.classList.remove('config-popup-mode'));
+  $('config-popup-backdrop')?.remove();
   [impTimers, vfTimers, famTimers, reconTimers, intrusTimers, chronoTimers].forEach((arr) => { if (arr) arr.forEach(clearTimeout); });
   // Prend la main sur les flèches avant/arrière du navigateur : chaque changement de page ajoute
   // une entrée d'historique interne, pour que « précédent » ramène dans l'appli au lieu d'en
@@ -1786,7 +1790,6 @@ $('open-reconstitution-setup')?.addEventListener('click', () => {
   applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
   $('recon-start-button')?.click();
 });
-$('reconstitution-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
 $('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
 $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
@@ -1808,7 +1811,6 @@ $('open-vraifaux-setup')?.addEventListener('click', () => {
   suppressSaveLastSelection = true;
   $('vf-start-button')?.click();
 });
-$('vraifaux-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
 
@@ -1829,7 +1831,6 @@ $('open-famille-setup')?.addEventListener('click', () => {
   suppressSaveLastSelection = true;
   $('fam-start-button')?.click();
 });
-$('famille-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
 $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
 $('fam-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
@@ -1860,7 +1861,6 @@ $('open-chrono-setup')?.addEventListener('click', () => {
   suppressSaveLastSelection = true;
   $('chrono-start-button')?.click();
 });
-$('chrono-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('chrono-setup'); });
 $('chrono-hub-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
 $('chrono-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'chrono'; showPanel('account'); loadAccountPage(); });
@@ -3542,11 +3542,42 @@ function applyGlobalFieldDefaultsTo(prefix) {
   }
 }
 const EXERCISE_SHOW_CONFIG = { imp: showImpConfig, intrus: showIntrusConfig, recon: showReconConfig, vf: showVfConfig, fam: showFamConfig, chrono: showChronoConfig };
+// Ouvre la configuration d'un exercice en petite fenêtre superposée, par-dessus le menu des
+// exercices resté visible en fond (assombri) — plutôt que de le remplacer entièrement. Referme
+// via la croix, en cliquant à côté, ou en validant/lançant depuis cette fenêtre.
+function openConfigAsPopup(prefix) {
+  EXERCISE_SHOW_CONFIG[prefix]?.(); // logique habituelle (restaure la sélection, lit l'objectif…)
+  const panelId = EXERCISE_INFO[prefix]?.panel;
+  if (!panelId) return;
+  $('training-hub-panel')?.classList.remove('hidden');
+  $(panelId)?.classList.add('config-popup-mode');
+  const backdrop = document.createElement('div');
+  backdrop.className = 'config-popup-backdrop';
+  backdrop.id = 'config-popup-backdrop';
+  backdrop.addEventListener('click', () => closeConfigPopup(prefix));
+  document.body.appendChild(backdrop);
+}
+function closeConfigPopup(prefix) {
+  const panelId = EXERCISE_INFO[prefix]?.panel;
+  $(panelId)?.classList.remove('config-popup-mode');
+  $(panelId)?.classList.add('hidden');
+  $('config-popup-backdrop')?.remove();
+  updateExerciseSummaries();
+}
 document.querySelectorAll('.exercise-summary-edit').forEach((icon) => {
   icon.addEventListener('click', (event) => {
     event.stopPropagation();
     const prefix = icon.id.replace('-hub-edit', '');
-    EXERCISE_SHOW_CONFIG[prefix]?.();
+    openConfigAsPopup(prefix);
+  });
+});
+// Les boutons « ✕ Fermer » referment la fenêtre superposée si elle est ouverte ainsi ; sinon
+// (accès direct improbable) ils gardent leur comportement de repli vers le menu des exercices.
+Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
+  const backBtn = document.querySelector(`#${info.panel} [id$="-setup-back-button"]`);
+  backBtn?.addEventListener('click', () => {
+    if ($(info.panel)?.classList.contains('config-popup-mode')) closeConfigPopup(prefix);
+    else { showPanel('training-hub'); updateExerciseSummaries(); }
   });
 });
 $('open-training')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
@@ -3576,7 +3607,6 @@ $('open-impregnation-setup')?.addEventListener('click', () => {
   if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); }
   $('imp-start-button')?.click();
 });
-$('impregnation-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
 ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
   $(`${p}-hub-link`)?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
@@ -3750,7 +3780,6 @@ function populateIntrusVoices() {
     : '<option value="">Voix par défaut du système</option>';
 }
 speechSynthesis.onvoiceschanged = () => { populateImpVoices(); populateIntrusVoices(); };
-$('intrus-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('intrus-exit-link')?.addEventListener('click', () => showPanel('intrus-setup'));
 
 let intrusMode = 'image';
