@@ -4388,3 +4388,11 @@ $('intro-account-link')?.addEventListener('click', (event) => {
   loginBtn?.classList.add('intro-highlight');
   setTimeout(() => loginBtn?.classList.remove('intro-highlight'), 2000);
 });
+// Même principe sur la page des jeux : « votre compte » met en évidence l'icône 👤 du bandeau
+// plutôt que de dupliquer sa logique.
+$('hub-account-link')?.addEventListener('click', (event) => {
+  event.preventDefault();
+  const btn = $('global-account-button');
+  btn?.classList.add('intro-highlight');
+  setTimeout(() => btn?.classList.remove('intro-highlight'), 2000);
+});
