@@ -182,10 +182,8 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .home-mode-button:focus-visible .tooltip-bubble,
 .home-mode-button.show-tooltip .tooltip-bubble { opacity:1; transform:translateX(-50%) translateY(0); }
 .intro-banner { background:#f3e6c9; color:var(--ink); padding:14px 20px; border-radius:6px; font-family:Arial,sans-serif; font-size:.92rem; font-weight:700; line-height:1.42; text-align:justify; margin-bottom:14px; }
-#training-hub-panel .home-illustration img { max-height:150px; }
-#training-hub-panel .home-illustration { margin-bottom:8px; }
-#training-hub-panel .home-tagline { font-size:1.1rem; margin-bottom:8px; }
-#training-hub-panel .intro-banner { font-size:.82rem; line-height:1.34; padding:12px 18px; margin-bottom:10px; }
+#training-hub-panel .home-tagline { font-size:1.25rem; margin-bottom:12px; }
+#training-hub-panel .intro-banner { font-size:.95rem; line-height:1.48; padding:16px 20px; margin-bottom:16px; }
 .intro-banner a { color:var(--accent-dark); text-decoration:underline; }
 .intro-banner a:hover { color:var(--accent); }
 @keyframes introPulse { 0%,100% { box-shadow:0 0 0 0 rgba(31,58,95,.6); } 50% { box-shadow:0 0 0 8px rgba(31,58,95,0); } }
