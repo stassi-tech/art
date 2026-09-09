@@ -3737,6 +3737,11 @@ function impSpeak(text) {
 $('imp-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('imp', 'impregnation-setup-panel');
   saveLastSelection('impregnation-setup-panel');
+  // Lu tout de suite (avant le chargement réseau, potentiellement long) plutôt qu'après les
+  // attentes asynchrones plus bas — plus robuste si quoi que ce soit d'autre modifie la page
+  // entre-temps.
+  const advanceModeAtClick = $('imp-opt-advance').value;
+  const delayAtClick = $('imp-opt-delay').value;
   let arts = impSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = impSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
   let levels = impSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
@@ -3761,9 +3766,9 @@ $('imp-start-button')?.addEventListener('click', async () => {
     // Mélange, sans limitation de nombre : tout l'échantillon correspondant au choix.
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     IMP_SESSION = pool;
-    impAdvanceMode = $('imp-opt-advance').value;
+    impAdvanceMode = advanceModeAtClick;
     impAudioOn = getGlobalPrefs().audioOn;
-    impDelayMs = Number($('imp-opt-delay').value);
+    impDelayMs = Number(delayAtClick);
     impSelectedVoice = getGlobalVoice();
     impIndex = 0;
     showPanel('impregnation');
