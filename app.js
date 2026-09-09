@@ -735,6 +735,13 @@ function saveLastSelection(panelId) {
   // sinon ça écraserait silencieusement toute personnalisation faite via l'icône ✏️ à chaque
   // clic sur le bouton principal.
   if (suppressSaveLastSelection) { suppressSaveLastSelection = false; return; }
+  // Depuis l'écran de configuration (ouvert via l'icône ✏️), on n'enregistre le choix comme
+  // propre à ce jeu que si le joueur l'a explicitement demandé — sinon un simple essai depuis
+  // cet écran deviendrait un choix permanent sans qu'on l'ait voulu. On cherche la case DANS le
+  // panneau plutôt que de reconstruire son identifiant (le préfixe technique du jeu — « vf »,
+  // « fam »… — ne correspond pas toujours au nom du panneau).
+  const saveCheckbox = $(panelId)?.querySelector('input[id$="-save-choice"]');
+  if (saveCheckbox && !saveCheckbox.checked) return;
   const state = {};
   $(panelId)?.querySelectorAll('input[type="checkbox"]').forEach((el) => { state[el.id] = el.checked; });
   localStorage.setItem(`lastSelection_${panelId}`, JSON.stringify(state));
@@ -3121,8 +3128,8 @@ $('recon-start-button')?.addEventListener('click', async () => {
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
     reconAudioOn = getGlobalPrefs().audioOn;
     reconSelectedVoice = getGlobalVoice();
-    reconAutoAdvance = $('recon-opt-autoadvance').checked;
-    reconAutoAdvanceDelay = Number($('recon-opt-delay').value);
+    reconAutoAdvance = $('recon-opt-autoadvance')?.checked || false;
+    reconAutoAdvanceDelay = Number($('recon-opt-delay')?.value || 5000);
     reconExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`recon-field-${k}`)?.checked);
     if (!reconExtraFields.length) reconExtraFields = ['date', 'materiaux', 'dimensions', 'location'];
     RECON_SESSION = pool.slice(0, count).map((correct) => {
@@ -3826,8 +3833,8 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
     intrusAudioOn = getGlobalPrefs().audioOn;
     intrusSelectedVoice = getGlobalVoice();
-    intrusAutoAdvance = $('intrus-opt-autoadvance').checked;
-    intrusAutoAdvanceDelay = Number($('intrus-opt-delay').value);
+    intrusAutoAdvance = $('intrus-opt-autoadvance')?.checked || false;
+    intrusAutoAdvanceDelay = Number($('intrus-opt-delay')?.value || 5000);
     intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`intrus-field-${k}`)?.checked);
     if (!intrusExtraFields.length) intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'];
     INTRUS_SESSION = pool.slice(0, count).map((correct) => {
