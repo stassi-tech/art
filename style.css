@@ -10,7 +10,7 @@ body.dragging-topbar { touch-action:none; user-select:none; }
 .bg-tile:hover img, .bg-tile.touched img { filter:blur(0) grayscale(0); opacity:1; transform:scale(1.3); }
 button, input { font:inherit; }
 
-.app-shell { width:min(1600px, calc(100% - 32px)); margin:0 auto; padding:64px 0 30px; display:flex; align-items:stretch; gap:26px; min-height:100vh; pointer-events:none; position:relative; z-index:1; }
+.app-shell { width:min(1600px, calc(100% - 32px)); margin:0 auto; padding:56px 0 20px; display:flex; align-items:stretch; gap:26px; min-height:100vh; pointer-events:none; position:relative; z-index:1; }
 .sidebar { flex:1 1 0; display:flex; flex-direction:column; gap:14px; justify-content:center; position:sticky; top:20px; align-self:stretch; background:#f6ecd6; border-radius:12px; padding:28px; }
 .main-content { flex:1 1 0; min-width:0; display:flex; flex-direction:column; justify-content:flex-start; }
 .main-content > * { pointer-events:auto; }
@@ -24,7 +24,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .folder-button { color:var(--ink); background:transparent; border:1px solid var(--border); }.folder-button:hover { background:#fff; transform:translateY(-1px); }
 .secondary-button { color:var(--accent); background:transparent; border:1px solid var(--accent); } .secondary-button:hover { background:#fff; color:var(--accent-dark); border-color:var(--accent-dark); }.secondary-button:disabled { cursor:not-allowed; opacity:.45; }
 
-.welcome-panel { max-width:640px; width:100%; margin:auto; padding:52px 46px; text-align:center; background:rgba(255,253,249,.97); border:1px solid var(--border); box-shadow:0 16px 35px rgba(54,45,31,.08); border-radius:8px; position:relative; z-index:1; }
+.welcome-panel { max-width:640px; width:100%; margin:auto; padding:30px 46px; text-align:center; background:rgba(255,253,249,.97); border:1px solid var(--border); box-shadow:0 16px 35px rgba(54,45,31,.08); border-radius:8px; position:relative; z-index:1; }
 
 /* Mode « fenêtre superposée » : la page de configuration d'un exercice s'affiche par-dessus le
    menu des exercices (resté visible en fond), plutôt que de le remplacer entièrement — pour voir
@@ -132,10 +132,10 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .results-panel { max-width:none; width:100%; margin:0 auto; padding:52px 46px; text-align:center; background:rgba(255,253,249,.86); border:1px solid var(--border); box-shadow:0 16px 35px rgba(54,45,31,.08); border-radius:8px; }
 .welcome-panel p,.results-panel p { color:var(--muted); line-height:1.5; font-size:1.02rem; }.hint { margin:23px auto 0; font-size:1rem; }
 .home-eyebrow { text-align:center; }
-.home-tagline { font-family:Georgia,"Times New Roman",serif; font-weight:400; font-size:1.55rem; line-height:1.35; margin:0 0 28px; color:var(--ink); }
-.home-illustration { margin:0 0 28px; }
-.home-illustration img { width:100%; max-height:320px; object-fit:contain; border-radius:6px; display:block; background:#f6ecd6; }
-.home-illustration figcaption { margin:10px 0 0; font-family:Georgia,"Times New Roman",serif; font-size:.82rem; font-style:italic; color:var(--muted); }
+.home-tagline { font-family:Georgia,"Times New Roman",serif; font-weight:400; font-size:1.32rem; line-height:1.3; margin:0 0 14px; color:var(--ink); }
+.home-illustration { margin:0 0 14px; }
+.home-illustration img { width:100%; max-height:220px; object-fit:contain; border-radius:6px; display:block; background:#f6ecd6; }
+.home-illustration figcaption { margin:6px 0 0; font-family:Georgia,"Times New Roman",serif; font-size:.78rem; font-style:italic; color:var(--muted); }
 .home-mode-buttons { display:grid; grid-template-columns:1fr; gap:16px; margin-top:8px; }
 .home-mode-buttons.account-buttons-row { grid-template-columns:1fr 1fr; }
 .training-exercise-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:8px; }
@@ -181,7 +181,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .home-mode-button:hover .tooltip-bubble,
 .home-mode-button:focus-visible .tooltip-bubble,
 .home-mode-button.show-tooltip .tooltip-bubble { opacity:1; transform:translateX(-50%) translateY(0); }
-.intro-banner { background:#f3e6c9; color:var(--ink); padding:20px 24px; border-radius:6px; font-family:Arial,sans-serif; font-size:1.05rem; font-weight:700; line-height:1.6; text-align:justify; margin-bottom:24px; }
+.intro-banner { background:#f3e6c9; color:var(--ink); padding:14px 20px; border-radius:6px; font-family:Arial,sans-serif; font-size:.92rem; font-weight:700; line-height:1.42; text-align:justify; margin-bottom:14px; }
 .intro-banner a { color:var(--accent-dark); text-decoration:underline; }
 .intro-banner a:hover { color:var(--accent); }
 @keyframes introPulse { 0%,100% { box-shadow:0 0 0 0 rgba(31,58,95,.6); } 50% { box-shadow:0 0 0 8px rgba(31,58,95,0); } }
@@ -261,7 +261,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 #topbar-exercise-progress { font-size:.75rem; color:var(--muted); }
 .topbar-zone-center { flex:0 0 auto; }
 #topbar-timer { font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:var(--ink); min-width:36px; text-align:center; }
-.topbar-zone-right { flex:1 1 0; justify-content:flex-end; font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:var(--ok); white-space:nowrap; }
+.topbar-zone-right { flex:1 1 0; justify-content:flex-end; font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:#c0392b; white-space:nowrap; }
 @media (max-width:640px) {
   .topbar-banner { padding:6px 8px; gap:4px; }
   #topbar-exercise-name { font-size:.7rem; }
@@ -309,7 +309,7 @@ body.lefty .hamburger-menu { right:auto; left:16px; }
 .modal-hint { font-family:Arial,sans-serif; font-size:.82rem; color:var(--muted); margin:10px 0 14px; line-height:1.4; }
 
 .quiz-topbar { display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px; }
-.hidden { display:none !important; }.quiz-reference { margin:0; font-family:Arial,sans-serif; font-size:.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }.progress-row { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-family:Arial,sans-serif; font-size:.88rem; color:var(--muted); }.score-summary-highlight { color:#c0392b; font-weight:800; font-size:1rem; white-space:nowrap; }.progress-track { height:7px; overflow:hidden; margin:10px 0 20px; background:#ddd7cd; border-radius:10px; }.progress-bar { height:100%; width:0; background:var(--accent); transition:width .25s; }
+.hidden { display:none !important; }.quiz-reference { margin:0; font-family:Arial,sans-serif; font-size:.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }.progress-row { display:none; }.score-summary-highlight { color:#c0392b; font-weight:800; font-size:1rem; white-space:nowrap; }.progress-track { height:7px; overflow:hidden; margin:0 0 20px; background:#ddd7cd; border-radius:10px; }.progress-bar { height:100%; width:0; background:var(--accent); transition:width .25s; }
 .quiz-grid { display:grid; grid-template-columns:minmax(0,1.9fr) minmax(340px,.6fr); background:var(--paper); box-shadow:0 14px 35px rgba(54,45,31,.1); border-radius:8px; overflow:hidden; }
 /* Gaucher : l'image passe à droite, la marge de réponses/références à gauche — dans tous les
    exercices, puisqu'ils partagent tous la même structure .artwork-column + .answer-card. */
