@@ -1863,6 +1863,7 @@ $('open-reconstitution-setup')?.addEventListener('click', () => {
   }
   suppressSaveLastSelection = true;
   applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
+  speakObjective('recon');
   $('recon-start-button')?.click();
 });
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
@@ -1884,6 +1885,7 @@ $('open-vraifaux-setup')?.addEventListener('click', () => {
     applyGlobalFieldDefaultsTo('vf');
   }
   suppressSaveLastSelection = true;
+  speakObjective('vf');
   $('vf-start-button')?.click();
 });
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
@@ -1904,6 +1906,7 @@ $('open-famille-setup')?.addEventListener('click', () => {
     applyGlobalFieldDefaultsTo('fam');
   }
   suppressSaveLastSelection = true;
+  speakObjective('fam');
   $('fam-start-button')?.click();
 });
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
@@ -1934,6 +1937,7 @@ $('open-chrono-setup')?.addEventListener('click', () => {
     applyGlobalFieldDefaultsTo('chrono');
   }
   suppressSaveLastSelection = true;
+  speakObjective('chrono');
   $('chrono-start-button')?.click();
 });
 $('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('chrono-setup'); });
@@ -3476,6 +3480,7 @@ $('open-quiz-setup')?.addEventListener('click', () => {
     applyGlobalDefaultsToQuiz();
   }
   suppressSaveLastSelection = true;
+  speakObjective('quiz');
   $('launch-quiz-button')?.click();
 });
 $('load-saved-choice-button')?.addEventListener('click', () => {
@@ -3706,6 +3711,7 @@ $('open-impregnation-setup')?.addEventListener('click', () => {
     applyGlobalFieldDefaultsTo('imp');
   }
   suppressSaveLastSelection = true;
+  speakObjective('imp');
   $('imp-start-button')?.click();
 });
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
@@ -3863,6 +3869,7 @@ $('open-intrus-setup')?.addEventListener('click', () => {
   }
   suppressSaveLastSelection = true;
   applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
+  speakObjective('intrus');
   $('intrus-start-button')?.click();
 });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
