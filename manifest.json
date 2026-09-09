@@ -1,6 +1,6 @@
 {
-  "name": "Révision d'histoire de l'art",
-  "short_name": "Art Quiz",
+  "name": "MNEMART — Révision d'histoire de l'art",
+  "short_name": "MNEMART",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#ede3d0",
