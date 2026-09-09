@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=86" />
+    <link rel="stylesheet" href="style.css?v=87" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -771,6 +771,17 @@
           <p id="launch-feedback" class="hint hidden"></p>
         </section>
 
+        <div class="modal-overlay hidden" id="modal-exercise-rules">
+          <div class="modal-box">
+            <h3 id="exercise-rules-title"></h3>
+            <p id="exercise-rules-text"></p>
+            <div class="modal-actions">
+              <button type="button" class="secondary-button" id="exercise-rules-cancel">Annuler</button>
+              <button type="button" class="primary-button" id="exercise-rules-confirm">Commencer →</button>
+            </div>
+          </div>
+        </div>
+
         <div class="modal-overlay hidden" id="modal-fonctionnement">
           <div class="modal-box">
             <h3>Comment fonctionne l’application</h3>
@@ -1063,6 +1074,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=97"></script>
+    <script src="app.js?v=98"></script>
   </body>
 </html>

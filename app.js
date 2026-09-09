@@ -655,6 +655,55 @@ $('global-account-button')?.addEventListener('click', () => {
 });
 
 
+const EXERCISE_RULES = {
+  imp: {
+    titre: 'Imprégnation — comment ça marche',
+    texte: "Cet exercice sert à mémoriser passivement, sans notation ni score. Une œuvre s'affiche à l'écran, et sa référence complète (artiste, titre, date, lieu de conservation…) s'écrit progressivement pendant qu'une voix la lit à voix haute. Il n'y a rien à faire d'autre que regarder et écouter, à votre rythme. Utilisez la flèche → (ou la touche Entrée) pour passer à l'œuvre suivante, ← pour revenir à la précédente, et ⏸ pour mettre en pause.",
+  },
+  intrus: {
+    titre: 'Intrus — comment ça marche',
+    texte: "Trois propositions (images ou références selon votre choix) vous sont présentées pour une même œuvre annoncée : une seule est la bonne, les deux autres sont des intrus. Cliquez sur celle qui correspond réellement. Une correction s'affiche ensuite avec la référence complète de l'œuvre.",
+  },
+  recon: {
+    titre: 'Reconstitution — comment ça marche',
+    texte: "Un détail très resserré d'une œuvre s'affiche — parfois difficile à reconnaître au premier coup d'œil. Parmi 3 références complètes proposées, cliquez sur celle qui correspond à ce détail. La correction affiche ensuite l'œuvre entière avec sa référence.",
+  },
+  vf: {
+    titre: 'Vrai/Faux — comment ça marche',
+    texte: "Une image s'affiche avec sa référence complète (artiste, titre, date, lieu…). Cette référence est soit entièrement exacte, soit comporte un ou deux détails inventés. Jugez chaque élément un par un, en cliquant sur Vrai ou Faux pour chacun. La correction affiche la bonne réponse en vert là où vous vous êtes trompé.",
+  },
+  fam: {
+    titre: 'Famille — comment ça marche',
+    texte: "8 images s'affichent : 4 d'entre elles sont d'un même artiste, les 4 autres sont des intrus. Repérez d'abord les 4 bonnes images en cliquant dessus, puis validez. Il faut ensuite retrouver le titre de chacune des 4 œuvres repérées. Le score est tout ou rien : un point uniquement si l'artiste et les 4 titres sont exacts.",
+  },
+  chrono: {
+    titre: 'Chronologie — comment ça marche',
+    texte: "4 œuvres s'affichent dans un ordre mélangé. Cliquez dessus dans l'ordre chronologique, en commençant par la plus ancienne. La correction affiche ensuite les 4 références complètes, classées dans le bon ordre.",
+  },
+  quiz: {
+    titre: 'Quiz final — comment ça marche',
+    texte: "Une œuvre s'affiche. Pour chaque rubrique choisie (artiste, titre, date, lieu…), tapez votre réponse dans le champ correspondant, ou dictez-la avec le micro 🎤. Une fois toutes les rubriques renseignées, validez : la correction affiche les informations disponibles, avec un indicateur « Exact » ou « À réviser » pour chacune. Les réponses proches (fautes d'orthographe, surnoms) sont tolérées dans une certaine mesure.",
+  },
+};
+let exerciseRulesConfirmCallback = null;
+function showExerciseRules(prefix, onConfirm) {
+  const rules = EXERCISE_RULES[prefix];
+  if (!rules) { onConfirm(); return; }
+  $('exercise-rules-title').textContent = rules.titre;
+  $('exercise-rules-text').textContent = rules.texte;
+  exerciseRulesConfirmCallback = onConfirm;
+  openModal('modal-exercise-rules');
+}
+$('exercise-rules-confirm')?.addEventListener('click', () => {
+  closeModal('modal-exercise-rules');
+  const cb = exerciseRulesConfirmCallback;
+  exerciseRulesConfirmCallback = null;
+  cb?.();
+});
+$('exercise-rules-cancel')?.addEventListener('click', () => {
+  closeModal('modal-exercise-rules');
+  exerciseRulesConfirmCallback = null;
+});
 function speakObjective(elementId) {
   const el = $(`${elementId}-objective`);
   const showExplanations = getGlobalPrefs().showExplanations;
@@ -1863,8 +1912,7 @@ $('open-reconstitution-setup')?.addEventListener('click', () => {
   }
   suppressSaveLastSelection = true;
   applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
-  speakObjective('recon');
-  $('recon-start-button')?.click();
+  showExerciseRules('recon', () => { speakObjective('recon'); $('recon-start-button')?.click(); });
 });
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
 $('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
@@ -1885,8 +1933,7 @@ $('open-vraifaux-setup')?.addEventListener('click', () => {
     applyGlobalFieldDefaultsTo('vf');
   }
   suppressSaveLastSelection = true;
-  speakObjective('vf');
-  $('vf-start-button')?.click();
+  showExerciseRules('vf', () => { speakObjective('vf'); $('vf-start-button')?.click(); });
 });
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
@@ -1906,8 +1953,7 @@ $('open-famille-setup')?.addEventListener('click', () => {
     applyGlobalFieldDefaultsTo('fam');
   }
   suppressSaveLastSelection = true;
-  speakObjective('fam');
-  $('fam-start-button')?.click();
+  showExerciseRules('fam', () => { speakObjective('fam'); $('fam-start-button')?.click(); });
 });
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
 $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
@@ -1937,8 +1983,7 @@ $('open-chrono-setup')?.addEventListener('click', () => {
     applyGlobalFieldDefaultsTo('chrono');
   }
   suppressSaveLastSelection = true;
-  speakObjective('chrono');
-  $('chrono-start-button')?.click();
+  showExerciseRules('chrono', () => { speakObjective('chrono'); $('chrono-start-button')?.click(); });
 });
 $('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('chrono-setup'); });
 $('chrono-hub-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
@@ -3480,8 +3525,7 @@ $('open-quiz-setup')?.addEventListener('click', () => {
     applyGlobalDefaultsToQuiz();
   }
   suppressSaveLastSelection = true;
-  speakObjective('quiz');
-  $('launch-quiz-button')?.click();
+  showExerciseRules('quiz', () => { speakObjective('quiz'); $('launch-quiz-button')?.click(); });
 });
 $('load-saved-choice-button')?.addEventListener('click', () => {
   const raw = localStorage.getItem('savedQuizConfig');
@@ -3711,8 +3755,7 @@ $('open-impregnation-setup')?.addEventListener('click', () => {
     applyGlobalFieldDefaultsTo('imp');
   }
   suppressSaveLastSelection = true;
-  speakObjective('imp');
-  $('imp-start-button')?.click();
+  showExerciseRules('imp', () => { speakObjective('imp'); $('imp-start-button')?.click(); });
 });
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
 ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
@@ -3869,8 +3912,7 @@ $('open-intrus-setup')?.addEventListener('click', () => {
   }
   suppressSaveLastSelection = true;
   applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
-  speakObjective('intrus');
-  $('intrus-start-button')?.click();
+  showExerciseRules('intrus', () => { speakObjective('intrus'); $('intrus-start-button')?.click(); });
 });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
 $('intrus-scores-link')?.addEventListener('click', () => {
