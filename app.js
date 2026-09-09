@@ -3560,18 +3560,22 @@ function openConfigAsPopup(prefix) {
   const panelId = EXERCISE_INFO[prefix]?.panel;
   if (!panelId) return;
   $('training-hub-panel')?.classList.remove('hidden');
-  $(panelId)?.classList.add('config-popup-mode');
-  const backdrop = document.createElement('div');
-  backdrop.className = 'config-popup-backdrop';
-  backdrop.id = 'config-popup-backdrop';
-  backdrop.addEventListener('click', () => closeConfigPopup(prefix));
-  document.body.appendChild(backdrop);
+  const panel = $(panelId);
+  panel?.classList.add('config-popup-mode');
+  // La fenêtre doit être détachée de .app-shell : ce conteneur a son propre contexte d'empilement
+  // CSS (position:relative + z-index) qui plafonnerait la fenêtre sous n'importe quel élément
+  // ajouté directement au <body>, quel que soit son propre z-index. En la rattachant au <body>,
+  // on évite complètement le problème plutôt que d'empiler les correctifs de z-index.
+  if (panel) { panel.dataset.originalParent = 'true'; document.body.appendChild(panel); }
 }
 function closeConfigPopup(prefix) {
   const panelId = EXERCISE_INFO[prefix]?.panel;
-  $(panelId)?.classList.remove('config-popup-mode');
-  $(panelId)?.classList.add('hidden');
-  $('config-popup-backdrop')?.remove();
+  const panel = $(panelId);
+  panel?.classList.remove('config-popup-mode');
+  panel?.classList.add('hidden');
+  // Replace le panneau à sa position d'origine dans la page (juste avant le panneau du menu des
+  // exercices), pour que la navigation normale (showPanel) continue de fonctionner ensuite.
+  if (panel?.dataset.originalParent) { $('training-hub-panel')?.insertAdjacentElement('beforebegin', panel); delete panel.dataset.originalParent; }
   updateExerciseSummaries();
 }
 document.querySelectorAll('.exercise-summary-edit').forEach((icon) => {
