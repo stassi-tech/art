@@ -746,6 +746,26 @@ function saveLastSelection(panelId) {
   $(panelId)?.querySelectorAll('input[type="checkbox"]').forEach((el) => { state[el.id] = el.checked; });
   localStorage.setItem(`lastSelection_${panelId}`, JSON.stringify(state));
 }
+// Bouton « Valider mon choix pour ce jeu » : enregistre la sélection courante comme choix propre
+// à cet exercice puis revient directement au menu, sans lancer la partie — pour voir tout de
+// suite le badge du bouton changer, sans passer par tout un exercice.
+const VALIDATE_CHOICE_PANELS = {
+  'imp-validate-choice-button': 'impregnation-setup-panel',
+  'intrus-validate-choice-button': 'intrus-setup-panel',
+  'recon-validate-choice-button': 'reconstitution-setup-panel',
+  'vf-validate-choice-button': 'vraifaux-setup-panel',
+  'fam-validate-choice-button': 'famille-setup-panel',
+  'chrono-validate-choice-button': 'chrono-setup-panel',
+};
+Object.entries(VALIDATE_CHOICE_PANELS).forEach(([btnId, panelId]) => {
+  $(btnId)?.addEventListener('click', () => {
+    const saveCheckbox = $(panelId)?.querySelector('input[id$="-save-choice"]');
+    if (saveCheckbox) saveCheckbox.checked = true;
+    saveLastSelection(panelId);
+    showPanel('training-hub');
+    updateExerciseSummaries();
+  });
+});
 function restoreLastSelection(panelId) {
   if (!getGlobalPrefs().rememberSelection) return;
   let state;
@@ -1766,7 +1786,7 @@ $('open-reconstitution-setup')?.addEventListener('click', () => {
   applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
   $('recon-start-button')?.click();
 });
-$('reconstitution-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('reconstitution-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
 $('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
 $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
@@ -1788,7 +1808,7 @@ $('open-vraifaux-setup')?.addEventListener('click', () => {
   suppressSaveLastSelection = true;
   $('vf-start-button')?.click();
 });
-$('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('vraifaux-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
 
@@ -1809,7 +1829,7 @@ $('open-famille-setup')?.addEventListener('click', () => {
   suppressSaveLastSelection = true;
   $('fam-start-button')?.click();
 });
-$('famille-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('famille-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
 $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
 $('fam-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
@@ -1840,7 +1860,7 @@ $('open-chrono-setup')?.addEventListener('click', () => {
   suppressSaveLastSelection = true;
   $('chrono-start-button')?.click();
 });
-$('chrono-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('chrono-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('chrono-setup'); });
 $('chrono-hub-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
 $('chrono-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'chrono'; showPanel('account'); loadAccountPage(); });
@@ -3556,7 +3576,7 @@ $('open-impregnation-setup')?.addEventListener('click', () => {
   if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); }
   $('imp-start-button')?.click();
 });
-$('impregnation-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('impregnation-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
 ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
   $(`${p}-hub-link`)?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
@@ -3730,7 +3750,7 @@ function populateIntrusVoices() {
     : '<option value="">Voix par défaut du système</option>';
 }
 speechSynthesis.onvoiceschanged = () => { populateImpVoices(); populateIntrusVoices(); };
-$('intrus-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
+$('intrus-setup-back-button')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
 $('intrus-exit-link')?.addEventListener('click', () => showPanel('intrus-setup'));
 
 let intrusMode = 'image';
