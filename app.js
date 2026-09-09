@@ -730,6 +730,10 @@ function clearTopBanner() {
   updateTopBanner('', '');
   updateTopBannerScore('');
 }
+// Registre de tous les chronomètres créés, pour pouvoir tous les arrêter d'un coup en quittant
+// un jeu (showPanel) — sinon celui resté actif continue de tourner en fond indéfiniment, même
+// une fois revenu au menu, et pourrait entrer en conflit avec le suivant démarré.
+const ALL_TIMERS = [];
 function createTimer(labelElementId) {
   let startTime = null, interval = null;
   function tick() {
@@ -738,7 +742,7 @@ function createTimer(labelElementId) {
     const s = Math.floor((Date.now() - startTime) / 1000);
     el.textContent = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
-  return {
+  const timer = {
     start() {
       startTime = Date.now();
       $(labelElementId)?.classList.toggle('hidden', !getGlobalPrefs().showTimer);
@@ -748,7 +752,10 @@ function createTimer(labelElementId) {
     },
     stop() { if (interval) clearInterval(interval); interval = null; return startTime ? Math.round((Date.now() - startTime) / 1000) : 0; },
   };
+  ALL_TIMERS.push(timer);
+  return timer;
 }
+function stopAllTimers() { ALL_TIMERS.forEach((t) => t.stop()); }
 const quizTimer = createTimer('topbar-timer');
 
 // Mémorise et restaure la dernière sélection de cases à cocher d'un jeu (art/siècle/niveau/zone…)
@@ -1257,6 +1264,10 @@ function showPanel(name) {
   // Vide le bandeau (nom d'exercice, progression, score) sauf si on va justement vers un jeu —
   // chaque jeu le remplit ensuite lui-même à chaque question.
   const PLAY_PANELS = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'];
+  // Arrête TOUS les chronomètres à chaque changement de page : sinon celui resté actif continue
+  // de tourner indéfiniment en arrière-plan, même après avoir fermé le jeu. Celui qu'on rejoint,
+  // s'il y en a un, le relance lui-même via son propre .start().
+  stopAllTimers();
   if (!PLAY_PANELS.includes(name)) clearTopBanner();
   // Nettoie le mode « fenêtre superposée » (configuration d'un jeu ouverte par-dessus le menu) à
   // chaque vraie navigation — sinon la classe et le fond assombri resteraient collés au panneau.
