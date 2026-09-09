@@ -531,28 +531,41 @@ $('pf-delay')?.addEventListener('change', () => setGlobalPref('defaultDelay', Nu
 
 // --- Choix de champ (art/siècle/zone) : si mémorisé, chaque bouton d'exercice démarre
 // directement dessus, sans repasser par sa page de configuration. ---
-$('pf-fields-apply')?.addEventListener('click', () => {
+function saveFieldChoiceGeneral() {
   const arts = [...document.querySelectorAll('.pf-field-art:checked')].map((el) => el.value);
   const centuries = [...document.querySelectorAll('.pf-field-century:checked')].map((el) => el.value);
   const zones = [...document.querySelectorAll('.pf-field-zone:checked')].map((el) => el.value);
   localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember: true }));
   updateExerciseSummaries();
+}
+// Enregistrement automatique à chaque coche — comme les paramètres techniques juste au-dessus,
+// plutôt que d'exiger un clic sur « Appliquer » qu'on peut oublier. Le bouton reste disponible
+// pour ceux qui préfèrent un geste explicite, mais n'est plus nécessaire.
+document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => {
+  el.addEventListener('change', saveFieldChoiceGeneral);
 });
+$('pf-fields-apply')?.addEventListener('click', saveFieldChoiceGeneral);
 $('pf-fields-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalFieldDefaults');
   document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => { el.checked = false; });
   updateExerciseSummaries();
 });
-// --- Choix de rubrique et de niveau : idem, sur ce qui est testé et le niveau. La mémorisation
-// est désormais automatique dès qu'on clique « Appliquer » — plus besoin de case séparée. ---
-$('pf-rubriques-apply')?.addEventListener('click', () => {
+// --- Choix de rubrique et de niveau : idem, sur ce qui est testé et le niveau. Enregistrement
+// automatique à chaque coche, comme ci-dessus. ---
+function saveRubriqueChoiceGeneral() {
   const rubriques = [...document.querySelectorAll('.pf-rubrique-field:checked')].map((el) => el.value);
   const levels = [...document.querySelectorAll('.pf-rubrique-level:checked')].map((el) => el.value);
   let count = document.querySelector('input[name="pf-count"]:checked')?.value || '';
   if (count === 'custom') count = $('pf-count-custom').value?.trim() || '';
   localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, count, remember: true }));
   updateExerciseSummaries();
+}
+document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => {
+  el.addEventListener('change', saveRubriqueChoiceGeneral);
 });
+document.querySelectorAll('input[name="pf-count"]').forEach((el) => { el.addEventListener('change', saveRubriqueChoiceGeneral); });
+$('pf-count-custom')?.addEventListener('change', saveRubriqueChoiceGeneral);
+$('pf-rubriques-apply')?.addEventListener('click', saveRubriqueChoiceGeneral);
 $('pf-rubriques-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalRubriqueDefaults');
   document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => { el.checked = false; });
@@ -1272,7 +1285,7 @@ function showPanel(name) {
   $('profile-panel')?.classList.toggle('hidden', name !== 'profile');
   $('other-works-panel')?.classList.toggle('hidden', name !== 'other-works');
   $('sidebar')?.classList.toggle('hidden', name !== 'welcome');
-  $('bg-mosaic')?.classList.toggle('hidden', name !== 'welcome');
+  $('bg-mosaic')?.classList.toggle('hidden', name !== 'welcome' && name !== 'training-hub');
 }
 
 function commonsFilePageUrl(imageUrl) {

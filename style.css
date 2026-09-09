@@ -136,7 +136,8 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .home-illustration { margin:0 0 28px; }
 .home-illustration img { width:100%; max-height:320px; object-fit:contain; border-radius:6px; display:block; background:#f6ecd6; }
 .home-illustration figcaption { margin:10px 0 0; font-family:Georgia,"Times New Roman",serif; font-size:.82rem; font-style:italic; color:var(--muted); }
-.home-mode-buttons { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:8px; }
+.home-mode-buttons { display:grid; grid-template-columns:1fr; gap:16px; margin-top:8px; }
+.home-mode-buttons.account-buttons-row { grid-template-columns:1fr 1fr; }
 .training-exercise-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:8px; }
 .training-exercise-grid .home-mode-button { padding:16px 10px; position:relative; }
 .quiz-final-button { width:100%; margin-top:18px; padding:18px 10px; position:relative; background:var(--accent); }
