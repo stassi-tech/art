@@ -29,7 +29,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 /* Mode « fenêtre superposée » : la page de configuration d'un exercice s'affiche par-dessus le
    menu des exercices (resté visible en fond, assombri), plutôt que de le remplacer entièrement —
    pour voir tout de suite l'effet sur le bouton en refermant. */
-.config-popup-backdrop { position:fixed; inset:0; background:rgba(20,20,20,.55); z-index:150; }
+.config-popup-backdrop { position:fixed; inset:0; background:transparent; z-index:150; }
 .config-popup-mode { position:fixed !important; top:50%; left:50%; transform:translate(-50%, -50%); z-index:151; max-height:88vh; overflow-y:auto; width:min(680px, 92vw); box-shadow:0 20px 60px rgba(0,0,0,.4); }
 /* Croix de fermeture standard d'une fenêtre modale, dans son coin supérieur droit — invisible
    hors du mode fenêtre superposée (elle ne sert à rien sur une page normale). */
