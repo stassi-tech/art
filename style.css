@@ -138,9 +138,9 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .home-illustration figcaption { margin:6px 0 0; font-family:Georgia,"Times New Roman",serif; font-size:.78rem; font-style:italic; color:var(--muted); }
 .home-mode-buttons { display:grid; grid-template-columns:1fr; gap:16px; margin-top:8px; }
 .home-mode-buttons.account-buttons-row { grid-template-columns:1fr 1fr; }
-.training-exercise-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-top:8px; }
-.training-exercise-grid .home-mode-button { padding:16px 10px; position:relative; }
-.quiz-final-button { width:100%; margin-top:18px; padding:18px 10px; position:relative; background:var(--accent); }
+.training-exercise-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:6px; }
+.training-exercise-grid .home-mode-button { padding:12px 8px; position:relative; }
+.quiz-final-button { width:100%; margin-top:12px; padding:13px 10px; position:relative; background:var(--accent); }
 .quiz-final-button:hover { background:var(--accent-dark, #16293f); }
 .exercise-num { display:block; font-family:Arial,sans-serif; font-weight:700; font-size:.62rem; text-transform:uppercase; letter-spacing:.05em; opacity:.75; margin-bottom:2px; }
 .exercise-summary { display:block; font-family:Arial,sans-serif; font-weight:400; font-size:.68rem; opacity:.85; margin-top:2px; }
@@ -182,10 +182,16 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .home-mode-button:focus-visible .tooltip-bubble,
 .home-mode-button.show-tooltip .tooltip-bubble { opacity:1; transform:translateX(-50%) translateY(0); }
 .intro-banner { background:#f3e6c9; color:var(--ink); padding:14px 20px; border-radius:6px; font-family:Arial,sans-serif; font-size:.92rem; font-weight:700; line-height:1.42; text-align:justify; margin-bottom:14px; }
+#training-hub-panel .home-illustration img { max-height:150px; }
+#training-hub-panel .home-illustration { margin-bottom:8px; }
+#training-hub-panel .home-tagline { font-size:1.1rem; margin-bottom:8px; }
+#training-hub-panel .intro-banner { font-size:.82rem; line-height:1.34; padding:12px 18px; margin-bottom:10px; }
 .intro-banner a { color:var(--accent-dark); text-decoration:underline; }
 .intro-banner a:hover { color:var(--accent); }
 @keyframes introPulse { 0%,100% { box-shadow:0 0 0 0 rgba(31,58,95,.6); } 50% { box-shadow:0 0 0 8px rgba(31,58,95,0); } }
-.intro-highlight { animation:introPulse 1s ease-in-out 2; }
+.intro-highlight { animation:introPulse 1s ease-in-out 3; }
+@keyframes introIconPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.35; transform:scale(1.25); } }
+.intro-icon-sync { display:inline-block; animation:introIconPulse 1s ease-in-out 3; }
 .account-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:6px; font-family:Arial,sans-serif; font-size:.85rem; color:var(--muted); }
 .account-buttons-row { margin-bottom:14px; }
 .account-slot { grid-column:2; }

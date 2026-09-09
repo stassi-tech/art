@@ -1281,6 +1281,14 @@ function showPanel(name) {
   // page d'accueil.
   $('welcome-panel').classList.toggle('hidden', name !== 'welcome');
   $('training-hub-panel')?.classList.toggle('hidden', name !== 'training-hub');
+  if (name === 'training-hub') {
+    // Relance l'animation de l'icône du texte et fait clignoter en même temps la vraie icône
+    // du bandeau, pour montrer clairement où se trouve « Mon compte ».
+    const icon = $('hub-account-icon');
+    if (icon) { icon.style.animation = 'none'; void icon.offsetWidth; icon.style.animation = ''; }
+    $('global-account-button')?.classList.add('intro-highlight');
+    setTimeout(() => $('global-account-button')?.classList.remove('intro-highlight'), 3000);
+  }
   $('impregnation-setup-panel')?.classList.toggle('hidden', name !== 'impregnation-setup');
   $('impregnation-panel')?.classList.toggle('hidden', name !== 'impregnation');
   $('intrus-setup-panel')?.classList.toggle('hidden', name !== 'intrus-setup');
@@ -4387,12 +4395,4 @@ $('intro-account-link')?.addEventListener('click', (event) => {
   loginBtn?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   loginBtn?.classList.add('intro-highlight');
   setTimeout(() => loginBtn?.classList.remove('intro-highlight'), 2000);
-});
-// Même principe sur la page des jeux : « votre compte » met en évidence l'icône 👤 du bandeau
-// plutôt que de dupliquer sa logique.
-$('hub-account-link')?.addEventListener('click', (event) => {
-  event.preventDefault();
-  const btn = $('global-account-button');
-  btn?.classList.add('intro-highlight');
-  setTimeout(() => btn?.classList.remove('intro-highlight'), 2000);
 });
