@@ -1419,7 +1419,7 @@ function formatDimensionsPlainText(work) {
 function spokenDimensionsPhrase(work) {
   const parts = [];
   if (work.hauteur) parts.push(`${withCm(work.hauteur).replace(/\bcm\b/i, 'centimètres')} de hauteur`);
-  if (work.longueur) parts.push(`${withCm(work.longueur).replace(/\bcm\b/i, 'centimètres')} de largeur`);
+  if (work.longueur) parts.push(`${withCm(work.longueur).replace(/\bcm\b/i, 'centimètres')} de longueur`);
   if (work.profondeur) parts.push(`${withCm(work.profondeur).replace(/\bcm\b/i, 'centimètres')} de profondeur`);
   if (!parts.length) return '';
   if (parts.length === 1) return `de ${parts[0]}`;
@@ -2899,7 +2899,8 @@ $('vf-start-button')?.addEventListener('click', async () => {
       const hasError = Math.random() < 0.5;
       let errorFields = [];
       const displayed = {};
-      activeFields.forEach((f) => { displayed[f.key] = vfFieldValue(correct, f.key) || '—'; });
+      const displayedSource = {}; // quelle œuvre a fourni chaque valeur affichée (utile pour la voix des dimensions)
+      activeFields.forEach((f) => { displayed[f.key] = vfFieldValue(correct, f.key) || '—'; displayedSource[f.key] = correct; });
       if (hasError) {
         const nbErrors = activeFields.length > 1 && Math.random() < 0.5 ? 2 : 1; // jamais plus de deux erreurs
         const shuffledFields = activeFields.slice().sort(() => Math.random() - 0.5);
@@ -2909,10 +2910,14 @@ $('vf-start-button')?.addEventListener('click', async () => {
         errorFields.sort((a, b) => activeFields.findIndex((f) => f.key === a) - activeFields.findIndex((f) => f.key === b));
         errorFields.forEach((key) => {
           const others = pool.filter((r) => r !== correct && vfFieldValue(r, key));
-          if (others.length) displayed[key] = vfFieldValue(others[Math.floor(Math.random() * others.length)], key);
+          if (others.length) {
+            const swapped = others[Math.floor(Math.random() * others.length)];
+            displayed[key] = vfFieldValue(swapped, key);
+            displayedSource[key] = swapped;
+          }
         });
       }
-      return { correct, hasError, errorFields, displayed, activeFields };
+      return { correct, hasError, errorFields, displayed, displayedSource, activeFields };
     });
     vfIndex = 0; vfScore = 0;
     showPanel('vraifaux');
@@ -2939,8 +2944,9 @@ function vfShowQuestion() {
   // Chaque rubrique a son propre bouton Vrai/Faux, réglé sur Vrai par défaut.
   $('vf-field-rows').innerHTML = q.activeFields.map((f) => {
     const isTitle = f.key === 'title';
+    const isDimensions = f.key === 'dimensions';
     const shown = isTitle ? `« ${q.displayed[f.key]} »` : q.displayed[f.key];
-    const shownHtml = isTitle ? `<em>${escapeHtml(shown)}</em>` : escapeHtml(shown);
+    const shownHtml = isTitle ? `<em>${escapeHtml(shown)}</em>` : isDimensions ? (formatDimensionsDisplay(q.displayedSource[f.key]) || escapeHtml(shown)) : escapeHtml(shown);
     return `<div class="vf-field-row" data-key="${f.key}">
       <span class="vf-field-label">${f.label}</span>
       <span class="vf-field-value" id="vf-value-${f.key}">${shownHtml}</span>
@@ -2959,7 +2965,11 @@ function vfShowQuestion() {
     });
   });
 
-  const spokenText = q.activeFields.map((f) => f.key === 'title' ? `« ${q.displayed[f.key]} »` : q.displayed[f.key]).join(' — ');
+  const spokenText = q.activeFields.map((f) => {
+    if (f.key === 'title') return `« ${q.displayed[f.key]} »`;
+    if (f.key === 'dimensions') return spokenDimensionsPhrase(q.displayedSource[f.key]) || q.displayed[f.key];
+    return q.displayed[f.key];
+  }).join(' — ');
   vfSpeak(spokenText);
 }
 
