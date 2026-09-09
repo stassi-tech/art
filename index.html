@@ -9,7 +9,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=84" />
+    <link rel="stylesheet" href="style.css?v=85" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -31,9 +31,8 @@
       </div>
       <div class="topbar-zone topbar-zone-right" id="topbar-score"></div>
       <div class="hamburger-menu hidden" id="hamburger-menu">
-        <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Le fonctionnement des quiz</button>
-        <button type="button" class="hamburger-item" id="menu-item-artistes">📖 La liste des artistes</button>
-        <a class="hamburger-item" id="menu-item-base" href="#base" target="_blank" rel="noopener" style="display:block;text-decoration:none;">🗂️ La base d'œuvres (nouvel onglet)</a>
+        <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Comment fonctionne l'application</button>
+        <button type="button" class="hamburger-item" id="menu-item-artistes">📖 Liste des artistes et des œuvres</button>
         <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
       </div>
     </div>
@@ -804,7 +803,7 @@
 
         <div class="modal-overlay hidden" id="modal-artist-list">
           <div class="modal-box">
-            <h3>Liste des artistes</h3>
+            <h3>Liste des artistes et des œuvres présentes dans l'application</h3>
             <div class="artist-list-mode-row">
               <button type="button" class="secondary-button" id="artist-list-mode-full">Liste complète</button>
               <button type="button" class="secondary-button" id="artist-list-mode-filtered">Liste par choix des critères</button>
@@ -904,18 +903,20 @@
 
               <div id="correction" class="correction hidden">
                 <div id="correction-details"></div>
-                <div id="other-works" class="other-works hidden">
-                  <button type="button" id="show-other-works-button" class="secondary-button other-works-toggle">Voir les autres œuvres du même peintre</button>
-                </div>
               </div>
             </section>
           </div>
         </section>
 
         <section id="other-works-panel" class="other-works-panel hidden">
-          <div class="quiz-bottom-bar">
-            <button type="button" id="other-works-back-button" class="nav-arrow-button" aria-label="Retour au questionnaire" title="Retour au questionnaire">↩</button>
-            <button type="button" id="other-works-next-button" class="nav-arrow-button" aria-label="Question suivante" title="Question suivante">→</button>
+          <div class="quiz-bottom-bar other-works-header">
+            <button type="button" id="other-works-back-button" class="nav-arrow-button" aria-label="Retour à la liste" title="Retour à la liste">↩</button>
+            <div class="other-works-artist-info">
+              <span id="other-works-artist-flag" aria-hidden="true"></span>
+              <strong id="other-works-artist-name"></strong>
+              <span id="other-works-artist-dates"></span>
+            </div>
+            <button type="button" id="other-works-next-button" class="nav-arrow-button" aria-label="Artiste suivant" title="Artiste suivant">→</button>
           </div>
           <div id="other-works-panel-list" class="other-works-panel-list"></div>
         </section>
@@ -965,7 +966,7 @@
           </div>
 
           <div id="profile-section-tech">
-            <p class="modal-hint" style="margin-top:0;">Emplacement des boutons, touche Entrée, chronomètre — réglages purement techniques, sans rapport avec le contenu des exercices.</p>
+            <p class="modal-hint" id="pf-tech-explanation" style="margin-top:0;">Emplacement des boutons, touche Entrée, chronomètre — réglages purement techniques, sans rapport avec le contenu des exercices.</p>
             <label class="rubrique-option"><input type="checkbox" id="pf-show-timer" /><span>Afficher le chronomètre dans les exercices</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-enter-validate" /><span>Valider les réponses dans les jeux avec la touche Entrée</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-show-explanations" /><span>Afficher les explications d'exercice dans leur configuration</span></label>
@@ -1058,6 +1059,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=93"></script>
+    <script src="app.js?v=94"></script>
   </body>
 </html>

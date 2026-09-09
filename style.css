@@ -379,7 +379,7 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 .correction-value em { font-style:italic; }
 .artist-dates { font-size:.75em; font-weight:400; color:var(--muted); }
 .dim-hl { font-size:.75em; font-weight:400; color:var(--muted); }
-.artist-list-table { max-height:60vh; overflow-y:auto; margin:14px 0; border:1px solid var(--border); border-radius:8px; }
+.artist-list-table { max-height:60vh; overflow-y:auto; overflow-x:auto; margin:14px 0; border:1px solid var(--border); border-radius:8px; }
 .artist-table { width:100%; border-collapse:collapse; font-family:Arial,sans-serif; font-size:.85rem; }
 .artist-table th { position:sticky; top:0; background:var(--paper); text-align:left; padding:8px 10px; border-bottom:2px solid var(--border); font-size:.75rem; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); }
 .artist-table td { padding:6px 10px; border-bottom:1px solid var(--border); }
@@ -393,6 +393,16 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 .other-works-toggle { width:100%; margin-top:14px; }
 .other-works-panel { max-width:1200px; margin:16px auto; padding:16px 26px 30px; }
 .other-works-panel .quiz-bottom-bar { position:sticky; top:0; z-index:5; background:var(--paper); padding:8px 0; margin:0 0 16px; }
+.other-works-header { justify-content:space-between; }
+.other-works-artist-info { display:flex; flex-direction:column; align-items:center; text-align:center; font-family:Arial,sans-serif; flex:1; min-width:0; padding:0 8px; }
+.other-works-artist-info strong { font-size:1.05rem; color:var(--accent); }
+#other-works-artist-dates { font-size:.82rem; color:var(--muted); }
+#other-works-artist-flag { font-size:1.3rem; }
+@media (max-width:640px) {
+  .other-works-artist-info strong { font-size:.85rem; }
+  #other-works-artist-dates { font-size:.7rem; }
+  #other-works-artist-flag { font-size:1rem; }
+}
 .other-works-panel-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; }
 .other-works-panel-list .other-work-card-big { width:auto; text-align:center; border:2px solid transparent; border-radius:8px; background:none; padding:8px; cursor:pointer; font:inherit; transition:border-color .15s, background .15s; }
 .other-works-panel-list .other-work-card-big:hover { background:#f7f2ea; border-color:var(--accent); }
@@ -465,11 +475,6 @@ body.has-other-works .correction-label { font-size:.76rem; }
   .home-mode-button .label { font-size:.8rem; }
   .account-slot-email { font-size:.6rem; }
   .quiz-grid { grid-template-columns:1fr; }
-  /* En mobile, la topbar (Accueil/Plein écran/nav de correction) devient fixe pour rester au
-     même niveau que le hamburger, plutôt que de dépendre de la position de défilement. */
-  #other-works-panel .quiz-bottom-bar { position:fixed; top:8px; right:110px; left:auto; z-index:150; background:var(--paper); padding:4px; border-radius:8px; margin:0; gap:6px; }
-  body.lefty #other-works-panel .quiz-bottom-bar { right:auto; left:110px; }
-  #other-works-panel .quiz-bottom-bar .nav-bottom-button { font-size:.72rem; padding:6px 8px; }
   .home-icon-button { width:26px; height:26px; font-size:.85rem; }
   #other-works-panel-list { margin-top:36px; }
   .artwork-card { min-height:52vh; padding:10px; }

@@ -517,6 +517,7 @@ function applyMonCompteExplanationsVisibility() {
   const show = getGlobalPrefs().showExplanations;
   $('pf-fields-explanation')?.classList.toggle('hidden', !show);
   $('pf-rubriques-explanation')?.classList.toggle('hidden', !show);
+  $('pf-tech-explanation')?.classList.toggle('hidden', !show);
 }
 $('pf-show-explanations')?.addEventListener('change', () => {
   setGlobalPref('showExplanations', $('pf-show-explanations').checked);
@@ -1535,39 +1536,41 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
 function renderCorrection(answer, question) {
   correctionMainWork = question;
   renderCorrectionDetails(question, question, answer);
-
-  // Pour les quiz où un même peintre a plusieurs œuvres (ex. niveau 200 œuvres), on montre les
-  // autres pour aider à les mémoriser ensemble. Recherche sur toute la base connue de l'artiste
-  // (tous niveaux confondus, cf. state.allRowsForArtistLookup) — pas seulement le niveau choisi
-  // pour ce quiz, pour ne rien manquer de ce que l'artiste a d'autre dans la base.
-  const otherWorksSource = state.allRowsForArtistLookup || state.fullQuestions;
-  const otherWorks = otherWorksSource
-    .filter((otherQuestion) => otherQuestion !== question && keyName(otherQuestion.artist) === keyName(question.artist))
+}
+let currentArtistWorksIndex = -1;
+async function openArtistWorksPage(idx) {
+  const row = artistListSortedRows[idx];
+  if (!row) return;
+  currentArtistWorksIndex = idx;
+  const artistName = String(row['Artiste'] || '');
+  closeModal('modal-artist-list');
+  showPanel('other-works');
+  $('other-works-artist-name').textContent = artistName;
+  $('other-works-artist-flag').textContent = nationalityFlag(row['Nationalité']);
+  $('other-works-artist-dates').textContent = '';
+  const list = $('other-works-panel-list');
+  list.innerHTML = '<p class="modal-hint">Chargement des œuvres…</p>';
+  const arts = String(row['Art(s)'] || '').split(',').map((s) => keyName(s.trim())).filter(Boolean);
+  const centuries = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+  let allRows = [];
+  for (const art of arts) {
+    for (const century of centuries) {
+      try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+    }
+  }
+  const works = allRows
+    .filter((w) => keyName(w.artist) === keyName(artistName))
     .sort((a, b) => {
-      // Tri par niveau croissant d'abord (les œuvres les plus célèbres de l'artiste en tête),
-      // puis chronologique ascendant au sein d'un même niveau, à partir de la première année
-      // détectable dans la date. Les dates sans année exploitable sont placées à la fin de leur
-      // groupe de niveau.
-      const levelA = a.niveau || 1; const levelB = b.niveau || 1;
-      if (levelA !== levelB) return levelA - levelB;
       const yearA = yearsOf(a.date)[0]; const yearB = yearsOf(b.date)[0];
       if (yearA == null && yearB == null) return 0;
       if (yearA == null) return 1;
       if (yearB == null) return -1;
       return yearA - yearB;
     });
-  const otherWorksBox = $('other-works');
-  // Les autres œuvres ne s'affichent plus automatiquement en ligne : le bloc ne montre qu'un
-  // bouton (« Voir les autres œuvres… »), et le détail (images plus grandes, triées et
-  // regroupées par niveau) s'ouvre dans une page dédiée sur demande — cf. #other-works-panel.
-  state.currentOtherWorks = otherWorks;
-  if (!otherWorks.length) {
-    otherWorksBox.classList.add('hidden');
-    document.body.classList.remove('has-other-works');
-    return;
-  }
-  otherWorksBox.classList.remove('hidden');
-  document.body.classList.add('has-other-works');
+  if (works[0]?.artistDates) $('other-works-artist-dates').textContent = works[0].artistDates;
+  state.currentOtherWorks = works;
+  if (!works.length) { list.innerHTML = '<p class="modal-hint">Aucune œuvre trouvée pour cet artiste.</p>'; return; }
+  renderOtherWorksPanel();
 }
 function renderOtherWorksPanel() {
   const otherWorks = state.currentOtherWorks || [];
@@ -1734,20 +1737,30 @@ function filteredArtistListRows() {
     return true;
   });
 }
+let artistListSortedRows = [];
+function artFormIcons(rawValue) {
+  const v = keyName(rawValue);
+  const parts = [];
+  if (v.includes('peinture')) parts.push('<span title="Peinture" aria-label="Peinture">🖼️</span>');
+  if (v.includes('sculpture')) parts.push('<span title="Sculpture" aria-label="Sculpture">🗿</span>');
+  return parts.join(' ') || escapeHtml(rawValue || '');
+}
 function renderArtistListTable() {
   const container = $('artist-list-table');
   const { col, dir } = artistListSort;
   const sorted = filteredArtistListRows().sort((a, b) => dir * String(a[col] || '').localeCompare(String(b[col] || ''), 'fr'));
+  artistListSortedRows = sorted;
   const html = ['<table class="artist-table"><thead><tr>'];
   ARTIST_LIST_COLS.forEach((c) => {
     const arrow = col === c.key ? (dir === 1 ? ' ▲' : ' ▼') : '';
     html.push(`<th class="sortable-col" data-col="${c.key}">${c.label}${arrow}</th>`);
   });
   html.push('</tr></thead><tbody>');
-  sorted.forEach((r) => {
+  sorted.forEach((r, idx) => {
     // Nom affiché tel qu'enregistré dans le fichier (prénom en casse normale, nom de famille en
-    // majuscules) — pas de mise en majuscules forcée de l'ensemble.
-    html.push(`<tr><td>${formatArtistListName(String(r['Artiste'] || ''))}</td><td>${escapeHtml(r['Nationalité'] || '')}</td><td>${escapeHtml(r['Art(s)'] || '')}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
+    // majuscules) — pas de mise en majuscules forcée de l'ensemble. Cliquable : ouvre la fiche
+    // « autres œuvres » de cet artiste.
+    html.push(`<tr><td><button type="button" class="artist-name-link" data-idx="${idx}">${formatArtistListName(String(r['Artiste'] || ''))}</button></td><td>${nationalityFlag(r['Nationalité']) || escapeHtml(r['Nationalité'] || '')}</td><td>${artFormIcons(r['Art(s)'])}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
   });
   html.push('</tbody></table>');
   container.innerHTML = html.join('');
@@ -1758,11 +1771,14 @@ function renderArtistListTable() {
       renderArtistListTable();
     });
   });
+  container.querySelectorAll('.artist-name-link').forEach((btn) => {
+    btn.addEventListener('click', () => openArtistWorksPage(Number(btn.dataset.idx)));
+  });
   const status = $('artist-list-status');
   const hasFilter = artistListMode === 'filtered' && (artistListFilters.nationalite || artistListFilters.art || artistListFilters.siecle);
   status.textContent = hasFilter
     ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant au filtre (sur ${artistListRows.length} au total).`
-    : `${artistListRows.length} artistes référencés dans les quiz. Cliquez sur un en-tête de colonne pour trier.`;
+    : `${artistListRows.length} artistes référencés dans les quiz. Cliquez sur un nom pour voir ses œuvres.`;
 }
 function setArtistListMode(mode) {
   artistListMode = mode;
@@ -3354,9 +3370,11 @@ function applyHandedness(lefty) {
 applyHandedness(localStorage.getItem('handedness') === 'lefty');
 
 // Bandeau du haut déplaçable : glisser la poignée ⠿, position mémorisée sur l'appareil.
-$('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
-$('other-works-back-button')?.addEventListener('click', () => showPanel('quiz'));
-$('other-works-next-button')?.addEventListener('click', () => { showPanel('quiz'); goToNextOrResults(); });
+$('other-works-back-button')?.addEventListener('click', () => { showPanel('training-hub'); openModal('modal-artist-list'); });
+$('other-works-next-button')?.addEventListener('click', () => {
+  const nextIdx = currentArtistWorksIndex + 1;
+  if (nextIdx < artistListSortedRows.length) openArtistWorksPage(nextIdx);
+});
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
 const ART_LABELS = { peinture: 'Peinture', sculpture: 'Sculpture' };
