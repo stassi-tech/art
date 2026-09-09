@@ -31,6 +31,12 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
    pour voir tout de suite l'effet sur le bouton en refermant. */
 .config-popup-backdrop { position:fixed; inset:0; background:rgba(20,20,20,.55); z-index:150; }
 .config-popup-mode { position:fixed !important; top:50%; left:50%; transform:translate(-50%, -50%); z-index:151; max-height:88vh; overflow-y:auto; width:min(680px, 92vw); box-shadow:0 20px 60px rgba(0,0,0,.4); }
+/* Croix de fermeture standard d'une fenêtre modale, dans son coin supérieur droit — invisible
+   hors du mode fenêtre superposée (elle ne sert à rien sur une page normale). */
+.modal-close-x { display:none; }
+.config-popup-mode .modal-close-x { display:flex; position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:#fff; border:1px solid var(--border); color:var(--ink); font-size:1rem; align-items:center; justify-content:center; cursor:pointer; z-index:5; box-shadow:0 1px 4px rgba(0,0,0,.15); }
+.config-popup-mode .modal-close-x:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); }
+.config-popup-mode .settings-title-band { padding-right:60px; }
 /* Panneaux "hauts" (plusieurs accordéons empilés) : marge fixe en haut plutôt que centrage
    vertical automatique, sinon leur partie supérieure dépasse au-dessus de l'écran et tout
    semble tassé vers le bas. Plus larges aussi, pour respirer davantage. */
