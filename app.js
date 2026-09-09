@@ -1601,6 +1601,12 @@ function renderOtherWorksPanel() {
       const titleValue = formatCorrectionValue('title', work.title);
       $('lightbox-image').src = imageSource(work.image);
       $('lightbox-caption').innerHTML = `<strong>${titleValue}</strong><br>${escapeHtml(work.date)} — ${escapeHtml(work.location)}`;
+      const sourceLink = $('lightbox-source-link');
+      const commonsUrl = commonsFilePageUrl(imageSource(work.image));
+      if (sourceLink) {
+        if (commonsUrl) { sourceLink.href = commonsUrl; sourceLink.classList.remove('hidden'); }
+        else sourceLink.classList.add('hidden');
+      }
       $('image-lightbox').classList.remove('hidden');
     });
   });
