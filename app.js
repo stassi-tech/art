@@ -1008,9 +1008,9 @@ function normaliseRows(rows) {
 
     // --- Lieu : nouvelle structure Ville/Lieu précis/Sous-lieu si présente, sinon ancienne
     // colonne unique « lieu de conservation ». Affichage : Sous-lieu, Lieu précis, Ville.
-    const villeKey = findColumn(row, ['ville']);
-    const lieuPrecisKey = findColumn(row, ['lieu precis']);
-    const sousLieuKey = findColumn(row, ['sous lieu']);
+    const villeKey = findColumn(row, ['ville', 'ville de creation']);
+    const lieuPrecisKey = findColumn(row, ['lieu precis', 'lieu precis de conservation']);
+    const sousLieuKey = findColumn(row, ['sous lieu', 'sous lieu de conservation']);
     let location;
     if (villeKey || lieuPrecisKey) {
       const ville = villeKey ? String(row[villeKey] || '').trim() : '';
