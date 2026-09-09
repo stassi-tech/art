@@ -1750,9 +1750,12 @@ function showReconConfig() {
   showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon'); restoreLastSelection('reconstitution-setup-panel'); applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
 }
 $('open-reconstitution-setup')?.addEventListener('click', () => {
-  applyGlobalFieldDefaultsTo('recon');
-  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('reconstitution-setup-panel');
-  else suppressSaveLastSelection = true;
+  if (hasPerExerciseFieldOverride('reconstitution-setup-panel') || hasPerExerciseRubriqueOverride('reconstitution-setup-panel')) {
+    restoreLastSelection('reconstitution-setup-panel');
+  } else {
+    applyGlobalFieldDefaultsTo('recon');
+  }
+  suppressSaveLastSelection = true;
   applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
   $('recon-start-button')?.click();
 });
@@ -1770,9 +1773,12 @@ function showVfConfig() {
   showPanel('vraifaux-setup'); populateVfVoices(); speakObjective('vf'); restoreLastSelection('vraifaux-setup-panel');
 }
 $('open-vraifaux-setup')?.addEventListener('click', () => {
-  applyGlobalFieldDefaultsTo('vf');
-  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('vraifaux-setup-panel');
-  else suppressSaveLastSelection = true;
+  if (hasPerExerciseFieldOverride('vraifaux-setup-panel') || hasPerExerciseRubriqueOverride('vraifaux-setup-panel')) {
+    restoreLastSelection('vraifaux-setup-panel');
+  } else {
+    applyGlobalFieldDefaultsTo('vf');
+  }
+  suppressSaveLastSelection = true;
   $('vf-start-button')?.click();
 });
 $('vraifaux-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -1788,9 +1794,12 @@ function showFamConfig() {
   showPanel('famille-setup'); populateFamVoices(); speakObjective('fam'); restoreLastSelection('famille-setup-panel');
 }
 $('open-famille-setup')?.addEventListener('click', () => {
-  applyGlobalFieldDefaultsTo('fam');
-  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('famille-setup-panel');
-  else suppressSaveLastSelection = true;
+  if (hasPerExerciseFieldOverride('famille-setup-panel') || hasPerExerciseRubriqueOverride('famille-setup-panel')) {
+    restoreLastSelection('famille-setup-panel');
+  } else {
+    applyGlobalFieldDefaultsTo('fam');
+  }
+  suppressSaveLastSelection = true;
   $('fam-start-button')?.click();
 });
 $('famille-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -1816,9 +1825,12 @@ function showChronoConfig() {
   showPanel('chrono-setup'); speakObjective('chrono'); restoreLastSelection('chrono-setup-panel');
 }
 $('open-chrono-setup')?.addEventListener('click', () => {
-  applyGlobalFieldDefaultsTo('chrono');
-  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('chrono-setup-panel');
-  else suppressSaveLastSelection = true;
+  if (hasPerExerciseFieldOverride('chrono-setup-panel') || hasPerExerciseRubriqueOverride('chrono-setup-panel')) {
+    restoreLastSelection('chrono-setup-panel');
+  } else {
+    applyGlobalFieldDefaultsTo('chrono');
+  }
+  suppressSaveLastSelection = true;
   $('chrono-start-button')?.click();
 });
 $('chrono-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
@@ -3254,6 +3266,10 @@ applyHandedness(localStorage.getItem('handedness') === 'lefty');
   let dragging = false, startX = 0, startY = 0, startTop = 0, startLeft = 0;
   handle.addEventListener('pointerdown', (event) => {
     dragging = true;
+    // Pendant le glissement, on neutralise les tuiles de fond : sans ça, le curseur qui les
+    // traverse déclenche leur effet de zoom au survol tuile après tuile, donnant l'impression
+    // que le fond « suit » le geste.
+    document.body.classList.add('dragging-topbar');
     const rect = wrap.getBoundingClientRect();
     startX = event.clientX; startY = event.clientY;
     startTop = rect.top; startLeft = rect.left;
@@ -3270,6 +3286,7 @@ applyHandedness(localStorage.getItem('handedness') === 'lefty');
   function endDrag() {
     if (!dragging) return;
     dragging = false;
+    document.body.classList.remove('dragging-topbar');
     const rect = wrap.getBoundingClientRect();
     localStorage.setItem('topbarPosition', JSON.stringify({ top: rect.top, left: rect.left }));
   }
@@ -3450,6 +3467,18 @@ function shouldAutoStart(prefix) {
   if (gr.remember && (gr.rubriques?.length || gr.levels?.length)) return true;
   return localStorage.getItem(`autoStart_${prefix}`) === 'true';
 }
+// Un choix propre à un exercice (fait via son icône ✏️) doit primer sur le choix général : sinon
+// personnaliser un jeu en particulier ne servirait à rien dès qu'un choix général existe.
+function hasPerExerciseFieldOverride(panelId) {
+  let state;
+  try { state = JSON.parse(localStorage.getItem(`lastSelection_${panelId}`) || '{}'); } catch (e) { return false; }
+  return Object.keys(state).some((k) => state[k] && /-(art|century|zone)-/.test(k));
+}
+function hasPerExerciseRubriqueOverride(panelId) {
+  let state;
+  try { state = JSON.parse(localStorage.getItem(`lastSelection_${panelId}`) || '{}'); } catch (e) { return false; }
+  return Object.keys(state).some((k) => state[k] && /-(field|level)-/.test(k));
+}
 function applyGlobalFieldDefaultsTo(prefix) {
   const gf = readGlobalFieldDefaults();
   const gr = readGlobalRubriqueDefaults();
@@ -3504,9 +3533,12 @@ function showImpConfig() {
   showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel'); const p = getGlobalPrefs(); if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); $('imp-opt-advance').dispatchEvent(new Event('change')); }
 }
 $('open-impregnation-setup')?.addEventListener('click', () => {
-  applyGlobalFieldDefaultsTo('imp');
-  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('impregnation-setup-panel');
-  else suppressSaveLastSelection = true;
+  if (hasPerExerciseFieldOverride('impregnation-setup-panel') || hasPerExerciseRubriqueOverride('impregnation-setup-panel')) {
+    restoreLastSelection('impregnation-setup-panel');
+  } else {
+    applyGlobalFieldDefaultsTo('imp');
+  }
+  suppressSaveLastSelection = true;
   // Synchronise l'avancement (auto/manuel) et son délai depuis les préférences générales, comme
   // le faisait la page de configuration qu'on ne montre plus — sinon la valeur par défaut du
   // formulaire (auto) est utilisée à chaque fois, quel que soit le choix du joueur.
@@ -3662,9 +3694,12 @@ function showIntrusConfig() {
   showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus'); restoreLastSelection('intrus-setup-panel'); applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
 }
 $('open-intrus-setup')?.addEventListener('click', () => {
-  applyGlobalFieldDefaultsTo('intrus');
-  if (!readGlobalFieldDefaults().remember && !readGlobalRubriqueDefaults().remember) restoreLastSelection('intrus-setup-panel');
-  else suppressSaveLastSelection = true;
+  if (hasPerExerciseFieldOverride('intrus-setup-panel') || hasPerExerciseRubriqueOverride('intrus-setup-panel')) {
+    restoreLastSelection('intrus-setup-panel');
+  } else {
+    applyGlobalFieldDefaultsTo('intrus');
+  }
+  suppressSaveLastSelection = true;
   applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
   $('intrus-start-button')?.click();
 });

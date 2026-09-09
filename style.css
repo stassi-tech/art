@@ -2,6 +2,8 @@
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
 .bg-mosaic { position:fixed; inset:0; z-index:0; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; }
+body.dragging-topbar .bg-mosaic { pointer-events:none; }
+body.dragging-topbar { touch-action:none; user-select:none; }
 .bg-tile { position:relative; overflow:hidden; background:#c9c1ae; cursor:pointer; }
 .bg-tile.touched, .bg-tile:hover { z-index:2; }
 .bg-tile img { width:100%; height:100%; object-fit:cover; display:block; filter:blur(6px) grayscale(.3); opacity:.45; transform:scale(1.15); transition:filter .35s, opacity .35s, transform .35s; }
