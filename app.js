@@ -437,9 +437,6 @@ function initProfilePage() {
   $('pf-show-explanations').checked = prefs.showExplanations;
   $('pf-audio').checked = prefs.audioOn;
   $('pf-handedness').value = document.body.classList.contains('lefty') ? 'left' : 'right';
-  $('pf-advance').value = prefs.defaultAdvance;
-  $('pf-delay').value = String(prefs.defaultDelay);
-  $('pf-delay-row').style.display = prefs.defaultAdvance === 'auto' ? 'flex' : 'none';
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   $('pf-voice').innerHTML = voices.length
     ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
@@ -463,6 +460,7 @@ function initProfilePage() {
     }
   }
   renderExerciseOverrides();
+  applyMonCompteExplanationsVisibility();
 }
 // Liste, sous chaque tableau (champ / rubrique), les exercices pour lesquels une sélection
 // spécifique a été mémorisée (via l'icône ✏️ sur leur bouton) — avec un bouton pour l'oublier.
@@ -515,7 +513,15 @@ $('profile-resume-exercise-button')?.addEventListener('click', () => {
 });
 $('pf-show-timer')?.addEventListener('change', () => setGlobalPref('showTimer', $('pf-show-timer').checked));
 $('pf-enter-validate')?.addEventListener('change', () => setGlobalPref('enterValidate', $('pf-enter-validate').checked));
-$('pf-show-explanations')?.addEventListener('change', () => setGlobalPref('showExplanations', $('pf-show-explanations').checked));
+function applyMonCompteExplanationsVisibility() {
+  const show = getGlobalPrefs().showExplanations;
+  $('pf-fields-explanation')?.classList.toggle('hidden', !show);
+  $('pf-rubriques-explanation')?.classList.toggle('hidden', !show);
+}
+$('pf-show-explanations')?.addEventListener('change', () => {
+  setGlobalPref('showExplanations', $('pf-show-explanations').checked);
+  applyMonCompteExplanationsVisibility();
+});
 $('pf-audio')?.addEventListener('change', () => setGlobalPref('audioOn', $('pf-audio').checked));
 $('pf-voice')?.addEventListener('change', () => setGlobalPref('voiceName', $('pf-voice').value));
 $('pf-handedness')?.addEventListener('change', () => {
@@ -523,11 +529,6 @@ $('pf-handedness')?.addEventListener('change', () => {
   localStorage.setItem('handedness', lefty ? 'lefty' : 'righty');
   applyHandedness(lefty);
 });
-$('pf-advance')?.addEventListener('change', () => {
-  setGlobalPref('defaultAdvance', $('pf-advance').value);
-  $('pf-delay-row').style.display = $('pf-advance').value === 'auto' ? 'flex' : 'none';
-});
-$('pf-delay')?.addEventListener('change', () => setGlobalPref('defaultDelay', Number($('pf-delay').value)));
 
 // --- Choix de champ (art/siècle/zone) : si mémorisé, chaque bouton d'exercice démarre
 // directement dessus, sans repasser par sa page de configuration. ---
@@ -3672,7 +3673,7 @@ document.querySelectorAll('.training-soon').forEach((btn) => {
 // synchronisée à la voix de synthèse, sans notation.
 // ============================================================
 function showImpConfig() {
-  showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel'); const p = getGlobalPrefs(); if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); $('imp-opt-advance').dispatchEvent(new Event('change')); }
+  showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel');
 }
 $('open-impregnation-setup')?.addEventListener('click', () => {
   if (hasPerExerciseFieldOverride('impregnation-setup-panel') || hasPerExerciseRubriqueOverride('impregnation-setup-panel')) {
@@ -3681,11 +3682,6 @@ $('open-impregnation-setup')?.addEventListener('click', () => {
     applyGlobalFieldDefaultsTo('imp');
   }
   suppressSaveLastSelection = true;
-  // Synchronise l'avancement (auto/manuel) et son délai depuis les préférences générales, comme
-  // le faisait la page de configuration qu'on ne montre plus — sinon la valeur par défaut du
-  // formulaire (auto) est utilisée à chaque fois, quel que soit le choix du joueur.
-  const p = getGlobalPrefs();
-  if ($('imp-opt-advance')) { $('imp-opt-advance').value = p.defaultAdvance; $('imp-opt-delay').value = String(p.defaultDelay); }
   $('imp-start-button')?.click();
 });
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
@@ -3703,10 +3699,6 @@ IMP_ACCORDIONS.forEach((pair) => {
   });
 });
 
-$('imp-opt-advance')?.addEventListener('change', () => {
-  $('imp-delay-row').style.display = $('imp-opt-advance').value === 'manual' ? 'none' : 'flex';
-});
-
 function populateImpVoices() {
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   const select = $('imp-opt-voice');
@@ -3721,7 +3713,7 @@ function impSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19
 function impSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`imp-zone-${z}`)?.checked); }
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
-let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impAdvanceMode = 'auto', impSelectedVoice = null;
+let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null;
 const impTimer = createTimer('topbar-timer');
 
 function impClearTimers() { impTimers.forEach(clearTimeout); impTimers = []; }
@@ -3737,11 +3729,8 @@ function impSpeak(text) {
 $('imp-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('imp', 'impregnation-setup-panel');
   saveLastSelection('impregnation-setup-panel');
-  // Lu tout de suite (avant le chargement réseau, potentiellement long) plutôt qu'après les
-  // attentes asynchrones plus bas — plus robuste si quoi que ce soit d'autre modifie la page
-  // entre-temps.
-  const advanceModeAtClick = $('imp-opt-advance').value;
-  const delayAtClick = $('imp-opt-delay').value;
+  // Avancement toujours manuel désormais (flèche → ou touche Entrée) — plus de défilement
+  // automatique, qui posait des problèmes de synchronisation difficiles à diagnostiquer.
   let arts = impSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = impSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
   let levels = impSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
@@ -3766,9 +3755,7 @@ $('imp-start-button')?.addEventListener('click', async () => {
     // Mélange, sans limitation de nombre : tout l'échantillon correspondant au choix.
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     IMP_SESSION = pool;
-    impAdvanceMode = advanceModeAtClick;
     impAudioOn = getGlobalPrefs().audioOn;
-    impDelayMs = Number(delayAtClick);
     impSelectedVoice = getGlobalVoice();
     impIndex = 0;
     showPanel('impregnation');
@@ -3778,11 +3765,6 @@ $('imp-start-button')?.addEventListener('click', async () => {
     feedback.textContent = `Erreur : ${error.message}`;
   }
 });
-
-function impScheduleAdvance(ms) {
-  if (impAdvanceMode !== 'auto') return;
-  impTimers.push(setTimeout(() => { if (!impPaused && impIndex < IMP_SESSION.length - 1) { impIndex++; impShowCurrent(); } }, ms));
-}
 
 function impShowCurrent() {
   impClearTimers();
@@ -3821,8 +3803,6 @@ function impShowCurrent() {
     }, 400 + i * STAGGER));
   });
 
-  const totalWriteTime = 400 + fields.length * STAGGER;
-  impScheduleAdvance(totalWriteTime + 4000);
 }
 
 $('imp-pause-button')?.addEventListener('click', () => {
@@ -3832,6 +3812,17 @@ $('imp-pause-button')?.addEventListener('click', () => {
 });
 $('imp-prev-button')?.addEventListener('click', () => { if (impIndex > 0) { impIndex--; impShowCurrent(); } });
 $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSION.length - 1) { impIndex++; impShowCurrent(); } });
+// Touche Entrée : avance aussi à l'œuvre suivante quand on est sur Imprégnation, en plus du
+// clic sur la flèche → (le raccourci Entrée générique ne cible que les boutons .primary-button,
+// que la flèche n'est volontairement pas pour garder son style rond).
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return;
+  if (!getGlobalPrefs().enterValidate) return;
+  if (event.target.tagName === 'TEXTAREA') return;
+  if ($('impregnation-panel')?.classList.contains('hidden')) return;
+  event.preventDefault();
+  $('imp-next-button')?.click();
+});
 
 // ============================================================
 // MODULE INTRUS — retrouver la bonne image parmi 3 (mode « image »), ou la bonne référence

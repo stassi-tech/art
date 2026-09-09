@@ -144,16 +144,7 @@
             </div>
             <div>
               <p class="config-table-col-title">Avancement</p>
-              <select id="imp-opt-advance" style="width:100%;margin-bottom:8px;">
-                <option value="auto">Défilement automatique</option>
-                <option value="manual">Clic personnel</option>
-              </select>
-              <div id="imp-delay-row">
-                <select id="imp-opt-delay" style="width:100%;">
-                  <option value="2000">2 s</option>
-                  <option value="3000" selected>3 s</option>
-                </select>
-              </div>
+              <p class="modal-hint" style="margin-top:0;">Manuel : cliquez sur → ou appuyez sur Entrée pour passer à l'œuvre suivante.</p>
             </div>
           </div>
           <button type="button" class="secondary-button" id="imp-validate-choice-button" style="width:100%;margin-top:8px;">Valider mon choix pour ce jeu →</button>
@@ -983,16 +974,10 @@
             <div class="opt-row"><span>Emplacement des boutons :</span>
               <select id="pf-handedness"><option value="right">Droite (droitier)</option><option value="left">Gauche (gaucher)</option></select>
             </div>
-            <div class="opt-row"><span>Avancement par défaut :</span>
-              <select id="pf-advance"><option value="manual">Clic personnel</option><option value="auto">Défilement automatique</option></select>
-            </div>
-            <div class="opt-row" id="pf-delay-row"><span>Délai avant le défilement :</span>
-              <select id="pf-delay"><option value="3000">3 s</option><option value="5000" selected>5 s</option><option value="8000">8 s</option></select>
-            </div>
           </div>
 
           <div id="profile-section-fields" class="hidden">
-            <p class="modal-hint" style="margin-top:0;">Le champ, c'est l'art et le siècle. Ce choix s'applique aux jeux d'entraînement <strong>et</strong> au quiz final — les deux sont liés : on s'entraîne sur un champ, puis on s'évalue sur ce même champ. Si vous les cochez ici, tous les exercices et le quiz démarreront directement dessus, sans repasser par leur configuration. Rien coché = toutes les possibilités (art, siècle, zone confondus).</p>
+            <p class="modal-hint" id="pf-fields-explanation" style="margin-top:0;">Le champ, c'est l'art, le siècle et la zone géographique. Ce choix s'applique a priori aux jeux d'entraînement et au quiz final — les deux sont liés : on s'entraîne sur un champ, puis on s'évalue sur ce même champ. Si vous cochez ici vos choix, tous les exercices et le quiz démarreront avec ces paramètres. Si vous ne cochez rien, vous travaillerez sur les champs les plus étendus, avec le plus haut niveau de difficulté. Vous pouvez modifier ces paramètres pour un exercice à partir de son bouton dans le menu des exercices.</p>
             <div class="config-table config-table-3">
               <div>
                 <p class="config-table-col-title">Art</p>
@@ -1022,7 +1007,7 @@
           </div>
 
           <div id="profile-section-rubriques" class="hidden">
-            <p class="modal-hint" style="margin-top:0;">La rubrique, c'est ce qui est testé (artiste, titre, date…) ; le niveau va avec. Utilisé là où l'exercice le permet. Rien coché = tout est proposé (toutes rubriques, tous niveaux).</p>
+            <p class="modal-hint" id="pf-rubriques-explanation" style="margin-top:0;">Les rubriques vous permettent d'identifier précisément une œuvre (auteur, titre, date de création, matériau, dimension, lieu de conservation). Les niveaux correspondent à la célébrité des artistes ou des œuvres : du niveau 1, les plus connus, au niveau 3, les moins connus. Si vous ne cochez rien, vous travaillerez avec le plus grand nombre de rubriques, avec le plus haut niveau de difficulté. Vous pouvez modifier ces paramètres pour un exercice à partir de son bouton dans le menu des exercices.</p>
             <div class="config-table config-table-3">
               <div>
                 <p class="config-table-col-title">Rubriques</p>
@@ -1048,7 +1033,6 @@
                 <label class="rubrique-option"><input type="radio" name="pf-count" value="custom" /><span>Nombre personnalisé :</span>
                   <input type="number" id="pf-count-custom" min="1" max="200" style="width:70px;margin-left:6px;padding:4px;" />
                 </label>
-                <p class="modal-hint" style="margin-bottom:0;">Appliqué à la valeur la plus proche disponible dans chaque exercice.</p>
               </div>
             </div>
             <button type="button" class="secondary-button" id="pf-rubriques-clear" style="width:100%;margin-top:8px;">Effacer ce choix</button>
@@ -1074,6 +1058,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=91"></script>
+    <script src="app.js?v=93"></script>
   </body>
 </html>
