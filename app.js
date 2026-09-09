@@ -717,6 +717,19 @@ function applyDefaultAdvance(checkboxId, delayId, delayRowId) {
   if ($(delayRowId)) $(delayRowId).style.display = checkbox.checked ? 'flex' : 'none';
 }
 
+// Bandeau du haut : nom de l'exercice + progression à gauche, score à droite — mis à jour à
+// chaque question par chacun des jeux. Vidé automatiquement par showPanel() en dehors d'un jeu.
+function updateTopBanner(exerciseName, progressText) {
+  if ($('topbar-exercise-name')) $('topbar-exercise-name').textContent = exerciseName || '';
+  if ($('topbar-exercise-progress')) $('topbar-exercise-progress').textContent = progressText || '';
+}
+function updateTopBannerScore(scoreText) {
+  if ($('topbar-score')) $('topbar-score').textContent = scoreText || '';
+}
+function clearTopBanner() {
+  updateTopBanner('', '');
+  updateTopBannerScore('');
+}
 function createTimer(labelElementId) {
   let startTime = null, interval = null;
   function tick() {
@@ -736,7 +749,7 @@ function createTimer(labelElementId) {
     stop() { if (interval) clearInterval(interval); interval = null; return startTime ? Math.round((Date.now() - startTime) / 1000) : 0; },
   };
 }
-const quizTimer = createTimer('quiz-timer');
+const quizTimer = createTimer('topbar-timer');
 
 // Mémorise et restaure la dernière sélection de cases à cocher d'un jeu (art/siècle/niveau/zone…)
 // sur l'appareil, pour éviter de tout recocher à chaque partie. On cible toutes les cases du
@@ -1241,6 +1254,10 @@ function showPanel(name) {
   // (voix qui parle d'une œuvre sans rapport avec ce qui est affiché).
   if (window.speechSynthesis) speechSynthesis.cancel();
   document.querySelectorAll('.chrono-drag-ghost').forEach((g) => g.remove());
+  // Vide le bandeau (nom d'exercice, progression, score) sauf si on va justement vers un jeu —
+  // chaque jeu le remplit ensuite lui-même à chaque question.
+  const PLAY_PANELS = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'];
+  if (!PLAY_PANELS.includes(name)) clearTopBanner();
   // Nettoie le mode « fenêtre superposée » (configuration d'un jeu ouverte par-dessus le menu) à
   // chaque vraie navigation — sinon la classe et le fond assombri resteraient collés au panneau.
   document.querySelectorAll('.config-popup-mode').forEach((el) => el.classList.remove('config-popup-mode'));
@@ -1322,9 +1339,11 @@ function renderQuestion() {
   const question = state.questions[state.index]; const answer = answerFor(state.index);
   const modeLabel = state.mode === 'review' ? 'Révision des erreurs — ' : '';
   $('quiz-reference').textContent = `${state.quizConfig?.reference || ''} — ${modeLabel}Q. ${state.index + 1}/${state.questions.length}`;
+  updateTopBanner('Quiz final', `${modeLabel}Question ${state.index + 1}/${state.questions.length}`);
   $('progress-bar').style.width = `${((state.index + 1) / state.questions.length) * 100}%`;
   const possible = checkedQuestions() * activeFields().length;
   $('score-summary').textContent = `${totalCorrect()} / ${possible} point${totalCorrect() > 1 ? 's' : ''}`;
+  updateTopBannerScore(`${totalCorrect()}/${possible} pt${totalCorrect() > 1 ? 's' : ''}`);
   displayArtworkImage(question, `Œuvre ${state.index + 1}`, answer.checked);
   document.body.classList.toggle('four-fields', state.selectedFieldKeys.length >= 4);
   allFields.forEach(({ key, input }) => {
@@ -1881,7 +1900,7 @@ $('chrono-scores-link')?.addEventListener('click', () => { speechSynthesis.cance
 $('chrono-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
 let CHRONO_SESSION = [], chronoIndex = 0, chronoScore = 0, chronoAnswered = false, chronoSelectedOrder = [], chronoTimers = [];
-const chronoTimer = createTimer('chrono-timer');
+const chronoTimer = createTimer('topbar-timer');
 
 $('chrono-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('chrono', 'chrono-setup-panel');
@@ -1972,8 +1991,10 @@ function chronoShowQuestion() {
   chronoAnswered = false;
   const q = CHRONO_SESSION[chronoIndex];
   $('chrono-progress-label').textContent = `Question ${chronoIndex + 1} / ${CHRONO_SESSION.length}`;
+  updateTopBanner('Chronologie', `Question ${chronoIndex + 1}/${CHRONO_SESSION.length}`);
   $('chrono-progress-bar').style.width = `${(chronoIndex / CHRONO_SESSION.length) * 100}%`;
   $('chrono-score-label').textContent = `${chronoScore} point${chronoScore > 1 ? 's' : ''}`;
+  updateTopBannerScore(`${chronoScore} pt${chronoScore > 1 ? 's' : ''}`);
   $('chrono-correction').classList.add('hidden');
   $('chrono-correct-table').classList.add('hidden');
   $('chrono-validate-button').classList.remove('hidden');
@@ -2084,6 +2105,7 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   const pointEarned = isCorrect ? 1 : 0;
   chronoScore = Math.round((chronoScore + pointEarned) * 10) / 10;
   $('chrono-score-label').textContent = `${chronoScore} point${chronoScore > 1 ? 's' : ''}`;
+  updateTopBannerScore(`${chronoScore} pt${chronoScore > 1 ? 's' : ''}`);
 
   $('chrono-verdict').textContent = isCorrect ? 'Exact' : 'À réviser';
   $('chrono-verdict').style.color = isCorrect ? 'var(--ok)' : 'var(--wrong)';
@@ -2598,7 +2620,7 @@ function detectCenturyFromDate(dateStr) {
 }
 
 let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [], famStep = 1, famTimers = [], famPickedLabel = null;
-const famTimer = createTimer('fam-timer');
+const famTimer = createTimer('topbar-timer');
 function famSpeak(text, onEnd) {
   if (!famAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
@@ -2688,6 +2710,8 @@ function famShowQuestion() {
   const q = FAM_SESSION[famIndex];
   $('fam-progress-label').textContent = `Question ${famIndex + 1} / ${FAM_SESSION.length}`;
   $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
+  updateTopBanner('Famille', `Question ${famIndex + 1}/${FAM_SESSION.length}`);
+  updateTopBannerScore(`${famScore} pt${famScore > 1 ? 's' : ''}`);
   $('fam-progress-bar').style.width = `${(famIndex / FAM_SESSION.length) * 100}%`;
   $('fam-correction').classList.add('hidden');
   $('fam-step0').classList.remove('hidden');
@@ -2732,6 +2756,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
   const pointEarned = imagesCorrect ? 1 : 0;
   famScore = Math.round((famScore + pointEarned) * 10) / 10;
   $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
+  updateTopBannerScore(`${famScore} pt${famScore > 1 ? 's' : ''}`);
 
   $('fam-verdict').textContent = imagesCorrect ? 'Exact' : 'À réviser';
   $('fam-verdict').style.color = imagesCorrect ? 'var(--ok)' : 'var(--wrong)';
@@ -2854,7 +2879,7 @@ function vfFieldValue(row, key) {
 }
 
 let VF_SESSION = [], vfIndex = 0, vfScore = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null, vfTimers = [];
-const vfTimer = createTimer('vf-timer');
+const vfTimer = createTimer('topbar-timer');
 function vfSpeak(text, onEnd) {
   if (!vfAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
@@ -2948,8 +2973,10 @@ function vfShowQuestion() {
   vfAnswered = false;
   const q = VF_SESSION[vfIndex];
   $('vf-progress-label').textContent = `Question ${vfIndex + 1} / ${VF_SESSION.length}`;
+  updateTopBanner('Vrai/Faux', `Question ${vfIndex + 1}/${VF_SESSION.length}`);
   $('vf-progress-bar').style.width = `${(vfIndex / VF_SESSION.length) * 100}%`;
   $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''}`;
+  updateTopBannerScore(`${vfScore} pt${Math.abs(vfScore) >= 2 ? 's' : ''}`);
   $('vf-correction').classList.add('hidden');
   $('vf-validate-button').classList.remove('hidden');
   $('vf-validate-button').disabled = false;
@@ -3012,6 +3039,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
   const questionScore = (correctFinds === totalErrors && falseAlarms === 0) ? 1 : 0;
   vfScore = Math.round((vfScore + questionScore) * 10) / 10;
   $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''}`;
+  updateTopBannerScore(`${vfScore} pt${Math.abs(vfScore) >= 2 ? 's' : ''}`);
 
   const naturalPhrase = (key, value) => {
     const phrases = {
@@ -3128,7 +3156,7 @@ function reconSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].
 function reconSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`recon-level-${lvl}`)?.checked); }
 
 let RECON_SESSION = [], reconIndex = 0, reconCorrectCount = 0, reconAnswered = false, reconAudioOn = true, reconSelectedVoice = null, reconAutoAdvance = false, reconAutoAdvanceDelay = 5000, reconExtraFields = [], reconTimers = [];
-const reconTimer = createTimer('recon-timer');
+const reconTimer = createTimer('topbar-timer');
 $('recon-opt-autoadvance')?.addEventListener('change', () => { $('recon-delay-row').style.display = $('recon-opt-autoadvance').checked ? 'flex' : 'none'; });
 function reconSpeak(text) {
   if (!reconAudioOn || !window.speechSynthesis) return;
@@ -3203,7 +3231,9 @@ function reconShowQuestion() {
   reconAnswered = false;
   const q = RECON_SESSION[reconIndex];
   $('recon-progress-label').textContent = `Question ${reconIndex + 1} / ${RECON_SESSION.length}`;
+  updateTopBanner('Reconstitution', `Question ${reconIndex + 1}/${RECON_SESSION.length}`);
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
+  updateTopBannerScore(`${reconCorrectCount}/${reconIndex}`);
   $('recon-progress-bar').style.width = `${(reconIndex / RECON_SESSION.length) * 100}%`;
   $('recon-correction').classList.add('hidden');
   $('recon-choices').classList.remove('hidden');
@@ -3248,6 +3278,7 @@ function reconAnswer(chosenIndex) {
   $('recon-correction-details').innerHTML = detailsParts.join('');
   $('recon-correction').classList.remove('hidden');
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex + 1} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
+  updateTopBannerScore(`${reconCorrectCount}/${reconIndex + 1}`);
   $('recon-next-button').textContent = reconIndex === RECON_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
   if (reconAutoAdvance) reconTimers.push(setTimeout(() => $('recon-next-button')?.click(), reconAutoAdvanceDelay));
 }
@@ -3303,48 +3334,6 @@ function applyHandedness(lefty) {
 applyHandedness(localStorage.getItem('handedness') === 'lefty');
 
 // Bandeau du haut déplaçable : glisser la poignée ⠿, position mémorisée sur l'appareil.
-(function initDraggableTopbar() {
-  const wrap = $('global-topbar');
-  const handle = $('global-topbar-handle');
-  if (!wrap || !handle) return;
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem('topbarPosition') || 'null'); } catch (e) {}
-  if (saved && typeof saved.top === 'number' && typeof saved.left === 'number') {
-    wrap.style.top = `${saved.top}px`;
-    wrap.style.left = `${saved.left}px`;
-    wrap.style.right = 'auto';
-  }
-  let dragging = false, startX = 0, startY = 0, startTop = 0, startLeft = 0;
-  handle.addEventListener('pointerdown', (event) => {
-    dragging = true;
-    // Pendant le glissement, on neutralise les tuiles de fond : sans ça, le curseur qui les
-    // traverse déclenche leur effet de zoom au survol tuile après tuile, donnant l'impression
-    // que le fond « suit » le geste.
-    document.body.classList.add('dragging-topbar');
-    const rect = wrap.getBoundingClientRect();
-    startX = event.clientX; startY = event.clientY;
-    startTop = rect.top; startLeft = rect.left;
-    try { handle.setPointerCapture(event.pointerId); } catch (e) { /* ignoré volontairement */ }
-  });
-  handle.addEventListener('pointermove', (event) => {
-    if (!dragging) return;
-    const newTop = Math.max(0, Math.min(window.innerHeight - 40, startTop + (event.clientY - startY)));
-    const newLeft = Math.max(0, Math.min(window.innerWidth - 40, startLeft + (event.clientX - startX)));
-    wrap.style.top = `${newTop}px`;
-    wrap.style.left = `${newLeft}px`;
-    wrap.style.right = 'auto';
-  });
-  function endDrag() {
-    if (!dragging) return;
-    dragging = false;
-    document.body.classList.remove('dragging-topbar');
-    const rect = wrap.getBoundingClientRect();
-    localStorage.setItem('topbarPosition', JSON.stringify({ top: rect.top, left: rect.left }));
-  }
-  handle.addEventListener('pointerup', endDrag);
-  handle.addEventListener('pointercancel', endDrag);
-})();
-
 $('show-other-works-button')?.addEventListener('click', () => { renderOtherWorksPanel(); showPanel('other-works'); });
 $('other-works-back-button')?.addEventListener('click', () => showPanel('quiz'));
 $('other-works-next-button')?.addEventListener('click', () => { showPanel('quiz'); goToNextOrResults(); });
@@ -3714,7 +3703,7 @@ function impSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].fi
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
 let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impAdvanceMode = 'auto', impSelectedVoice = null;
-const impTimer = createTimer('imp-timer');
+const impTimer = createTimer('topbar-timer');
 
 function impClearTimers() { impTimers.forEach(clearTimeout); impTimers = []; }
 function impSpeak(text) {
@@ -3778,6 +3767,7 @@ function impShowCurrent() {
   $('imp-pause-button').textContent = '⏸';
   const work = IMP_SESSION[impIndex];
   $('imp-progress-label').textContent = `Œuvre ${impIndex + 1} / ${IMP_SESSION.length}`;
+  updateTopBanner('Imprégnation', `Œuvre ${impIndex + 1}/${IMP_SESSION.length}`);
   $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
   $('imp-stage-img').src = imageSource(work.image);
 
@@ -3879,7 +3869,7 @@ function intrusSelectedZones() { return ['france', 'europe', 'amerique', 'asie']
 function intrusSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`intrus-level-${lvl}`)?.checked); }
 
 let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false, intrusAudioOn = true, intrusSelectedVoice = null, intrusAutoAdvance = false, intrusAutoAdvanceDelay = 5000, intrusExtraFields = [], intrusTimers = [];
-const intrusTimer = createTimer('intrus-timer');
+const intrusTimer = createTimer('topbar-timer');
 $('intrus-opt-autoadvance')?.addEventListener('change', () => { $('intrus-delay-row').style.display = $('intrus-opt-autoadvance').checked ? 'flex' : 'none'; });
 function intrusSpeak(text) {
   if (!intrusAudioOn || !window.speechSynthesis) return;
@@ -3986,7 +3976,9 @@ function intrusShowQuestion() {
   intrusAnswered = false;
   const q = INTRUS_SESSION[intrusIndex];
   $('intrus-progress-label').textContent = `Question ${intrusIndex + 1} / ${INTRUS_SESSION.length}`;
+  updateTopBanner('Intrus', `Question ${intrusIndex + 1}/${INTRUS_SESSION.length}`);
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
+  updateTopBannerScore(`${intrusCorrectCount}/${intrusIndex}`);
   $('intrus-progress-bar').style.width = `${(intrusIndex / INTRUS_SESSION.length) * 100}%`;
   $('intrus-correction').classList.add('hidden');
   $('intrus-choices').classList.remove('hidden');
@@ -4061,6 +4053,7 @@ function intrusAnswer(chosenIndex) {
   $('intrus-correction-details').innerHTML = detailsParts.join('');
   $('intrus-correction').classList.remove('hidden');
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
+  updateTopBannerScore(`${intrusCorrectCount}/${intrusIndex + 1}`);
   $('intrus-next-button').textContent = intrusIndex === INTRUS_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
   if (intrusAutoAdvance) intrusTimers.push(setTimeout(() => $('intrus-next-button')?.click(), intrusAutoAdvanceDelay));
 }
