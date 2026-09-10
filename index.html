@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=99" />
+    <link rel="stylesheet" href="style.css?v=101" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -28,6 +28,7 @@
         <button type="button" id="global-home-button" class="global-topbar-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
         <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
         <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
+        <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
         <button type="button" id="global-account-button" class="global-topbar-button" aria-label="Mon compte" title="Mon compte">👤</button>
       </div>
       <div class="topbar-zone topbar-zone-right" id="topbar-score"></div>
@@ -158,7 +159,13 @@
             <span id="imp-progress-label">Œuvre 1 / 10</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="imp-progress-bar"></div></div>
-          <div class="quiz-grid">
+          <div id="imp-ready-screen" style="text-align:center;padding:40px 20px;margin-top:20vh;">
+            <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Vous êtes prêt·e ? Cette galerie d'œuvres vous attend.</p>
+            <button type="button" class="primary-button" id="imp-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
+          </div>
+
+          <div class="quiz-grid hidden" id="imp-quiz-grid">
             <div class="artwork-column">
               <figure class="artwork-card">
                 <img id="imp-stage-img" alt="Œuvre" />
@@ -841,7 +848,13 @@
           </div>
           <div class="progress-track" id="quiz-progress-track"><div id="progress-bar" class="progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="quiz-ready-screen" style="text-align:center;padding:40px 20px;margin-top:20vh;">
+            <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Vous êtes prêt·e ? Cette galerie d'œuvres vous attend.</p>
+            <button type="button" class="primary-button" id="quiz-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
+          </div>
+
+          <div class="quiz-grid hidden" id="quiz-quiz-grid">
             <div class="artwork-column">
               <figure class="artwork-card">
                 <img id="artwork-image" alt="Œuvre à identifier" />
@@ -914,6 +927,14 @@
         </div>
 
         <div id="bottom-gallery" class="bottom-gallery hidden"></div>
+
+        <div id="ambiance-quick-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:10px;min-width:220px;">
+          <p style="font-family:Arial,sans-serif;font-size:.78rem;font-weight:700;color:var(--muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.03em;">Ambiance</p>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="" /><span>Aucune</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="pitti" /><span>Le Salon Pitti</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="bauhaus" /><span>Bauhaus</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="space" /><span>Space Age</span></label>
+        </div>
 
         <section id="results-panel" class="results-panel hidden">
           <p class="eyebrow">QUIZ TERMINÉ</p>
@@ -1057,6 +1078,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=117"></script>
+    <script src="app.js?v=120"></script>
   </body>
 </html>

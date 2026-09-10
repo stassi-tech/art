@@ -550,6 +550,35 @@ document.querySelectorAll('input[name="pf-ambiance"]').forEach((radio) => {
     applyAmbiance(radio.value);
   });
 });
+// Bouton d'accès rapide dans le bandeau (icône 🎨) : change l'ambiance à la volée, y compris en
+// plein exercice, sans avoir à quitter pour passer par Mon compte.
+$('global-ambiance-button')?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  const picker = $('ambiance-quick-picker');
+  const opening = picker.classList.contains('hidden');
+  if (opening) {
+    const current = localStorage.getItem('ambiance') || '';
+    const radio = document.querySelector(`input[name="quick-ambiance"][value="${current}"]`);
+    if (radio) radio.checked = true;
+  }
+  picker.classList.toggle('hidden');
+});
+document.querySelectorAll('input[name="quick-ambiance"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    if (!radio.checked) return;
+    localStorage.setItem('ambiance', radio.value);
+    applyAmbiance(radio.value);
+    const mainRadio = document.querySelector(`input[name="pf-ambiance"][value="${radio.value}"]`);
+    if (mainRadio) mainRadio.checked = true;
+  });
+});
+document.addEventListener('click', (event) => {
+  const picker = $('ambiance-quick-picker');
+  if (!picker || picker.classList.contains('hidden')) return;
+  if (!picker.contains(event.target) && event.target !== $('global-ambiance-button')) {
+    picker.classList.add('hidden');
+  }
+});
 
 // --- Choix de champ (art/siècle/zone) : si mémorisé, chaque bouton d'exercice démarre
 // directement dessus, sans repasser par sa page de configuration. ---
@@ -1683,6 +1712,14 @@ function displayArtworkImage(work, altText, showSourceLink = false) {
     else sourceLink.classList.add('hidden');
   }
 }
+$('quiz-launch-first-button')?.addEventListener('click', () => {
+  $('quiz-ready-screen').classList.add('hidden');
+  $('quiz-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
+  quizTimer.start();
+  renderQuestion();
+});
 function renderQuestion() {
   document.body.classList.remove('has-other-works'); // repart d'un état propre à chaque question
   const question = state.questions[state.index]; const answer = answerFor(state.index);
@@ -3487,7 +3524,7 @@ function initBackgroundMosaic() {
   if (!container) return;
   container.innerHTML = BG_MOSAIC_FILES.map((filename) => {
     const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
-    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" /></div>`;
+    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" draggable="false" /></div>`;
   }).join('');
   wireBgMosaicTiles();
 }
@@ -3500,7 +3537,7 @@ function populateSessionMosaic(images) {
   const unique = [...new Set(images.filter(Boolean))].slice(0, 15);
   if (!unique.length) return;
   container.innerHTML = unique.map((img) =>
-    `<div class="bg-tile"><img src="${escapeHtml(imageSource(img))}" alt="" loading="lazy" /></div>`
+    `<div class="bg-tile"><img src="${escapeHtml(imageSource(img))}" alt="" loading="lazy" draggable="false" /></div>`
   ).join('');
   wireBgMosaicTiles();
 }
@@ -3874,11 +3911,22 @@ $('imp-start-button')?.addEventListener('click', async () => {
     impSelectedVoice = getGlobalVoice();
     impIndex = 0;
     showPanel('impregnation');
-    impTimer.start();
-    impShowCurrent();
+    $('imp-ready-screen').classList.remove('hidden');
+    $('imp-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(IMP_SESSION.map((w) => w.image));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
+});
+
+$('imp-launch-first-button')?.addEventListener('click', () => {
+  $('imp-ready-screen').classList.add('hidden');
+  $('imp-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
+  impTimer.start();
+  impShowCurrent();
 });
 
 function impShowCurrent() {
@@ -4414,8 +4462,10 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     const refEl = $('quiz-reference');
     if (refEl) refEl.textContent = quizReference;
     showPanel('quiz');
-    quizTimer.start();
-    renderQuestion();
+    $('quiz-ready-screen').classList.remove('hidden');
+    $('quiz-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(state.questions.map((q) => q.image));
   } catch (error) {
     // Le message « site en construction » se suffit à lui-même, sans préfixe « Erreur : ».
     feedback.textContent = error.message === 'Ce site est en construction. Le quiz sera bientôt disponible.' ? error.message : `Erreur : ${error.message}`;

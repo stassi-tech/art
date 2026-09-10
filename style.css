@@ -15,8 +15,8 @@ body[data-ambiance="space"] .bg-mosaic::after { background:#e0562b; }
    juste après le clic sur « Démarrer le jeu », retirée au retour) — jamais pendant que la
    mosaïque est censée être visible (accueil, salle d'attente). */
 body[data-ambiance="pitti"].in-exercise .app-shell { background:radial-gradient(circle at top right,#1a4a34 0,transparent 32rem),#0d3324; }
-body[data-ambiance="bauhaus"].in-exercise .app-shell { background:#f4f1ea; }
-body[data-ambiance="space"].in-exercise .app-shell { background:#eef0f2; }
+body[data-ambiance="bauhaus"].in-exercise .app-shell { background:#f4f1ea; background-image:linear-gradient(90deg,#c1272d 0 25%,#f2c318 25% 50%,#1c4fa0 50% 75%,#1a1a1a 75% 100%); background-size:100% 6px; background-repeat:no-repeat; }
+body[data-ambiance="space"].in-exercise .app-shell { background:#dde3e7; background-image:repeating-radial-gradient(circle at 50% 120%, transparent 0 46px, #00000010 46px 48px); }
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
 .bg-mosaic { position:fixed; inset:0; z-index:0; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; }
@@ -24,7 +24,7 @@ body.dragging-topbar .bg-mosaic { pointer-events:none; }
 body.dragging-topbar { touch-action:none; user-select:none; }
 .bg-tile { position:relative; overflow:hidden; background:#c9c1ae; cursor:pointer; }
 .bg-tile.touched, .bg-tile:hover { z-index:2; box-shadow:inset 0 0 0 3px var(--accent); }
-.bg-tile img { width:100%; height:100%; object-fit:cover; display:block; filter:blur(6px) grayscale(.3); opacity:.45; transform:scale(1.15); transition:filter .35s, opacity .35s, transform .35s; }
+.bg-tile img { width:100%; height:100%; object-fit:cover; display:block; filter:blur(6px) grayscale(.3); opacity:.45; transform:scale(1.15); transition:filter .35s, opacity .35s, transform .35s; -webkit-user-drag:none; user-select:none; pointer-events:none; }
 .bg-tile:hover img, .bg-tile.touched img { filter:blur(0) grayscale(0); opacity:1; transform:scale(1.3); }
 button, input { font:inherit; }
 
