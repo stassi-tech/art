@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=87" />
+    <link rel="stylesheet" href="style.css?v=88" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -608,14 +608,13 @@
           <div class="quiz-grid">
             <div class="artwork-column">
               <div id="chrono-image-grid">
-                <div id="chrono-source-row" class="chrono-row" style="grid-template-columns:repeat(4,1fr);"></div>
-                <div id="chrono-target-row" class="chrono-row" style="grid-template-columns:repeat(4,1fr);margin-top:14px;"></div>
+                <div id="chrono-cards-row" class="chrono-row" style="grid-template-columns:repeat(4,1fr);"></div>
                 <div id="chrono-correct-table" class="hidden"></div>
               </div>
             </div>
             <section class="answer-card" aria-label="Ordre chronologique">
               <h2 style="font-family:Arial,sans-serif;font-size:1rem;font-weight:700;margin:0 0 12px;">Remets ces œuvres dans l'ordre chronologique</h2>
-              <p class="modal-hint" style="margin-top:0;">Touchez une œuvre de la ligne du haut, puis touchez la case du bas qui correspond à son rang, du plus ancien au plus récent.</p>
+              <p class="modal-hint" style="margin-top:0;">Touchez les œuvres l'une après l'autre, en commençant par la plus ancienne : un numéro s'affiche sur chacune. Touchez à nouveau une œuvre numérotée pour retirer son numéro.</p>
               <button type="button" class="primary-button" id="chrono-validate-button" style="width:100%">Valider l'ordre</button>
               <div id="chrono-correction" class="hidden">
                 <p id="chrono-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.3rem;margin:16px 0;"></p>
@@ -1074,6 +1073,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=98"></script>
+    <script src="app.js?v=100"></script>
   </body>
 </html>

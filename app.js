@@ -674,7 +674,7 @@ const EXERCISE_RULES = {
   },
   fam: {
     titre: 'Famille — comment ça marche',
-    texte: "8 images s'affichent : 4 d'entre elles sont d'un même artiste, les 4 autres sont des intrus. Repérez d'abord les 4 bonnes images en cliquant dessus, puis validez. Il faut ensuite retrouver le titre de chacune des 4 œuvres repérées. Le score est tout ou rien : un point uniquement si l'artiste et les 4 titres sont exacts.",
+    texte: "6 ou 8 images s'affichent, selon votre choix : la moitié d'entre elles sont d'un même artiste, les autres sont des intrus. Repérez d'abord les bonnes images en cliquant dessus, puis validez. Il faut ensuite retrouver le titre de chacune des œuvres repérées. Le score est tout ou rien : un point uniquement si l'artiste et tous les titres sont exacts.",
   },
   chrono: {
     titre: 'Chronologie — comment ça marche',
@@ -2090,75 +2090,48 @@ function chronoShowQuestion() {
   $('chrono-correct-table').classList.add('hidden');
   $('chrono-validate-button').classList.remove('hidden');
   $('chrono-validate-button').disabled = true;
-  $('chrono-source-row').classList.remove('hidden');
-  $('chrono-target-row').classList.remove('hidden');
+  $('chrono-cards-row').classList.remove('hidden');
 
-  // Ligne du haut : les 4 œuvres dans le désordre. Ligne du bas : 4 emplacements vides, numérotés
-  // du plus ancien (1) au plus récent (4), où le joueur les dépose.
   const shuffledDisplay = q.works.slice().sort(() => Math.random() - 0.5);
   q.displayOrder = shuffledDisplay;
-  $('chrono-source-row').innerHTML = shuffledDisplay.map((work, i) =>
-    `<button type="button" class="fam-image-cell chrono-source-item" data-index="${i}"><img src="${escapeHtml(imageSource(work.image))}" alt="" /></button>`
-  ).join('');
-  $('chrono-target-row').innerHTML = [0, 1, 2, 3].map((i) =>
-    `<button type="button" class="chrono-target-slot" data-slot="${i}"><span class="chrono-slot-num">${i + 1}</span></button>`
-  ).join('');
-
-  attachChronoDragAndDrop();
-  famSpeak2('Remets ces quatre œuvres dans l\u2019ordre chronologique.');
+  chronoAssigned = shuffledDisplay.map(() => undefined);
+  renderChronoCards();
+  famSpeak2('Quelle est l\u2019\u0153uvre la plus ancienne\u00a0? Touchez-la, puis les suivantes dans l\u2019ordre.');
 }
 
-// Sélection par clic (toucher l'œuvre puis l'emplacement) : plus sobre qu'un vrai glisser, mais
-// bien plus fiable d'un navigateur à l'autre — le glisser au pointeur posait trop de problèmes
-// selon les appareils, on l'a donc retiré au profit de ce mécanisme simple et robuste.
-let chronoPicked = null;
-function attachChronoDragAndDrop() {
-  chronoPicked = null;
-
-  function placeInSlot(slot, sourceBtn) {
-    const idx = Number(sourceBtn.dataset.index);
-    if (slot.classList.contains('filled')) {
-      const oldIdx = Number(slot.dataset.sourceIndex);
-      const oldSource = document.querySelector(`.chrono-source-item[data-index="${oldIdx}"]`);
-      if (oldSource) oldSource.classList.remove('used');
-    }
-    slot.innerHTML = `<span class="chrono-slot-num">${Number(slot.dataset.slot) + 1}</span><img src="${sourceBtn.querySelector('img').src}" alt="" />`;
-    slot.dataset.sourceIndex = idx;
-    slot.classList.add('filled');
-    sourceBtn.classList.add('used');
-    updateChronoValidateState();
-  }
-
-  document.querySelectorAll('.chrono-source-item').forEach((item) => {
+// chronologique estimé, un numéro s'affiche directement dessus. Remplace l'ancien système à deux
+// rangées (choisir puis déposer), qui coinçait sur certains smartphones.
+let chronoAssigned = []; // index (dans displayOrder) -> numéro attribué (1 à 4), ou undefined
+function chronoNextFreeNumber() {
+  for (let n = 1; n <= 4; n++) if (!chronoAssigned.includes(n)) return n;
+  return null;
+}
+function renderChronoCards() {
+  const q = CHRONO_SESSION[chronoIndex];
+  $('chrono-cards-row').innerHTML = q.displayOrder.map((work, i) => {
+    const num = chronoAssigned[i];
+    return `<button type="button" class="fam-image-cell chrono-source-item${num ? ' numbered' : ''}" data-index="${i}" style="order:${num || (10 + i)};position:relative;">
+      ${num ? `<span class="chrono-slot-num" style="position:absolute;top:6px;left:6px;">${num}</span>` : ''}
+      <img src="${escapeHtml(imageSource(work.image))}" alt="" />
+    </button>`;
+  }).join('');
+  document.querySelectorAll('#chrono-cards-row .chrono-source-item').forEach((item) => {
     item.addEventListener('click', () => {
-      if (item.classList.contains('used')) return;
-      document.querySelectorAll('.chrono-source-item').forEach((c) => c.classList.remove('picked'));
-      chronoPicked = chronoPicked === item ? null : item;
-      if (chronoPicked) item.classList.add('picked');
-    });
-  });
-
-  document.querySelectorAll('.chrono-target-slot').forEach((slot) => {
-    slot.addEventListener('click', () => {
-      if (slot.classList.contains('filled')) {
-        const oldIdx = Number(slot.dataset.sourceIndex);
-        const oldSource = document.querySelector(`.chrono-source-item[data-index="${oldIdx}"]`);
-        if (oldSource) oldSource.classList.remove('used');
-        slot.innerHTML = `<span class="chrono-slot-num">${Number(slot.dataset.slot) + 1}</span>`;
-        slot.classList.remove('filled');
-        delete slot.dataset.sourceIndex;
-        updateChronoValidateState();
-        return;
+      const idx = Number(item.dataset.index);
+      if (chronoAssigned[idx]) {
+        chronoAssigned[idx] = undefined; // retire son numéro, libère la place
+      } else {
+        const n = chronoNextFreeNumber();
+        if (n == null) return; // déjà 4 numéros attribués ailleurs
+        chronoAssigned[idx] = n;
       }
-      if (!chronoPicked) return;
-      placeInSlot(slot, chronoPicked);
-      chronoPicked.classList.remove('picked');
-      chronoPicked = null;
+      renderChronoCards();
+      updateChronoValidateState();
     });
   });
 }
 function updateChronoValidateState() {
-  const filled = document.querySelectorAll('.chrono-target-slot.filled').length === 4;
+  const filled = chronoAssigned.filter(Boolean).length === 4;
   $('chrono-validate-button').disabled = !filled;
 }
 
@@ -2183,13 +2156,14 @@ function famSpeak2(text, onEnd) {
 
 $('chrono-validate-button')?.addEventListener('click', () => {
   if (chronoAnswered) return;
-  const slots = [...document.querySelectorAll('.chrono-target-slot')];
-  if (slots.some((s) => !s.classList.contains('filled'))) return;
+  if (chronoAssigned.filter(Boolean).length < 4) return;
   chronoAnswered = true;
   const q = CHRONO_SESSION[chronoIndex];
   $('chrono-validate-button').classList.add('hidden');
 
-  const playerOrder = slots.map((s) => q.displayOrder[Number(s.dataset.sourceIndex)]);
+  // Reconstitue l'ordre choisi par le joueur à partir des numéros posés sur chaque carte.
+  const orderedIndexes = [1, 2, 3, 4].map((n) => chronoAssigned.indexOf(n));
+  const playerOrder = orderedIndexes.map((idx) => q.displayOrder[idx]);
   const correctOrder = q.chronological;
   const rightFlags = playerOrder.map((w, i) => w === correctOrder[i]);
   const isCorrect = rightFlags.every(Boolean);
@@ -2201,21 +2175,17 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   $('chrono-verdict').textContent = isCorrect ? 'Exact' : 'À réviser';
   $('chrono-verdict').style.color = isCorrect ? 'var(--ok)' : 'var(--wrong)';
 
-  // La ligne du haut disparaît ; la ligne du bas prend sa place avec les références, encadrée en
-  // rouge sur toute case où l'ordre était faux.
-  $('chrono-source-row').classList.add('hidden');
-  slots.forEach((slot, i) => {
-    const work = playerOrder[i];
+  // La rangée reprend l'ordre choisi par le joueur (déjà rangé visuellement), encadrée en
+  // rouge sur toute carte où l'ordre était faux, avec la référence complète sous chaque image.
+  $('chrono-cards-row').innerHTML = playerOrder.map((work, i) => {
     const meta = [work.date, work.location].filter(Boolean).join(' — ');
-    slot.classList.remove('filled');
-    slot.classList.add(rightFlags[i] ? 'right' : 'wrong');
-    slot.innerHTML = `<span class="chrono-slot-num">${i + 1}</span><img src="${escapeHtml(imageSource(work.image))}" alt="" />
+    return `<div class="fam-image-cell ${rightFlags[i] ? 'right' : 'wrong'}" style="position:relative;margin-bottom:58px;">
+      <span class="chrono-slot-num">${i + 1}</span><img src="${escapeHtml(imageSource(work.image))}" alt="" />
       <span class="fam-result-caption" style="position:absolute;bottom:-58px;left:0;right:0;">
-        <strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}
-      </span>`;
-    slot.style.position = 'relative';
-    slot.style.marginBottom = '58px';
-  });
+        <strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}
+      </span>
+    </div>`;
+  }).join('');
 
   // S'il y a eu une erreur, un second tableau montre le bon ordre (images + références).
   if (!isCorrect) {
@@ -2225,14 +2195,14 @@ $('chrono-validate-button')?.addEventListener('click', () => {
         const meta = [work.date, work.location].filter(Boolean).join(' — ');
         return `<div class="fam-result-item">
           <img src="${escapeHtml(imageSource(work.image))}" alt="" />
-          <span class="fam-result-caption"><strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
+          <span class="fam-result-caption"><strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
         </div>`;
       }).join('')}</div>`;
   }
 
   const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
-  const list = correctOrder.map((w, i) => `${ordinals[i]}, ${w.title}, en ${chronoYearOf(w)}`).join('. ');
-  famSpeak2(`${isCorrect ? 'Exact.' : 'À réviser.'} Voici l'ordre chronologique. ${list}.`);
+  const list = correctOrder.map((w, i) => `${ordinals[i]}, ${w.artist}, ${w.title}, en ${chronoYearOf(w)}`).join('. ');
+  famSpeak2(`${isCorrect ? 'Exact.' : 'A réviser.'} Voici l'ordre chronologique. ${list}.`);
 
   $('chrono-correction').classList.remove('hidden');
   $('chrono-next-button').textContent = chronoIndex === CHRONO_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
