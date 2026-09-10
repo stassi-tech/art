@@ -435,6 +435,7 @@ function initProfilePage() {
   $('pf-show-timer').checked = prefs.showTimer;
   $('pf-enter-validate').checked = prefs.enterValidate;
   $('pf-show-explanations').checked = prefs.showExplanations;
+  $('pf-show-rules').checked = prefs.showRules;
   $('pf-audio').checked = prefs.audioOn;
   $('pf-handedness').value = document.body.classList.contains('lefty') ? 'left' : 'right';
   const savedAmbiance = localStorage.getItem('ambiance') || '';
@@ -526,6 +527,7 @@ $('pf-show-explanations')?.addEventListener('change', () => {
   setGlobalPref('showExplanations', $('pf-show-explanations').checked);
   applyMonCompteExplanationsVisibility();
 });
+$('pf-show-rules')?.addEventListener('change', () => setGlobalPref('showRules', $('pf-show-rules').checked));
 $('pf-audio')?.addEventListener('change', () => setGlobalPref('audioOn', $('pf-audio').checked));
 $('pf-voice')?.addEventListener('change', () => setGlobalPref('voiceName', $('pf-voice').value));
 $('pf-handedness')?.addEventListener('change', () => {
@@ -635,7 +637,7 @@ const voiceSupported = Boolean(SpeechRecognitionImpl);
 // PARAMÈTRES GLOBAUX (voix, chronomètre, touche Entrée, mémorisation) — communs à tous les
 // exercices d'entraînement, réglables depuis « Mon compte ».
 // ============================================================
-const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '', showExplanations: true, defaultAdvance: 'manual', defaultDelay: 5000 };
+const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '', showExplanations: true, showRules: true, defaultAdvance: 'manual', defaultDelay: 5000 };
 function getGlobalPrefs() {
   try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem('globalExercisePrefs') || '{}') }; }
   catch (e) { return { ...DEFAULT_PREFS }; }
@@ -715,7 +717,7 @@ const EXERCISE_RULES = {
 let exerciseRulesConfirmCallback = null;
 function showExerciseRules(prefix, onConfirm) {
   const rules = EXERCISE_RULES[prefix];
-  if (!rules) { onConfirm(); return; }
+  if (!rules || !getGlobalPrefs().showRules) { onConfirm(); return; }
   $('exercise-rules-title').textContent = rules.titre;
   $('exercise-rules-text').textContent = rules.texte;
   exerciseRulesConfirmCallback = onConfirm;
