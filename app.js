@@ -591,6 +591,15 @@ $('pf-rubriques-clear')?.addEventListener('click', () => {
   document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => { el.checked = false; });
   updateExerciseSummaries();
 });
+// Bouton « Valider mes paramètres » : tous les réglages s'enregistrent déjà automatiquement à
+// chaque coche, mais l'absence de confirmation explicite déroutait certains joueurs (impression
+// de ne pas savoir si un choix avait bien été pris en compte). Ce bouton n'a rien de plus à
+// enregistrer techniquement — son rôle est de donner un geste de confirmation clair, puis
+// d'amener directement au menu des exercices.
+$('pf-validate-button')?.addEventListener('click', () => {
+  $('pf-validate-button').classList.add('intro-highlight');
+  setTimeout(() => showPanel('training-hub'), 500);
+});
 $('account-scores-quiz-button')?.addEventListener('click', () => {
   accountScoreFilter = 'quiz';
   $('account-scores-quiz-button').classList.remove('inactive');
@@ -721,6 +730,28 @@ $('exercise-rules-confirm')?.addEventListener('click', () => {
 $('exercise-rules-cancel')?.addEventListener('click', () => {
   closeModal('modal-exercise-rules');
   exerciseRulesConfirmCallback = null;
+});
+// Fenêtre de fin d'exercice : score, message encourageant, retour au menu des exercices — plutôt
+// que de renvoyer directement à la page de configuration, ce qui déroutait des joueurs (un
+// bouton « Terminer » qui semblait ramener en arrière plutôt que clore la session).
+let exerciseResultsCloseTarget = 'training-hub';
+function encouragingMessage(percent) {
+  if (percent >= 90) return "Excellent ! Une mémoire remarquable.";
+  if (percent >= 70) return "Très bon résultat, continuez comme ça !";
+  if (percent >= 50) return "Bon travail — encore quelques essais et ce sera parfait.";
+  return "C'est en s'exerçant qu'on progresse — bravo d'avoir été jusqu'au bout !";
+}
+function showExerciseResultsModal(exerciseName, correct, total, closeTarget) {
+  exerciseResultsCloseTarget = closeTarget || 'training-hub';
+  $('exercise-results-title').textContent = exerciseName;
+  const percent = total ? Math.round((correct / total) * 100) : 0;
+  $('exercise-results-score').textContent = `${correct} / ${total}`;
+  $('exercise-results-message').textContent = encouragingMessage(percent);
+  openModal('modal-exercise-results');
+}
+$('exercise-results-close')?.addEventListener('click', () => {
+  closeModal('modal-exercise-results');
+  showPanel(exerciseResultsCloseTarget);
 });
 function speakObjective(elementId) {
   const el = $(`${elementId}-objective`);
@@ -2101,9 +2132,12 @@ function artFormIcons(rawValue) {
 function renderArtistListTable() {
   const container = $('artist-list-table');
   const { col, dir } = artistListSort;
+  // Trie par surnom quand il existe (ex. « Le Greco » trie à G, « Bada Shanren » à B) — sinon,
+  // par nom de famille. Dans les deux cas, les particules en tête (le, da, van...) sont ignorées.
+  const sortKeyForRow = (row) => particleStrippedSortKey(row['Surnom'] || row['Patronyme']);
   const sorted = filteredArtistListRows().sort((a, b) => {
     if (col === 'Patronyme') {
-      const byNom = dir * particleStrippedSortKey(a['Patronyme']).localeCompare(particleStrippedSortKey(b['Patronyme']), 'fr');
+      const byNom = dir * sortKeyForRow(a).localeCompare(sortKeyForRow(b), 'fr');
       if (byNom !== 0) return byNom;
       return dir * String(a['Prénom'] || '').localeCompare(String(b['Prénom'] || ''), 'fr');
     }
@@ -2548,7 +2582,7 @@ $('chrono-next-button')?.addEventListener('click', async () => {
     } else {
       chronoTimer.stop();
     }
-    showPanel('chrono-setup');
+    showExerciseResultsModal('Chronologie', chronoScore, CHRONO_SESSION.length, 'training-hub');
   }
 });
 
@@ -2887,10 +2921,7 @@ $('enig-next-button')?.addEventListener('click', async () => {
         });
       } catch (e) { /* enregistrement best-effort */ }
     }
-    showPanel('enigme-setup');
-    const feedback = $('enig-setup-feedback');
-    feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${enigScore} points sur ${ENIG_SESSION.length} questions.`;
+    showExerciseResultsModal('Énigme', enigScore, ENIG_SESSION.length, 'training-hub');
   }
 });
 
@@ -3220,10 +3251,7 @@ $('fam-next-button')?.addEventListener('click', async () => {
         });
       } catch (e) { /* enregistrement best-effort */ }
     }
-    showPanel('famille-setup');
-    const feedback = $('fam-setup-feedback');
-    feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${famScore} points sur ${FAM_SESSION.length} questions.`;
+    showExerciseResultsModal('Famille', famScore, FAM_SESSION.length, 'training-hub');
   }
 });
 
@@ -3507,10 +3535,7 @@ $('vf-next-button')?.addEventListener('click', async () => {
         });
       } catch (e) { /* enregistrement best-effort */ }
     }
-    showPanel('vraifaux-setup');
-    const feedback = $('vf-setup-feedback');
-    feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${vfScore} points sur ${VF_SESSION.length} questions.`;
+    showExerciseResultsModal('Vrai/Faux', vfScore, VF_SESSION.length, 'training-hub');
   }
 });
 
@@ -3688,10 +3713,7 @@ $('recon-next-button')?.addEventListener('click', async () => {
         });
       } catch (e) { /* enregistrement best-effort */ }
     }
-    showPanel('reconstitution-setup');
-    const feedback = $('recon-setup-feedback');
-    feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${reconCorrectCount} / ${RECON_SESSION.length} bonnes réponses.`;
+    showExerciseResultsModal('Reconstitution', reconCorrectCount, RECON_SESSION.length, 'training-hub');
   }
 });
 // Boutons « Artiste / Titre / Date / Lieu » à côté de chaque champ : sélectionnent le champ comme
@@ -4470,10 +4492,7 @@ $('intrus-next-button')?.addEventListener('click', async () => {
         });
       } catch (e) { /* enregistrement best-effort */ }
     }
-    showPanel('intrus-setup');
-    const feedback = $('intrus-setup-feedback');
-    feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${intrusCorrectCount} / ${INTRUS_SESSION.length} bonnes réponses.`;
+    showExerciseResultsModal('Intrus', intrusCorrectCount, INTRUS_SESSION.length, 'training-hub');
   }
 });
 
