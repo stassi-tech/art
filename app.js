@@ -1017,6 +1017,8 @@ allFields.forEach(({ key, input }) => {
 //    appliquée après la correction de casse.
 const PRONUNCIATION_FIXES = {
   'malevitch': 'Malévitch',
+  'poyer': 'Poyé',
+  'marmion': 'Marmiyon',
 };
 function fixSpeechPronunciation(text) {
   let out = String(text || '').replace(/\b[A-ZÀ-Ý]{3,}\b/g, (word) => word.charAt(0) + word.slice(1).toLowerCase());
@@ -1080,12 +1082,15 @@ function normaliseRows(rows) {
     const villeKey = findColumn(row, ['ville', 'ville de creation']);
     const lieuPrecisKey = findColumn(row, ['lieu precis', 'lieu precis de conservation']);
     const sousLieuKey = findColumn(row, ['sous lieu', 'sous lieu de conservation']);
-    let location;
+    let location, ville = '';
     if (villeKey || lieuPrecisKey) {
-      const ville = villeKey ? String(row[villeKey] || '').trim() : '';
+      ville = villeKey ? String(row[villeKey] || '').trim() : '';
       const lieuPrecis = lieuPrecisKey ? String(row[lieuPrecisKey] || '').trim() : '';
       const sousLieu = sousLieuKey ? String(row[sousLieuKey] || '').trim() : '';
-      location = [sousLieu, lieuPrecis, ville].filter(Boolean).join(', ');
+      // Si la ville apparaît déjà telle quelle dans le lieu précis ou le sous-lieu (ex. « Église
+      // Saint-Antoine de Loches » pour la ville « Loches »), inutile de la répéter à la fin.
+      const villeDejaMentionnee = ville && [sousLieu, lieuPrecis].some((part) => keyName(part).includes(keyName(ville)));
+      location = [sousLieu, lieuPrecis, villeDejaMentionnee ? '' : ville].filter(Boolean).join(', ');
     } else {
       const legacyLocationKey = findColumn(row, ['lieu de conservation', 'lieu', 'conservation', 'musee', 'musée', 'location']);
       if (!legacyLocationKey) throw new Error("Ni « Ville/Lieu précis », ni « Lieu de conservation » n'ont été trouvés dans ce fichier.");
@@ -1147,7 +1152,7 @@ function normaliseRows(rows) {
 
     return {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
-      date: String(row[dateKey] || '').trim(), location, title, cycle, titleOriginal,
+      date: String(row[dateKey] || '').trim(), location, ville, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
       row: rowIndex + 2
     };
@@ -1246,8 +1251,14 @@ function yearsOf(text) {
 }
 const DATE_TOLERANCE_YEARS = 5; // ex. bonne date 1857 : de 1852 à 1862 accepté
 function withinDateTolerance(yearA, yearB) { return Math.abs(yearA - yearB) <= DATE_TOLERANCE_YEARS; }
+// Sigles de musées courants qu'un joueur pourrait taper au lieu du nom complet : on les
+// élargit avant comparaison. "MET" fonctionne déjà via la règle générique de sous-chaîne
+// (préfixe de "Metropolitan"), mais "MoMA" n'est pas un sous-mot littéral de "Museum of Modern
+// Art".
+const LOCATION_ACRONYMS = { moma: 'museum of modern art' };
 function isMatch(actual, expected, fieldKey) {
-  const answer = keyName(actual); const target = keyName(expected);
+  let answer = keyName(actual); const target = keyName(expected);
+  if (fieldKey === 'location' && LOCATION_ACRONYMS[answer]) answer = LOCATION_ACRONYMS[answer];
   if (!answer || !target) return false;
   if (answer === target) return true;
   // Dates : uniquement pour le champ « date de création ». Si on appliquait cette règle à tous
@@ -1302,6 +1313,18 @@ function acceptableValues(question, key) {
 }
 function isMatchAny(actual, question, fieldKey) {
   return acceptableValues(question, fieldKey).some((expected) => isMatch(actual, expected, fieldKey));
+}
+// Pour le lieu spécifiquement : distingue une réponse qui ne donne que la ville (acceptée comme
+// bonne, mais on peut suggérer d'être plus précis à l'oral) d'une réponse qui précise aussi le
+// musée. Renvoie 'none' | 'city-only' | 'precise'.
+function locationMatchQuality(actual, work) {
+  if (!isMatchAny(actual, work, 'location')) return 'none';
+  const ville = String(work.ville || '').trim();
+  if (!ville) return 'precise'; // pas de ville distincte enregistrée : rien à nuancer
+  const answer = keyName(actual);
+  const resteKey = keyName(String(work.location || '').split(',').filter((part) => keyName(part) !== keyName(ville)).join(', '));
+  if (resteKey && (resteKey.includes(answer) || answer.includes(resteKey) || isCloseEnough(answer, resteKey))) return 'precise';
+  return 'city-only';
 }
 function correctCount(answer, question) { return activeFields().reduce((count, field) => count + Number(isMatchAny(answer[field.key], question, field.key)), 0); }
 function isFullyCorrect(answer, question) { return answer?.checked && correctCount(answer, question) === activeFields().length; }
@@ -1607,9 +1630,24 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     return html;
   }).join('');
 }
+function quizSpeak(text) {
+  if (!getGlobalPrefs().audioOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
+  u.lang = 'fr-FR'; u.rate = 0.85;
+  const voice = getGlobalVoice();
+  if (voice) u.voice = voice;
+  speechSynthesis.speak(u);
+}
 function renderCorrection(answer, question) {
   correctionMainWork = question;
   renderCorrectionDetails(question, question, answer);
+  // Cas particulier du lieu : si la réponse ne donnait que la ville (acceptée comme bonne), on le
+  // signale à l'oral en encourageant à préciser le musée la prochaine fois.
+  if (state.selectedFieldKeys.includes('location') && locationMatchQuality(answer.location, question) === 'city-only') {
+    const reste = String(question.location || '').split(',').filter((part) => keyName(part) !== keyName(question.ville || '')).join(', ').trim();
+    quizSpeak(`Tu as bien indiqué ${question.ville}. Tu aurais pu préciser${reste ? ' : ' + reste : ' le musée'}.`);
+  }
 }
 let currentArtistWorksIndex = -1;
 async function openArtistWorksPage(idx) {
@@ -3848,7 +3886,7 @@ function impShowCurrent() {
   $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
   $('imp-stage-img').src = imageSource(work.image);
 
-  const dims = formatDimensionsPlainText(work);
+  const dims = formatDimensionsDisplay(work);
   const anyFieldChecked = ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].some((k) => $(`imp-field-${k}`)?.checked);
   const fields = [
     { key: 'artist', label: 'Auteur', value: work.artist, on: anyFieldChecked ? $('imp-field-artist').checked : true },
@@ -3870,7 +3908,10 @@ function impShowCurrent() {
   fields.forEach((f, i) => {
     impTimers.push(setTimeout(() => {
       const el = $(`imp-val-${f.key}`);
-      if (el) { el.textContent = f.value; el.classList.add('written'); }
+      if (el) {
+        if (f.key === 'dimensions') el.innerHTML = f.value; else el.textContent = f.value;
+        el.classList.add('written');
+      }
     }, 400 + i * STAGGER));
   });
 
