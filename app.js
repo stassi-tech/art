@@ -1015,15 +1015,56 @@ allFields.forEach(({ key, input }) => {
 // 2) Quelques noms restent mal prononcés même en casse normale à cause de leur transcription
 //    (finales slaves, etc.) : PRONUNCIATION_FIXES permet une réécriture phonétique ciblée,
 //    appliquée après la correction de casse.
+// Certaines entrées se terminent par « * » : elles corrigent un préfixe, y compris quand le mot
+// est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
+// limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
   'malevitch': 'Malévitch',
   'poyer': 'Poyé',
   'marmion': 'Marmiyon',
+  'chœur': 'keur',
+  'adam': 'Adan',
+  'kunst*': 'kounst',
+  'tempera': 'tanpéra',
+  'escorial': 'Eskorial',
+  'vespucci': 'Vespoutchi',
+  'transfiguration': 'transfigurassion',
+  'sacrements': 'sakremans',
+  'cosmè': 'Kosmè',
+  'fiore': 'Fioré',
+  'schifanoia': 'Skifanoya',
+  'bouts': 'Bout',
+  'alte': 'Alté',
+  'gemäldegalerie': 'Guémeldegalery',
+  'linaioli': 'Linayoli',
+  'botticelli': 'Bottitchelli',
+  'groeninge': 'Grouningue',
+  'francesca': 'Franchéska',
+};
+// Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
+// l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
+// currentSpeechNationality est positionnée juste avant de parler, là où l'objet œuvre est
+// disponible (nationalité brute du fichier, non normalisée).
+let currentSpeechNationality = '';
+const NATIONALITY_AWARE_FIXES = {
+  'michael': { exceptFor: /anglais|britannique|english/i, otherwise: 'Mikaël' },
 };
 function fixSpeechPronunciation(text) {
-  let out = String(text || '').replace(/\b[A-ZÀ-Ý]{3,}\b/g, (word) => word.charAt(0) + word.slice(1).toLowerCase());
+  // Frontières Unicode : \b ne reconnaît que les lettres ASCII comme « caractères de mot », donc
+  // échoue silencieusement pour tout mot commençant ou finissant par une lettre accentuée (ex.
+  // « Cosmè » : le \b après le è ne se déclenchait pas). On utilise des lookarounds explicites sur
+  // \p{L}\p{N} à la place, qui couvrent aussi les lettres accentuées.
+  const NB = '(?<![\\p{L}\\p{N}])';
+  const NA = '(?![\\p{L}\\p{N}])';
+  let out = String(text || '').replace(new RegExp(`${NB}[A-ZÀ-Ý]{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
+  Object.entries(NATIONALITY_AWARE_FIXES).forEach(([wrong, { exceptFor, otherwise }]) => {
+    if (exceptFor.test(currentSpeechNationality)) return; // nationalité exceptée : on ne touche pas
+    out = out.replace(new RegExp(`${NB}${wrong}${NA}`, 'giu'), otherwise);
+  });
   Object.entries(PRONUNCIATION_FIXES).forEach(([wrong, right]) => {
-    out = out.replace(new RegExp(`\\b${wrong}\\b`, 'gi'), right);
+    const isPrefix = wrong.endsWith('*');
+    const stem = isPrefix ? wrong.slice(0, -1) : wrong;
+    out = out.replace(new RegExp(`${NB}${stem}${isPrefix ? '' : NA}`, 'giu'), right);
   });
   return out;
 }
@@ -1195,6 +1236,9 @@ const NATIONALITY_FLAGS = {
   "ukrainienne": "🇺🇦", "ukrainien": "🇺🇦",
   "bresilienne": "🇧🇷", "bresilien": "🇧🇷", "bresil": "🇧🇷",
   "argentine": "🇦🇷",
+  "roumaine": "🇷🇴", "roumain": "🇷🇴", "roumanie": "🇷🇴",
+  "serbe": "🇷🇸", "serbie": "🇷🇸",
+  "bulgare": "🇧🇬", "bulgarie": "🇧🇬",
 };
 function nationalityFlag(rawValue) {
   const key = keyName(rawValue);
@@ -1203,6 +1247,34 @@ function nationalityFlag(rawValue) {
     if (key.includes(label)) return NATIONALITY_FLAGS[label];
   }
   return '';
+}
+// Ville de conservation -> pays, pour afficher un petit drapeau à côté du lieu quand la ville
+// est peu connue (ex. « Sibiu » → 🇷🇴) — aide à situer l'œuvre sans avoir à chercher. Couvre les
+// villes les plus fréquentes dans les fichiers ; à compléter au fil des retours.
+const CITY_TO_COUNTRY = {
+  'paris': 'francaise', 'rouen': 'francaise', 'lyon': 'francaise', 'lille': 'francaise', 'dijon': 'francaise', 'chantilly': 'francaise', 'tours': 'francaise', 'nantes': 'francaise', 'strasbourg': 'francaise', 'aix en provence': 'francaise', 'marseille': 'francaise',
+  'londres': 'anglaise', 'edimbourg': 'anglaise', 'oxford': 'anglaise', 'cambridge': 'anglaise', 'manchester': 'anglaise', 'glasgow': 'anglaise', 'dublin': 'irlandaise',
+  'new york': 'americaine', 'washington': 'americaine', 'chicago': 'americaine', 'boston': 'americaine', 'philadelphie': 'americaine', 'los angeles': 'americaine', 'baltimore': 'americaine', 'cleveland': 'americaine', 'detroit': 'americaine', 'san francisco': 'americaine', 'houston': 'americaine', 'fort worth': 'americaine', 'kansas city': 'americaine', 'minneapolis': 'americaine', 'saint louis': 'americaine',
+  'rome': 'italienne', 'florence': 'italienne', 'venise': 'italienne', 'milan': 'italienne', 'naples': 'italienne', 'turin': 'italienne', 'bologne': 'italienne', 'sienne': 'italienne', 'perouse': 'italienne', 'parme': 'italienne', 'gênes': 'italienne', 'ferrare': 'italienne', 'urbino': 'italienne', 'padoue': 'italienne', 'palerme': 'italienne',
+  'madrid': 'espagnole', 'barcelone': 'espagnole', 'seville': 'espagnole', 'bilbao': 'espagnole', 'tolede': 'espagnole', 'saragosse': 'espagnole',
+  'berlin': 'allemande', 'munich': 'allemande', 'dresde': 'allemande', 'cologne': 'allemande', 'francfort': 'allemande', 'hambourg': 'allemande', 'karlsruhe': 'allemande', 'stuttgart': 'allemande', 'darmstadt': 'allemande', 'brunswick': 'allemande', 'kassel': 'allemande',
+  'vienne': 'autrichienne', 'salzbourg': 'autrichienne', 'innsbruck': 'autrichienne',
+  'amsterdam': 'neerlandaise', 'la haye': 'neerlandaise', 'rotterdam': 'neerlandaise', 'utrecht': 'neerlandaise', 'haarlem': 'neerlandaise',
+  'bruxelles': 'belge', 'anvers': 'belge', 'bruges': 'belge', 'gand': 'belge', 'liege': 'belge',
+  'saint petersbourg': 'russe', 'moscou': 'russe',
+  'lisbonne': 'portugaise', 'porto': 'portugaise',
+  'copenhague': 'danoise', 'oslo': 'norvegienne', 'stockholm': 'suedoise', 'helsinki': 'finlandaise',
+  'varsovie': 'polonaise', 'cracovie': 'polonaise', 'prague': 'tcheque', 'budapest': 'hongroise',
+  'athenes': 'grecque', 'zagreb': 'croate', 'belgrade': 'serbe', 'sofia': 'bulgare',
+  'geneve': 'suisse', 'zurich': 'suisse', 'bâle': 'suisse', 'berne': 'suisse',
+  'mexico': 'mexicaine', 'rio de janeiro': 'bresilienne', 'sao paulo': 'bresilienne', 'buenos aires': 'argentine',
+  'pekin': 'chinoise', 'shanghai': 'chinoise', 'tokyo': 'japonaise', 'kyoto': 'japonaise', 'seoul': 'coreenne',
+  'sibiu': 'roumaine', 'bucarest': 'roumaine',
+};
+function cityFlag(ville) {
+  const key = keyName(ville);
+  if (!key) return '';
+  return nationalityFlag(CITY_TO_COUNTRY[key] || '');
 }
 function answerFor(index) {
   if (!state.answers[index]) state.answers[index] = { artist: '', date: '', location: '', title: '', checked: false };
@@ -1495,9 +1567,13 @@ function formatArtistName(name) {
   const surname = parts.pop().toLocaleUpperCase('fr-FR');
   return [...parts, surname].join(' ');
 }
-function formatCorrectionValue(key, rawValue) {
+function formatCorrectionValue(key, rawValue, work) {
   if (key === 'artist') return escapeHtml(formatArtistName(rawValue));
   if (key === 'title') return `<em>${escapeHtml(rawValue)}</em>`;
+  if (key === 'location') {
+    const flag = work ? cityFlag(work.ville) : '';
+    return flag ? `${escapeHtml(rawValue)} ${flag}` : escapeHtml(rawValue);
+  }
   return escapeHtml(rawValue);
 }
 function formatArtistDisplayName(work) {
@@ -1598,7 +1674,7 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     let value;
     if (key === 'artist') value = formatArtistWithDates(displayedWork);
     else if (key === 'title') value = formatTitleWithCycle(displayedWork);
-    else value = formatCorrectionValue(key, displayedWork[key]);
+    else value = formatCorrectionValue(key, displayedWork[key], displayedWork);
     // Une « autre œuvre » cliquée n'a pas été répondue par l'utilisateur : on l'affiche
     // uniquement à titre d'information, sans notation ✓/✕.
     const tested = isTestedWork && state.selectedFieldKeys.includes(key);
@@ -2234,7 +2310,7 @@ $('chrono-validate-button')?.addEventListener('click', () => {
     return `<div class="fam-image-cell ${rightFlags[i] ? 'right' : 'wrong'}" style="position:relative;margin-bottom:58px;">
       <span class="chrono-slot-num">${i + 1}</span><img src="${escapeHtml(imageSource(work.image))}" alt="" />
       <span class="fam-result-caption" style="position:absolute;bottom:-58px;left:0;right:0;">
-        <strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}
+        <strong>${formatArtistDisplayName(work)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}
       </span>
     </div>`;
   }).join('');
@@ -2247,7 +2323,7 @@ $('chrono-validate-button')?.addEventListener('click', () => {
         const meta = [work.date, work.location].filter(Boolean).join(' — ');
         return `<div class="fam-result-item">
           <img src="${escapeHtml(imageSource(work.image))}" alt="" />
-          <span class="fam-result-caption"><strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
+          <span class="fam-result-caption"><strong>${formatArtistDisplayName(work)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
         </div>`;
       }).join('')}</div>`;
   }
@@ -2896,7 +2972,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
 
   const captionOf = (work) => {
     const meta = [work.date, work.location].filter(Boolean).join(' — ');
-    return `<strong>${escapeHtml(work.artist)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}`;
+    return `<strong>${formatArtistDisplayName(work)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}`;
   };
   const cellHtml = (work, revealed) => `<div class="fam-result-item${revealed ? '' : ' fam-result-pending'}">
       ${revealed ? `<img src="${escapeHtml(imageSource(work.image))}" alt="" /><span class="fam-result-caption">${captionOf(work)}</span>` : ''}
@@ -2907,6 +2983,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
     $('fam-image-grid').innerHTML = chronological.map((w) => cellHtml(w, true)).join('');
     const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
     const titleList = chronological.map((w, i) => `${ordinals[i]}, ${w.title}`).join('. ');
+    currentSpeechNationality = chronological[0]?.nationality || '';
     famSpeak(`Ces ${famNumberWord(chronological.length)} œuvres sont bien de ${q.artist}. ${titleList}.`);
   } else {
     $('fam-image-grid').className = 'fam-result-rows';
@@ -3187,7 +3264,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
     if (i >= q.errorFields.length) return;
     const key = q.errorFields[i];
     const correctVal = vfFieldValue(q.correct, key) || '—';
-    const shownCorrect = key === 'title' ? `<em>« ${escapeHtml(correctVal)} »</em>` : escapeHtml(correctVal);
+    const shownCorrect = key === 'title' ? `<em>« ${escapeHtml(correctVal)} »</em>` : key === 'dimensions' ? (formatDimensionsDisplay(q.correct) || escapeHtml(correctVal)) : escapeHtml(correctVal);
     const el = $(`vf-value-${key}`);
     if (el) el.classList.add('vf-was-wrong');
     vfTimers.push(setTimeout(() => {
@@ -3396,7 +3473,7 @@ function reconAnswer(chosenIndex) {
   const dims = formatDimensionsDisplay(q.correct);
   reconSpeak(spokenFullReference(q.correct));
   const detailsParts = [];
-  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
+  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
   if (reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if (reconExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
@@ -3889,12 +3966,12 @@ function impShowCurrent() {
   const dims = formatDimensionsDisplay(work);
   const anyFieldChecked = ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].some((k) => $(`imp-field-${k}`)?.checked);
   const fields = [
-    { key: 'artist', label: 'Auteur', value: work.artist, on: anyFieldChecked ? $('imp-field-artist').checked : true },
-    { key: 'title', label: 'Titre de l\u2019œuvre', value: `« ${work.title} »`, on: anyFieldChecked ? $('imp-field-title').checked : true },
+    { key: 'artist', label: 'Auteur', value: formatArtistDisplayName(work), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: anyFieldChecked ? $('imp-field-artist').checked : true },
+    { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>« ${escapeHtml(work.title)} »</em>`, spoken: `« ${work.title} »`, on: anyFieldChecked ? $('imp-field-title').checked : true },
     { key: 'date', label: 'Date', value: work.date, on: anyFieldChecked ? $('imp-field-date').checked : true },
     { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: (anyFieldChecked ? $('imp-field-materiaux').checked : true) && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: (anyFieldChecked ? $('imp-field-dimensions').checked : true) && dims },
-    { key: 'location', label: 'Lieu', value: work.location, on: anyFieldChecked ? $('imp-field-location').checked : true },
+    { key: 'location', label: 'Lieu', value: cityFlag(work.ville) ? `${work.location} ${cityFlag(work.ville)}` : work.location, on: anyFieldChecked ? $('imp-field-location').checked : true },
   ].filter((f) => f.on);
 
   $('imp-correction-details').innerHTML = fields.map((f) =>
@@ -3902,6 +3979,7 @@ function impShowCurrent() {
   ).join('');
 
   const refText = fields.map((f) => f.spoken || f.value).join(' — ') || work.artist;
+  currentSpeechNationality = work.nationality || '';
   impSpeak(refText);
 
   const STAGGER = impDelayMs * 0.5;
@@ -3909,7 +3987,7 @@ function impShowCurrent() {
     impTimers.push(setTimeout(() => {
       const el = $(`imp-val-${f.key}`);
       if (el) {
-        if (f.key === 'dimensions') el.innerHTML = f.value; else el.textContent = f.value;
+        if (f.key === 'dimensions' || f.key === 'title' || f.key === 'artist') el.innerHTML = f.value; else el.textContent = f.value;
         el.classList.add('written');
       }
     }, 400 + i * STAGGER));
@@ -4121,7 +4199,7 @@ function intrusShowQuestion() {
       btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
     });
     $('intrus-choices').innerHTML = `<div class="correction-details">
-      <span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>
+      <span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>
       <span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>
     </div>`;
     intrusSpeak(`${q.correct.artist} — « ${q.correct.title} »`);
@@ -4171,7 +4249,7 @@ function intrusAnswer(chosenIndex) {
   const dims = formatDimensionsDisplay(q.correct);
   intrusSpeak(spokenFullReference(q.correct));
   const detailsParts = [];
-  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${escapeHtml(q.correct.artist)}</span>`);
+  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
   if (intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if (intrusExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
