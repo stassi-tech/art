@@ -11,11 +11,12 @@ body[data-ambiance] .bg-mosaic::after { content:''; position:absolute; inset:0; 
 body[data-ambiance="pitti"] .bg-mosaic::after { background:#0d3324; }
 body[data-ambiance="bauhaus"] .bg-mosaic::after { background:#1c4fa0; }
 body[data-ambiance="space"] .bg-mosaic::after { background:#e0562b; }
-/* Le fond plein écran de l'ambiance ne s'applique qu'une fois la mosaïque cachée (en plein
-   exercice) — sinon il la recouvrirait, puisqu'il est posé après elle dans la page. */
-body[data-ambiance="pitti"]:has(#bg-mosaic.hidden) .app-shell { background:radial-gradient(circle at top right,#1a4a34 0,transparent 32rem),#0d3324; }
-body[data-ambiance="bauhaus"]:has(#bg-mosaic.hidden) .app-shell { background:#f4f1ea; }
-body[data-ambiance="space"]:has(#bg-mosaic.hidden) .app-shell { background:#eef0f2; }
+/* Le fond plein écran de l'ambiance ne s'applique qu'en plein exercice (classe posée par le JS
+   juste après le clic sur « Démarrer le jeu », retirée au retour) — jamais pendant que la
+   mosaïque est censée être visible (accueil, salle d'attente). */
+body[data-ambiance="pitti"].in-exercise .app-shell { background:radial-gradient(circle at top right,#1a4a34 0,transparent 32rem),#0d3324; }
+body[data-ambiance="bauhaus"].in-exercise .app-shell { background:#f4f1ea; }
+body[data-ambiance="space"].in-exercise .app-shell { background:#eef0f2; }
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
 .bg-mosaic { position:fixed; inset:0; z-index:0; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; }

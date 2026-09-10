@@ -1588,6 +1588,9 @@ function showPanel(name) {
   // quitté en cours de route peut se déclencher plus tard, en plein milieu d'un autre exercice
   // (voix qui parle d'une œuvre sans rapport avec ce qui est affiché).
   if (window.speechSynthesis) speechSynthesis.cancel();
+  // Remise à zéro systématique du marqueur « en plein exercice » (fond de l'ambiance) à chaque
+  // navigation — seul le clic explicite sur « Démarrer le jeu » le repose ensuite.
+  document.body.classList.remove('in-exercise');
   document.querySelectorAll('.chrono-drag-ghost').forEach((g) => g.remove());
   // Vide le bandeau (nom d'exercice, progression, score) sauf si on va justement vers un jeu —
   // chaque jeu le remplit ensuite lui-même à chaque question.
@@ -2497,6 +2500,7 @@ $('chrono-launch-first-button')?.addEventListener('click', () => {
   $('chrono-ready-screen').classList.add('hidden');
   $('chrono-quiz-grid').classList.remove('hidden');
   $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
   chronoTimer.start();
   chronoShowQuestion();
 });
@@ -2828,6 +2832,7 @@ $('fam-launch-first-button')?.addEventListener('click', () => {
   $('fam-ready-screen').classList.add('hidden');
   $('fam-quiz-grid').classList.remove('hidden');
   $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
   famTimer.start();
   famShowQuestion();
 });
@@ -3112,6 +3117,7 @@ $('vf-launch-first-button')?.addEventListener('click', () => {
   $('vf-ready-screen').classList.add('hidden');
   $('vf-quiz-grid').classList.remove('hidden');
   $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
   vfTimer.start();
   vfShowQuestion();
 });
@@ -3330,6 +3336,7 @@ $('recon-launch-first-button')?.addEventListener('click', () => {
   $('recon-ready-screen').classList.add('hidden');
   $('recon-quiz-grid').classList.remove('hidden');
   $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
   reconTimer.start();
   reconShowQuestion();
 });
@@ -4104,6 +4111,7 @@ $('intrus-launch-first-button')?.addEventListener('click', () => {
   $('intrus-ready-screen').classList.add('hidden');
   $('intrus-quiz-grid').classList.remove('hidden');
   $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
   intrusTimer.start();
   intrusShowQuestion();
 });
