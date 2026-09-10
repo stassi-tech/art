@@ -3534,9 +3534,12 @@ function initBackgroundMosaic() {
 function populateSessionMosaic(images) {
   const container = $('bg-mosaic');
   if (!container) return;
-  const unique = [...new Set(images.filter(Boolean))].slice(0, 15);
+  const unique = [...new Set(images.filter(Boolean))];
   if (!unique.length) return;
-  container.innerHTML = unique.map((img) =>
+  // Complète toujours les 15 cases (5x3) même si la session a moins d'œuvres — on répète les
+  // images disponibles en boucle plutôt que de laisser des cases vides.
+  const filled = Array.from({ length: 15 }, (_, i) => unique[i % unique.length]);
+  container.innerHTML = filled.map((img) =>
     `<div class="bg-tile"><img src="${escapeHtml(imageSource(img))}" alt="" loading="lazy" draggable="false" /></div>`
   ).join('');
   wireBgMosaicTiles();

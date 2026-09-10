@@ -15,7 +15,8 @@ body[data-ambiance="space"] .bg-mosaic::after { background:#e0562b; }
    juste après le clic sur « Démarrer le jeu », retirée au retour) — jamais pendant que la
    mosaïque est censée être visible (accueil, salle d'attente). */
 body[data-ambiance="pitti"].in-exercise .app-shell { background:radial-gradient(circle at top right,#1a4a34 0,transparent 32rem),#0d3324; }
-body[data-ambiance="bauhaus"].in-exercise .app-shell { background:#f4f1ea; background-image:linear-gradient(90deg,#c1272d 0 25%,#f2c318 25% 50%,#1c4fa0 50% 75%,#1a1a1a 75% 100%); background-size:100% 6px; background-repeat:no-repeat; }
+body[data-ambiance="bauhaus"].in-exercise { --ink:#f4f1ea; --paper:#3a3a38; --canvas:#2b2b28; --border:#55554e; }
+body[data-ambiance="bauhaus"].in-exercise .app-shell { background:#2b2b28; background-image:linear-gradient(90deg,#c1272d 0 25%,#f2c318 25% 50%,#1c4fa0 50% 75%,#f4f1ea 75% 100%); background-size:100% 6px; background-repeat:no-repeat; }
 body[data-ambiance="space"].in-exercise .app-shell { background:#dde3e7; background-image:repeating-radial-gradient(circle at 50% 120%, transparent 0 46px, #00000010 46px 48px); }
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
@@ -67,6 +68,13 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
   .chrono-row { min-height:min(160px,20vh); gap:6px; padding:6px; }
   .chrono-row .fam-image-cell, .chrono-row .chrono-target-slot { min-height:min(145px,18vh); }
   .chrono-row img { max-height:min(140px,17vh); }
+}
+/* Sur smartphone, la mosaïque de fond passe à des colonnes plus étroites, et l'effet de zoom au
+   survol/toucher est retiré (« figé ») — cet agrandissement, pensé pour la souris, peut sembler
+   instable au doigt sur petit écran. */
+@media (max-width:640px) {
+  .bg-mosaic { grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(5, 1fr); }
+  .bg-tile:hover img, .bg-tile.touched img { transform:none; }
 }
 .fam-result-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; width:100%; padding:14px; background:#1b1c1e; min-height:min(500px,60vh); }
 .fam-result-rows { display:flex; flex-direction:column; gap:14px; width:100%; background:#1b1c1e; padding:14px 0; }
