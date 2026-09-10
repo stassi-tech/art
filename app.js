@@ -1040,6 +1040,25 @@ const PRONUNCIATION_FIXES = {
   'botticelli': 'Bottitchelli',
   'groeninge': 'Grouningue',
   'francesca': 'Franchéska',
+  'gentile': 'Gentilé',
+  'vecchietta': 'Vekietta',
+  'patmos': 'Pâtmos',
+  'verrocchio': 'Verrokio',
+  'ecce': 'Étché',
+  'condottiere': 'condotière',
+  'condottière': 'condotière',
+  'rogier': 'Roger',
+  'weyden': 'Wédenne',
+  'pollaiuolo': 'Pollayouolo',
+  'veneziano': 'Vénétsiano',
+  'angelico': 'Angéliko',
+  'ursins': 'Ursin',
+  'ciarda': 'Tcharda',
+  'dürer': 'Duré',
+  'durer': 'Duré',
+  'alvise': 'Alvisé',
+  'benozzo': 'Bénotso',
+  'gozzoli': 'Gotsoli',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -1050,13 +1069,17 @@ const NATIONALITY_AWARE_FIXES = {
   'michael': { exceptFor: /anglais|britannique|english/i, otherwise: 'Mikaël' },
 };
 function fixSpeechPronunciation(text) {
+  // Le texte entre parenthèses (ex. un nom de musée alternatif) reste utile à l'écran mais
+  // alourdit la lecture à voix haute : on le retire ici, avant toute autre correction, pour que
+  // ça s'applique partout où l'on parle, sans avoir à y penser exercice par exercice.
+  let out = String(text || '').replace(/\s*\([^)]*\)/g, '');
   // Frontières Unicode : \b ne reconnaît que les lettres ASCII comme « caractères de mot », donc
   // échoue silencieusement pour tout mot commençant ou finissant par une lettre accentuée (ex.
   // « Cosmè » : le \b après le è ne se déclenchait pas). On utilise des lookarounds explicites sur
   // \p{L}\p{N} à la place, qui couvrent aussi les lettres accentuées.
   const NB = '(?<![\\p{L}\\p{N}])';
   const NA = '(?![\\p{L}\\p{N}])';
-  let out = String(text || '').replace(new RegExp(`${NB}[A-ZÀ-Ý]{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
+  out = out.replace(new RegExp(`${NB}[A-ZÀ-Ý]{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
   Object.entries(NATIONALITY_AWARE_FIXES).forEach(([wrong, { exceptFor, otherwise }]) => {
     if (exceptFor.test(currentSpeechNationality)) return; // nationalité exceptée : on ne touche pas
     out = out.replace(new RegExp(`${NB}${wrong}${NA}`, 'giu'), otherwise);
@@ -1078,7 +1101,16 @@ function findColumn(row, names) {
 function normaliseRows(rows) {
   return rows.map((row, rowIndex) => {
     const imageKey = findColumn(row, ['image', 'url image', 'image url', 'lien image', 'visuel']);
-    if (!imageKey) throw new Error("La colonne « image » est introuvable dans ce fichier.");
+    if (!imageKey) throw new Error("La colonne « image » est introuvable dans ce fichier.");
+    // Trois colonnes optionnelles de photos supplémentaires (portrait de l'artiste, vue du lieu de
+    // conservation, autre photo du cycle) — absentes des anciens fichiers, ignorées sans erreur si
+    // non trouvées.
+    const artistImageKey = findColumn(row, ["image de l artiste", 'portrait artiste', 'photo artiste']);
+    const locationImageKey = findColumn(row, ['images du lieu', 'image du lieu', 'photo lieu', 'photo musee', 'photo musée']);
+    const cycleImageKey = findColumn(row, ['images du cycle', 'image du cycle', 'photo cycle']);
+    const artistImage = artistImageKey ? String(row[artistImageKey] || '').trim() : '';
+    const locationImage = locationImageKey ? String(row[locationImageKey] || '').trim() : '';
+    const cycleImage = cycleImageKey ? String(row[cycleImageKey] || '').trim() : '';
 
     // --- Identité de l'artiste : nouvelle structure (Prénom/Patronyme/Surnom) si présente,
     // sinon on retombe sur l'ancienne colonne unique « Artiste » pour rester compatible avec
@@ -1195,6 +1227,7 @@ function normaliseRows(rows) {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
+      artistImage, locationImage, cycleImage,
       row: rowIndex + 2
     };
   }).filter((question) => question.image || question.artist || question.date || question.location || question.title);
@@ -1256,7 +1289,7 @@ const CITY_TO_COUNTRY = {
   'londres': 'anglaise', 'edimbourg': 'anglaise', 'oxford': 'anglaise', 'cambridge': 'anglaise', 'manchester': 'anglaise', 'glasgow': 'anglaise', 'dublin': 'irlandaise',
   'new york': 'americaine', 'washington': 'americaine', 'chicago': 'americaine', 'boston': 'americaine', 'philadelphie': 'americaine', 'los angeles': 'americaine', 'baltimore': 'americaine', 'cleveland': 'americaine', 'detroit': 'americaine', 'san francisco': 'americaine', 'houston': 'americaine', 'fort worth': 'americaine', 'kansas city': 'americaine', 'minneapolis': 'americaine', 'saint louis': 'americaine',
   'rome': 'italienne', 'florence': 'italienne', 'venise': 'italienne', 'milan': 'italienne', 'naples': 'italienne', 'turin': 'italienne', 'bologne': 'italienne', 'sienne': 'italienne', 'perouse': 'italienne', 'parme': 'italienne', 'gênes': 'italienne', 'ferrare': 'italienne', 'urbino': 'italienne', 'padoue': 'italienne', 'palerme': 'italienne',
-  'madrid': 'espagnole', 'barcelone': 'espagnole', 'seville': 'espagnole', 'bilbao': 'espagnole', 'tolede': 'espagnole', 'saragosse': 'espagnole',
+  'madrid': 'espagnole', 'barcelone': 'espagnole', 'seville': 'espagnole', 'bilbao': 'espagnole', 'tolede': 'espagnole', 'saragosse': 'espagnole', 'escorial': 'espagnole', 'grenade': 'espagnole', 'cordoue': 'espagnole',
   'berlin': 'allemande', 'munich': 'allemande', 'dresde': 'allemande', 'cologne': 'allemande', 'francfort': 'allemande', 'hambourg': 'allemande', 'karlsruhe': 'allemande', 'stuttgart': 'allemande', 'darmstadt': 'allemande', 'brunswick': 'allemande', 'kassel': 'allemande',
   'vienne': 'autrichienne', 'salzbourg': 'autrichienne', 'innsbruck': 'autrichienne',
   'amsterdam': 'neerlandaise', 'la haye': 'neerlandaise', 'rotterdam': 'neerlandaise', 'utrecht': 'neerlandaise', 'haarlem': 'neerlandaise',
@@ -1275,6 +1308,23 @@ function cityFlag(ville) {
   const key = keyName(ville);
   if (!key) return '';
   return nationalityFlag(CITY_TO_COUNTRY[key] || '');
+}
+// Nom de pays (pour l'info-bulle au survol du drapeau) à partir de l'adjectif de nationalité
+// utilisé dans CITY_TO_COUNTRY.
+const COUNTRY_NAMES = {
+  francaise: 'France', anglaise: 'Royaume-Uni', irlandaise: 'Irlande', americaine: 'États-Unis',
+  italienne: 'Italie', espagnole: 'Espagne', allemande: 'Allemagne', autrichienne: 'Autriche',
+  neerlandaise: 'Pays-Bas', belge: 'Belgique', russe: 'Russie', portugaise: 'Portugal',
+  danoise: 'Danemark', norvegienne: 'Norvège', suedoise: 'Suède', finlandaise: 'Finlande',
+  polonaise: 'Pologne', tcheque: 'République tchèque', hongroise: 'Hongrie', grecque: 'Grèce',
+  croate: 'Croatie', serbe: 'Serbie', bulgare: 'Bulgarie', suisse: 'Suisse',
+  mexicaine: 'Mexique', bresilienne: 'Brésil', argentine: 'Argentine',
+  chinoise: 'Chine', japonaise: 'Japon', coreenne: 'Corée du Sud', roumaine: 'Roumanie',
+};
+function countryNameFromFlag(ville) {
+  const key = keyName(ville);
+  const nat = CITY_TO_COUNTRY[key];
+  return nat ? (COUNTRY_NAMES[nat] || '') : '';
 }
 function answerFor(index) {
   if (!state.answers[index]) state.answers[index] = { artist: '', date: '', location: '', title: '', checked: false };
@@ -1435,6 +1485,7 @@ function showPanel(name) {
   // s'il y en a un, le relance lui-même via son propre .start().
   stopAllTimers();
   if (!PLAY_PANELS.includes(name)) clearTopBanner();
+  hideBottomGallery();
   // Nettoie le mode « fenêtre superposée » (configuration d'un jeu ouverte par-dessus le menu) à
   // chaque vraie navigation — sinon la classe et le fond assombri resteraient collés au panneau.
   document.querySelectorAll('.config-popup-mode').forEach((el) => el.classList.remove('config-popup-mode'));
@@ -1572,7 +1623,7 @@ function formatCorrectionValue(key, rawValue, work) {
   if (key === 'title') return `<em>${escapeHtml(rawValue)}</em>`;
   if (key === 'location') {
     const flag = work ? cityFlag(work.ville) : '';
-    return flag ? `${escapeHtml(rawValue)} ${flag}` : escapeHtml(rawValue);
+    return flag ? `${escapeHtml(rawValue)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${flag}</span>` : escapeHtml(rawValue);
   }
   return escapeHtml(rawValue);
 }
@@ -1718,6 +1769,7 @@ function quizSpeak(text) {
 function renderCorrection(answer, question) {
   correctionMainWork = question;
   renderCorrectionDetails(question, question, answer);
+  showBottomGallery(question);
   // Cas particulier du lieu : si la réponse ne donnait que la ville (acceptée comme bonne), on le
   // signale à l'oral en encourageant à préciser le musée la prochaine fois.
   if (state.selectedFieldKeys.includes('location') && locationMatchQuality(answer.location, question) === 'city-only') {
@@ -1726,6 +1778,39 @@ function renderCorrection(answer, question) {
   }
 }
 let currentArtistWorksIndex = -1;
+// Galerie du bas : photos complémentaires (portrait de l'artiste, vue du lieu de conservation)
+// posées lors des corrections, quand ces colonnes existent dans le fichier. Cliquables, ouvrent la
+// même visionneuse plein écran que les vignettes d'œuvres.
+function openLightboxImage(url, caption) {
+  $('lightbox-image').src = imageSource(url);
+  $('lightbox-caption').textContent = caption || '';
+  const sourceLink = $('lightbox-source-link');
+  const commonsUrl = commonsFilePageUrl(imageSource(url));
+  if (sourceLink) {
+    if (commonsUrl) { sourceLink.href = commonsUrl; sourceLink.classList.remove('hidden'); }
+    else sourceLink.classList.add('hidden');
+  }
+  $('image-lightbox').classList.remove('hidden');
+}
+function showBottomGallery(work) {
+  const bar = $('bottom-gallery');
+  if (!bar) return;
+  const items = [];
+  if (work.artistImage) items.push({ url: work.artistImage, label: work.artist, caption: work.artist });
+  if (work.locationImage) items.push({ url: work.locationImage, label: work.ville || 'Lieu', caption: work.location });
+  if (!items.length) { bar.classList.add('hidden'); bar.innerHTML = ''; return; }
+  bar.innerHTML = items.map((item) => `<button type="button" class="bottom-gallery-item" data-url="${escapeHtml(item.url)}" data-caption="${escapeHtml(item.caption)}">
+    <img src="${escapeHtml(imageSource(item.url))}" alt="" /><span>${escapeHtml(item.label)}</span>
+  </button>`).join('');
+  bar.querySelectorAll('.bottom-gallery-item').forEach((btn) => {
+    btn.addEventListener('click', () => openLightboxImage(btn.dataset.url, btn.dataset.caption));
+  });
+  bar.classList.remove('hidden');
+}
+function hideBottomGallery() {
+  const bar = $('bottom-gallery');
+  if (bar) { bar.classList.add('hidden'); bar.innerHTML = ''; }
+}
 async function openArtistWorksPage(idx) {
   const row = artistListSortedRows[idx];
   if (!row) return;
@@ -3971,7 +4056,7 @@ function impShowCurrent() {
     { key: 'date', label: 'Date', value: work.date, on: anyFieldChecked ? $('imp-field-date').checked : true },
     { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: (anyFieldChecked ? $('imp-field-materiaux').checked : true) && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: (anyFieldChecked ? $('imp-field-dimensions').checked : true) && dims },
-    { key: 'location', label: 'Lieu', value: cityFlag(work.ville) ? `${work.location} ${cityFlag(work.ville)}` : work.location, on: anyFieldChecked ? $('imp-field-location').checked : true },
+    { key: 'location', label: 'Lieu', value: cityFlag(work.ville) ? `${escapeHtml(work.location)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${cityFlag(work.ville)}</span>` : escapeHtml(work.location), spoken: work.location, on: anyFieldChecked ? $('imp-field-location').checked : true },
   ].filter((f) => f.on);
 
   $('imp-correction-details').innerHTML = fields.map((f) =>
@@ -3987,7 +4072,7 @@ function impShowCurrent() {
     impTimers.push(setTimeout(() => {
       const el = $(`imp-val-${f.key}`);
       if (el) {
-        if (f.key === 'dimensions' || f.key === 'title' || f.key === 'artist') el.innerHTML = f.value; else el.textContent = f.value;
+        if (f.key === 'dimensions' || f.key === 'title' || f.key === 'artist' || f.key === 'location') el.innerHTML = f.value; else el.textContent = f.value;
         el.classList.add('written');
       }
     }, 400 + i * STAGGER));
