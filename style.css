@@ -3,11 +3,14 @@
    page autour du contenu — le contenu lui-même (--paper/--ink) reste lisible partout, seule
    l'habillage change. Premier essai avec 3 salles, d'autres suivront. */
 body[data-ambiance="pitti"] { --accent:#caa03f; --accent-dark:#7a5a1e; --cta:#8a1c2c; --cta-dark:#6b1420; }
-body[data-ambiance="pitti"] .app-shell { background:radial-gradient(circle at top right,#1a4a34 0,transparent 32rem),#0d3324; }
 body[data-ambiance="bauhaus"] { --accent:#1c4fa0; --accent-dark:#14356e; --cta:#c1272d; --cta-dark:#8a1a1e; }
-body[data-ambiance="bauhaus"] .app-shell { background:#f4f1ea; }
 body[data-ambiance="space"] { --accent:#e0562b; --accent-dark:#a83e1c; --cta:#5a6b74; --cta-dark:#3d4a52; }
-body[data-ambiance="space"] .app-shell { background:#eef0f2; }
+/* La mosaïque de fond reste visible avec chaque ambiance — teintée à sa couleur plutôt que
+   recouverte par un fond plein écran (qui la cachait entièrement). */
+body[data-ambiance] .bg-mosaic::after { content:''; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; opacity:.55; }
+body[data-ambiance="pitti"] .bg-mosaic::after { background:#0d3324; }
+body[data-ambiance="bauhaus"] .bg-mosaic::after { background:#1c4fa0; }
+body[data-ambiance="space"] .bg-mosaic::after { background:#e0562b; }
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
 .bg-mosaic { position:fixed; inset:0; z-index:0; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; }
