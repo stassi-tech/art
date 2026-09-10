@@ -668,7 +668,7 @@ $('settings-toggle')?.addEventListener('click', () => {
   populateGlobalVoiceSelect();
 });
 
-const EXERCISE_PLAY_PANELS = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'enigme', 'quiz'];
+const EXERCISE_PLAY_PANELS = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'];
 function currentActivePanelName() {
   return EXERCISE_PLAY_PANELS.find((name) => !$(`${name}-panel`)?.classList.contains('hidden'));
 }
@@ -797,7 +797,7 @@ function handleExtendAndRemember(prefix, panelId) {
     const levels = [...document.querySelectorAll(`#${panelId} [id^="${prefix}-level-"]:checked`)].map((el) => el.id.replace(`${prefix}-level-`, ''));
     localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember: true }));
     localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques: [], levels, remember: true }));
-    const prefixes = ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'];
+    const prefixes = ['imp', 'intrus', 'recon', 'vf', 'fam'];
     prefixes.forEach((other) => {
       if (other === prefix) return;
       document.querySelectorAll(`[id^="${other}-art-"]`).forEach((el) => { if (arts.length) el.checked = arts.includes(el.id.replace(`${other}-art-`, '')); });
@@ -1137,7 +1137,7 @@ const PRONUNCIATION_FIXES = {
   'francesca': 'Franchéska',
   'gentile': 'Gentilé',
   'vecchietta': 'Vekietta',
-  'patmos': 'Pâtmos',
+  'patmos': 'Patmoss',
   'verrocchio': 'Verrokio',
   'ecce': 'Étché',
   'condottiere': 'condotière',
@@ -1639,8 +1639,6 @@ function showPanel(name) {
   $('vraifaux-panel')?.classList.toggle('hidden', name !== 'vraifaux');
   $('famille-setup-panel')?.classList.toggle('hidden', name !== 'famille-setup');
   $('famille-panel')?.classList.toggle('hidden', name !== 'famille');
-  $('enigme-setup-panel')?.classList.toggle('hidden', name !== 'enigme-setup');
-  $('enigme-panel')?.classList.toggle('hidden', name !== 'enigme');
   $('chrono-setup-panel')?.classList.toggle('hidden', name !== 'chrono-setup');
   $('chrono-panel')?.classList.toggle('hidden', name !== 'chrono');
   $('quiz-setup-panel')?.classList.toggle('hidden', name !== 'quiz-setup');
@@ -2405,6 +2403,8 @@ $('chrono-start-button')?.addEventListener('click', async () => {
     showPanel('chrono');
     $('chrono-ready-screen').classList.remove('hidden');
     $('chrono-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(CHRONO_SESSION.flatMap((q) => q.works.map((w) => w.image)));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -2496,6 +2496,7 @@ function famSpeak2(text, onEnd) {
 $('chrono-launch-first-button')?.addEventListener('click', () => {
   $('chrono-ready-screen').classList.add('hidden');
   $('chrono-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
   chronoTimer.start();
   chronoShowQuestion();
 });
@@ -2591,345 +2592,6 @@ $('chrono-next-button')?.addEventListener('click', async () => {
       chronoTimer.stop();
     }
     showExerciseResultsModal('Chronologie', chronoScore, CHRONO_SESSION.length, 'training-hub');
-  }
-});
-
-// ============================================================
-// MODULE ÉNIGME — artiste/date/lieu donnés d'emblée (titre caché) ; deux éléments à retrouver
-// par œuvre parmi : personnages (cercles lettrés), événement (QCM), interprétation (QCM).
-// Données de démonstration en dur ci-dessous, en attendant un fichier « -enigme.xlsx » réel
-// (même principe de lecture que les autres modules à brancher plus tard, clé = lien d'image).
-// ============================================================
-const ENIGME_DEMO_DATA = [
-  {
-    century: '19e', artist: 'Théodore Géricault', date: '1818-1819', location: 'Musée du Louvre, Paris',
-    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/JEAN%20LOUIS%20THEODORE%20GERICAULT%20-%20La%20Balsa%20de%20la%20Medusa%20(Museo%20del%20Louvre,%201818-19).jpg?width=700',
-    items: [
-      { type: 'personnages', people: [
-        { letter: 'A', x: 20, y: 78, name: 'Un survivant épuisé' },
-        { letter: 'B', x: 78, y: 22, name: 'Le marin agitant un linge' },
-      ] },
-      { type: 'evenement', question: "Quel événement réel a inspiré cette scène ?", options: ["Le naufrage de la frégate La Méduse (1816)", "La bataille de Trafalgar", "Le naufrage du Titanic"], correctIndex: 0 },
-    ],
-  },
-  {
-    century: '19e', artist: 'Eugène Delacroix', date: '1830', location: 'Musée du Louvre, Paris',
-    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Eug%C3%A8ne%20Delacroix%20-%20La%20libert%C3%A9%20guidant%20le%20peuple.jpg?width=700',
-    items: [
-      { type: 'personnages', people: [
-        { letter: 'A', x: 45, y: 30, name: 'La Liberté (figure allégorique)' },
-        { letter: 'B', x: 60, y: 55, name: 'Un gamin de Paris (le futur Gavroche)' },
-      ] },
-      { type: 'interpretation', question: "Que symbolise la figure féminine au centre du tableau ?", options: ["La République et la Liberté", "La Vierge Marie", "La Victoire militaire"], correctIndex: 0 },
-    ],
-  },
-];
-
-// Position approximative (en % de l'image) pour chacune des 6 zones fixes utilisées dans le
-// fichier -enigme.xlsx (colonnes « Personnage A Haut/gauche » etc.).
-const ENIG_POSITIONS = {
-  A: { x: 25, y: 25 }, B: { x: 25, y: 75 }, C: { x: 50, y: 25 },
-  D: { x: 50, y: 75 }, E: { x: 75, y: 25 }, F: { x: 75, y: 75 },
-};
-function enigImageKey(url) {
-  // Clé de correspondance entre le fichier principal et le fichier -enigme : le nom de fichier
-  // Wikimedia, indépendamment du domaine ou des paramètres d'URL (utm_source, width, etc.).
-  const m = String(url || '').match(/[^/]+\.(jpg|jpeg|png|gif|tif|tiff)/i);
-  return m ? decodeURIComponent(m[0]).toLowerCase() : '';
-}
-async function fetchEnigmeRows(art, century) {
-  const [mainRows, enigResponse] = await Promise.all([
-    fetchQuizRows(art, century).catch(() => []),
-    fetch(`quizzes/${art}-${century}-enigme.xlsx`),
-  ]);
-  if (!enigResponse.ok) throw new Error('fichier énigme introuvable');
-  const buffer = await enigResponse.arrayBuffer();
-  const book = XLSX.read(buffer, { type: 'array' });
-  const raw = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { header: 1, defval: '' });
-
-  const mainByKey = new Map();
-  mainRows.forEach((r) => { const k = enigImageKey(r.image); if (k) mainByKey.set(k, r); });
-
-  const results = [];
-  for (let i = 1; i < raw.length; i++) {
-    const r = raw[i];
-    if (!r || !r[0]) continue;
-    const key = enigImageKey(r[0]);
-    const mainRow = mainByKey.get(key);
-    // Sans correspondance dans le fichier principal, on ne connaît ni date ni lieu : on ignore
-    // cette ligne plutôt que d'afficher une référence incomplète.
-    if (!mainRow) continue;
-
-    const people = [];
-    ['A', 'B', 'C', 'D', 'E', 'F'].forEach((letter, idx) => {
-      const name = String(r[3 + idx] || '').trim();
-      if (name) people.push({ letter, name, ...ENIG_POSITIONS[letter] });
-    });
-    const evenement = String(r[9] || '').trim();
-    const evFaux1 = String(r[10] || '').trim(), evFaux2 = String(r[11] || '').trim();
-    const interpretation = String(r[12] || '').trim();
-    const intFaux1 = String(r[13] || '').trim(), intFaux2 = String(r[14] || '').trim();
-
-    const availableTypes = [];
-    if (people.length) availableTypes.push({ type: 'personnages', people });
-    if (evenement && evFaux1 && evFaux2) availableTypes.push({ type: 'evenement', question: 'Quel événement représente cette œuvre ?', options: [evenement, evFaux1, evFaux2], correctIndex: 0 });
-    if (interpretation && intFaux1 && intFaux2) availableTypes.push({ type: 'interpretation', question: "Quelle est l'interprétation de cette œuvre ?", options: [interpretation, intFaux1, intFaux2], correctIndex: 0 });
-
-    // Une seule question par œuvre désormais : au moins 1 type disponible suffit.
-    if (availableTypes.length < 1) continue;
-    const shuffledTypes = availableTypes.slice().sort(() => Math.random() - 0.5);
-    const chosenItems = shuffledTypes.slice(0, 1).map((it) => {
-      if (it.type !== 'evenement' && it.type !== 'interpretation') return it;
-      // Mélange l'ordre des 3 options QCM tout en gardant trace du bon index.
-      const opts = it.options.map((opt, idx) => ({ opt, idx })).sort(() => Math.random() - 0.5);
-      return { ...it, options: opts.map((o) => o.opt), correctIndex: opts.findIndex((o) => o.idx === 0) };
-    });
-
-    results.push({
-      century, artist: mainRow.artist, date: mainRow.date, location: mainRow.location,
-      image: mainRow.image, items: chosenItems,
-    });
-  }
-  return results;
-}
-
-$('open-enigme-setup')?.addEventListener('click', () => { showPanel('enigme-setup'); populateEnigVoices(); speakObjective('enig'); restoreLastSelection('enigme-setup-panel'); });
-$('enigme-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
-$('enig-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('enigme-setup'); });
-$('enig-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'enigme'; showPanel('account'); loadAccountPage(); });
-$('enig-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
-
-function populateEnigVoices() {
-  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
-  const select = $('enig-opt-voice');
-  if (!select) return;
-  select.innerHTML = voices.length
-    ? voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('')
-    : '<option value="">Voix par défaut du système</option>';
-}
-
-const ENIG_ACCORDIONS = ['enig-toggle-art:enig-body-art', 'enig-toggle-century:enig-body-century', 'enig-toggle-count:enig-body-count'];
-ENIG_ACCORDIONS.forEach((pair) => {
-  const [toggleId, bodyId] = pair.split(':');
-  $(toggleId)?.addEventListener('click', () => {
-    const opening = $(bodyId).classList.contains('hidden');
-    ENIG_ACCORDIONS.forEach((p) => $(p.split(':')[1])?.classList.add('hidden'));
-    if (opening) $(bodyId).classList.remove('hidden');
-  });
-});
-
-function enigSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e'].filter((c) => $(`enig-century-${c}`)?.checked); }
-function enigSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`enig-art-${a}`)?.checked); }
-
-let ENIG_SESSION = [], enigIndex = 0, enigScore = 0, enigAnswered = false, enigAudioOn = true, enigSelectedVoiceRef = null;
-const enigTimer = createTimer('enig-timer');
-function enigSpeak(text) {
-  if (!enigAudioOn || !window.speechSynthesis) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
-  u.lang = 'fr-FR'; u.rate = 0.85;
-  if (enigSelectedVoiceRef) u.voice = enigSelectedVoiceRef;
-  speechSynthesis.speak(u);
-}
-
-$('enig-start-button')?.addEventListener('click', async () => {
-  handleExtendAndRemember('enig', 'enigme-setup-panel');
-  saveLastSelection('enigme-setup-panel');
-  const arts = enigSelectedArts();
-  const centuries = enigSelectedCenturies();
-  const feedback = $('enig-setup-feedback');
-  feedback.classList.remove('hidden');
-  feedback.textContent = 'Chargement des énigmes…';
-  enigAudioOn = getGlobalPrefs().audioOn;
-  enigSelectedVoiceRef = getGlobalVoice();
-  const countChoice = Number(document.querySelector('input[name="enig-count"]:checked').value);
-
-  // Essaie d'abord les vrais fichiers -enigme.xlsx (un par art/siècle) ; si aucun n'est encore
-  // en ligne, se rabat sur les énigmes de démonstration pour ne pas bloquer le test de l'appli.
-  let available = [];
-  for (const art of arts) {
-    for (const century of centuries) {
-      try { available.push(...(await fetchEnigmeRows(art, century))); } catch (e) { /* fichier pas encore en ligne, ignoré */ }
-    }
-  }
-  let usingDemo = false;
-  if (!available.length) {
-    available = ENIGME_DEMO_DATA.filter((e) => centuries.includes(e.century))
-      .map((e) => ({ ...e, items: [e.items[Math.floor(Math.random() * e.items.length)]] }));
-    usingDemo = true;
-  }
-  if (!available.length) { feedback.textContent = "Aucune énigme disponible pour ce choix — essayez 19e siècle (démonstration) ou vérifiez que le fichier -enigme.xlsx est bien en ligne."; return; }
-
-  for (let i = available.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [available[i], available[j]] = [available[j], available[i]]; }
-  ENIG_SESSION = [];
-  for (let i = 0; i < countChoice; i++) ENIG_SESSION.push(available[i % available.length]);
-  feedback.classList.add('hidden');
-  if (usingDemo) { feedback.classList.remove('hidden'); feedback.textContent = 'Mode démonstration (fichier -enigme.xlsx non trouvé en ligne).'; }
-  enigIndex = 0; enigScore = 0;
-  showPanel('enigme');
-  enigTimer.start();
-  enigShowQuestion();
-});
-
-function enigShowQuestion() {
-  speechSynthesis.cancel();
-  enigAnswered = false;
-  const q = ENIG_SESSION[enigIndex];
-  $('enig-progress-label').textContent = `Question ${enigIndex + 1} / ${ENIG_SESSION.length}`;
-  $('enig-progress-bar').style.width = `${(enigIndex / ENIG_SESSION.length) * 100}%`;
-  $('enig-score-label').textContent = `${enigScore} point${enigScore > 1 ? 's' : ''}`;
-  $('enig-correction').classList.add('hidden');
-  $('enig-validate-button').classList.remove('hidden');
-  $('enig-validate-button').disabled = false;
-
-  $('enig-stage-img').src = imageSource(q.image);
-  const personnagesItem = q.items.find((it) => it.type === 'personnages');
-  $('enig-image-wrap').querySelectorAll('.enig-circle').forEach((c) => c.remove());
-  if (personnagesItem) {
-    // Les cercles sont positionnés une fois l'image chargée, pour connaître ses dimensions réelles.
-    const img = $('enig-stage-img');
-    const placeCircles = () => {
-      $('enig-image-wrap').querySelectorAll('.enig-circle').forEach((c) => c.remove());
-      personnagesItem.people.forEach((p) => {
-        const circle = document.createElement('div');
-        circle.className = 'enig-circle';
-        circle.style.left = `${p.x}%`;
-        circle.style.top = `${p.y}%`;
-        circle.style.width = '52px';
-        circle.style.height = '52px';
-        circle.innerHTML = `<span>${p.letter}</span>`;
-        $('enig-image-wrap').appendChild(circle);
-      });
-    };
-    if (img.complete) placeCircles(); else img.onload = placeCircles;
-  }
-
-  $('enig-header-details').innerHTML = [
-    ['Artiste', q.artist], ['Date', q.date], ['Lieu', q.location],
-  ].map(([label, val]) => `<span class="correction-label">${label}</span><span class="correction-value">${escapeHtml(val)}</span>`).join('');
-  enigSpeak(`Ce tableau est de ${q.artist}. Il date de ${q.date} et est conservé à ${q.location}. Trouvez les éléments suivants.`);
-
-  $('enig-items').innerHTML = q.items.map((item, itemIdx) => {
-    if (item.type === 'personnages') {
-      return `<div class="enig-item" data-item="${itemIdx}">
-        <div class="enig-item-title">Personnages</div>
-        ${item.people.map((p) => `<div class="enig-person-row" data-letter="${p.letter}">
-          <span class="enig-letter">${p.letter}</span>
-          <input type="text" class="enig-person-input" data-letter="${p.letter}" placeholder="Qui est-ce ?" />
-          <button type="button" class="mic-icon-button enig-person-mic" data-letter="${p.letter}" aria-label="Dicter la réponse">🎤</button>
-        </div>`).join('')}
-      </div>`;
-    }
-    // QCM (événement ou interprétation) : la voix ne lira que la question, pas les options.
-    const label = item.type === 'evenement' ? 'Événement' : 'Interprétation';
-    const shuffledOptions = item.options.map((opt, i) => ({ opt, i })).sort(() => Math.random() - 0.5);
-    return `<div class="enig-item" data-item="${itemIdx}">
-      <div class="enig-item-title">${label}</div>
-      <p class="enig-qcm-question">${escapeHtml(item.question)}</p>
-      ${shuffledOptions.map(({ opt, i }) => `<button type="button" class="enig-qcm-option" data-item="${itemIdx}" data-option="${i}">${escapeHtml(opt)}</button>`).join('')}
-    </div>`;
-  }).join('');
-
-  document.querySelectorAll('.enig-person-mic').forEach((btn) => {
-    const input = document.querySelector(`.enig-person-input[data-letter="${btn.dataset.letter}"]`);
-    attachSimpleMic(btn, input);
-  });
-
-  document.querySelectorAll('.enig-qcm-option').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const itemIdx = btn.dataset.item;
-      document.querySelectorAll(`.enig-qcm-option[data-item="${itemIdx}"]`).forEach((b) => b.classList.remove('selected'));
-      btn.classList.add('selected');
-    });
-  });
-
-  // La voix lit chaque question de QCM (sans les propositions), après le message d'ouverture.
-  q.items.forEach((item, i) => {
-    if (item.type !== 'personnages') {
-      setTimeout(() => enigSpeak(item.question), 4500 + i * 3500);
-    }
-  });
-}
-
-$('enig-validate-button')?.addEventListener('click', () => {
-  if (enigAnswered) return;
-  enigAnswered = true;
-  const q = ENIG_SESSION[enigIndex];
-  $('enig-validate-button').disabled = true;
-  document.querySelectorAll('.enig-person-input').forEach((inp) => { inp.disabled = true; });
-  document.querySelectorAll('.enig-qcm-option').forEach((btn) => { btn.disabled = true; });
-
-  // Tout ou rien sur les deux éléments de la question, comme les autres exercices.
-  let allCorrect = true;
-  const spokenParts = [];
-
-  q.items.forEach((item, itemIdx) => {
-    if (item.type === 'personnages') {
-      let itemOk = true;
-      item.people.forEach((p) => {
-        const input = document.querySelector(`.enig-person-input[data-letter="${p.letter}"]`);
-        const given = famNormalize(input ? input.value : '');
-        const correct = famNormalize(p.name);
-        const ok = given && (correct.includes(given) || given.includes(correct));
-        if (!ok) itemOk = false;
-        const row = input.closest('.enig-person-row');
-        const verdict = document.createElement('span');
-        verdict.className = 'enig-person-verdict';
-        verdict.style.color = ok ? 'var(--ok)' : 'var(--wrong)';
-        verdict.textContent = ok ? 'Exact' : 'À réviser';
-        row.appendChild(verdict);
-        if (!ok) {
-          const note = document.createElement('span');
-          note.className = 'enig-correct-note';
-          note.textContent = `Bonne réponse : ${p.name}`;
-          row.appendChild(note);
-        }
-        spokenParts.push(`Dans le cercle ${p.letter}, on voyait ${p.name}.`);
-      });
-      if (!itemOk) allCorrect = false;
-    } else {
-      const selected = document.querySelector(`.enig-qcm-option[data-item="${itemIdx}"].selected`);
-      const selectedIndex = selected ? Number(selected.dataset.option) : -1;
-      const ok = selectedIndex === item.correctIndex;
-      if (!ok) allCorrect = false;
-      document.querySelectorAll(`.enig-qcm-option[data-item="${itemIdx}"]`).forEach((btn) => {
-        const optIndex = Number(btn.dataset.option);
-        if (optIndex === item.correctIndex) btn.classList.add('correct');
-        else if (btn === selected) btn.classList.add('wrong');
-      });
-      spokenParts.push(`La bonne réponse était : ${item.options[item.correctIndex]}.`);
-    }
-  });
-
-  const pointEarned = allCorrect ? 1 : 0;
-  enigScore = Math.round((enigScore + pointEarned) * 10) / 10;
-  $('enig-score-label').textContent = `${enigScore} point${enigScore > 1 ? 's' : ''}`;
-  enigSpeak(spokenParts.join(' '));
-
-  $('enig-correction').classList.remove('hidden');
-  $('enig-next-button').textContent = enigIndex === ENIG_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
-});
-
-$('enig-next-button')?.addEventListener('click', async () => {
-  if (enigIndex < ENIG_SESSION.length - 1) {
-    enigIndex++;
-    enigShowQuestion();
-  } else {
-    if (firebaseReady && currentUser) {
-      try {
-        await db.collection('users').doc(currentUser.uid).collection('scores').add({
-          type: 'entrainement',
-          exerciseName: 'Énigme',
-          timeSpent: enigTimer.stop(),
-          correct: enigScore, possible: ENIG_SESSION.length,
-          percent: Math.round((enigScore / ENIG_SESSION.length) * 100),
-          questionCount: ENIG_SESSION.length,
-          quizLabel: 'Énigme',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch (e) { /* enregistrement best-effort */ }
-    }
-    showExerciseResultsModal('Énigme', enigScore, ENIG_SESSION.length, 'training-hub');
   }
 });
 
@@ -3109,6 +2771,8 @@ $('fam-start-button')?.addEventListener('click', async () => {
     showPanel('famille');
     $('fam-ready-screen').classList.remove('hidden');
     $('fam-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(FAM_SESSION.flatMap((q) => q.images.map((w) => w.image)));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -3163,6 +2827,7 @@ function famShowQuestion() {
 $('fam-launch-first-button')?.addEventListener('click', () => {
   $('fam-ready-screen').classList.add('hidden');
   $('fam-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
   famTimer.start();
   famShowQuestion();
 });
@@ -3387,6 +3052,8 @@ $('vf-start-button')?.addEventListener('click', async () => {
     showPanel('vraifaux');
     $('vf-ready-screen').classList.remove('hidden');
     $('vf-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(VF_SESSION.map((q) => q.correct.image));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -3444,6 +3111,7 @@ function vfShowQuestion() {
 $('vf-launch-first-button')?.addEventListener('click', () => {
   $('vf-ready-screen').classList.add('hidden');
   $('vf-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
   vfTimer.start();
   vfShowQuestion();
 });
@@ -3651,6 +3319,8 @@ $('recon-start-button')?.addEventListener('click', async () => {
     showPanel('reconstitution');
     $('recon-ready-screen').classList.remove('hidden');
     $('recon-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(RECON_SESSION.map((q) => q.correct.image));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -3659,6 +3329,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
 $('recon-launch-first-button')?.addEventListener('click', () => {
   $('recon-ready-screen').classList.add('hidden');
   $('recon-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
   reconTimer.start();
   reconShowQuestion();
 });
@@ -3811,6 +3482,23 @@ function initBackgroundMosaic() {
     const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
     return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" /></div>`;
   }).join('');
+  wireBgMosaicTiles();
+}
+// Réutilise le même mécanisme de mosaïque (fond des pages d'accueil) pour la « salle d'attente »
+// de chaque exercice, mais avec les œuvres réellement tirées pour CETTE session — le joueur voit
+// un aperçu de ce qui l'attend pendant qu'il patiente avant de cliquer sur « Démarrer le jeu ».
+function populateSessionMosaic(images) {
+  const container = $('bg-mosaic');
+  if (!container) return;
+  const unique = [...new Set(images.filter(Boolean))].slice(0, 15);
+  if (!unique.length) return;
+  container.innerHTML = unique.map((img) =>
+    `<div class="bg-tile"><img src="${escapeHtml(imageSource(img))}" alt="" loading="lazy" /></div>`
+  ).join('');
+  wireBgMosaicTiles();
+}
+function wireBgMosaicTiles() {
+  const container = $('bg-mosaic');
   // Sur smartphone il n'y a pas de vrai survol à la souris : « :hover » seul ne suffit pas.
   // On bascule une classe au toucher/clic pour obtenir le même effet net + agrandi, et on la
   // retire des autres vignettes pour n'en montrer qu'une nette à la fois.
@@ -4104,7 +3792,7 @@ $('open-impregnation-setup')?.addEventListener('click', () => {
   showExerciseRules('imp', () => { speakObjective('imp'); $('imp-start-button')?.click(); });
 });
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
-['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
+['imp', 'intrus', 'recon', 'vf', 'fam'].forEach((p) => {
   $(`${p}-hub-link`)?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
 });
 
@@ -4405,6 +4093,8 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     showPanel('intrus');
     $('intrus-ready-screen').classList.remove('hidden');
     $('intrus-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(INTRUS_SESSION.map((q) => q.correct.image));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -4413,6 +4103,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
 $('intrus-launch-first-button')?.addEventListener('click', () => {
   $('intrus-ready-screen').classList.add('hidden');
   $('intrus-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
   intrusTimer.start();
   intrusShowQuestion();
 });

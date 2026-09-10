@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=94" />
+    <link rel="stylesheet" href="style.css?v=96" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -653,80 +653,6 @@
           </div>
         </section>
 
-        <section id="enigme-setup-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="enigme-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
-          </div>
-          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Énigme</h2></div>
-          <p class="modal-hint" id="enig-objective" style="text-align:center;margin-top:0;">L'artiste, la date et le lieu sont donnés d'emblée (le titre reste caché). À vous de retrouver un élément : les personnages représentés, l'événement, ou l'interprétation de l'œuvre.</p>
-          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="enig-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="enig-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body" id="enig-body-art">
-              <label class="rubrique-option"><input type="checkbox" id="enig-art-peinture" /><span>Peinture</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-art-sculpture" /><span>Sculpture</span></label>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="enig-toggle-century">🏛️ Choisissez votre siècle</button>
-            <div class="accordion-body" id="enig-body-century">
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-15e" /><span>15e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-16e" /><span>16e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-17e" /><span>17e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-18e" /><span>18e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-19e" /><span>19e siècle</span></label>
-              <p class="modal-hint">Seuls les siècles pour lesquels des énigmes existent seront réellement proposés.</p>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="enig-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body" id="enig-body-count">
-              <label class="rubrique-option"><input type="radio" name="enig-count" value="5" checked /><span>5 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="enig-count" value="10" /><span>10 questions</span></label>
-            </div>
-          </div>
-          <button type="button" class="primary-button" id="enig-start-button" style="width:100%">Commencer</button>
-          <p id="enig-setup-feedback" class="hint hidden"></p>
-          <p class="modal-hint" style="text-align:center;">Module en cours de constitution : quelques énigmes de démonstration en attendant votre fichier de données.</p>
-          <button type="button" class="secondary-button" id="enig-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
-        </section>
-
-        <section id="enigme-panel" class="quiz-panel hidden">
-          <div class="progress-row">
-            <span><span class="quiz-reference">Énigme</span> — <span id="enig-progress-label">Question 1 / 5</span></span>
-            <span id="enig-timer" class="quiz-reference">⏱ 0:00</span>
-            <span id="enig-score-label" class="score-summary-highlight">0 point</span>
-          </div>
-          <div class="progress-track"><div class="progress-bar" id="enig-progress-bar"></div></div>
-
-          <div class="quiz-grid">
-            <div class="artwork-column">
-              <figure class="artwork-card">
-                <div id="enig-image-wrap" class="enig-image-wrap">
-                  <img id="enig-stage-img" alt="" />
-                </div>
-              </figure>
-            </div>
-            <section class="answer-card" aria-label="Éléments à retrouver">
-              <div class="correction-details" id="enig-header-details" style="margin-bottom:16px;"></div>
-              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 12px;">Trouvez les éléments suivants</h2>
-              <div id="enig-items"></div>
-              <button type="button" class="primary-button" id="enig-validate-button" style="width:100%;margin-top:14px;">Valider</button>
-              <div id="enig-correction" class="hidden">
-                <button type="button" class="primary-button" id="enig-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
-              </div>
-              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="enig-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
-                <button type="button" class="home-icon-button exercise-icon-button" id="enig-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-scores" id="enig-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
-              </div>
-            </section>
-          </div>
-        </section>
-
         <section id="quiz-setup-panel" class="welcome-panel hidden">
           <button type="button" id="quiz-setup-back-button" class="modal-close-x" aria-label="Fermer" title="Fermer">✕</button>
           <div class="settings-title-band">
@@ -1126,6 +1052,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=114"></script>
+    <script src="app.js?v=116"></script>
   </body>
 </html>
