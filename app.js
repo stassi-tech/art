@@ -400,7 +400,7 @@ document.querySelectorAll('.profile-menu-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (btn.id === 'profile-menu-scores') { showPanel('account'); loadAccountPage(); return; }
     document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
-    ['profile-section-tech', 'profile-section-fields', 'profile-section-rubriques'].forEach((id) => {
+    ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-rubriques'].forEach((id) => {
       $(id)?.classList.toggle('hidden', id !== btn.dataset.target);
     });
   });
@@ -437,6 +437,9 @@ function initProfilePage() {
   $('pf-show-explanations').checked = prefs.showExplanations;
   $('pf-audio').checked = prefs.audioOn;
   $('pf-handedness').value = document.body.classList.contains('lefty') ? 'left' : 'right';
+  const savedAmbiance = localStorage.getItem('ambiance') || '';
+  const ambianceRadio = document.querySelector(`input[name="pf-ambiance"][value="${savedAmbiance}"]`);
+  if (ambianceRadio) ambianceRadio.checked = true;
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   $('pf-voice').innerHTML = voices.length
     ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
@@ -529,6 +532,21 @@ $('pf-handedness')?.addEventListener('change', () => {
   const lefty = $('pf-handedness').value === 'left';
   localStorage.setItem('handedness', lefty ? 'lefty' : 'righty');
   applyHandedness(lefty);
+});
+
+// --- Ambiance esthétique (Mon compte) : change juste l'accent de couleur et le fond de page,
+// mémorisé sur l'appareil. Valeur vide = apparence actuelle, inchangée.
+function applyAmbiance(value) {
+  if (value) document.body.setAttribute('data-ambiance', value);
+  else document.body.removeAttribute('data-ambiance');
+}
+applyAmbiance(localStorage.getItem('ambiance') || '');
+document.querySelectorAll('input[name="pf-ambiance"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    if (!radio.checked) return;
+    localStorage.setItem('ambiance', radio.value);
+    applyAmbiance(radio.value);
+  });
 });
 
 // --- Choix de champ (art/siècle/zone) : si mémorisé, chaque bouton d'exercice démarre
