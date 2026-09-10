@@ -255,7 +255,12 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="intrus-progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="intrus-ready-screen" style="text-align:center;padding:60px 20px;">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Vous êtes prêt·e ? Cliquez pour afficher la première question.</p>
+            <button type="button" class="primary-button" id="intrus-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button>
+          </div>
+
+          <div class="quiz-grid hidden" id="intrus-quiz-grid">
             <div class="artwork-column">
               <figure class="artwork-card" id="intrus-prompt-card">
                 <!-- Selon le mode : soit l'image de référence, soit le texte de la référence à retrouver -->
@@ -346,7 +351,12 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="recon-progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="recon-ready-screen" style="text-align:center;padding:60px 20px;">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Vous êtes prêt·e ? Cliquez pour afficher la première question.</p>
+            <button type="button" class="primary-button" id="recon-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button>
+          </div>
+
+          <div class="quiz-grid hidden" id="recon-quiz-grid">
             <div class="artwork-column">
               <figure class="artwork-card" id="recon-prompt-card"></figure>
             </div>
@@ -436,7 +446,12 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="vf-progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="vf-ready-screen" style="text-align:center;padding:60px 20px;">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Vous êtes prêt·e ? Cliquez pour afficher la première œuvre.</p>
+            <button type="button" class="primary-button" id="vf-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button>
+          </div>
+
+          <div class="quiz-grid hidden" id="vf-quiz-grid">
             <div class="artwork-column">
               <figure class="artwork-card">
                 <img id="vf-stage-img" alt="" style="max-width:100%;max-height:min(820px,74vh);display:block;" />
@@ -523,7 +538,12 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="fam-progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="fam-ready-screen" style="text-align:center;padding:60px 20px;">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Vous êtes prêt·e ? Cliquez pour afficher la première question.</p>
+            <button type="button" class="primary-button" id="fam-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button>
+          </div>
+
+          <div class="quiz-grid hidden" id="fam-quiz-grid">
             <div class="artwork-column">
               <div id="fam-image-grid" class="fam-image-grid"></div>
             </div>
@@ -606,7 +626,12 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="chrono-progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="chrono-ready-screen" style="text-align:center;padding:60px 20px;">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Vous êtes prêt·e ? Cliquez pour afficher la première question.</p>
+            <button type="button" class="primary-button" id="chrono-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button>
+          </div>
+
+          <div class="quiz-grid hidden" id="chrono-quiz-grid">
             <div class="artwork-column">
               <div id="chrono-image-grid">
                 <div id="chrono-cards-row" class="chrono-row" style="grid-template-columns:repeat(4,1fr);"></div>
@@ -1101,6 +1126,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=113"></script>
+    <script src="app.js?v=114"></script>
   </body>
 </html>

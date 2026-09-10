@@ -2403,8 +2403,8 @@ $('chrono-start-button')?.addEventListener('click', async () => {
     CHRONO_SESSION = questions;
     chronoIndex = 0; chronoScore = 0;
     showPanel('chrono');
-    chronoTimer.start();
-    chronoShowQuestion();
+    $('chrono-ready-screen').classList.remove('hidden');
+    $('chrono-quiz-grid').classList.add('hidden');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -2493,6 +2493,12 @@ function famSpeak2(text, onEnd) {
   speechSynthesis.speak(u);
 }
 
+$('chrono-launch-first-button')?.addEventListener('click', () => {
+  $('chrono-ready-screen').classList.add('hidden');
+  $('chrono-quiz-grid').classList.remove('hidden');
+  chronoTimer.start();
+  chronoShowQuestion();
+});
 $('chrono-validate-button')?.addEventListener('click', () => {
   if (chronoAnswered) return;
   if (chronoAssigned.filter(Boolean).length < 4) return;
@@ -3101,8 +3107,8 @@ $('fam-start-button')?.addEventListener('click', async () => {
     FAM_SESSION = questions;
     famIndex = 0; famScore = 0;
     showPanel('famille');
-    famTimer.start();
-    famShowQuestion();
+    $('fam-ready-screen').classList.remove('hidden');
+    $('fam-quiz-grid').classList.add('hidden');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -3154,6 +3160,12 @@ function famShowQuestion() {
   famSpeak(`Trouve ${famNumberWord(q.family.length)} œuvres du même artiste.`);
 }
 
+$('fam-launch-first-button')?.addEventListener('click', () => {
+  $('fam-ready-screen').classList.add('hidden');
+  $('fam-quiz-grid').classList.remove('hidden');
+  famTimer.start();
+  famShowQuestion();
+});
 $('fam-validate-selection-button')?.addEventListener('click', () => {
   const q = FAM_SESSION[famIndex];
   if (famSelectedImages.length !== q.family.length) { famStepFeedback('fam-step0', `Sélectionnez exactement ${q.family.length} œuvres avant de valider.`); return; }
@@ -3373,8 +3385,8 @@ $('vf-start-button')?.addEventListener('click', async () => {
     });
     vfIndex = 0; vfScore = 0;
     showPanel('vraifaux');
-    vfTimer.start();
-    vfShowQuestion();
+    $('vf-ready-screen').classList.remove('hidden');
+    $('vf-quiz-grid').classList.add('hidden');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -3427,6 +3439,14 @@ function vfShowQuestion() {
   vfSpeak(spokenText);
 }
 
+// « Démarrer le jeu » : geste explicite avant d'afficher la toute première œuvre — le jeu ne
+// démarre jamais tout seul juste après avoir fermé la fenêtre de règles ou la configuration.
+$('vf-launch-first-button')?.addEventListener('click', () => {
+  $('vf-ready-screen').classList.add('hidden');
+  $('vf-quiz-grid').classList.remove('hidden');
+  vfTimer.start();
+  vfShowQuestion();
+});
 $('vf-validate-button')?.addEventListener('click', () => {
   if (vfAnswered) return;
   vfAnswered = true;
@@ -3629,13 +3649,19 @@ $('recon-start-button')?.addEventListener('click', async () => {
     });
     reconIndex = 0; reconCorrectCount = 0;
     showPanel('reconstitution');
-    reconTimer.start();
-    reconShowQuestion();
+    $('recon-ready-screen').classList.remove('hidden');
+    $('recon-quiz-grid').classList.add('hidden');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
 });
 
+$('recon-launch-first-button')?.addEventListener('click', () => {
+  $('recon-ready-screen').classList.add('hidden');
+  $('recon-quiz-grid').classList.remove('hidden');
+  reconTimer.start();
+  reconShowQuestion();
+});
 function reconShowQuestion() {
   speechSynthesis.cancel();
   reconTimers.forEach(clearTimeout); reconTimers = [];
@@ -4377,13 +4403,19 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     intrusIndex = 0; intrusCorrectCount = 0;
     $('intrus-title-label').textContent = `Intrus — ${intrusMode === 'image' ? 'images intruses' : 'références intruses'}`;
     showPanel('intrus');
-    intrusTimer.start();
-    intrusShowQuestion();
+    $('intrus-ready-screen').classList.remove('hidden');
+    $('intrus-quiz-grid').classList.add('hidden');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
 });
 
+$('intrus-launch-first-button')?.addEventListener('click', () => {
+  $('intrus-ready-screen').classList.add('hidden');
+  $('intrus-quiz-grid').classList.remove('hidden');
+  intrusTimer.start();
+  intrusShowQuestion();
+});
 function intrusShowQuestion() {
   speechSynthesis.cancel();
   intrusTimers.forEach(clearTimeout); intrusTimers = [];
