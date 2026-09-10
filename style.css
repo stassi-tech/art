@@ -109,6 +109,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .fam-label-chip:disabled { opacity:.35; cursor:not-allowed; }
 .fam-image-cell.correct { border-color:var(--ok); }
 .fam-image-cell.wrong { border-color:var(--wrong); }
+.fam-image-cell.right { border-color:var(--ok); }
 .fam-image-cell:disabled { cursor:not-allowed; }
 .fam-rubrique-row { margin-bottom:14px; }
 .fam-rubrique-row label { display:block; font-family:Arial,sans-serif; font-size:.82rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px; }

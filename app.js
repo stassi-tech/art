@@ -722,7 +722,7 @@ function speakObjective(elementId) {
   if (!window.speechSynthesis || !getGlobalPrefs().audioOn) return;
   if (!el) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(el.textContent);
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(el.textContent));
   u.lang = 'fr-FR'; u.rate = 0.85;
   speechSynthesis.speak(u);
 }
@@ -1005,6 +1005,26 @@ allFields.forEach(({ key, input }) => {
   });
 });
 
+// Corrige des prononciations connues avant de passer le texte à la synthèse vocale.
+// 1) De nombreux moteurs épellent lettre par lettre un mot tout en MAJUSCULES de plusieurs
+//    lettres, le prenant pour un sigle (ex. "MALEVITCH" → "M-A-L-E-V-I-T-C-H"). Comme les noms de
+//    famille sont stockés en majuscules dans les fichiers, ça touche potentiellement beaucoup
+//    d'artistes, pas seulement celui-ci : on remet donc systématiquement en casse normale
+//    (première lettre capitale) tout mot tout en majuscules de 3 lettres ou plus avant de parler,
+//    quel que soit l'endroit du texte où il apparaît.
+// 2) Quelques noms restent mal prononcés même en casse normale à cause de leur transcription
+//    (finales slaves, etc.) : PRONUNCIATION_FIXES permet une réécriture phonétique ciblée,
+//    appliquée après la correction de casse.
+const PRONUNCIATION_FIXES = {
+  'malevitch': 'Malévitch',
+};
+function fixSpeechPronunciation(text) {
+  let out = String(text || '').replace(/\b[A-ZÀ-Ý]{3,}\b/g, (word) => word.charAt(0) + word.slice(1).toLowerCase());
+  Object.entries(PRONUNCIATION_FIXES).forEach(([wrong, right]) => {
+    out = out.replace(new RegExp(`\\b${wrong}\\b`, 'gi'), right);
+  });
+  return out;
+}
 function keyName(value) {
   return String(value || '').trim().toLocaleLowerCase('fr-FR').replace(/œ/g, 'oe').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
@@ -1503,10 +1523,15 @@ function formatDimensionsDisplay(work) {
   return parts.join(' × ');
 }
 // Ajoute « cm » si l'unité n'est pas déjà précisée dans la valeur du fichier (certaines lignes
-// ont juste un nombre, d'autres ont déjà « cm » ou « m » écrit).
+// ont juste un nombre, d'autres ont déjà « cm » ou « m » écrit). Gère aussi un éventuel préfixe
+// « c. » ou « c, » (mesure approximative) : il est retiré et « environ » est ajouté à la fin —
+// plus naturel à l'oral pour une mesure que de le mettre en tête comme pour une date.
 function withCm(value) {
-  const v = String(value || '').trim();
-  return /\b(cm|mm|m)\b/i.test(v) ? v : `${v} cm`;
+  let v = String(value || '').trim();
+  const isApprox = /^c[.,]\s*/i.test(v);
+  if (isApprox) v = v.replace(/^c[.,]\s*/i, '').trim();
+  const withUnit = /\b(cm|mm|m)\b/i.test(v) ? v : `${v} cm`;
+  return isApprox ? `${withUnit} environ` : withUnit;
 }
 // Version texte brut (sans balises) de formatDimensionsDisplay, pour les affichages qui écrivent
 // via textContent plutôt qu'innerHTML (Imprégnation, à l'effet d'écriture progressive).
@@ -1591,7 +1616,7 @@ async function openArtistWorksPage(idx) {
   const row = artistListSortedRows[idx];
   if (!row) return;
   currentArtistWorksIndex = idx;
-  const artistName = String(row['Artiste'] || '');
+  const artistName = [row['Prénom'], row['Patronyme']].filter(Boolean).join(' ').trim();
   closeModal('modal-artist-list');
   showPanel('other-works');
   $('other-works-artist-name').textContent = artistName;
@@ -1748,39 +1773,24 @@ $('excel-file')?.addEventListener('change', async (event) => {
 // publiée dans quizzes/ — pas besoin de retoucher ce code après une mise à jour du fichier.
 let artistListLoaded = false;
 let artistListRows = [];
-let artistListSort = { col: 'Artiste', dir: 1 };
+let artistListSort = { col: 'Patronyme', dir: 1 };
 let artistListFilters = { nationalite: '', art: '', siecle: '' };
 let artistListMode = 'full'; // 'full' = liste complète non filtrée, 'filtered' = avec les 3 menus
 const ARTIST_LIST_COLS = [
-  { key: 'Artiste', label: 'Artiste' },
+  { key: 'Patronyme', label: 'Artiste' },
   { key: 'Nationalité', label: 'Nationalité' },
   { key: 'Art(s)', label: 'Art(s)' },
   { key: 'Siècle(s)', label: 'Siècle(s)' },
 ];
-function splitArtistName(full) {
-  // Repère la coupure prénom / nom de famille : part de la fin, et tant que le mot est en
-  // MAJUSCULES (ou une particule courante : van, von, de, della...) on l'inclut dans le "nom".
-  // S'arrête au premier mot qui n'est ni l'un ni l'autre. Si rien ne colle dès le premier mot
-  // (formats composés du type "GIAMBOLOGNA (Jean de Bologne)"), on renonce : pas de nom détecté.
-  const tokens = full.split(' ');
-  const connectors = ["van","von","de","della","di","du","le","la","dei","des","d'","af","del","da","les"];
-  let splitIndex = tokens.length;
-  for (let i = tokens.length - 1; i >= 0; i--) {
-    const bare = tokens[i].replace(/[()]/g, '');
-    const isUpper = bare.length > 1 && bare === bare.toUpperCase() && bare !== bare.toLowerCase();
-    const isConnector = connectors.includes(tokens[i].toLowerCase());
-    if (isUpper || isConnector) { splitIndex = i; } else { break; }
-  }
-  return { prenom: tokens.slice(0, splitIndex).join(' '), nom: tokens.slice(splitIndex).join(' ') };
-}
-function formatArtistListName(full) {
-  const { prenom, nom } = splitArtistName(full);
-  // Cas où l'heuristique ne détecte rien (ex. "François Clouet", encore en casse normale dans le
-  // fichier) : on met quand même le nom entier en gras, pour rester cohérent avec toutes les
-  // autres lignes qui, elles, sont déjà en majuscules dans le fichier et ressortent en gras.
-  if (!nom) return `<strong>${escapeHtml(full)}</strong>`;
-  const prenomPart = prenom ? `${escapeHtml(prenom.toLowerCase())} ` : '';
-  return `${prenomPart}<strong>${escapeHtml(nom)}</strong>`;
+function formatArtistListName(row) {
+  // Colonnes séparées dans le fichier (Prénom, Patronyme) : l'entrée se lit nom puis prénom, le
+  // prénom avec sa casse normale (majuscule initiale), le nom de famille tel qu'enregistré (en
+  // général en majuscules) mis en avant.
+  const nom = String(row['Patronyme'] || '').trim();
+  const prenom = String(row['Prénom'] || '').trim();
+  if (!nom) return `<strong>${escapeHtml(prenom)}</strong>`;
+  const prenomPart = prenom ? ` ${escapeHtml(prenom)}` : '';
+  return `<strong>${escapeHtml(nom)}</strong>${prenomPart}`;
 }
 function filteredArtistListRows() {
   if (artistListMode === 'full') return artistListRows;
@@ -1803,7 +1813,14 @@ function artFormIcons(rawValue) {
 function renderArtistListTable() {
   const container = $('artist-list-table');
   const { col, dir } = artistListSort;
-  const sorted = filteredArtistListRows().sort((a, b) => dir * String(a[col] || '').localeCompare(String(b[col] || ''), 'fr'));
+  const sorted = filteredArtistListRows().sort((a, b) => {
+    if (col === 'Patronyme') {
+      const byNom = dir * String(a['Patronyme'] || '').localeCompare(String(b['Patronyme'] || ''), 'fr');
+      if (byNom !== 0) return byNom;
+      return dir * String(a['Prénom'] || '').localeCompare(String(b['Prénom'] || ''), 'fr');
+    }
+    return dir * String(a[col] || '').localeCompare(String(b[col] || ''), 'fr');
+  });
   artistListSortedRows = sorted;
   const html = ['<table class="artist-table"><thead><tr>'];
   ARTIST_LIST_COLS.forEach((c) => {
@@ -1812,10 +1829,7 @@ function renderArtistListTable() {
   });
   html.push('</tr></thead><tbody>');
   sorted.forEach((r, idx) => {
-    // Nom affiché tel qu'enregistré dans le fichier (prénom en casse normale, nom de famille en
-    // majuscules) — pas de mise en majuscules forcée de l'ensemble. Cliquable : ouvre la fiche
-    // « autres œuvres » de cet artiste.
-    html.push(`<tr><td><button type="button" class="artist-name-link" data-idx="${idx}">${formatArtistListName(String(r['Artiste'] || ''))}</button></td><td>${nationalityFlag(r['Nationalité']) || escapeHtml(r['Nationalité'] || '')}</td><td>${artFormIcons(r['Art(s)'])}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
+    html.push(`<tr><td><button type="button" class="artist-name-link" data-idx="${idx}">${formatArtistListName(r)}</button></td><td>${nationalityFlag(r['Nationalité']) || escapeHtml(r['Nationalité'] || '')}</td><td>${artFormIcons(r['Art(s)'])}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
   });
   html.push('</tbody></table>');
   container.innerHTML = html.join('');
@@ -2142,7 +2156,7 @@ function famSpeak2(text, onEnd) {
   chronoSelectedVoiceRef = getGlobalVoice();
   if (!chronoAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.85;
   if (chronoSelectedVoiceRef) u.voice = chronoSelectedVoiceRef;
   if (onEnd) {
@@ -2200,9 +2214,23 @@ $('chrono-validate-button')?.addEventListener('click', () => {
       }).join('')}</div>`;
   }
 
-  const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
-  const list = correctOrder.map((w, i) => `${ordinals[i]}, ${w.artist}, ${w.title}, en ${chronoYearOf(w)}`).join('. ');
-  famSpeak2(`${isCorrect ? 'Exact.' : 'A réviser.'} Voici l'ordre chronologique. ${list}.`);
+  const ordinals = ['la première', 'la deuxième', 'la troisième', 'la quatrième'];
+  let spokenText;
+  if (isCorrect) {
+    const list = correctOrder.map((w, i) => `${ordinals[i]}, ${w.artist}, ${w.title}, en ${chronoYearOf(w)}`).join('. ');
+    spokenText = `Exact. Voici l'ordre chronologique. ${list}.`;
+  } else {
+    const correctIndices = rightFlags.map((ok, i) => (ok ? i : -1)).filter((i) => i !== -1);
+    const wrongIndices = rightFlags.map((ok, i) => (!ok ? i : -1)).filter((i) => i !== -1);
+    const wrongList = wrongIndices.map((i) => `à ${ordinals[i]} position, ${correctOrder[i].artist}, ${correctOrder[i].title}, en ${chronoYearOf(correctOrder[i])}`).join('. ');
+    if (!correctIndices.length) {
+      spokenText = `À réviser. Voici l'ordre chronologique. ${wrongList}.`;
+    } else {
+      const goodList = correctIndices.map((i) => ordinals[i]).join(', ');
+      spokenText = `Vous avez bien placé ${goodList}. Les autres œuvres se répartissent ainsi\u00a0: ${wrongList}.`;
+    }
+  }
+  famSpeak2(spokenText);
 
   $('chrono-correction').classList.remove('hidden');
   $('chrono-next-button').textContent = chronoIndex === CHRONO_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
@@ -2367,7 +2395,7 @@ const enigTimer = createTimer('enig-timer');
 function enigSpeak(text) {
   if (!enigAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.85;
   if (enigSelectedVoiceRef) u.voice = enigSelectedVoiceRef;
   speechSynthesis.speak(u);
@@ -2685,7 +2713,7 @@ const famTimer = createTimer('topbar-timer');
 function famSpeak(text, onEnd) {
   if (!famAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.85;
   if (famSelectedVoiceRef) u.voice = famSelectedVoiceRef;
   if (onEnd) {
@@ -2944,7 +2972,7 @@ const vfTimer = createTimer('topbar-timer');
 function vfSpeak(text, onEnd) {
   if (!vfAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.85;
   if (vfSelectedVoiceRef) u.voice = vfSelectedVoiceRef;
   if (onEnd) {
@@ -3222,7 +3250,7 @@ $('recon-opt-autoadvance')?.addEventListener('change', () => { $('recon-delay-ro
 function reconSpeak(text) {
   if (!reconAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.85;
   if (reconSelectedVoice) u.voice = reconSelectedVoice;
   speechSynthesis.speak(u);
@@ -3763,7 +3791,7 @@ function impClearTimers() { impTimers.forEach(clearTimeout); impTimers = []; }
 function impSpeak(text) {
   if (!impAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.72;
   if (impSelectedVoice) u.voice = impSelectedVoice;
   speechSynthesis.speak(u);
@@ -3932,7 +3960,7 @@ $('intrus-opt-autoadvance')?.addEventListener('change', () => { $('intrus-delay-
 function intrusSpeak(text) {
   if (!intrusAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.85;
   if (intrusSelectedVoice) u.voice = intrusSelectedVoice;
   speechSynthesis.speak(u);
