@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=91" />
+    <link rel="stylesheet" href="style.css?v=93" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -165,7 +165,7 @@
               </figure>
             </div>
             <section class="answer-card" aria-label="Rubriques">
-              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Rubriques</h2>
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Écoutez ces références pour vous en imprégner</h2>
               <div class="correction-details" id="imp-correction-details"></div>
               <div class="mic-nav-row" style="margin-top:auto;padding-top:20px;justify-content:center;">
                 <button type="button" id="imp-prev-button" class="nav-arrow-button" aria-label="Précédent">←</button>
@@ -262,7 +262,7 @@
               </figure>
             </div>
             <section class="answer-card" aria-label="Choix">
-              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Choisissez la bonne réponse</h2>
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Cliquez sur l'image qui correspond à la référence.</h2>
               <div id="intrus-choices"></div>
               <div id="intrus-correction" class="hidden">
                 <div class="correction-details" id="intrus-correction-details"></div>
@@ -351,7 +351,7 @@
               <figure class="artwork-card" id="recon-prompt-card"></figure>
             </div>
             <section class="answer-card" aria-label="Choix">
-              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Retrouvez la référence</h2>
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Cliquez sur la référence qui correspond à l'œuvre dont vous voyez un détail.</h2>
               <div id="recon-choices"></div>
               <div id="recon-correction" class="hidden">
                 <div class="correction-details" id="recon-correction-details"></div>
@@ -613,7 +613,7 @@
               </div>
             </div>
             <section class="answer-card" aria-label="Ordre chronologique">
-              <h2 style="font-family:Arial,sans-serif;font-size:1rem;font-weight:700;margin:0 0 12px;">Remets ces œuvres dans l'ordre chronologique</h2>
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Remettez ces œuvres dans l'ordre chronologique de leur création</h2>
               <p class="modal-hint" style="margin-top:0;">Touchez les œuvres l'une après l'autre, en commençant par la plus ancienne : un numéro s'affiche sur chacune. Touchez à nouveau une œuvre numérotée pour retirer son numéro.</p>
               <button type="button" class="primary-button" id="chrono-validate-button" style="width:100%">Valider l'ordre</button>
               <div id="chrono-correction" class="hidden">
@@ -882,6 +882,7 @@
             </div>
 
             <section class="answer-card" aria-label="Vos réponses">
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Donnez les références de cette œuvre</h2>
               <div class="mic-nav-row">
                 <button type="button" id="mic-global" class="mic-icon-button hidden" aria-label="Dicter la réponse au champ sélectionné">🎤</button>
                 <button type="button" id="previous-button-overlay" class="nav-arrow-button" aria-label="Question précédente">←</button>
@@ -923,7 +924,7 @@
 
         <section id="other-works-panel" class="other-works-panel hidden">
           <div class="quiz-bottom-bar other-works-header">
-            <button type="button" id="other-works-back-button" class="nav-arrow-button" aria-label="Retour à la liste" title="Retour à la liste">↩</button>
+            <button type="button" id="other-works-back-button" class="nav-arrow-button" aria-label="Artiste précédent" title="Artiste précédent">←</button>
             <div class="other-works-artist-info">
               <span id="other-works-artist-flag" aria-hidden="true"></span>
               <strong id="other-works-artist-name"></strong>
@@ -976,6 +977,7 @@
 
           <div class="training-exercise-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
             <button type="button" class="home-mode-button profile-menu-btn" id="profile-menu-tech" data-target="profile-section-tech">Mes paramètres techniques</button>
+            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-esthetique" data-target="profile-section-esthetique">Esthétique</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-fields" data-target="profile-section-fields">Mes choix de champ</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-rubriques" data-target="profile-section-rubriques">Mes choix de rubrique et de niveau</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-scores" data-target="profile-section-scores">Mes scores</button>
@@ -991,6 +993,14 @@
             <div class="opt-row"><span>Emplacement des boutons :</span>
               <select id="pf-handedness"><option value="right">Droite (droitier)</option><option value="left">Gauche (gaucher)</option></select>
             </div>
+          </div>
+
+          <div id="profile-section-esthetique" class="hidden">
+            <p class="modal-hint" style="margin-top:0;">Change l'apparence de l'application — fond, cadres des œuvres. Rien coché = apparence actuelle, inchangée. Premier essai avec quelques salles ; d'autres suivront.</p>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="" checked /><span>Aucune (apparence actuelle)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="pitti" /><span>Le Salon Pitti — velours et or (réf. Palazzo Pitti, Florence)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="bauhaus" /><span>Bauhaus — cercle, triangle, carré (réf. MoMA, New York)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="space" /><span>Space Age — orbite et chrome (réf. Guggenheim, New York)</span></label>
           </div>
 
           <div id="profile-section-fields" class="hidden">
@@ -1075,6 +1085,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=109"></script>
+    <script src="app.js?v=111"></script>
   </body>
 </html>

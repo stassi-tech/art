@@ -400,7 +400,7 @@ document.querySelectorAll('.profile-menu-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (btn.id === 'profile-menu-scores') { showPanel('account'); loadAccountPage(); return; }
     document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
-    ['profile-section-tech', 'profile-section-fields', 'profile-section-rubriques'].forEach((id) => {
+    ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-rubriques'].forEach((id) => {
       $(id)?.classList.toggle('hidden', id !== btn.dataset.target);
     });
   });
@@ -437,6 +437,9 @@ function initProfilePage() {
   $('pf-show-explanations').checked = prefs.showExplanations;
   $('pf-audio').checked = prefs.audioOn;
   $('pf-handedness').value = document.body.classList.contains('lefty') ? 'left' : 'right';
+  const savedAmbiance = localStorage.getItem('ambiance') || '';
+  const ambianceRadio = document.querySelector(`input[name="pf-ambiance"][value="${savedAmbiance}"]`);
+  if (ambianceRadio) ambianceRadio.checked = true;
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   $('pf-voice').innerHTML = voices.length
     ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
@@ -529,6 +532,21 @@ $('pf-handedness')?.addEventListener('change', () => {
   const lefty = $('pf-handedness').value === 'left';
   localStorage.setItem('handedness', lefty ? 'lefty' : 'righty');
   applyHandedness(lefty);
+});
+
+// --- Ambiance esthétique (Mon compte) : change juste l'accent de couleur et le fond de page,
+// mémorisé sur l'appareil. Valeur vide = apparence actuelle, inchangée.
+function applyAmbiance(value) {
+  if (value) document.body.setAttribute('data-ambiance', value);
+  else document.body.removeAttribute('data-ambiance');
+}
+applyAmbiance(localStorage.getItem('ambiance') || '');
+document.querySelectorAll('input[name="pf-ambiance"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    if (!radio.checked) return;
+    localStorage.setItem('ambiance', radio.value);
+    applyAmbiance(radio.value);
+  });
 });
 
 // --- Choix de champ (art/siècle/zone) : si mémorisé, chaque bouton d'exercice démarre
@@ -770,8 +788,17 @@ function applyDefaultAdvance(checkboxId, delayId, delayRowId) {
 
 // Bandeau du haut : nom de l'exercice + progression à gauche, score à droite — mis à jour à
 // chaque question par chacun des jeux. Vidé automatiquement par showPanel() en dehors d'un jeu.
-function updateTopBanner(exerciseName, progressText) {
-  if ($('topbar-exercise-name')) $('topbar-exercise-name').textContent = exerciseName || '';
+// Étiquette de champ courte (ex. « Peint/15e ») affichée dans le bandeau, à côté du nom de
+// l'exercice — calculée une fois au démarrage de la session à partir des arts/siècles choisis.
+function buildFieldLabel(arts, centuries) {
+  const artLabels = { peinture: 'Peint', sculpture: 'Sculpt' };
+  if (!arts.length || !centuries.length) return '';
+  const artsPart = arts.map((a) => artLabels[a] || a).join('+');
+  const centuriesPart = centuries.length <= 2 ? centuries.join('+') : `${centuries.length} siècles`;
+  return `${artsPart}/${centuriesPart}`;
+}
+function updateTopBanner(exerciseName, progressText, fieldLabel) {
+  if ($('topbar-exercise-name')) $('topbar-exercise-name').textContent = [fieldLabel, exerciseName].filter(Boolean).join(' ');
   if ($('topbar-exercise-progress')) $('topbar-exercise-progress').textContent = progressText || '';
 }
 function updateTopBannerScore(scoreText) {
@@ -785,29 +812,64 @@ function clearTopBanner() {
 // un jeu (showPanel) — sinon celui resté actif continue de tourner en fond indéfiniment, même
 // une fois revenu au menu, et pourrait entrer en conflit avec le suivant démarré.
 const ALL_TIMERS = [];
+let activeTimer = null; // le chronomètre actuellement en cours, pour le clic sur le bandeau
 function createTimer(labelElementId) {
-  let startTime = null, interval = null;
+  let startTime = null, interval = null, pausedElapsed = 0, paused = false;
   function tick() {
     const el = $(labelElementId);
     if (!el || !startTime) return;
-    const s = Math.floor((Date.now() - startTime) / 1000);
+    const s = pausedElapsed + Math.floor((Date.now() - startTime) / 1000);
     el.textContent = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
   const timer = {
     start() {
-      startTime = Date.now();
+      startTime = Date.now(); pausedElapsed = 0; paused = false;
+      activeTimer = timer;
       $(labelElementId)?.classList.toggle('hidden', !getGlobalPrefs().showTimer);
       if (interval) clearInterval(interval);
       interval = setInterval(tick, 1000);
       tick();
     },
-    stop() { if (interval) clearInterval(interval); interval = null; return startTime ? Math.round((Date.now() - startTime) / 1000) : 0; },
+    stop() {
+      if (interval) clearInterval(interval); interval = null;
+      if (activeTimer === timer) activeTimer = null;
+      return startTime ? pausedElapsed + Math.round((Date.now() - startTime) / 1000) : 0;
+    },
+    // Pause : garde le temps déjà écoulé en mémoire, arrête juste le décompte visuel — un clic
+    // suffit à reprendre. Différent de stop(), qui clôt la session (utilisé au changement de page).
+    pause() {
+      if (paused || !startTime) return;
+      pausedElapsed += Math.floor((Date.now() - startTime) / 1000);
+      if (interval) clearInterval(interval);
+      interval = null;
+      paused = true;
+    },
+    resume() {
+      if (!paused) return;
+      startTime = Date.now();
+      paused = false;
+      interval = setInterval(tick, 1000);
+      tick();
+    },
+    isPaused() { return paused; },
   };
   ALL_TIMERS.push(timer);
   return timer;
 }
 function stopAllTimers() { ALL_TIMERS.forEach((t) => t.stop()); }
 const quizTimer = createTimer('topbar-timer');
+// Clic sur le chronomètre du bandeau : 1er clic = pause (reprise possible d'un clic), 2e clic (si
+// déjà en pause) = désactivation complète, à réactiver depuis Mon compte → Mes paramètres
+// techniques → « Afficher le chronomètre ».
+$('topbar-timer')?.addEventListener('click', () => {
+  if (!activeTimer) return;
+  if (!activeTimer.isPaused()) {
+    activeTimer.pause();
+  } else {
+    setGlobalPref('showTimer', false);
+    $('topbar-timer').classList.add('hidden');
+  }
+});
 
 // Mémorise et restaure la dernière sélection de cases à cocher d'un jeu (art/siècle/niveau/zone…)
 // sur l'appareil, pour éviter de tout recocher à chaque partie. On cible toutes les cases du
@@ -1059,6 +1121,23 @@ const PRONUNCIATION_FIXES = {
   'alvise': 'Alvisé',
   'benozzo': 'Bénotso',
   'gozzoli': 'Gotsoli',
+  'simone': 'Simoné',
+  'cione': 'Chioné',
+  'lorenzetti': 'Lorenzétti',
+  'orsanmichele': 'Orsanmikélé',
+  'santa croce': 'Santa Croché',
+  'cimabue': 'Chimaboué',
+  'menabuoi': 'Ménabuoîe',
+  'duccio': 'Douchio',
+  'buoninsegna': 'Bouninségna',
+  'firenze': 'Firenzé',
+  'trastevere': 'Trastévéré',
+  'modena': 'Modéna',
+  'aretino': 'Arétino',
+  'altichiero': 'Altikiero',
+  'giobbe': 'Giobbé',
+  'brera': 'Bréra',
+  'procris': 'Pro criss',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -1575,7 +1654,7 @@ function renderQuestion() {
   const question = state.questions[state.index]; const answer = answerFor(state.index);
   const modeLabel = state.mode === 'review' ? 'Révision des erreurs — ' : '';
   $('quiz-reference').textContent = `${state.quizConfig?.reference || ''} — ${modeLabel}Q. ${state.index + 1}/${state.questions.length}`;
-  updateTopBanner('Quiz final', `${modeLabel}Question ${state.index + 1}/${state.questions.length}`);
+  updateTopBanner('Quiz final', `${modeLabel}Question ${state.index + 1}/${state.questions.length}`, quizFieldLabel);
   $('progress-bar').style.width = `${((state.index + 1) / state.questions.length) * 100}%`;
   const possible = checkedQuestions() * activeFields().length;
   $('score-summary').textContent = `${totalCorrect()} / ${possible} point${totalCorrect() > 1 ? 's' : ''}`;
@@ -1816,9 +1895,10 @@ async function openArtistWorksPage(idx) {
   if (!row) return;
   currentArtistWorksIndex = idx;
   const artistName = [row['Prénom'], row['Patronyme']].filter(Boolean).join(' ').trim();
+  const displayName = String(row['Surnom'] || '').trim() || artistName;
   closeModal('modal-artist-list');
   showPanel('other-works');
-  $('other-works-artist-name').textContent = artistName;
+  $('other-works-artist-name').textContent = displayName;
   $('other-works-artist-flag').textContent = nationalityFlag(row['Nationalité']);
   $('other-works-artist-dates').textContent = '';
   const list = $('other-works-panel-list');
@@ -1981,10 +2061,19 @@ const ARTIST_LIST_COLS = [
   { key: 'Art(s)', label: 'Art(s)' },
   { key: 'Siècle(s)', label: 'Siècle(s)' },
 ];
+const ARTIST_NAME_PARTICLES = ['da','di','de','del','della','van','von','le','la','les','du','des','dei','af',"d'"];
+function particleStrippedSortKey(patronyme) {
+  const words = keyName(patronyme).split(' ').filter(Boolean);
+  while (words.length && ARTIST_NAME_PARTICLES.includes(words[0])) words.shift();
+  return words.join(' ') || keyName(patronyme);
+}
 function formatArtistListName(row) {
-  // Colonnes séparées dans le fichier (Prénom, Patronyme) : l'entrée se lit nom puis prénom, le
-  // prénom avec sa casse normale (majuscule initiale), le nom de famille tel qu'enregistré (en
-  // général en majuscules) mis en avant.
+  // Si un surnom est connu (ex. « Le Greco », « Fra Angelico »), c'est lui qui identifie
+  // l'artiste dans la liste — plus reconnaissable que le nom civil. Sinon, colonnes séparées
+  // (Prénom, Patronyme) : l'entrée se lit nom puis prénom, le prénom en casse normale, le nom de
+  // famille tel qu'enregistré (en général en majuscules) mis en avant.
+  const surnom = String(row['Surnom'] || '').trim();
+  if (surnom) return `<strong>${escapeHtml(surnom)}</strong>`;
   const nom = String(row['Patronyme'] || '').trim();
   const prenom = String(row['Prénom'] || '').trim();
   if (!nom) return `<strong>${escapeHtml(prenom)}</strong>`;
@@ -2014,7 +2103,7 @@ function renderArtistListTable() {
   const { col, dir } = artistListSort;
   const sorted = filteredArtistListRows().sort((a, b) => {
     if (col === 'Patronyme') {
-      const byNom = dir * String(a['Patronyme'] || '').localeCompare(String(b['Patronyme'] || ''), 'fr');
+      const byNom = dir * particleStrippedSortKey(a['Patronyme']).localeCompare(particleStrippedSortKey(b['Patronyme']), 'fr');
       if (byNom !== 0) return byNom;
       return dir * String(a['Prénom'] || '').localeCompare(String(b['Prénom'] || ''), 'fr');
     }
@@ -2203,7 +2292,7 @@ $('chrono-hub-link')?.addEventListener('click', () => { speechSynthesis.cancel()
 $('chrono-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'chrono'; showPanel('account'); loadAccountPage(); });
 $('chrono-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
-let CHRONO_SESSION = [], chronoIndex = 0, chronoScore = 0, chronoAnswered = false, chronoSelectedOrder = [], chronoTimers = [];
+let CHRONO_SESSION = [], chronoIndex = 0, chronoScore = 0, chronoAnswered = false, chronoSelectedOrder = [], chronoTimers = [], chronoFieldLabel = '';
 const chronoTimer = createTimer('topbar-timer');
 
 $('chrono-start-button')?.addEventListener('click', async () => {
@@ -2211,6 +2300,7 @@ $('chrono-start-button')?.addEventListener('click', async () => {
   saveLastSelection('chrono-setup-panel');
   let arts = chronoSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = chronoSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  chronoFieldLabel = buildFieldLabel(arts, centuries);
   let levels = chronoSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('chrono-setup-feedback');
   feedback.classList.remove('hidden');
@@ -2295,7 +2385,7 @@ function chronoShowQuestion() {
   chronoAnswered = false;
   const q = CHRONO_SESSION[chronoIndex];
   $('chrono-progress-label').textContent = `Question ${chronoIndex + 1} / ${CHRONO_SESSION.length}`;
-  updateTopBanner('Chronologie', `Question ${chronoIndex + 1}/${CHRONO_SESSION.length}`);
+  updateTopBanner('Chronologie', `Question ${chronoIndex + 1}/${CHRONO_SESSION.length}`, chronoFieldLabel);
   $('chrono-progress-bar').style.width = `${(chronoIndex / CHRONO_SESSION.length) * 100}%`;
   $('chrono-score-label').textContent = `${chronoScore} point${chronoScore > 1 ? 's' : ''}`;
   updateTopBannerScore(`${chronoScore} pt${chronoScore > 1 ? 's' : ''}`);
@@ -2907,7 +2997,7 @@ function detectCenturyFromDate(dateStr) {
   return `${Math.floor((year - 1) / 100) + 1}e`;
 }
 
-let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [], famStep = 1, famTimers = [], famPickedLabel = null;
+let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [], famStep = 1, famTimers = [], famPickedLabel = null, famFieldLabel = '';
 const famTimer = createTimer('topbar-timer');
 function famSpeak(text, onEnd) {
   if (!famAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
@@ -2930,6 +3020,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
   saveLastSelection('famille-setup-panel');
   let arts = famSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = famSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  famFieldLabel = buildFieldLabel(arts, centuries);
   let levels = famSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('fam-setup-feedback');
   feedback.classList.remove('hidden');
@@ -2998,7 +3089,7 @@ function famShowQuestion() {
   const q = FAM_SESSION[famIndex];
   $('fam-progress-label').textContent = `Question ${famIndex + 1} / ${FAM_SESSION.length}`;
   $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
-  updateTopBanner('Famille', `Question ${famIndex + 1}/${FAM_SESSION.length}`);
+  updateTopBanner('Famille', `Question ${famIndex + 1}/${FAM_SESSION.length}`, famFieldLabel);
   updateTopBannerScore(`${famScore} pt${famScore > 1 ? 's' : ''}`);
   $('fam-progress-bar').style.width = `${(famIndex / FAM_SESSION.length) * 100}%`;
   $('fam-correction').classList.add('hidden');
@@ -3084,8 +3175,10 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
     function announceWrong(next) {
       if (!wrongSelected.length) { next(); return; }
       $('fam-result-bottom').innerHTML = wrongSelected.map((w) => cellHtml(w, true)).join('');
-      const titles = wrongSelected.map((w) => w.title).join(', ');
-      famSpeak(`Tu as fait ${famNumberWord(wrongSelected.length)} erreur${wrongSelected.length > 1 ? 's' : ''} : ${titles}.`, next);
+      const intro = wrongSelected.length > 1 ? `Tu as fait ${famNumberWord(wrongSelected.length)} erreurs.` : 'Tu as fait une erreur.';
+      const details = wrongSelected.map((w) => `Ce tableau était de ${w.artist}, intitulé ${w.title}.`).join(' ');
+      currentSpeechNationality = wrongSelected[0]?.nationality || '';
+      famSpeak(`${intro} ${details}`, next);
     }
     function announceFound(next) {
       if (!foundFamily.length) { next(); return; }
@@ -3167,7 +3260,7 @@ function vfFieldValue(row, key) {
   return row[key] || '';
 }
 
-let VF_SESSION = [], vfIndex = 0, vfScore = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null, vfTimers = [];
+let VF_SESSION = [], vfIndex = 0, vfScore = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null, vfTimers = [], vfFieldLabel = '';
 const vfTimer = createTimer('topbar-timer');
 function vfSpeak(text, onEnd) {
   if (!vfAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
@@ -3221,6 +3314,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
     vfAudioOn = getGlobalPrefs().audioOn;
     vfSelectedVoiceRef = getGlobalVoice();
+    vfFieldLabel = buildFieldLabel(arts, centuries);
     const activeFields = vfActiveFields();
     if (!activeFields.length) { feedback.textContent = 'Choisissez au moins une rubrique.'; return; }
     VF_SESSION = pool.slice(0, count).map((correct) => {
@@ -3262,7 +3356,7 @@ function vfShowQuestion() {
   vfAnswered = false;
   const q = VF_SESSION[vfIndex];
   $('vf-progress-label').textContent = `Question ${vfIndex + 1} / ${VF_SESSION.length}`;
-  updateTopBanner('Vrai/Faux', `Question ${vfIndex + 1}/${VF_SESSION.length}`);
+  updateTopBanner('Vrai/Faux', `Question ${vfIndex + 1}/${VF_SESSION.length}`, vfFieldLabel);
   $('vf-progress-bar').style.width = `${(vfIndex / VF_SESSION.length) * 100}%`;
   $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''}`;
   updateTopBannerScore(`${vfScore} pt${Math.abs(vfScore) >= 2 ? 's' : ''}`);
@@ -3359,7 +3453,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
         el.classList.add('vf-updated');
       }
       vfSpeak(naturalPhrase(key, correctVal), () => speakNextCorrection(i + 1));
-    }, 700));
+    }, 2200));
   }
   if (q.errorFields.length) {
     vfSpeak(q.errorFields.length > 1 ? 'Deux références étaient fausses.' : 'Une référence était fausse.', () => speakNextCorrection(0));
@@ -3384,7 +3478,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
       vfTimers.push(setTimeout(() => {
         btn.classList.remove('active');
         trueBtn?.classList.add('active');
-      }, 700));
+      }, 2200));
     }
   });
 
@@ -3444,7 +3538,7 @@ function reconSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '
 function reconSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`recon-zone-${z}`)?.checked); }
 function reconSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`recon-level-${lvl}`)?.checked); }
 
-let RECON_SESSION = [], reconIndex = 0, reconCorrectCount = 0, reconAnswered = false, reconAudioOn = true, reconSelectedVoice = null, reconAutoAdvance = false, reconAutoAdvanceDelay = 5000, reconExtraFields = [], reconTimers = [];
+let RECON_SESSION = [], reconIndex = 0, reconCorrectCount = 0, reconAnswered = false, reconAudioOn = true, reconSelectedVoice = null, reconAutoAdvance = false, reconAutoAdvanceDelay = 5000, reconExtraFields = [], reconTimers = [], reconFieldLabel = '';
 const reconTimer = createTimer('topbar-timer');
 $('recon-opt-autoadvance')?.addEventListener('change', () => { $('recon-delay-row').style.display = $('recon-opt-autoadvance').checked ? 'flex' : 'none'; });
 function reconSpeak(text) {
@@ -3461,6 +3555,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
   saveLastSelection('reconstitution-setup-panel');
   let arts = reconSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = reconSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  reconFieldLabel = buildFieldLabel(arts, centuries);
   let levels = reconSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('recon-setup-feedback');
   feedback.classList.remove('hidden');
@@ -3520,7 +3615,7 @@ function reconShowQuestion() {
   reconAnswered = false;
   const q = RECON_SESSION[reconIndex];
   $('recon-progress-label').textContent = `Question ${reconIndex + 1} / ${RECON_SESSION.length}`;
-  updateTopBanner('Reconstitution', `Question ${reconIndex + 1}/${RECON_SESSION.length}`);
+  updateTopBanner('Reconstitution', `Question ${reconIndex + 1}/${RECON_SESSION.length}`, reconFieldLabel);
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
   updateTopBannerScore(`${reconCorrectCount}/${reconIndex}`);
   $('recon-progress-bar').style.width = `${(reconIndex / RECON_SESSION.length) * 100}%`;
@@ -3623,7 +3718,10 @@ function applyHandedness(lefty) {
 applyHandedness(localStorage.getItem('handedness') === 'lefty');
 
 // Bandeau du haut déplaçable : glisser la poignée ⠿, position mémorisée sur l'appareil.
-$('other-works-back-button')?.addEventListener('click', () => { showPanel('training-hub'); openModal('modal-artist-list'); });
+$('other-works-back-button')?.addEventListener('click', () => {
+  const prevIdx = currentArtistWorksIndex - 1;
+  if (prevIdx >= 0) openArtistWorksPage(prevIdx);
+});
 $('other-works-next-button')?.addEventListener('click', () => {
   const nextIdx = currentArtistWorksIndex + 1;
   if (nextIdx < artistListSortedRows.length) openArtistWorksPage(nextIdx);
@@ -3984,7 +4082,7 @@ function impSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19
 function impSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`imp-zone-${z}`)?.checked); }
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
-let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null;
+let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impFieldLabel = '';
 const impTimer = createTimer('topbar-timer');
 
 function impClearTimers() { impTimers.forEach(clearTimeout); impTimers = []; }
@@ -4004,6 +4102,7 @@ $('imp-start-button')?.addEventListener('click', async () => {
   // automatique, qui posait des problèmes de synchronisation difficiles à diagnostiquer.
   let arts = impSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = impSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  impFieldLabel = buildFieldLabel(arts, centuries);
   let levels = impSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('imp-setup-feedback');
   feedback.classList.remove('hidden');
@@ -4044,7 +4143,7 @@ function impShowCurrent() {
   $('imp-pause-button').textContent = '⏸';
   const work = IMP_SESSION[impIndex];
   $('imp-progress-label').textContent = `Œuvre ${impIndex + 1} / ${IMP_SESSION.length}`;
-  updateTopBanner('Imprégnation', `Œuvre ${impIndex + 1}/${IMP_SESSION.length}`);
+  updateTopBanner('Imprégnation', `Œuvre ${impIndex + 1}/${IMP_SESSION.length}`, impFieldLabel);
   $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
   $('imp-stage-img').src = imageSource(work.image);
 
@@ -4158,7 +4257,7 @@ function intrusSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', 
 function intrusSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`intrus-zone-${z}`)?.checked); }
 function intrusSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`intrus-level-${lvl}`)?.checked); }
 
-let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false, intrusAudioOn = true, intrusSelectedVoice = null, intrusAutoAdvance = false, intrusAutoAdvanceDelay = 5000, intrusExtraFields = [], intrusTimers = [];
+let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false, intrusAudioOn = true, intrusSelectedVoice = null, intrusAutoAdvance = false, intrusAutoAdvanceDelay = 5000, intrusExtraFields = [], intrusTimers = [], intrusFieldLabel = '';
 const intrusTimer = createTimer('topbar-timer');
 $('intrus-opt-autoadvance')?.addEventListener('change', () => { $('intrus-delay-row').style.display = $('intrus-opt-autoadvance').checked ? 'flex' : 'none'; });
 function intrusSpeak(text) {
@@ -4211,6 +4310,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
   saveLastSelection('intrus-setup-panel');
   let arts = intrusSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = intrusSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  intrusFieldLabel = buildFieldLabel(arts, centuries);
   let levels = intrusSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('intrus-setup-feedback');
   feedback.classList.remove('hidden');
@@ -4266,7 +4366,7 @@ function intrusShowQuestion() {
   intrusAnswered = false;
   const q = INTRUS_SESSION[intrusIndex];
   $('intrus-progress-label').textContent = `Question ${intrusIndex + 1} / ${INTRUS_SESSION.length}`;
-  updateTopBanner('Intrus', `Question ${intrusIndex + 1}/${INTRUS_SESSION.length}`);
+  updateTopBanner('Intrus', `Question ${intrusIndex + 1}/${INTRUS_SESSION.length}`, intrusFieldLabel);
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
   updateTopBannerScore(`${intrusCorrectCount}/${intrusIndex}`);
   $('intrus-progress-bar').style.width = `${(intrusIndex / INTRUS_SESSION.length) * 100}%`;
@@ -4461,9 +4561,11 @@ async function fetchQuizRows(art, century) {
   return normaliseRows(rows).map((q) => ({ ...q, art }));
 }
 
+let quizFieldLabel = '';
 $('launch-quiz-button')?.addEventListener('click', async () => {
   let arts = selectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = selectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  quizFieldLabel = buildFieldLabel(arts, centuries);
   let levels = selectedLevels(); if (!levels.length) levels = ['1','2','3'];
   let chosenKeys = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.key);
   if (!chosenKeys.length) chosenKeys = allFields.map((field) => field.key);
