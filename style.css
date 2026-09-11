@@ -547,12 +547,12 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 /* Vue à l'échelle : une silhouette de référence (170 cm, hauteur fixe) posée à côté de l'œuvre,
    dimensionnée en JS selon ses dimensions réelles (voir openScaleView / SILHOUETTE_PX_PER_CM). */
 #lightbox-scale-view { display:flex; flex-direction:column; align-items:center; gap:16px; }
-#lightbox-scale-stage { display:flex; align-items:flex-end; gap:24px; justify-content:center; max-width:92vw; overflow-x:auto; padding-bottom:4px; }
-#scale-silhouette { height:300px; width:auto; flex-shrink:0; color:var(--muted); opacity:.85; }
-#scale-artwork-wrap { flex-shrink:0; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+#lightbox-scale-stage { position:relative; display:flex; align-items:flex-end; gap:32px; justify-content:center; max-width:92vw; overflow-x:auto; padding-bottom:4px; }
+#scale-silhouette { height:460px; width:auto; flex-shrink:0; color:var(--muted); opacity:.85; }
+#scale-artwork-wrap { flex-shrink:0; box-shadow:0 8px 24px rgba(0,0,0,.4); position:relative; }
 #scale-artwork-wrap img { display:block; width:100%; height:100%; object-fit:contain; background:#fff; }
 @media (max-width:640px) {
-  #scale-silhouette { height:180px; }
+  #scale-silhouette { height:280px; }
 }
 .other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
 .other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }

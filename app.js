@@ -1960,10 +1960,10 @@ function toggleScaleView() {
   const hCm = parseCmValue(currentLightboxWork.hauteur);
   const lCm = parseCmValue(currentLightboxWork.longueur) || hCm;
   if (!hCm) return;
-  // 170 cm de référence pour la silhouette = sa hauteur affichée en CSS (300px bureau, 180px
+  // 170 cm de référence pour la silhouette = sa hauteur affichée en CSS (460px bureau, 280px
   // mobile) — on lit cette hauteur réelle à l'écran plutôt que de la deviner, pour rester juste
   // même si la feuille de style change.
-  const silhouettePx = $('scale-silhouette').getBoundingClientRect().height || 300;
+  const silhouettePx = $('scale-silhouette').getBoundingClientRect().height || 460;
   const pxPerCm = silhouettePx / 170;
   let artH = hCm * pxPerCm;
   let artW = lCm * pxPerCm;
@@ -1978,6 +1978,12 @@ function toggleScaleView() {
   }
   $('scale-artwork-wrap').style.width = `${Math.max(artW, 4)}px`;
   $('scale-artwork-wrap').style.height = `${Math.max(artH, 4)}px`;
+  // Accroche l'œuvre à hauteur des yeux plutôt qu'au sol : le centre de l'œuvre se pose à ~92% de
+  // la hauteur de la silhouette (où se trouve la tête sur cette silhouette vue de dos), pas à ses
+  // pieds — comme un vrai accrochage de musée, pas une œuvre posée par terre.
+  const eyeLevelPx = silhouettePx * 0.92;
+  const shiftUp = eyeLevelPx - artH / 2;
+  $('scale-artwork-wrap').style.marginBottom = `${Math.max(shiftUp, 0)}px`;
   $('scale-artwork-img').src = imageSource(currentLightboxWork.image);
   $('lightbox-scale-caption').textContent = `Hauteur réelle : ${hCm} cm${note}`;
   $('lightbox-image').classList.add('hidden');
