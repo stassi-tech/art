@@ -519,12 +519,6 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
    autour de toute image dont les proportions ne remplissaient pas le cadre) : chaque image garde
    sa taille naturelle, juste plafonnée pour ne pas déborder de l'écran. */
 .other-works-panel-list .other-work-card-big img { width:auto; max-width:100%; height:auto; max-height:min(30vh, 260px); object-fit:contain; border-radius:6px; display:block; margin:0 auto 10px; }
-/* Quand la hauteur réelle est connue (voir renderOtherWorksPanel), la vignette est mise à
-   l'échelle proportionnellement à la plus grande œuvre connue de l'artiste (--scale-ratio, entre
-   0 et 1) plutôt que plafonnée par palier — pour que les écarts de taille entre ses œuvres soient
-   visibles d'un coup d'œil, sans avoir à ouvrir la vue à l'échelle. */
-.other-works-panel-list .other-work-card-big.scaled img { height:calc(320px * var(--scale-ratio, 1)); max-height:70vh; align-self:flex-end; }
-.other-works-panel-list .other-work-card-big.scaled { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
 .other-works-panel-list .other-work-card-big .other-work-caption { font-family:Arial,sans-serif; font-size:.9rem; }
 /* Les images s'adaptent au nombre d'œuvres à afficher, pour limiter le défilement (voir
    renderOtherWorksPanel en JS, qui pose ces classes selon le nombre) — max-height seulement,
@@ -539,6 +533,16 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 .other-works-panel-list.count-5-8 .other-work-card-big img { max-height:min(28vh, 260px); }
 .other-works-panel-list.count-9plus { grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); }
 .other-works-panel-list.count-9plus .other-work-card-big img { max-height:min(20vh, 190px); }
+/* Quand la hauteur réelle est connue (voir renderOtherWorksPanel), la vignette est mise à
+   l'échelle proportionnellement à la plus grande œuvre connue de l'artiste (--scale-ratio, entre
+   0 et 1) plutôt que plafonnée par palier — pour que les écarts de taille entre ses œuvres soient
+   visibles d'un coup d'œil, sans avoir à ouvrir la vue à l'échelle. Ces deux règles doivent venir
+   APRÈS les paliers count-X ci-dessus : à spécificité CSS égale, c'est l'ordre dans le fichier qui
+   tranche, et un plafond de palier placé après aurait sinon écrasé silencieusement la mise à
+   l'échelle des œuvres les plus grandes (repéré via un vrai cas : la Pietà de Nouans, la plus
+   grande œuvre de Fouquet, ressortait plus petite que d'autres au lieu de dominer la vignette). */
+.other-works-panel-list .other-work-card-big.scaled img { height:calc(320px * var(--scale-ratio, 1)); max-height:70vh; align-self:flex-end; }
+.other-works-panel-list .other-work-card-big.scaled { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
 /* Sur PC, on force explicitement plusieurs colonnes (rangée horizontale) plutôt que de laisser
    auto-fit décider seul — plus fiable pour un alignement visiblement horizontal. */
 @media (min-width:641px) {

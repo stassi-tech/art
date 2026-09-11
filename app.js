@@ -1692,6 +1692,9 @@ function showPanel(name) {
   $('account-panel')?.classList.toggle('hidden', name !== 'account');
   $('profile-panel')?.classList.toggle('hidden', name !== 'profile');
   $('other-works-panel')?.classList.toggle('hidden', name !== 'other-works');
+  // La fiche « Autres œuvres » reprend le fond de l'ambiance active, comme les pages d'exercice —
+  // elle n'en est pas une, mais elle bénéficie du même traitement visuel.
+  if (name === 'other-works') document.body.classList.add('in-exercise');
   $('sidebar')?.classList.toggle('hidden', name !== 'welcome');
   $('bg-mosaic')?.classList.toggle('hidden', name !== 'welcome' && name !== 'training-hub');
 }
