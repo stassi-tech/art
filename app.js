@@ -1934,9 +1934,61 @@ let currentArtistWorksIndex = -1;
 // Galerie du bas : photos complémentaires (portrait de l'artiste, vue du lieu de conservation)
 // posées lors des corrections, quand ces colonnes existent dans le fichier. Cliquables, ouvrent la
 // même visionneuse plein écran que les vignettes d'œuvres.
-function openLightboxImage(url, caption) {
+// Vue à l'échelle : silhouette de référence (170 cm) affichée à côté de l'œuvre, redimensionnée
+// selon ses dimensions réelles (colonnes Hauteur/Longueur). Bascule accessible uniquement quand
+// ces dimensions sont connues pour l'œuvre affichée.
+let currentLightboxWork = null;
+function parseCmValue(raw) {
+  const m = String(raw || '').replace(',', '.').match(/[\d.]+/);
+  return m ? parseFloat(m[0]) : null;
+}
+function setLightboxScaleData(work) {
+  currentLightboxWork = work && parseCmValue(work.hauteur) ? work : null;
+  $('lightbox-scale-toggle')?.classList.toggle('hidden', !currentLightboxWork);
+  $('lightbox-scale-view')?.classList.add('hidden');
+  $('lightbox-image')?.classList.remove('hidden');
+  if ($('lightbox-scale-toggle')) $('lightbox-scale-toggle').textContent = "Voir à l'échelle d'une personne";
+}
+function toggleScaleView() {
+  const inScaleView = !$('lightbox-scale-view').classList.contains('hidden');
+  if (inScaleView || !currentLightboxWork) {
+    $('lightbox-scale-view').classList.add('hidden');
+    $('lightbox-image').classList.remove('hidden');
+    $('lightbox-scale-toggle').textContent = "Voir à l'échelle d'une personne";
+    return;
+  }
+  const hCm = parseCmValue(currentLightboxWork.hauteur);
+  const lCm = parseCmValue(currentLightboxWork.longueur) || hCm;
+  if (!hCm) return;
+  // 170 cm de référence pour la silhouette = sa hauteur affichée en CSS (300px bureau, 180px
+  // mobile) — on lit cette hauteur réelle à l'écran plutôt que de la deviner, pour rester juste
+  // même si la feuille de style change.
+  const silhouettePx = $('scale-silhouette').getBoundingClientRect().height || 300;
+  const pxPerCm = silhouettePx / 170;
+  let artH = hCm * pxPerCm;
+  let artW = lCm * pxPerCm;
+  // Au-delà d'une certaine taille (œuvres monumentales), on plafonne l'affichage à l'écran et on
+  // le signale par le texte plutôt que de rendre une image ingérable.
+  const maxPx = Math.min(window.innerHeight * 0.7, 900);
+  let note = '';
+  if (artH > maxPx) {
+    const ratio = artH / maxPx;
+    artW = artW / ratio; artH = maxPx;
+    note = ` — environ ${Math.round(hCm / 170)} fois la hauteur de la silhouette`;
+  }
+  $('scale-artwork-wrap').style.width = `${Math.max(artW, 4)}px`;
+  $('scale-artwork-wrap').style.height = `${Math.max(artH, 4)}px`;
+  $('scale-artwork-img').src = imageSource(currentLightboxWork.image);
+  $('lightbox-scale-caption').textContent = `Hauteur réelle : ${hCm} cm${note}`;
+  $('lightbox-image').classList.add('hidden');
+  $('lightbox-scale-view').classList.remove('hidden');
+  $('lightbox-scale-toggle').textContent = 'Revenir à la vue normale';
+}
+$('lightbox-scale-toggle')?.addEventListener('click', toggleScaleView);
+function openLightboxImage(url, caption, work) {
   $('lightbox-image').src = imageSource(url);
   $('lightbox-caption').textContent = caption || '';
+  setLightboxScaleData(work || null);
   const sourceLink = $('lightbox-source-link');
   const commonsUrl = commonsFilePageUrl(imageSource(url));
   if (sourceLink) {
@@ -2028,6 +2080,7 @@ function renderOtherWorksPanel() {
       const titleValue = formatCorrectionValue('title', work.title);
       $('lightbox-image').src = imageSource(work.image);
       $('lightbox-caption').innerHTML = `<strong>${titleValue}</strong><br>${escapeHtml(work.date)} — ${escapeHtml(work.location)}`;
+      setLightboxScaleData(work);
       const sourceLink = $('lightbox-source-link');
       const commonsUrl = commonsFilePageUrl(imageSource(work.image));
       if (sourceLink) {
@@ -4502,7 +4555,7 @@ $('previous-button-overlay').addEventListener('click', () => {
   if (state.index > 0) { state.index--; renderQuestion(); }
 });
 $('next-button-overlay').addEventListener('click', goToNextOrResults);
-$('lightbox-close-button')?.addEventListener('click', () => $('image-lightbox').classList.add('hidden'));
+$('lightbox-close-button')?.addEventListener('click', () => { $('image-lightbox').classList.add('hidden'); setLightboxScaleData(null); });
 // Recliquer sur l'image (ou le fond) referme aussi la visionneuse : plus fiable que le seul
 // bouton ✕, notamment sur mobile.
 $('lightbox-image')?.addEventListener('click', () => $('image-lightbox').classList.add('hidden'));
