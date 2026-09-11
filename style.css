@@ -7,15 +7,10 @@
    Touches impressionnistes beige/bronze, inspirées de « Jeunes filles au piano ». Discret par
    nature : c'est l'ambiance "de base", pas un décor à part entière. */
 body:not([data-ambiance]) { --accent:#9c7a4a; --accent-dark:#7a5c35; --cta:#b5766a; --cta-dark:#8a5449; }
-body:not([data-ambiance]).in-exercise .app-shell {
-  background:#ece0c8;
-  background-image:
-    radial-gradient(circle at 18% 25%, #d4a97360 0%, transparent 65%),
-    radial-gradient(circle at 72% 55%, #b98a5e55 0%, transparent 70%),
-    radial-gradient(circle at 42% 82%, #c9a87650 0%, transparent 60%),
-    radial-gradient(circle at 85% 15%, #a9c9a855 0%, transparent 55%),
-    radial-gradient(circle at 10% 70%, #d9c39a45 0%, transparent 60%);
+body:not([data-ambiance]).in-exercise {
+  background:#ece0c8 url('assets/ambiances/renoir-fond.jpg') center/cover no-repeat;
 }
+body:not([data-ambiance]).in-exercise .app-shell { background:transparent; }
 body:not([data-ambiance]).in-exercise .primary-button {
   background:#6f4a30; color:#fff; border-color:#4a2f1c;
 }
@@ -63,24 +58,19 @@ body[data-ambiance="space"].in-exercise .app-shell {
   background-image:repeating-radial-gradient(circle at 50% 120%, transparent 0 42px, #00000022 42px 45px);
 }
 body[data-ambiance="space"].in-exercise .primary-button {
-  background:radial-gradient(circle at 32% 28%, #8ed456 0%, #5a9e2a 42%, #3d7018 100%);
-  box-shadow:inset 0 3px 6px rgba(255,255,255,.5), inset 0 -4px 8px rgba(0,0,0,.3);
-  border-color:#2c5410;
+  background:#5b3d8a url('assets/ambiances/space-bouton.jpg') center/cover no-repeat;
+  box-shadow:inset 0 3px 6px rgba(255,255,255,.35), inset 0 -4px 8px rgba(0,0,0,.35);
+  border-color:#3a2560;
 }
 
 /* ---- Versailles ---- réf. Galerie des Glaces */
 body[data-ambiance="versailles"] { --accent:#d8b25c; --accent-dark:#8a6a24; --cta:#7a1418; --cta-dark:#560e10; }
 body[data-ambiance="versailles"] .bg-mosaic::after { background:#7a1418; }
 body[data-ambiance="versailles"].in-exercise { --ink:#f2ece0; --paper:#5c1015; }
-body[data-ambiance="versailles"].in-exercise { background:#5c1015; }
-body[data-ambiance="versailles"].in-exercise .app-shell {
-  background:
-    repeating-linear-gradient(72deg, #ffffff08 0 2px, transparent 2px 40px),
-    repeating-linear-gradient(-68deg, #00000030 0 1px, transparent 1px 55px),
-    linear-gradient(155deg, #8a1c20, #5c1015 45%, #7a1418 70%, #4a0d10);
-}
+body[data-ambiance="versailles"].in-exercise { background:#5c1015 url('assets/ambiances/versailles-fond.jpg') center/cover no-repeat; }
+body[data-ambiance="versailles"].in-exercise .app-shell { background:transparent; }
 body[data-ambiance="versailles"].in-exercise .primary-button {
-  background:linear-gradient(160deg, #f2d98a 0%, #d8b25c 35%, #a8842f 50%, #e8c874 65%, #a8842f 100%);
+  background:#a8842f url('assets/ambiances/versailles-bouton.jpg') center/cover no-repeat;
   border-color:#6f5320; color:#3a2c10;
 }
 

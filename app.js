@@ -1200,6 +1200,9 @@ const PRONUNCIATION_FIXES = {
   'giobbe': 'Giobbé',
   'brera': 'Bréra',
   'procris': 'Pro criss',
+  'bacchante': 'Bakante',
+  'canova': 'Kanova',
+  'méphistophélès': 'méphistophélèsse',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
