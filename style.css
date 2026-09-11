@@ -544,15 +544,24 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 .image-lightbox .quiz-topbar { position:absolute; top:12px; right:12px; margin:0; }
 .image-lightbox img { max-width:92vw; max-height:78vh; object-fit:contain; border-radius:4px; cursor:pointer; }
 .lightbox-caption { color:#fff; font-family:Arial,sans-serif; font-size:1rem; text-align:center; margin-top:16px; }
-/* Vue à l'échelle : une silhouette de référence (170 cm, hauteur fixe) posée à côté de l'œuvre,
-   dimensionnée en JS selon ses dimensions réelles (voir openScaleView / SILHOUETTE_PX_PER_CM). */
-#lightbox-scale-view { display:flex; flex-direction:column; align-items:center; gap:16px; }
-#lightbox-scale-stage { position:relative; display:flex; align-items:flex-end; gap:32px; justify-content:center; max-width:92vw; overflow-x:auto; padding-bottom:4px; }
-#scale-silhouette { height:460px; width:auto; flex-shrink:0; color:var(--muted); opacity:.85; }
-#scale-artwork-wrap { flex-shrink:0; box-shadow:0 8px 24px rgba(0,0,0,.4); position:relative; }
-#scale-artwork-wrap img { display:block; width:100%; height:100%; object-fit:contain; background:#fff; }
+/* Vue à l'échelle : la silhouette entre dans la pièce par le bas de l'écran, pieds posés au tout
+   bord — l'œuvre s'accroche à sa hauteur des yeux, calculée en JS. Fond clair façon pièce
+   éclairée plutôt que noir, légende du tableau masquée (sans intérêt ici), seule la mesure
+   compte. */
+.image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#e8e4d8; }
+.image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-caption,
+.image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-image,
+.image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-source-link { display:none; }
+#lightbox-scale-view { position:fixed; inset:0; }
+#scale-silhouette { position:fixed; bottom:0; left:32px; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); }
+#scale-wall { position:fixed; inset:0; overflow-x:auto; overflow-y:hidden; }
+.scale-wall-item { position:absolute; box-shadow:0 10px 28px rgba(0,0,0,.3); cursor:pointer; transition:box-shadow .15s; }
+.scale-wall-item.current { box-shadow:0 0 0 3px var(--accent), 0 10px 28px rgba(0,0,0,.3); }
+.scale-wall-item img { display:block; width:100%; height:100%; object-fit:contain; background:#fff; }
+.lightbox-scale-caption { position:fixed; bottom:20px; right:24px; color:#4a453c; font-family:Arial,sans-serif; font-size:.9rem; margin:0; background:rgba(255,255,255,.8); padding:6px 12px; border-radius:4px; }
 @media (max-width:640px) {
-  #scale-silhouette { height:280px; }
+  #scale-silhouette { height:52vh; left:16px; }
+  .lightbox-scale-caption { font-size:.8rem; right:12px; bottom:12px; }
 }
 .other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
 .other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }
