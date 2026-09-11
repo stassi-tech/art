@@ -365,7 +365,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
   .bottom-gallery-item img { width:48px; height:48px; }
   .bottom-gallery-item span { font-size:.6rem; }
 }
-.topbar-zone { display:flex; align-items:center; gap:8px; min-width:0; }
+.topbar-zone { display:flex; align-items:center; gap:14px; min-width:0; }
 .topbar-zone-left { flex:1 1 0; justify-content:flex-start; flex-direction:column; align-items:flex-start; gap:0; font-family:Arial,sans-serif; }
 .topbar-zone-left span { line-height:1.2; }
 #topbar-exercise-name { font-weight:700; font-size:.85rem; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
@@ -613,6 +613,9 @@ body.has-other-works .correction-label { font-size:.76rem; }
   #quiz-panel .progress-row { margin-top:10px; }
   .sidebar { flex-direction:column; width:100%; max-width:100%; flex-basis:auto; position:static; align-self:stretch; padding:18px; }
   .sidebar-illustration { max-height:160px; }
+  /* Boutons du bandeau plus espacés au doigt : sur souris un léger espacement suffit, mais au
+     doigt les zones de clic trop rapprochées font toucher le mauvais bouton par erreur. */
+  .topbar-zone-center { gap:20px; }
   .welcome-panel,.results-panel { padding:24px 14px; margin:24px auto; }
   .home-mode-buttons { gap:8px; }
   .home-mode-button { padding:12px 8px; }
