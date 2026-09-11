@@ -1600,6 +1600,16 @@ function imageSource(reference) {
   if (/^(https?:|data:)/i.test(reference)) return reference;
   return state.imageFiles.get(reference) || state.imageFiles.get(reference.toLocaleLowerCase('fr-FR')) || reference;
 }
+// Variante qui demande une taille adaptée à l'affichage réel quand le lien vient de Wikimedia
+// Commons (paramètre "width" supporté nativement) — évite de télécharger une image en pleine
+// résolution pour l'afficher en 150px, ce qui accélère le chargement (utile sur le mur de la vue
+// à l'échelle, où plusieurs images se chargent en même temps).
+function imageSourceSized(reference, widthPx) {
+  const url = imageSource(reference);
+  if (!/commons\.wikimedia\.org\/wiki\/Special:FilePath\//i.test(url)) return url;
+  const target = Math.max(Math.round(widthPx * 2), 80); // x2 pour les écrans à forte densité
+  return `${url.split('?')[0]}?width=${target}`;
+}
 function shuffleQuestions(questions) {
   const shuffled = [...questions];
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
@@ -1944,13 +1954,13 @@ function parseCmValue(raw) {
 }
 function setLightboxScaleData(work) {
   currentLightboxWork = work && parseCmValue(work.hauteur) ? work : null;
-  $('lightbox-scale-toggle')?.classList.toggle('hidden', !currentLightboxWork);
+  $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
   exitScaleView();
 }
 function enterScaleView() {
   if (!currentLightboxWork) return;
   $('lightbox-scale-view').classList.remove('hidden');
-  $('lightbox-scale-toggle').classList.add('hidden');
+  $('lightbox-scale-toggle-topbar').classList.add('hidden');
   $('lightbox-scale-back-button').classList.remove('hidden');
   // Quand on vient de la fiche d'un artiste (« Autres œuvres »), on affiche tout son mur — toutes
   // ses œuvres dimensionnées à leur taille réelle les unes à côté des autres, pas seulement celle
@@ -1980,14 +1990,18 @@ function enterScaleView() {
       artW = artW / ratio; artH = maxPx;
       note = ` — environ ${Math.round(hCm / 170)} fois la hauteur de la silhouette`;
     }
+    // Les tableaux s'accrochent à hauteur des yeux (comme un vrai accrochage de musée) ; les
+    // sculptures, elles, reposent au sol — comme une vraie statue sur son socle, pas suspendue en
+    // l'air. On distingue via la catégorie d'origine (peinture/sculpture).
+    const isSculpture = w.artCategory === 'sculpture';
     const item = document.createElement('button');
     item.type = 'button';
-    item.className = 'scale-wall-item' + (w === currentLightboxWork ? ' current' : '');
+    item.className = 'scale-wall-item' + (isSculpture ? ' scale-sculpture' : '') + (w === currentLightboxWork ? ' current' : '');
     item.style.width = `${Math.max(artW, 4)}px`;
     item.style.height = `${Math.max(artH, 4)}px`;
     item.style.left = `${cursorLeft}px`;
-    item.style.bottom = `${Math.max(eyeLevelFromBottom - artH / 2, 0)}px`;
-    item.innerHTML = `<img src="${escapeHtml(imageSource(w.image))}" alt="" />`;
+    item.style.bottom = isSculpture ? '0px' : `${Math.max(eyeLevelFromBottom - artH / 2, 0)}px`;
+    item.innerHTML = `<img src="${escapeHtml(imageSourceSized(w.image, artW))}" alt="" />`;
     item.addEventListener('click', () => { $('lightbox-scale-caption').textContent = `Hauteur réelle : ${hCm} cm${note}`; });
     wall.appendChild(item);
     cursorLeft += Math.max(artW, 4) + 40;
@@ -1998,9 +2012,9 @@ function enterScaleView() {
 function exitScaleView() {
   $('lightbox-scale-view').classList.add('hidden');
   $('lightbox-scale-back-button').classList.add('hidden');
-  $('lightbox-scale-toggle')?.classList.toggle('hidden', !currentLightboxWork);
+  $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
 }
-$('lightbox-scale-toggle')?.addEventListener('click', enterScaleView);
+$('lightbox-scale-toggle-topbar')?.addEventListener('click', enterScaleView);
 $('lightbox-scale-back-button')?.addEventListener('click', exitScaleView);
 function openLightboxImage(url, caption, work) {
   $('lightbox-image').src = imageSource(url);
@@ -2051,7 +2065,11 @@ async function openArtistWorksPage(idx) {
   let allRows = [];
   for (const art of arts) {
     for (const century of centuries) {
-      try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+      try {
+        const rows = await fetchQuizRows(art, century);
+        rows.forEach((r) => { r.artCategory = art; });
+        allRows.push(...rows);
+      } catch (e) { /* fichier absent, ignoré */ }
     }
   }
   const works = allRows

@@ -549,6 +549,12 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
    éclairée plutôt que noir, légende du tableau masquée (sans intérêt ici), seule la mesure
    compte. */
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#e8e4d8; }
+body[data-ambiance="pitti"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#0c3c2f; }
+body[data-ambiance="bauhaus"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#333335; }
+body[data-ambiance="space"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#e07a2e; }
+body[data-ambiance="versailles"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#5c1015; }
+body[data-ambiance="wedgwood"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#a8c0d4; }
+body[data-ambiance="ermitage"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#0a2745; }
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-caption,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-image,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-source-link { display:none; }
@@ -558,6 +564,12 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 .scale-wall-item { position:absolute; box-shadow:0 10px 28px rgba(0,0,0,.3); cursor:pointer; transition:box-shadow .15s; }
 .scale-wall-item.current { box-shadow:0 0 0 3px var(--accent), 0 10px 28px rgba(0,0,0,.3); }
 .scale-wall-item img { display:block; width:100%; height:100%; object-fit:contain; background:#fff; }
+/* Les sculptures posent directement sur le sol, sans cadre ni ombre encadrante (ce n'est pas un
+   tableau accroché) — et on rogne la photo (cover) plutôt que de l'inclure entière, pour réduire
+   les marges blanches qui entourent souvent les photos de studio de statues. */
+.scale-wall-item.scale-sculpture { box-shadow:0 4px 10px rgba(0,0,0,.25); }
+.scale-wall-item.scale-sculpture.current { box-shadow:0 0 0 3px var(--accent), 0 4px 10px rgba(0,0,0,.25); }
+.scale-wall-item.scale-sculpture img { object-fit:cover; }
 .lightbox-scale-caption { position:fixed; bottom:20px; right:24px; color:#4a453c; font-family:Arial,sans-serif; font-size:.9rem; margin:0; background:rgba(255,255,255,.8); padding:6px 12px; border-radius:4px; }
 @media (max-width:640px) {
   #scale-silhouette { height:52vh; left:16px; }
