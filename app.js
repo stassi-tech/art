@@ -1705,7 +1705,7 @@ function commonsFilePageUrl(imageUrl) {
   return `https://commons.wikimedia.org/wiki/File:${match[1]}`;
 }
 function displayArtworkImage(work, altText, showSourceLink = false) {
-  const image = $('artwork-image'); const message = $('image-message'); const source = imageSource(work.image);
+  const image = $('artwork-image'); const message = $('image-message'); const source = imageSourceSized(work.image, 900);
   image.dataset.originalSource = source; image.dataset.proxyTried = 'false'; image.src = source; image.alt = altText; message.classList.add('hidden');
   image.onerror = () => {
     if (image.dataset.proxyTried === 'false' && /^https?:/i.test(image.dataset.originalSource)) {
@@ -2017,7 +2017,7 @@ function exitScaleView() {
 $('lightbox-scale-toggle-topbar')?.addEventListener('click', enterScaleView);
 $('lightbox-scale-back-button')?.addEventListener('click', exitScaleView);
 function openLightboxImage(url, caption, work) {
-  $('lightbox-image').src = imageSource(url);
+  $('lightbox-image').src = imageSourceSized(url, 1000);
   $('lightbox-caption').textContent = caption || '';
   setLightboxScaleData(work || null);
   const sourceLink = $('lightbox-source-link');
@@ -2036,7 +2036,7 @@ function showBottomGallery(work) {
   if (work.locationImage) items.push({ url: work.locationImage, label: work.ville || 'Lieu', caption: work.location });
   if (!items.length) { bar.classList.add('hidden'); bar.innerHTML = ''; return; }
   bar.innerHTML = items.map((item) => `<button type="button" class="bottom-gallery-item" data-url="${escapeHtml(item.url)}" data-caption="${escapeHtml(item.caption)}">
-    <img src="${escapeHtml(imageSource(item.url))}" alt="" /><span>${escapeHtml(item.label)}</span>
+    <img src="${escapeHtml(imageSourceSized(item.url, 100))}" alt="" /><span>${escapeHtml(item.label)}</span>
   </button>`).join('');
   bar.querySelectorAll('.bottom-gallery-item').forEach((btn) => {
     btn.addEventListener('click', () => openLightboxImage(btn.dataset.url, btn.dataset.caption));
@@ -2098,10 +2098,18 @@ function renderOtherWorksPanel() {
   // Classées comme un catalogue : niveau 1 d'abord, puis 2, puis 3 (déjà l'ordre fourni par
   // renderCorrection), sans titre de section ni ligne de séparation — juste le niveau indiqué
   // sous chaque légende.
+  // Quand la hauteur réelle est connue, la vignette est mise à l'échelle par rapport à la plus
+  // grande œuvre connue de cet artiste — pour voir d'un coup d'œil les écarts de taille entre ses
+  // œuvres, sans avoir besoin d'ouvrir la vue à l'échelle. Les œuvres sans hauteur connue gardent
+  // la taille par défaut (impossible de les mettre à l'échelle).
+  const knownHeights = otherWorks.map((w) => parseCmValue(w.hauteur)).filter(Boolean);
+  const maxHeightCm = knownHeights.length ? Math.max(...knownHeights) : 0;
   list.innerHTML = otherWorks.map((otherQuestion, index) => {
-    const source = imageSource(otherQuestion.image);
+    const source = imageSourceSized(otherQuestion.image, 400);
     const titleValue = formatCorrectionValue('title', otherQuestion.title);
-    return `<button type="button" class="other-work-card-big" data-index="${index}">
+    const hCm = parseCmValue(otherQuestion.hauteur);
+    const scaleStyle = hCm && maxHeightCm ? ` style="--scale-ratio:${Math.max(hCm / maxHeightCm, 0.15)};"` : '';
+    return `<button type="button" class="other-work-card-big${hCm ? ' scaled' : ''}" data-index="${index}"${scaleStyle}>
       <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
            onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
       <span class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}</span>
@@ -2113,7 +2121,7 @@ function renderOtherWorksPanel() {
     card.addEventListener('click', () => {
       const work = otherWorks[Number(card.dataset.index)];
       const titleValue = formatCorrectionValue('title', work.title);
-      $('lightbox-image').src = imageSource(work.image);
+      $('lightbox-image').src = imageSourceSized(work.image, 1000);
       $('lightbox-caption').innerHTML = `<strong>${titleValue}</strong><br>${escapeHtml(work.date)} — ${escapeHtml(work.location)}`;
       setLightboxScaleData(work);
       const sourceLink = $('lightbox-source-link');
@@ -2582,7 +2590,7 @@ function renderChronoCards() {
     const num = chronoAssigned[i];
     return `<button type="button" class="fam-image-cell chrono-source-item${num ? ' numbered' : ''}" data-index="${i}" style="order:${num || (10 + i)};position:relative;">
       ${num ? `<span class="chrono-slot-num" style="position:absolute;top:6px;left:6px;">${num}</span>` : ''}
-      <img src="${escapeHtml(imageSource(work.image))}" alt="" />
+      <img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" />
     </button>`;
   }).join('');
   document.querySelectorAll('#chrono-cards-row .chrono-source-item').forEach((item) => {
@@ -2658,7 +2666,7 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   $('chrono-cards-row').innerHTML = playerOrder.map((work, i) => {
     const meta = [work.date, work.location].filter(Boolean).join(' — ');
     return `<div class="fam-image-cell ${rightFlags[i] ? 'right' : 'wrong'}" style="position:relative;margin-bottom:58px;">
-      <span class="chrono-slot-num">${i + 1}</span><img src="${escapeHtml(imageSource(work.image))}" alt="" />
+      <span class="chrono-slot-num">${i + 1}</span><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" />
       <span class="fam-result-caption" style="position:absolute;bottom:-58px;left:0;right:0;">
         <strong>${formatArtistDisplayName(work)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}
       </span>
@@ -2672,7 +2680,7 @@ $('chrono-validate-button')?.addEventListener('click', () => {
       <div class="fam-result-grid">${correctOrder.map((work) => {
         const meta = [work.date, work.location].filter(Boolean).join(' — ');
         return `<div class="fam-result-item">
-          <img src="${escapeHtml(imageSource(work.image))}" alt="" />
+          <img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" />
           <span class="fam-result-caption"><strong>${formatArtistDisplayName(work)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
         </div>`;
       }).join('')}</div>`;
@@ -2933,7 +2941,7 @@ function famShowQuestion() {
 
   $('fam-image-grid').className = `fam-image-grid${q.imgCount === 6 ? ' fam-count-6' : ''}`;
   $('fam-image-grid').innerHTML = q.images.map((work, i) =>
-    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSource(work.image))}" alt="" /></button>`
+    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" /></button>`
   ).join('');
   $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -2994,7 +3002,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
     return `<strong>${formatArtistDisplayName(work)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}`;
   };
   const cellHtml = (work, revealed) => `<div class="fam-result-item${revealed ? '' : ' fam-result-pending'}">
-      ${revealed ? `<img src="${escapeHtml(imageSource(work.image))}" alt="" /><span class="fam-result-caption">${captionOf(work)}</span>` : ''}
+      ${revealed ? `<img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" /><span class="fam-result-caption">${captionOf(work)}</span>` : ''}
     </div>`;
 
   if (!wrongSelected.length && !missedFamily.length) {
@@ -3205,7 +3213,7 @@ function vfShowQuestion() {
   $('vf-correction').classList.add('hidden');
   $('vf-validate-button').classList.remove('hidden');
   $('vf-validate-button').disabled = false;
-  $('vf-stage-img').src = imageSource(q.correct.image);
+  $('vf-stage-img').src = imageSourceSized(q.correct.image, 700);
 
   // Chaque rubrique a son propre bouton Vrai/Faux, réglé sur Vrai par défaut.
   $('vf-field-rows').innerHTML = q.activeFields.map((f) => {
@@ -3481,7 +3489,7 @@ function reconShowQuestion() {
   $('recon-correction').classList.add('hidden');
   $('recon-choices').classList.remove('hidden');
 
-  const src = escapeHtml(imageSource(q.correct.image));
+  const src = escapeHtml(imageSourceSized(q.correct.image, 1200));
   $('recon-prompt-card').innerHTML = `<div class="recon-detail-crop" style="background-image:url('${src}');background-position:${q.cropX}% ${q.cropY}%;"></div>`;
   $('recon-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
     `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title || c.date || 'œuvre non titrée')} »</em></button>`
@@ -3507,7 +3515,7 @@ function reconAnswer(chosenIndex) {
   });
 
   // L'image entière est révélée, avec la référence complète.
-  $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSource(q.correct.image))}" alt="" />`;
+  $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSourceSized(q.correct.image, 700))}" alt="" />`;
 
   const dims = formatDimensionsDisplay(q.correct);
   reconSpeak(spokenFullReference(q.correct));
@@ -3631,7 +3639,7 @@ function populateSessionMosaic(images) {
   // images disponibles en boucle plutôt que de laisser des cases vides.
   const filled = Array.from({ length: 15 }, (_, i) => unique[i % unique.length]);
   container.innerHTML = filled.map((img) =>
-    `<div class="bg-tile"><img src="${escapeHtml(imageSource(img))}" alt="" loading="lazy" draggable="false" /></div>`
+    `<div class="bg-tile"><img src="${escapeHtml(imageSourceSized(img, 200))}" alt="" loading="lazy" draggable="false" /></div>`
   ).join('');
   wireBgMosaicTiles();
 }
@@ -4032,7 +4040,7 @@ function impShowCurrent() {
   $('imp-progress-label').textContent = `Œuvre ${impIndex + 1} / ${IMP_SESSION.length}`;
   updateTopBanner('Imprégnation', `Œuvre ${impIndex + 1}/${IMP_SESSION.length}`, impFieldLabel);
   $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
-  $('imp-stage-img').src = imageSource(work.image);
+  $('imp-stage-img').src = imageSourceSized(work.image, 900);
 
   const dims = formatDimensionsDisplay(work);
   const anyFieldChecked = ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].some((k) => $(`imp-field-${k}`)?.checked);
@@ -4275,7 +4283,7 @@ function intrusShowQuestion() {
     // Les 3 images (choix) occupent la grande zone de gauche, en plus grand ; la référence à
     // retrouver s'affiche à droite, avec le même espacement de rubrique que la correction.
     promptCard.innerHTML = `<div class="intrus-image-choices">${q.choices.map((c, i) =>
-      `<button type="button" class="intrus-image-choice" data-index="${i}"><img src="${escapeHtml(imageSource(c.image))}" alt="" /></button>`
+      `<button type="button" class="intrus-image-choice" data-index="${i}"><img src="${escapeHtml(imageSourceSized(c.image, 300))}" alt="" /></button>`
     ).join('')}</div>`;
     promptCard.querySelectorAll('.intrus-image-choice').forEach((btn) => {
       btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
@@ -4288,7 +4296,7 @@ function intrusShowQuestion() {
   } else {
     // Image en haut à gauche. Choix à droite : le plus souvent le nom du peintre seul (le cas
     // le plus exigeant), parfois artiste + titre pour varier (q.titleMode).
-    promptCard.innerHTML = `<img src="${escapeHtml(imageSource(q.correct.image))}" alt="" style="max-width:100%;max-height:min(820px,74vh);display:block;" />`;
+    promptCard.innerHTML = `<img src="${escapeHtml(imageSourceSized(q.correct.image, 700))}" alt="" style="max-width:100%;max-height:min(820px,74vh);display:block;" />`;
     $('intrus-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
       q.titleMode
         ? `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title || c.date || 'œuvre non titrée')} »</em></button>`
