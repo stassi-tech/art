@@ -8,7 +8,7 @@
    nature : c'est l'ambiance "de base", pas un décor à part entière. */
 body:not([data-ambiance]) { --accent:#9c7a4a; --accent-dark:#7a5c35; --cta:#b5766a; --cta-dark:#8a5449; }
 body:not([data-ambiance]).in-exercise {
-  background:#ece0c8 url('Actifs/ambiances/renoir-fond.jpg') center/cover no-repeat;
+  background:#ece0c8 url('assets/renoir-fond.jpg') center/cover no-repeat;
 }
 body:not([data-ambiance]).in-exercise .app-shell { background:transparent; }
 body:not([data-ambiance]).in-exercise .primary-button {
@@ -58,7 +58,7 @@ body[data-ambiance="space"].in-exercise .app-shell {
   background-image:repeating-radial-gradient(circle at 50% 120%, transparent 0 42px, #00000022 42px 45px);
 }
 body[data-ambiance="space"].in-exercise .primary-button {
-  background:#5b3d8a url('Actifs/ambiances/space-bouton.jpg') center/cover no-repeat;
+  background:#5b3d8a url('assets/space-bouton.jpg') center/cover no-repeat;
   box-shadow:inset 0 3px 6px rgba(255,255,255,.35), inset 0 -4px 8px rgba(0,0,0,.35);
   border-color:#3a2560;
 }
@@ -67,10 +67,10 @@ body[data-ambiance="space"].in-exercise .primary-button {
 body[data-ambiance="versailles"] { --accent:#d8b25c; --accent-dark:#8a6a24; --cta:#7a1418; --cta-dark:#560e10; }
 body[data-ambiance="versailles"] .bg-mosaic::after { background:#7a1418; }
 body[data-ambiance="versailles"].in-exercise { --ink:#f2ece0; --paper:#5c1015; }
-body[data-ambiance="versailles"].in-exercise { background:#5c1015 url('Actifs/ambiances/versailles-fond.jpg') center/cover no-repeat; }
+body[data-ambiance="versailles"].in-exercise { background:#5c1015 url('assets/versailles-fond.jpg') center/cover no-repeat; }
 body[data-ambiance="versailles"].in-exercise .app-shell { background:transparent; }
 body[data-ambiance="versailles"].in-exercise .primary-button {
-  background:#a8842f url('Actifs/ambiances/versailles-bouton.jpg') center/cover no-repeat;
+  background:#a8842f url('assets/versailles-bouton.jpg') center/cover no-repeat;
   border-color:#6f5320; color:#3a2c10;
 }
 
