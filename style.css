@@ -10,14 +10,14 @@ body:not([data-ambiance]) { --accent:#9c7a4a; --accent-dark:#7a5c35; --cta:#b576
 body:not([data-ambiance]).in-exercise .app-shell {
   background:#ece0c8;
   background-image:
-    radial-gradient(circle at 18% 25%, #d4a97350 0 42px, transparent 44px),
-    radial-gradient(circle at 72% 55%, #b98a5e40 0 54px, transparent 56px),
-    radial-gradient(circle at 42% 82%, #c9a87635 0 36px, transparent 38px),
-    radial-gradient(circle at 85% 15%, #a9c9a840 0 30px, transparent 32px);
+    radial-gradient(circle at 18% 25%, #d4a97360 0%, transparent 65%),
+    radial-gradient(circle at 72% 55%, #b98a5e55 0%, transparent 70%),
+    radial-gradient(circle at 42% 82%, #c9a87650 0%, transparent 60%),
+    radial-gradient(circle at 85% 15%, #a9c9a855 0%, transparent 55%),
+    radial-gradient(circle at 10% 70%, #d9c39a45 0%, transparent 60%);
 }
 body:not([data-ambiance]).in-exercise .primary-button {
-  background:repeating-linear-gradient(125deg, #a8794a 0 4px, #8a6238 4px 7px, #b98f5c 7px 12px, #9c7040 12px 15px);
-  border-color:#6f4e2a;
+  background:#6f4a30; color:#fff; border-color:#4a2f1c;
 }
 
 /* ---- Le Salon Pitti ---- réf. Palazzo Pitti, Florence */
@@ -25,6 +25,7 @@ body[data-ambiance] .bg-mosaic::after { content:''; position:absolute; inset:0; 
 body[data-ambiance="pitti"] { --accent:#c9a24a; --accent-dark:#8a6a24; --cta:#8a1c2c; --cta-dark:#6b1420; }
 body[data-ambiance="pitti"] .bg-mosaic::after { background:#0d3324; }
 body[data-ambiance="pitti"].in-exercise { --ink:#f2ecd8; --paper:#0f4d3c; --canvas:#0c3c2f; --border:#1f6b52; }
+body[data-ambiance="pitti"].in-exercise { background:#0c3c2f; }
 body[data-ambiance="pitti"].in-exercise .app-shell {
   background:#0c3c2f;
   background-image:
@@ -40,6 +41,7 @@ body[data-ambiance="pitti"].in-exercise .primary-button {
 body[data-ambiance="bauhaus"] { --accent:#1c4fa0; --accent-dark:#14356e; --cta:#2b2b28; --cta-dark:#1a1a18; }
 body[data-ambiance="bauhaus"] .bg-mosaic::after { background:#1c4fa0; }
 body[data-ambiance="bauhaus"].in-exercise { --ink:#f4f1ea; --paper:#3d3d3f; --canvas:#333335; --border:#5a5a5c; }
+body[data-ambiance="bauhaus"].in-exercise { background:#333335; }
 body[data-ambiance="bauhaus"].in-exercise .app-shell {
   background:#333335;
   background-image:linear-gradient(90deg,#f2c318 0 33%,#1c4fa0 33% 66%,#f4f1ea 66% 100%);
@@ -48,14 +50,14 @@ body[data-ambiance="bauhaus"].in-exercise .app-shell {
 body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn { background:#55555a; color:#f4f1ea; border-color:#77777c; }
 body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn:hover:not(:disabled) { background:#68686e; border-color:#f2c318; }
 body[data-ambiance="bauhaus"].in-exercise .primary-button {
-  background:repeating-linear-gradient(100deg, #d8d8da 0 2px, #a8a8ac 2px 4px, #ececee 4px 6px, #b8b8bc 6px 9px);
-  color:#1a1a18; border-color:#7a7a7e; text-shadow:0 1px 0 rgba(255,255,255,.4);
+  background:#fff; color:#1a1a18; border-color:#c1272d;
 }
 
 /* ---- Space Age ---- réf. Guggenheim, New York */
 body[data-ambiance="space"] { --accent:#5a9e2a; --accent-dark:#3d7018; --cta:#6a2fb5; --cta-dark:#4d1f8a; }
 body[data-ambiance="space"] .bg-mosaic::after { background:#e8843c; }
 body[data-ambiance="space"].in-exercise { --ink:#3a1f0a; --paper:#fff3e0; }
+body[data-ambiance="space"].in-exercise { background:#e07a2e; }
 body[data-ambiance="space"].in-exercise .app-shell {
   background:#e07a2e;
   background-image:repeating-radial-gradient(circle at 50% 120%, transparent 0 42px, #00000022 42px 45px);
@@ -70,6 +72,7 @@ body[data-ambiance="space"].in-exercise .primary-button {
 body[data-ambiance="versailles"] { --accent:#d8b25c; --accent-dark:#8a6a24; --cta:#7a1418; --cta-dark:#560e10; }
 body[data-ambiance="versailles"] .bg-mosaic::after { background:#7a1418; }
 body[data-ambiance="versailles"].in-exercise { --ink:#f2ece0; --paper:#5c1015; }
+body[data-ambiance="versailles"].in-exercise { background:#5c1015; }
 body[data-ambiance="versailles"].in-exercise .app-shell {
   background:
     repeating-linear-gradient(72deg, #ffffff08 0 2px, transparent 2px 40px),
@@ -85,6 +88,7 @@ body[data-ambiance="versailles"].in-exercise .primary-button {
 body[data-ambiance="wedgwood"] { --accent:#7396b8; --accent-dark:#4a6d8f; --cta:#e8e0cf; --cta-dark:#cfc4a8; }
 body[data-ambiance="wedgwood"] .bg-mosaic::after { background:#a8c0d4; }
 body[data-ambiance="wedgwood"].in-exercise { --ink:#2c3e4a; --paper:#c3d5e2; --canvas:#a8c0d4; --border:#f2ede0; }
+body[data-ambiance="wedgwood"].in-exercise { background:#a8c0d4; }
 body[data-ambiance="wedgwood"].in-exercise .app-shell { background:#a8c0d4; }
 body[data-ambiance="wedgwood"].in-exercise .primary-button {
   background:linear-gradient(160deg, #faf6ea 0%, #e8e0cf 50%, #d8cdb4 100%);
@@ -95,6 +99,7 @@ body[data-ambiance="wedgwood"].in-exercise .primary-button {
 body[data-ambiance="ermitage"] { --accent:#d8b23c; --accent-dark:#8a6a1e; --cta:#0c2a4a; --cta-dark:#081c33; }
 body[data-ambiance="ermitage"] .bg-mosaic::after { background:#0c2a4a; }
 body[data-ambiance="ermitage"].in-exercise { --ink:#eef2ea; --paper:#0e335a; --canvas:#0a2745; --border:#2a4f78; }
+body[data-ambiance="ermitage"].in-exercise { background:#0a2745; }
 body[data-ambiance="ermitage"].in-exercise .app-shell {
   background:#0a2745;
   background-image:repeating-linear-gradient(90deg, #ffffff06 0 1px, transparent 1px 40px);
