@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=92" />
+    <link rel="stylesheet" href="style.css?v=110" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -28,6 +28,7 @@
         <button type="button" id="global-home-button" class="global-topbar-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
         <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
         <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
+        <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
         <button type="button" id="global-account-button" class="global-topbar-button" aria-label="Mon compte" title="Mon compte">👤</button>
       </div>
       <div class="topbar-zone topbar-zone-right" id="topbar-score"></div>
@@ -158,14 +159,20 @@
             <span id="imp-progress-label">Œuvre 1 / 10</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="imp-progress-bar"></div></div>
-          <div class="quiz-grid">
+          <div id="imp-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
+            <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <button type="button" class="primary-button" id="imp-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
+          </div>
+
+          <div class="quiz-grid hidden" id="imp-quiz-grid">
             <div class="artwork-column">
               <figure class="artwork-card">
                 <img id="imp-stage-img" alt="Œuvre" />
               </figure>
             </div>
             <section class="answer-card" aria-label="Rubriques">
-              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Rubriques</h2>
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Écoutez ces références pour vous en imprégner</h2>
               <div class="correction-details" id="imp-correction-details"></div>
               <div class="mic-nav-row" style="margin-top:auto;padding-top:20px;justify-content:center;">
                 <button type="button" id="imp-prev-button" class="nav-arrow-button" aria-label="Précédent">←</button>
@@ -255,14 +262,20 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="intrus-progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="intrus-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
+            <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <button type="button" class="primary-button" id="intrus-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
+          </div>
+
+          <div class="quiz-grid hidden" id="intrus-quiz-grid">
             <div class="artwork-column">
               <figure class="artwork-card" id="intrus-prompt-card">
                 <!-- Selon le mode : soit l'image de référence, soit le texte de la référence à retrouver -->
               </figure>
             </div>
             <section class="answer-card" aria-label="Choix">
-              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Choisissez la bonne réponse</h2>
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Cliquez sur l'image qui correspond à la référence.</h2>
               <div id="intrus-choices"></div>
               <div id="intrus-correction" class="hidden">
                 <div class="correction-details" id="intrus-correction-details"></div>
@@ -346,12 +359,18 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="recon-progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="recon-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
+            <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <button type="button" class="primary-button" id="recon-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
+          </div>
+
+          <div class="quiz-grid hidden" id="recon-quiz-grid">
             <div class="artwork-column">
               <figure class="artwork-card" id="recon-prompt-card"></figure>
             </div>
             <section class="answer-card" aria-label="Choix">
-              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 16px;">Retrouvez la référence</h2>
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Cliquez sur la référence qui correspond à l'œuvre dont vous voyez un détail.</h2>
               <div id="recon-choices"></div>
               <div id="recon-correction" class="hidden">
                 <div class="correction-details" id="recon-correction-details"></div>
@@ -436,7 +455,13 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="vf-progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="vf-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
+            <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <button type="button" class="primary-button" id="vf-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
+          </div>
+
+          <div class="quiz-grid hidden" id="vf-quiz-grid">
             <div class="artwork-column">
               <figure class="artwork-card">
                 <img id="vf-stage-img" alt="" style="max-width:100%;max-height:min(820px,74vh);display:block;" />
@@ -523,11 +548,18 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="fam-progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="fam-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
+            <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <button type="button" class="primary-button" id="fam-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
+          </div>
+
+          <div class="quiz-grid hidden" id="fam-quiz-grid">
             <div class="artwork-column">
               <div id="fam-image-grid" class="fam-image-grid"></div>
             </div>
             <section class="answer-card" aria-label="Sélection">
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">La moitié de ces images est du même artiste. Retrouve cette famille en cliquant sur les images.</h2>
               <div id="fam-step0">
                 <button type="button" class="primary-button" id="fam-validate-selection-button" style="width:100%">Valider ma sélection</button>
               </div>
@@ -605,7 +637,13 @@
           </div>
           <div class="progress-track"><div class="progress-bar" id="chrono-progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="chrono-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
+            <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <button type="button" class="primary-button" id="chrono-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
+          </div>
+
+          <div class="quiz-grid hidden" id="chrono-quiz-grid">
             <div class="artwork-column">
               <div id="chrono-image-grid">
                 <div id="chrono-cards-row" class="chrono-row" style="grid-template-columns:repeat(4,1fr);"></div>
@@ -613,7 +651,7 @@
               </div>
             </div>
             <section class="answer-card" aria-label="Ordre chronologique">
-              <h2 style="font-family:Arial,sans-serif;font-size:1rem;font-weight:700;margin:0 0 12px;">Remets ces œuvres dans l'ordre chronologique</h2>
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Remettez ces œuvres dans l'ordre chronologique de leur création</h2>
               <p class="modal-hint" style="margin-top:0;">Touchez les œuvres l'une après l'autre, en commençant par la plus ancienne : un numéro s'affiche sur chacune. Touchez à nouveau une œuvre numérotée pour retirer son numéro.</p>
               <button type="button" class="primary-button" id="chrono-validate-button" style="width:100%">Valider l'ordre</button>
               <div id="chrono-correction" class="hidden">
@@ -622,80 +660,6 @@
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
                 <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="chrono-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
-              </div>
-            </section>
-          </div>
-        </section>
-
-        <section id="enigme-setup-panel" class="welcome-panel hidden">
-          <div class="quiz-topbar">
-            <button type="button" id="enigme-setup-back-button" class="home-icon-button" aria-label="Retour" title="Retour">🏠</button>
-          </div>
-          <div class="settings-title-band"><h2 style="margin:0;color:var(--accent);font-size:1.5rem;font-weight:700;">Configurer l'exercice Énigme</h2></div>
-          <p class="modal-hint" id="enig-objective" style="text-align:center;margin-top:0;">L'artiste, la date et le lieu sont donnés d'emblée (le titre reste caché). À vous de retrouver un élément : les personnages représentés, l'événement, ou l'interprétation de l'œuvre.</p>
-          <label class="rubrique-option" style="justify-content:center;font-size:.78rem;color:var(--muted);"><input type="checkbox" id="enig-opt-skip-objective" /><span>Ne plus entendre cette présentation</span></label>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="enig-toggle-art">🎨 Choisissez votre art</button>
-            <div class="accordion-body" id="enig-body-art">
-              <label class="rubrique-option"><input type="checkbox" id="enig-art-peinture" /><span>Peinture</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-art-sculpture" /><span>Sculpture</span></label>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="enig-toggle-century">🏛️ Choisissez votre siècle</button>
-            <div class="accordion-body" id="enig-body-century">
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-15e" /><span>15e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-16e" /><span>16e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-17e" /><span>17e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-18e" /><span>18e siècle</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="enig-century-19e" /><span>19e siècle</span></label>
-              <p class="modal-hint">Seuls les siècles pour lesquels des énigmes existent seront réellement proposés.</p>
-            </div>
-          </div>
-
-          <div class="accordion-group">
-            <button type="button" class="accordion-toggle" id="enig-toggle-count">🔢 Nombre de questions</button>
-            <div class="accordion-body" id="enig-body-count">
-              <label class="rubrique-option"><input type="radio" name="enig-count" value="5" checked /><span>5 questions</span></label>
-              <label class="rubrique-option"><input type="radio" name="enig-count" value="10" /><span>10 questions</span></label>
-            </div>
-          </div>
-          <button type="button" class="primary-button" id="enig-start-button" style="width:100%">Commencer</button>
-          <p id="enig-setup-feedback" class="hint hidden"></p>
-          <p class="modal-hint" style="text-align:center;">Module en cours de constitution : quelques énigmes de démonstration en attendant votre fichier de données.</p>
-          <button type="button" class="secondary-button" id="enig-setup-scores-link" style="width:100%;margin-top:10px;">🏆 Voir mes scores</button>
-        </section>
-
-        <section id="enigme-panel" class="quiz-panel hidden">
-          <div class="progress-row">
-            <span><span class="quiz-reference">Énigme</span> — <span id="enig-progress-label">Question 1 / 5</span></span>
-            <span id="enig-timer" class="quiz-reference">⏱ 0:00</span>
-            <span id="enig-score-label" class="score-summary-highlight">0 point</span>
-          </div>
-          <div class="progress-track"><div class="progress-bar" id="enig-progress-bar"></div></div>
-
-          <div class="quiz-grid">
-            <div class="artwork-column">
-              <figure class="artwork-card">
-                <div id="enig-image-wrap" class="enig-image-wrap">
-                  <img id="enig-stage-img" alt="" />
-                </div>
-              </figure>
-            </div>
-            <section class="answer-card" aria-label="Éléments à retrouver">
-              <div class="correction-details" id="enig-header-details" style="margin-bottom:16px;"></div>
-              <h2 style="font-family:Arial,sans-serif;font-size:.95rem;margin:0 0 12px;">Trouvez les éléments suivants</h2>
-              <div id="enig-items"></div>
-              <button type="button" class="primary-button" id="enig-validate-button" style="width:100%;margin-top:14px;">Valider</button>
-              <div id="enig-correction" class="hidden">
-                <button type="button" class="primary-button" id="enig-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
-              </div>
-              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="enig-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
-                <button type="button" class="home-icon-button exercise-icon-button" id="enig-exit-link" aria-label="Revenir au menu de l'exercice" title="Revenir au menu de l'exercice">⚙</button>
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-scores" id="enig-scores-link" aria-label="Voir mes scores" title="Voir mes scores">🏆</button>
               </div>
             </section>
           </div>
@@ -777,6 +741,18 @@
             <div class="modal-actions">
               <button type="button" class="secondary-button" id="exercise-rules-cancel">Annuler</button>
               <button type="button" class="primary-button" id="exercise-rules-confirm">Commencer →</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-overlay hidden" id="modal-exercise-results">
+          <div class="modal-box" style="text-align:center;">
+            <p class="eyebrow" style="margin-bottom:6px;">EXERCICE TERMINÉ</p>
+            <h3 id="exercise-results-title" style="margin-top:0;"></h3>
+            <p id="exercise-results-score" style="font-size:1.6rem;font-weight:700;color:var(--accent);margin:10px 0;"></p>
+            <p id="exercise-results-message" style="font-family:Georgia,serif;"></p>
+            <div class="modal-actions">
+              <button type="button" class="primary-button" id="exercise-results-close" style="width:100%;">Retour aux exercices →</button>
             </div>
           </div>
         </div>
@@ -872,7 +848,13 @@
           </div>
           <div class="progress-track" id="quiz-progress-track"><div id="progress-bar" class="progress-bar"></div></div>
 
-          <div class="quiz-grid">
+          <div id="quiz-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
+            <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
+            <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <button type="button" class="primary-button" id="quiz-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
+          </div>
+
+          <div class="quiz-grid hidden" id="quiz-quiz-grid">
             <div class="artwork-column">
               <figure class="artwork-card">
                 <img id="artwork-image" alt="Œuvre à identifier" />
@@ -882,6 +864,7 @@
             </div>
 
             <section class="answer-card" aria-label="Vos réponses">
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Donnez les références de cette œuvre</h2>
               <div class="mic-nav-row">
                 <button type="button" id="mic-global" class="mic-icon-button hidden" aria-label="Dicter la réponse au champ sélectionné">🎤</button>
                 <button type="button" id="previous-button-overlay" class="nav-arrow-button" aria-label="Question précédente">←</button>
@@ -923,7 +906,7 @@
 
         <section id="other-works-panel" class="other-works-panel hidden">
           <div class="quiz-bottom-bar other-works-header">
-            <button type="button" id="other-works-back-button" class="nav-arrow-button" aria-label="Retour à la liste" title="Retour à la liste">↩</button>
+            <button type="button" id="other-works-back-button" class="nav-arrow-button" aria-label="Artiste précédent" title="Artiste précédent">←</button>
             <div class="other-works-artist-info">
               <span id="other-works-artist-flag" aria-hidden="true"></span>
               <strong id="other-works-artist-name"></strong>
@@ -940,10 +923,31 @@
           </div>
           <img id="lightbox-image" alt="" />
           <p id="lightbox-caption" class="lightbox-caption"></p>
+          <button type="button" id="lightbox-scale-toggle" class="secondary-button hidden" style="margin:8px auto 0;display:block;">Voir à l'échelle d'une personne</button>
+          <div id="lightbox-scale-view" class="hidden">
+            <div id="lightbox-scale-stage">
+              <svg id="scale-silhouette" viewBox="0 0 100 340" aria-hidden="true">
+                <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+              </svg>
+              <div id="scale-artwork-wrap"><img id="scale-artwork-img" src="" alt="" /></div>
+            </div>
+            <p id="lightbox-scale-caption" class="lightbox-caption"></p>
+          </div>
           <a id="lightbox-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
         </div>
 
         <div id="bottom-gallery" class="bottom-gallery hidden"></div>
+
+        <div id="ambiance-quick-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:10px;min-width:220px;">
+          <p style="font-family:Arial,sans-serif;font-size:.78rem;font-weight:700;color:var(--muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.03em;">Ambiance</p>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="" /><span>Salon Renoir</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="pitti" /><span>Palais Pitti</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="bauhaus" /><span>Bauhaus</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="space" /><span>Space Age</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="versailles" /><span>Château de Versailles</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="wedgwood" /><span>Wedgwood</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="ermitage" /><span>Palais de l'Ermitage</span></label>
+        </div>
 
         <section id="results-panel" class="results-panel hidden">
           <p class="eyebrow">QUIZ TERMINÉ</p>
@@ -987,6 +991,7 @@
             <label class="rubrique-option"><input type="checkbox" id="pf-show-timer" /><span>Afficher le chronomètre dans les exercices</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-enter-validate" /><span>Valider les réponses dans les jeux avec la touche Entrée</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-show-explanations" /><span>Afficher les explications d'exercice dans leur configuration</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="pf-show-rules" checked /><span>Afficher la fenêtre de règles au démarrage d'un exercice</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-audio" /><span>Lecture audio (voix de synthèse)</span></label>
             <div class="opt-row"><span>Voix utilisée :</span><select id="pf-voice"><option value="">Chargement des voix…</option></select></div>
             <div class="opt-row"><span>Emplacement des boutons :</span>
@@ -996,10 +1001,13 @@
 
           <div id="profile-section-esthetique" class="hidden">
             <p class="modal-hint" style="margin-top:0;">Change l'apparence de l'application — fond, cadres des œuvres. Rien coché = apparence actuelle, inchangée. Premier essai avec quelques salles ; d'autres suivront.</p>
-            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="" checked /><span>Aucune (apparence actuelle)</span></label>
-            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="pitti" /><span>Le Salon Pitti — velours et or (réf. Palazzo Pitti, Florence)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="" checked /><span>Salon Renoir — touches impressionnistes, bronze et beige</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="pitti" /><span>Palais Pitti — velours et or (réf. Palazzo Pitti, Florence)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="bauhaus" /><span>Bauhaus — cercle, triangle, carré (réf. MoMA, New York)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="space" /><span>Space Age — orbite et chrome (réf. Guggenheim, New York)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="versailles" /><span>Château de Versailles — or et marbre veiné (réf. Galerie des Glaces)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="wedgwood" /><span>Wedgwood — bleu pâle et camée crème</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="ermitage" /><span>Palais de l'Ermitage — bleu impérial et or (réf. Saint-Pétersbourg)</span></label>
           </div>
 
           <div id="profile-section-fields" class="hidden">
@@ -1064,6 +1072,8 @@
             <button type="button" class="secondary-button" id="pf-rubriques-clear" style="width:100%;margin-top:8px;">Effacer ce choix</button>
             <div id="pf-rubriques-overrides" style="margin-top:14px;"></div>
           </div>
+
+          <button type="button" id="pf-validate-button" style="width:100%;margin-top:28px;padding:16px;border:0;border-radius:6px;background:var(--ok);color:#fff;font-family:Arial,sans-serif;font-size:1.05rem;font-weight:700;cursor:pointer;">Valider mes paramètres et commencer les jeux →</button>
         </section>
 
         <section id="account-panel" class="results-panel account-panel hidden">
@@ -1084,6 +1094,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=110"></script>
+    <script src="app.js?v=123"></script>
   </body>
 </html>

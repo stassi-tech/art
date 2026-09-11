@@ -435,6 +435,7 @@ function initProfilePage() {
   $('pf-show-timer').checked = prefs.showTimer;
   $('pf-enter-validate').checked = prefs.enterValidate;
   $('pf-show-explanations').checked = prefs.showExplanations;
+  $('pf-show-rules').checked = prefs.showRules;
   $('pf-audio').checked = prefs.audioOn;
   $('pf-handedness').value = document.body.classList.contains('lefty') ? 'left' : 'right';
   const savedAmbiance = localStorage.getItem('ambiance') || '';
@@ -526,6 +527,7 @@ $('pf-show-explanations')?.addEventListener('change', () => {
   setGlobalPref('showExplanations', $('pf-show-explanations').checked);
   applyMonCompteExplanationsVisibility();
 });
+$('pf-show-rules')?.addEventListener('change', () => setGlobalPref('showRules', $('pf-show-rules').checked));
 $('pf-audio')?.addEventListener('change', () => setGlobalPref('audioOn', $('pf-audio').checked));
 $('pf-voice')?.addEventListener('change', () => setGlobalPref('voiceName', $('pf-voice').value));
 $('pf-handedness')?.addEventListener('change', () => {
@@ -547,6 +549,35 @@ document.querySelectorAll('input[name="pf-ambiance"]').forEach((radio) => {
     localStorage.setItem('ambiance', radio.value);
     applyAmbiance(radio.value);
   });
+});
+// Bouton d'accès rapide dans le bandeau (icône 🎨) : change l'ambiance à la volée, y compris en
+// plein exercice, sans avoir à quitter pour passer par Mon compte.
+$('global-ambiance-button')?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  const picker = $('ambiance-quick-picker');
+  const opening = picker.classList.contains('hidden');
+  if (opening) {
+    const current = localStorage.getItem('ambiance') || '';
+    const radio = document.querySelector(`input[name="quick-ambiance"][value="${current}"]`);
+    if (radio) radio.checked = true;
+  }
+  picker.classList.toggle('hidden');
+});
+document.querySelectorAll('input[name="quick-ambiance"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    if (!radio.checked) return;
+    localStorage.setItem('ambiance', radio.value);
+    applyAmbiance(radio.value);
+    const mainRadio = document.querySelector(`input[name="pf-ambiance"][value="${radio.value}"]`);
+    if (mainRadio) mainRadio.checked = true;
+  });
+});
+document.addEventListener('click', (event) => {
+  const picker = $('ambiance-quick-picker');
+  if (!picker || picker.classList.contains('hidden')) return;
+  if (!picker.contains(event.target) && event.target !== $('global-ambiance-button')) {
+    picker.classList.add('hidden');
+  }
 });
 
 // --- Choix de champ (art/siècle/zone) : si mémorisé, chaque bouton d'exercice démarre
@@ -591,6 +622,15 @@ $('pf-rubriques-clear')?.addEventListener('click', () => {
   document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => { el.checked = false; });
   updateExerciseSummaries();
 });
+// Bouton « Valider mes paramètres » : tous les réglages s'enregistrent déjà automatiquement à
+// chaque coche, mais l'absence de confirmation explicite déroutait certains joueurs (impression
+// de ne pas savoir si un choix avait bien été pris en compte). Ce bouton n'a rien de plus à
+// enregistrer techniquement — son rôle est de donner un geste de confirmation clair, puis
+// d'amener directement au menu des exercices.
+$('pf-validate-button')?.addEventListener('click', () => {
+  $('pf-validate-button').classList.add('intro-highlight');
+  setTimeout(() => showPanel('training-hub'), 500);
+});
 $('account-scores-quiz-button')?.addEventListener('click', () => {
   accountScoreFilter = 'quiz';
   $('account-scores-quiz-button').classList.remove('inactive');
@@ -626,7 +666,7 @@ const voiceSupported = Boolean(SpeechRecognitionImpl);
 // PARAMÈTRES GLOBAUX (voix, chronomètre, touche Entrée, mémorisation) — communs à tous les
 // exercices d'entraînement, réglables depuis « Mon compte ».
 // ============================================================
-const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '', showExplanations: true, defaultAdvance: 'manual', defaultDelay: 5000 };
+const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '', showExplanations: true, showRules: true, defaultAdvance: 'manual', defaultDelay: 5000 };
 function getGlobalPrefs() {
   try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem('globalExercisePrefs') || '{}') }; }
   catch (e) { return { ...DEFAULT_PREFS }; }
@@ -657,7 +697,7 @@ $('settings-toggle')?.addEventListener('click', () => {
   populateGlobalVoiceSelect();
 });
 
-const EXERCISE_PLAY_PANELS = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'enigme', 'quiz'];
+const EXERCISE_PLAY_PANELS = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'];
 function currentActivePanelName() {
   return EXERCISE_PLAY_PANELS.find((name) => !$(`${name}-panel`)?.classList.contains('hidden'));
 }
@@ -706,7 +746,7 @@ const EXERCISE_RULES = {
 let exerciseRulesConfirmCallback = null;
 function showExerciseRules(prefix, onConfirm) {
   const rules = EXERCISE_RULES[prefix];
-  if (!rules) { onConfirm(); return; }
+  if (!rules || !getGlobalPrefs().showRules) { onConfirm(); return; }
   $('exercise-rules-title').textContent = rules.titre;
   $('exercise-rules-text').textContent = rules.texte;
   exerciseRulesConfirmCallback = onConfirm;
@@ -721,6 +761,28 @@ $('exercise-rules-confirm')?.addEventListener('click', () => {
 $('exercise-rules-cancel')?.addEventListener('click', () => {
   closeModal('modal-exercise-rules');
   exerciseRulesConfirmCallback = null;
+});
+// Fenêtre de fin d'exercice : score, message encourageant, retour au menu des exercices — plutôt
+// que de renvoyer directement à la page de configuration, ce qui déroutait des joueurs (un
+// bouton « Terminer » qui semblait ramener en arrière plutôt que clore la session).
+let exerciseResultsCloseTarget = 'training-hub';
+function encouragingMessage(percent) {
+  if (percent >= 90) return "Excellent ! Une mémoire remarquable.";
+  if (percent >= 70) return "Très bon résultat, continuez comme ça !";
+  if (percent >= 50) return "Bon travail — encore quelques essais et ce sera parfait.";
+  return "C'est en s'exerçant qu'on progresse — bravo d'avoir été jusqu'au bout !";
+}
+function showExerciseResultsModal(exerciseName, correct, total, closeTarget) {
+  exerciseResultsCloseTarget = closeTarget || 'training-hub';
+  $('exercise-results-title').textContent = exerciseName;
+  const percent = total ? Math.round((correct / total) * 100) : 0;
+  $('exercise-results-score').textContent = `${correct} / ${total}`;
+  $('exercise-results-message').textContent = encouragingMessage(percent);
+  openModal('modal-exercise-results');
+}
+$('exercise-results-close')?.addEventListener('click', () => {
+  closeModal('modal-exercise-results');
+  showPanel(exerciseResultsCloseTarget);
 });
 function speakObjective(elementId) {
   const el = $(`${elementId}-objective`);
@@ -764,7 +826,7 @@ function handleExtendAndRemember(prefix, panelId) {
     const levels = [...document.querySelectorAll(`#${panelId} [id^="${prefix}-level-"]:checked`)].map((el) => el.id.replace(`${prefix}-level-`, ''));
     localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember: true }));
     localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques: [], levels, remember: true }));
-    const prefixes = ['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'];
+    const prefixes = ['imp', 'intrus', 'recon', 'vf', 'fam'];
     prefixes.forEach((other) => {
       if (other === prefix) return;
       document.querySelectorAll(`[id^="${other}-art-"]`).forEach((el) => { if (arts.length) el.checked = arts.includes(el.id.replace(`${other}-art-`, '')); });
@@ -788,8 +850,17 @@ function applyDefaultAdvance(checkboxId, delayId, delayRowId) {
 
 // Bandeau du haut : nom de l'exercice + progression à gauche, score à droite — mis à jour à
 // chaque question par chacun des jeux. Vidé automatiquement par showPanel() en dehors d'un jeu.
-function updateTopBanner(exerciseName, progressText) {
-  if ($('topbar-exercise-name')) $('topbar-exercise-name').textContent = exerciseName || '';
+// Étiquette de champ courte (ex. « Peint/15e ») affichée dans le bandeau, à côté du nom de
+// l'exercice — calculée une fois au démarrage de la session à partir des arts/siècles choisis.
+function buildFieldLabel(arts, centuries) {
+  const artLabels = { peinture: 'Peint', sculpture: 'Sculpt' };
+  if (!arts.length || !centuries.length) return '';
+  const artsPart = arts.map((a) => artLabels[a] || a).join('+');
+  const centuriesPart = centuries.length <= 2 ? centuries.join('+') : `${centuries.length} siècles`;
+  return `${artsPart}/${centuriesPart}`;
+}
+function updateTopBanner(exerciseName, progressText, fieldLabel) {
+  if ($('topbar-exercise-name')) $('topbar-exercise-name').textContent = [fieldLabel, exerciseName].filter(Boolean).join(' ');
   if ($('topbar-exercise-progress')) $('topbar-exercise-progress').textContent = progressText || '';
 }
 function updateTopBannerScore(scoreText) {
@@ -803,29 +874,64 @@ function clearTopBanner() {
 // un jeu (showPanel) — sinon celui resté actif continue de tourner en fond indéfiniment, même
 // une fois revenu au menu, et pourrait entrer en conflit avec le suivant démarré.
 const ALL_TIMERS = [];
+let activeTimer = null; // le chronomètre actuellement en cours, pour le clic sur le bandeau
 function createTimer(labelElementId) {
-  let startTime = null, interval = null;
+  let startTime = null, interval = null, pausedElapsed = 0, paused = false;
   function tick() {
     const el = $(labelElementId);
     if (!el || !startTime) return;
-    const s = Math.floor((Date.now() - startTime) / 1000);
+    const s = pausedElapsed + Math.floor((Date.now() - startTime) / 1000);
     el.textContent = `⏱ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
   const timer = {
     start() {
-      startTime = Date.now();
+      startTime = Date.now(); pausedElapsed = 0; paused = false;
+      activeTimer = timer;
       $(labelElementId)?.classList.toggle('hidden', !getGlobalPrefs().showTimer);
       if (interval) clearInterval(interval);
       interval = setInterval(tick, 1000);
       tick();
     },
-    stop() { if (interval) clearInterval(interval); interval = null; return startTime ? Math.round((Date.now() - startTime) / 1000) : 0; },
+    stop() {
+      if (interval) clearInterval(interval); interval = null;
+      if (activeTimer === timer) activeTimer = null;
+      return startTime ? pausedElapsed + Math.round((Date.now() - startTime) / 1000) : 0;
+    },
+    // Pause : garde le temps déjà écoulé en mémoire, arrête juste le décompte visuel — un clic
+    // suffit à reprendre. Différent de stop(), qui clôt la session (utilisé au changement de page).
+    pause() {
+      if (paused || !startTime) return;
+      pausedElapsed += Math.floor((Date.now() - startTime) / 1000);
+      if (interval) clearInterval(interval);
+      interval = null;
+      paused = true;
+    },
+    resume() {
+      if (!paused) return;
+      startTime = Date.now();
+      paused = false;
+      interval = setInterval(tick, 1000);
+      tick();
+    },
+    isPaused() { return paused; },
   };
   ALL_TIMERS.push(timer);
   return timer;
 }
 function stopAllTimers() { ALL_TIMERS.forEach((t) => t.stop()); }
 const quizTimer = createTimer('topbar-timer');
+// Clic sur le chronomètre du bandeau : 1er clic = pause (reprise possible d'un clic), 2e clic (si
+// déjà en pause) = désactivation complète, à réactiver depuis Mon compte → Mes paramètres
+// techniques → « Afficher le chronomètre ».
+$('topbar-timer')?.addEventListener('click', () => {
+  if (!activeTimer) return;
+  if (!activeTimer.isPaused()) {
+    activeTimer.pause();
+  } else {
+    setGlobalPref('showTimer', false);
+    $('topbar-timer').classList.add('hidden');
+  }
+});
 
 // Mémorise et restaure la dernière sélection de cases à cocher d'un jeu (art/siècle/niveau/zone…)
 // sur l'appareil, pour éviter de tout recocher à chaque partie. On cible toutes les cases du
@@ -1060,7 +1166,7 @@ const PRONUNCIATION_FIXES = {
   'francesca': 'Franchéska',
   'gentile': 'Gentilé',
   'vecchietta': 'Vekietta',
-  'patmos': 'Pâtmos',
+  'patmos': 'Patmoss',
   'verrocchio': 'Verrokio',
   'ecce': 'Étché',
   'condottiere': 'condotière',
@@ -1077,6 +1183,26 @@ const PRONUNCIATION_FIXES = {
   'alvise': 'Alvisé',
   'benozzo': 'Bénotso',
   'gozzoli': 'Gotsoli',
+  'simone': 'Simoné',
+  'cione': 'Chioné',
+  'lorenzetti': 'Lorenzétti',
+  'orsanmichele': 'Orsanmikélé',
+  'santa croce': 'Santa Croché',
+  'cimabue': 'Chimaboué',
+  'menabuoi': 'Ménabuoîe',
+  'duccio': 'Douchio',
+  'buoninsegna': 'Bouninségna',
+  'firenze': 'Firenzé',
+  'trastevere': 'Trastévéré',
+  'modena': 'Modéna',
+  'aretino': 'Arétino',
+  'altichiero': 'Altikiero',
+  'giobbe': 'Giobbé',
+  'brera': 'Bréra',
+  'procris': 'Pro criss',
+  'bacchante': 'Bakante',
+  'canova': 'Kanova',
+  'méphistophélès': 'méphistophélèsse',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -1494,6 +1620,9 @@ function showPanel(name) {
   // quitté en cours de route peut se déclencher plus tard, en plein milieu d'un autre exercice
   // (voix qui parle d'une œuvre sans rapport avec ce qui est affiché).
   if (window.speechSynthesis) speechSynthesis.cancel();
+  // Remise à zéro systématique du marqueur « en plein exercice » (fond de l'ambiance) à chaque
+  // navigation — seul le clic explicite sur « Démarrer le jeu » le repose ensuite.
+  document.body.classList.remove('in-exercise');
   document.querySelectorAll('.chrono-drag-ghost').forEach((g) => g.remove());
   // Vide le bandeau (nom d'exercice, progression, score) sauf si on va justement vers un jeu —
   // chaque jeu le remplit ensuite lui-même à chaque question.
@@ -1545,8 +1674,6 @@ function showPanel(name) {
   $('vraifaux-panel')?.classList.toggle('hidden', name !== 'vraifaux');
   $('famille-setup-panel')?.classList.toggle('hidden', name !== 'famille-setup');
   $('famille-panel')?.classList.toggle('hidden', name !== 'famille');
-  $('enigme-setup-panel')?.classList.toggle('hidden', name !== 'enigme-setup');
-  $('enigme-panel')?.classList.toggle('hidden', name !== 'enigme');
   $('chrono-setup-panel')?.classList.toggle('hidden', name !== 'chrono-setup');
   $('chrono-panel')?.classList.toggle('hidden', name !== 'chrono');
   $('quiz-setup-panel')?.classList.toggle('hidden', name !== 'quiz-setup');
@@ -1588,12 +1715,20 @@ function displayArtworkImage(work, altText, showSourceLink = false) {
     else sourceLink.classList.add('hidden');
   }
 }
+$('quiz-launch-first-button')?.addEventListener('click', () => {
+  $('quiz-ready-screen').classList.add('hidden');
+  $('quiz-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
+  quizTimer.start();
+  renderQuestion();
+});
 function renderQuestion() {
   document.body.classList.remove('has-other-works'); // repart d'un état propre à chaque question
   const question = state.questions[state.index]; const answer = answerFor(state.index);
   const modeLabel = state.mode === 'review' ? 'Révision des erreurs — ' : '';
   $('quiz-reference').textContent = `${state.quizConfig?.reference || ''} — ${modeLabel}Q. ${state.index + 1}/${state.questions.length}`;
-  updateTopBanner('Quiz final', `${modeLabel}Question ${state.index + 1}/${state.questions.length}`);
+  updateTopBanner('Quiz final', `${modeLabel}Question ${state.index + 1}/${state.questions.length}`, quizFieldLabel);
   $('progress-bar').style.width = `${((state.index + 1) / state.questions.length) * 100}%`;
   const possible = checkedQuestions() * activeFields().length;
   $('score-summary').textContent = `${totalCorrect()} / ${possible} point${totalCorrect() > 1 ? 's' : ''}`;
@@ -1799,9 +1934,61 @@ let currentArtistWorksIndex = -1;
 // Galerie du bas : photos complémentaires (portrait de l'artiste, vue du lieu de conservation)
 // posées lors des corrections, quand ces colonnes existent dans le fichier. Cliquables, ouvrent la
 // même visionneuse plein écran que les vignettes d'œuvres.
-function openLightboxImage(url, caption) {
+// Vue à l'échelle : silhouette de référence (170 cm) affichée à côté de l'œuvre, redimensionnée
+// selon ses dimensions réelles (colonnes Hauteur/Longueur). Bascule accessible uniquement quand
+// ces dimensions sont connues pour l'œuvre affichée.
+let currentLightboxWork = null;
+function parseCmValue(raw) {
+  const m = String(raw || '').replace(',', '.').match(/[\d.]+/);
+  return m ? parseFloat(m[0]) : null;
+}
+function setLightboxScaleData(work) {
+  currentLightboxWork = work && parseCmValue(work.hauteur) ? work : null;
+  $('lightbox-scale-toggle')?.classList.toggle('hidden', !currentLightboxWork);
+  $('lightbox-scale-view')?.classList.add('hidden');
+  $('lightbox-image')?.classList.remove('hidden');
+  if ($('lightbox-scale-toggle')) $('lightbox-scale-toggle').textContent = "Voir à l'échelle d'une personne";
+}
+function toggleScaleView() {
+  const inScaleView = !$('lightbox-scale-view').classList.contains('hidden');
+  if (inScaleView || !currentLightboxWork) {
+    $('lightbox-scale-view').classList.add('hidden');
+    $('lightbox-image').classList.remove('hidden');
+    $('lightbox-scale-toggle').textContent = "Voir à l'échelle d'une personne";
+    return;
+  }
+  const hCm = parseCmValue(currentLightboxWork.hauteur);
+  const lCm = parseCmValue(currentLightboxWork.longueur) || hCm;
+  if (!hCm) return;
+  // 170 cm de référence pour la silhouette = sa hauteur affichée en CSS (300px bureau, 180px
+  // mobile) — on lit cette hauteur réelle à l'écran plutôt que de la deviner, pour rester juste
+  // même si la feuille de style change.
+  const silhouettePx = $('scale-silhouette').getBoundingClientRect().height || 300;
+  const pxPerCm = silhouettePx / 170;
+  let artH = hCm * pxPerCm;
+  let artW = lCm * pxPerCm;
+  // Au-delà d'une certaine taille (œuvres monumentales), on plafonne l'affichage à l'écran et on
+  // le signale par le texte plutôt que de rendre une image ingérable.
+  const maxPx = Math.min(window.innerHeight * 0.7, 900);
+  let note = '';
+  if (artH > maxPx) {
+    const ratio = artH / maxPx;
+    artW = artW / ratio; artH = maxPx;
+    note = ` — environ ${Math.round(hCm / 170)} fois la hauteur de la silhouette`;
+  }
+  $('scale-artwork-wrap').style.width = `${Math.max(artW, 4)}px`;
+  $('scale-artwork-wrap').style.height = `${Math.max(artH, 4)}px`;
+  $('scale-artwork-img').src = imageSource(currentLightboxWork.image);
+  $('lightbox-scale-caption').textContent = `Hauteur réelle : ${hCm} cm${note}`;
+  $('lightbox-image').classList.add('hidden');
+  $('lightbox-scale-view').classList.remove('hidden');
+  $('lightbox-scale-toggle').textContent = 'Revenir à la vue normale';
+}
+$('lightbox-scale-toggle')?.addEventListener('click', toggleScaleView);
+function openLightboxImage(url, caption, work) {
   $('lightbox-image').src = imageSource(url);
   $('lightbox-caption').textContent = caption || '';
+  setLightboxScaleData(work || null);
   const sourceLink = $('lightbox-source-link');
   const commonsUrl = commonsFilePageUrl(imageSource(url));
   if (sourceLink) {
@@ -1834,9 +2021,10 @@ async function openArtistWorksPage(idx) {
   if (!row) return;
   currentArtistWorksIndex = idx;
   const artistName = [row['Prénom'], row['Patronyme']].filter(Boolean).join(' ').trim();
+  const displayName = String(row['Surnom'] || '').trim() || artistName;
   closeModal('modal-artist-list');
   showPanel('other-works');
-  $('other-works-artist-name').textContent = artistName;
+  $('other-works-artist-name').textContent = displayName;
   $('other-works-artist-flag').textContent = nationalityFlag(row['Nationalité']);
   $('other-works-artist-dates').textContent = '';
   const list = $('other-works-panel-list');
@@ -1892,6 +2080,7 @@ function renderOtherWorksPanel() {
       const titleValue = formatCorrectionValue('title', work.title);
       $('lightbox-image').src = imageSource(work.image);
       $('lightbox-caption').innerHTML = `<strong>${titleValue}</strong><br>${escapeHtml(work.date)} — ${escapeHtml(work.location)}`;
+      setLightboxScaleData(work);
       const sourceLink = $('lightbox-source-link');
       const commonsUrl = commonsFilePageUrl(imageSource(work.image));
       if (sourceLink) {
@@ -1999,10 +2188,19 @@ const ARTIST_LIST_COLS = [
   { key: 'Art(s)', label: 'Art(s)' },
   { key: 'Siècle(s)', label: 'Siècle(s)' },
 ];
+const ARTIST_NAME_PARTICLES = ['da','di','de','del','della','van','von','le','la','les','du','des','dei','af',"d'"];
+function particleStrippedSortKey(patronyme) {
+  const words = keyName(patronyme).split(' ').filter(Boolean);
+  while (words.length && ARTIST_NAME_PARTICLES.includes(words[0])) words.shift();
+  return words.join(' ') || keyName(patronyme);
+}
 function formatArtistListName(row) {
-  // Colonnes séparées dans le fichier (Prénom, Patronyme) : l'entrée se lit nom puis prénom, le
-  // prénom avec sa casse normale (majuscule initiale), le nom de famille tel qu'enregistré (en
-  // général en majuscules) mis en avant.
+  // Si un surnom est connu (ex. « Le Greco », « Fra Angelico »), c'est lui qui identifie
+  // l'artiste dans la liste — plus reconnaissable que le nom civil. Sinon, colonnes séparées
+  // (Prénom, Patronyme) : l'entrée se lit nom puis prénom, le prénom en casse normale, le nom de
+  // famille tel qu'enregistré (en général en majuscules) mis en avant.
+  const surnom = String(row['Surnom'] || '').trim();
+  if (surnom) return `<strong>${escapeHtml(surnom)}</strong>`;
   const nom = String(row['Patronyme'] || '').trim();
   const prenom = String(row['Prénom'] || '').trim();
   if (!nom) return `<strong>${escapeHtml(prenom)}</strong>`;
@@ -2030,9 +2228,12 @@ function artFormIcons(rawValue) {
 function renderArtistListTable() {
   const container = $('artist-list-table');
   const { col, dir } = artistListSort;
+  // Trie par surnom quand il existe (ex. « Le Greco » trie à G, « Bada Shanren » à B) — sinon,
+  // par nom de famille. Dans les deux cas, les particules en tête (le, da, van...) sont ignorées.
+  const sortKeyForRow = (row) => particleStrippedSortKey(row['Surnom'] || row['Patronyme']);
   const sorted = filteredArtistListRows().sort((a, b) => {
     if (col === 'Patronyme') {
-      const byNom = dir * String(a['Patronyme'] || '').localeCompare(String(b['Patronyme'] || ''), 'fr');
+      const byNom = dir * sortKeyForRow(a).localeCompare(sortKeyForRow(b), 'fr');
       if (byNom !== 0) return byNom;
       return dir * String(a['Prénom'] || '').localeCompare(String(b['Prénom'] || ''), 'fr');
     }
@@ -2221,7 +2422,7 @@ $('chrono-hub-link')?.addEventListener('click', () => { speechSynthesis.cancel()
 $('chrono-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'chrono'; showPanel('account'); loadAccountPage(); });
 $('chrono-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
-let CHRONO_SESSION = [], chronoIndex = 0, chronoScore = 0, chronoAnswered = false, chronoSelectedOrder = [], chronoTimers = [];
+let CHRONO_SESSION = [], chronoIndex = 0, chronoScore = 0, chronoAnswered = false, chronoSelectedOrder = [], chronoTimers = [], chronoFieldLabel = '';
 const chronoTimer = createTimer('topbar-timer');
 
 $('chrono-start-button')?.addEventListener('click', async () => {
@@ -2229,6 +2430,7 @@ $('chrono-start-button')?.addEventListener('click', async () => {
   saveLastSelection('chrono-setup-panel');
   let arts = chronoSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = chronoSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  chronoFieldLabel = buildFieldLabel(arts, centuries);
   let levels = chronoSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('chrono-setup-feedback');
   feedback.classList.remove('hidden');
@@ -2295,8 +2497,10 @@ $('chrono-start-button')?.addEventListener('click', async () => {
     CHRONO_SESSION = questions;
     chronoIndex = 0; chronoScore = 0;
     showPanel('chrono');
-    chronoTimer.start();
-    chronoShowQuestion();
+    $('chrono-ready-screen').classList.remove('hidden');
+    $('chrono-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(CHRONO_SESSION.flatMap((q) => q.works.map((w) => w.image)));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -2313,7 +2517,7 @@ function chronoShowQuestion() {
   chronoAnswered = false;
   const q = CHRONO_SESSION[chronoIndex];
   $('chrono-progress-label').textContent = `Question ${chronoIndex + 1} / ${CHRONO_SESSION.length}`;
-  updateTopBanner('Chronologie', `Question ${chronoIndex + 1}/${CHRONO_SESSION.length}`);
+  updateTopBanner('Chronologie', `Question ${chronoIndex + 1}/${CHRONO_SESSION.length}`, chronoFieldLabel);
   $('chrono-progress-bar').style.width = `${(chronoIndex / CHRONO_SESSION.length) * 100}%`;
   $('chrono-score-label').textContent = `${chronoScore} point${chronoScore > 1 ? 's' : ''}`;
   updateTopBannerScore(`${chronoScore} pt${chronoScore > 1 ? 's' : ''}`);
@@ -2385,6 +2589,14 @@ function famSpeak2(text, onEnd) {
   speechSynthesis.speak(u);
 }
 
+$('chrono-launch-first-button')?.addEventListener('click', () => {
+  $('chrono-ready-screen').classList.add('hidden');
+  $('chrono-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
+  chronoTimer.start();
+  chronoShowQuestion();
+});
 $('chrono-validate-button')?.addEventListener('click', () => {
   if (chronoAnswered) return;
   if (chronoAssigned.filter(Boolean).length < 4) return;
@@ -2476,349 +2688,7 @@ $('chrono-next-button')?.addEventListener('click', async () => {
     } else {
       chronoTimer.stop();
     }
-    showPanel('chrono-setup');
-  }
-});
-
-// ============================================================
-// MODULE ÉNIGME — artiste/date/lieu donnés d'emblée (titre caché) ; deux éléments à retrouver
-// par œuvre parmi : personnages (cercles lettrés), événement (QCM), interprétation (QCM).
-// Données de démonstration en dur ci-dessous, en attendant un fichier « -enigme.xlsx » réel
-// (même principe de lecture que les autres modules à brancher plus tard, clé = lien d'image).
-// ============================================================
-const ENIGME_DEMO_DATA = [
-  {
-    century: '19e', artist: 'Théodore Géricault', date: '1818-1819', location: 'Musée du Louvre, Paris',
-    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/JEAN%20LOUIS%20THEODORE%20GERICAULT%20-%20La%20Balsa%20de%20la%20Medusa%20(Museo%20del%20Louvre,%201818-19).jpg?width=700',
-    items: [
-      { type: 'personnages', people: [
-        { letter: 'A', x: 20, y: 78, name: 'Un survivant épuisé' },
-        { letter: 'B', x: 78, y: 22, name: 'Le marin agitant un linge' },
-      ] },
-      { type: 'evenement', question: "Quel événement réel a inspiré cette scène ?", options: ["Le naufrage de la frégate La Méduse (1816)", "La bataille de Trafalgar", "Le naufrage du Titanic"], correctIndex: 0 },
-    ],
-  },
-  {
-    century: '19e', artist: 'Eugène Delacroix', date: '1830', location: 'Musée du Louvre, Paris',
-    image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Eug%C3%A8ne%20Delacroix%20-%20La%20libert%C3%A9%20guidant%20le%20peuple.jpg?width=700',
-    items: [
-      { type: 'personnages', people: [
-        { letter: 'A', x: 45, y: 30, name: 'La Liberté (figure allégorique)' },
-        { letter: 'B', x: 60, y: 55, name: 'Un gamin de Paris (le futur Gavroche)' },
-      ] },
-      { type: 'interpretation', question: "Que symbolise la figure féminine au centre du tableau ?", options: ["La République et la Liberté", "La Vierge Marie", "La Victoire militaire"], correctIndex: 0 },
-    ],
-  },
-];
-
-// Position approximative (en % de l'image) pour chacune des 6 zones fixes utilisées dans le
-// fichier -enigme.xlsx (colonnes « Personnage A Haut/gauche » etc.).
-const ENIG_POSITIONS = {
-  A: { x: 25, y: 25 }, B: { x: 25, y: 75 }, C: { x: 50, y: 25 },
-  D: { x: 50, y: 75 }, E: { x: 75, y: 25 }, F: { x: 75, y: 75 },
-};
-function enigImageKey(url) {
-  // Clé de correspondance entre le fichier principal et le fichier -enigme : le nom de fichier
-  // Wikimedia, indépendamment du domaine ou des paramètres d'URL (utm_source, width, etc.).
-  const m = String(url || '').match(/[^/]+\.(jpg|jpeg|png|gif|tif|tiff)/i);
-  return m ? decodeURIComponent(m[0]).toLowerCase() : '';
-}
-async function fetchEnigmeRows(art, century) {
-  const [mainRows, enigResponse] = await Promise.all([
-    fetchQuizRows(art, century).catch(() => []),
-    fetch(`quizzes/${art}-${century}-enigme.xlsx`),
-  ]);
-  if (!enigResponse.ok) throw new Error('fichier énigme introuvable');
-  const buffer = await enigResponse.arrayBuffer();
-  const book = XLSX.read(buffer, { type: 'array' });
-  const raw = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { header: 1, defval: '' });
-
-  const mainByKey = new Map();
-  mainRows.forEach((r) => { const k = enigImageKey(r.image); if (k) mainByKey.set(k, r); });
-
-  const results = [];
-  for (let i = 1; i < raw.length; i++) {
-    const r = raw[i];
-    if (!r || !r[0]) continue;
-    const key = enigImageKey(r[0]);
-    const mainRow = mainByKey.get(key);
-    // Sans correspondance dans le fichier principal, on ne connaît ni date ni lieu : on ignore
-    // cette ligne plutôt que d'afficher une référence incomplète.
-    if (!mainRow) continue;
-
-    const people = [];
-    ['A', 'B', 'C', 'D', 'E', 'F'].forEach((letter, idx) => {
-      const name = String(r[3 + idx] || '').trim();
-      if (name) people.push({ letter, name, ...ENIG_POSITIONS[letter] });
-    });
-    const evenement = String(r[9] || '').trim();
-    const evFaux1 = String(r[10] || '').trim(), evFaux2 = String(r[11] || '').trim();
-    const interpretation = String(r[12] || '').trim();
-    const intFaux1 = String(r[13] || '').trim(), intFaux2 = String(r[14] || '').trim();
-
-    const availableTypes = [];
-    if (people.length) availableTypes.push({ type: 'personnages', people });
-    if (evenement && evFaux1 && evFaux2) availableTypes.push({ type: 'evenement', question: 'Quel événement représente cette œuvre ?', options: [evenement, evFaux1, evFaux2], correctIndex: 0 });
-    if (interpretation && intFaux1 && intFaux2) availableTypes.push({ type: 'interpretation', question: "Quelle est l'interprétation de cette œuvre ?", options: [interpretation, intFaux1, intFaux2], correctIndex: 0 });
-
-    // Une seule question par œuvre désormais : au moins 1 type disponible suffit.
-    if (availableTypes.length < 1) continue;
-    const shuffledTypes = availableTypes.slice().sort(() => Math.random() - 0.5);
-    const chosenItems = shuffledTypes.slice(0, 1).map((it) => {
-      if (it.type !== 'evenement' && it.type !== 'interpretation') return it;
-      // Mélange l'ordre des 3 options QCM tout en gardant trace du bon index.
-      const opts = it.options.map((opt, idx) => ({ opt, idx })).sort(() => Math.random() - 0.5);
-      return { ...it, options: opts.map((o) => o.opt), correctIndex: opts.findIndex((o) => o.idx === 0) };
-    });
-
-    results.push({
-      century, artist: mainRow.artist, date: mainRow.date, location: mainRow.location,
-      image: mainRow.image, items: chosenItems,
-    });
-  }
-  return results;
-}
-
-$('open-enigme-setup')?.addEventListener('click', () => { showPanel('enigme-setup'); populateEnigVoices(); speakObjective('enig'); restoreLastSelection('enigme-setup-panel'); });
-$('enigme-setup-back-button')?.addEventListener('click', () => showPanel('training-hub'));
-$('enig-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('enigme-setup'); });
-$('enig-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'enigme'; showPanel('account'); loadAccountPage(); });
-$('enig-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
-
-function populateEnigVoices() {
-  const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
-  const select = $('enig-opt-voice');
-  if (!select) return;
-  select.innerHTML = voices.length
-    ? voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('')
-    : '<option value="">Voix par défaut du système</option>';
-}
-
-const ENIG_ACCORDIONS = ['enig-toggle-art:enig-body-art', 'enig-toggle-century:enig-body-century', 'enig-toggle-count:enig-body-count'];
-ENIG_ACCORDIONS.forEach((pair) => {
-  const [toggleId, bodyId] = pair.split(':');
-  $(toggleId)?.addEventListener('click', () => {
-    const opening = $(bodyId).classList.contains('hidden');
-    ENIG_ACCORDIONS.forEach((p) => $(p.split(':')[1])?.classList.add('hidden'));
-    if (opening) $(bodyId).classList.remove('hidden');
-  });
-});
-
-function enigSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e'].filter((c) => $(`enig-century-${c}`)?.checked); }
-function enigSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`enig-art-${a}`)?.checked); }
-
-let ENIG_SESSION = [], enigIndex = 0, enigScore = 0, enigAnswered = false, enigAudioOn = true, enigSelectedVoiceRef = null;
-const enigTimer = createTimer('enig-timer');
-function enigSpeak(text) {
-  if (!enigAudioOn || !window.speechSynthesis) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
-  u.lang = 'fr-FR'; u.rate = 0.85;
-  if (enigSelectedVoiceRef) u.voice = enigSelectedVoiceRef;
-  speechSynthesis.speak(u);
-}
-
-$('enig-start-button')?.addEventListener('click', async () => {
-  handleExtendAndRemember('enig', 'enigme-setup-panel');
-  saveLastSelection('enigme-setup-panel');
-  const arts = enigSelectedArts();
-  const centuries = enigSelectedCenturies();
-  const feedback = $('enig-setup-feedback');
-  feedback.classList.remove('hidden');
-  feedback.textContent = 'Chargement des énigmes…';
-  enigAudioOn = getGlobalPrefs().audioOn;
-  enigSelectedVoiceRef = getGlobalVoice();
-  const countChoice = Number(document.querySelector('input[name="enig-count"]:checked').value);
-
-  // Essaie d'abord les vrais fichiers -enigme.xlsx (un par art/siècle) ; si aucun n'est encore
-  // en ligne, se rabat sur les énigmes de démonstration pour ne pas bloquer le test de l'appli.
-  let available = [];
-  for (const art of arts) {
-    for (const century of centuries) {
-      try { available.push(...(await fetchEnigmeRows(art, century))); } catch (e) { /* fichier pas encore en ligne, ignoré */ }
-    }
-  }
-  let usingDemo = false;
-  if (!available.length) {
-    available = ENIGME_DEMO_DATA.filter((e) => centuries.includes(e.century))
-      .map((e) => ({ ...e, items: [e.items[Math.floor(Math.random() * e.items.length)]] }));
-    usingDemo = true;
-  }
-  if (!available.length) { feedback.textContent = "Aucune énigme disponible pour ce choix — essayez 19e siècle (démonstration) ou vérifiez que le fichier -enigme.xlsx est bien en ligne."; return; }
-
-  for (let i = available.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [available[i], available[j]] = [available[j], available[i]]; }
-  ENIG_SESSION = [];
-  for (let i = 0; i < countChoice; i++) ENIG_SESSION.push(available[i % available.length]);
-  feedback.classList.add('hidden');
-  if (usingDemo) { feedback.classList.remove('hidden'); feedback.textContent = 'Mode démonstration (fichier -enigme.xlsx non trouvé en ligne).'; }
-  enigIndex = 0; enigScore = 0;
-  showPanel('enigme');
-  enigTimer.start();
-  enigShowQuestion();
-});
-
-function enigShowQuestion() {
-  speechSynthesis.cancel();
-  enigAnswered = false;
-  const q = ENIG_SESSION[enigIndex];
-  $('enig-progress-label').textContent = `Question ${enigIndex + 1} / ${ENIG_SESSION.length}`;
-  $('enig-progress-bar').style.width = `${(enigIndex / ENIG_SESSION.length) * 100}%`;
-  $('enig-score-label').textContent = `${enigScore} point${enigScore > 1 ? 's' : ''}`;
-  $('enig-correction').classList.add('hidden');
-  $('enig-validate-button').classList.remove('hidden');
-  $('enig-validate-button').disabled = false;
-
-  $('enig-stage-img').src = imageSource(q.image);
-  const personnagesItem = q.items.find((it) => it.type === 'personnages');
-  $('enig-image-wrap').querySelectorAll('.enig-circle').forEach((c) => c.remove());
-  if (personnagesItem) {
-    // Les cercles sont positionnés une fois l'image chargée, pour connaître ses dimensions réelles.
-    const img = $('enig-stage-img');
-    const placeCircles = () => {
-      $('enig-image-wrap').querySelectorAll('.enig-circle').forEach((c) => c.remove());
-      personnagesItem.people.forEach((p) => {
-        const circle = document.createElement('div');
-        circle.className = 'enig-circle';
-        circle.style.left = `${p.x}%`;
-        circle.style.top = `${p.y}%`;
-        circle.style.width = '52px';
-        circle.style.height = '52px';
-        circle.innerHTML = `<span>${p.letter}</span>`;
-        $('enig-image-wrap').appendChild(circle);
-      });
-    };
-    if (img.complete) placeCircles(); else img.onload = placeCircles;
-  }
-
-  $('enig-header-details').innerHTML = [
-    ['Artiste', q.artist], ['Date', q.date], ['Lieu', q.location],
-  ].map(([label, val]) => `<span class="correction-label">${label}</span><span class="correction-value">${escapeHtml(val)}</span>`).join('');
-  enigSpeak(`Ce tableau est de ${q.artist}. Il date de ${q.date} et est conservé à ${q.location}. Trouvez les éléments suivants.`);
-
-  $('enig-items').innerHTML = q.items.map((item, itemIdx) => {
-    if (item.type === 'personnages') {
-      return `<div class="enig-item" data-item="${itemIdx}">
-        <div class="enig-item-title">Personnages</div>
-        ${item.people.map((p) => `<div class="enig-person-row" data-letter="${p.letter}">
-          <span class="enig-letter">${p.letter}</span>
-          <input type="text" class="enig-person-input" data-letter="${p.letter}" placeholder="Qui est-ce ?" />
-          <button type="button" class="mic-icon-button enig-person-mic" data-letter="${p.letter}" aria-label="Dicter la réponse">🎤</button>
-        </div>`).join('')}
-      </div>`;
-    }
-    // QCM (événement ou interprétation) : la voix ne lira que la question, pas les options.
-    const label = item.type === 'evenement' ? 'Événement' : 'Interprétation';
-    const shuffledOptions = item.options.map((opt, i) => ({ opt, i })).sort(() => Math.random() - 0.5);
-    return `<div class="enig-item" data-item="${itemIdx}">
-      <div class="enig-item-title">${label}</div>
-      <p class="enig-qcm-question">${escapeHtml(item.question)}</p>
-      ${shuffledOptions.map(({ opt, i }) => `<button type="button" class="enig-qcm-option" data-item="${itemIdx}" data-option="${i}">${escapeHtml(opt)}</button>`).join('')}
-    </div>`;
-  }).join('');
-
-  document.querySelectorAll('.enig-person-mic').forEach((btn) => {
-    const input = document.querySelector(`.enig-person-input[data-letter="${btn.dataset.letter}"]`);
-    attachSimpleMic(btn, input);
-  });
-
-  document.querySelectorAll('.enig-qcm-option').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const itemIdx = btn.dataset.item;
-      document.querySelectorAll(`.enig-qcm-option[data-item="${itemIdx}"]`).forEach((b) => b.classList.remove('selected'));
-      btn.classList.add('selected');
-    });
-  });
-
-  // La voix lit chaque question de QCM (sans les propositions), après le message d'ouverture.
-  q.items.forEach((item, i) => {
-    if (item.type !== 'personnages') {
-      setTimeout(() => enigSpeak(item.question), 4500 + i * 3500);
-    }
-  });
-}
-
-$('enig-validate-button')?.addEventListener('click', () => {
-  if (enigAnswered) return;
-  enigAnswered = true;
-  const q = ENIG_SESSION[enigIndex];
-  $('enig-validate-button').disabled = true;
-  document.querySelectorAll('.enig-person-input').forEach((inp) => { inp.disabled = true; });
-  document.querySelectorAll('.enig-qcm-option').forEach((btn) => { btn.disabled = true; });
-
-  // Tout ou rien sur les deux éléments de la question, comme les autres exercices.
-  let allCorrect = true;
-  const spokenParts = [];
-
-  q.items.forEach((item, itemIdx) => {
-    if (item.type === 'personnages') {
-      let itemOk = true;
-      item.people.forEach((p) => {
-        const input = document.querySelector(`.enig-person-input[data-letter="${p.letter}"]`);
-        const given = famNormalize(input ? input.value : '');
-        const correct = famNormalize(p.name);
-        const ok = given && (correct.includes(given) || given.includes(correct));
-        if (!ok) itemOk = false;
-        const row = input.closest('.enig-person-row');
-        const verdict = document.createElement('span');
-        verdict.className = 'enig-person-verdict';
-        verdict.style.color = ok ? 'var(--ok)' : 'var(--wrong)';
-        verdict.textContent = ok ? 'Exact' : 'À réviser';
-        row.appendChild(verdict);
-        if (!ok) {
-          const note = document.createElement('span');
-          note.className = 'enig-correct-note';
-          note.textContent = `Bonne réponse : ${p.name}`;
-          row.appendChild(note);
-        }
-        spokenParts.push(`Dans le cercle ${p.letter}, on voyait ${p.name}.`);
-      });
-      if (!itemOk) allCorrect = false;
-    } else {
-      const selected = document.querySelector(`.enig-qcm-option[data-item="${itemIdx}"].selected`);
-      const selectedIndex = selected ? Number(selected.dataset.option) : -1;
-      const ok = selectedIndex === item.correctIndex;
-      if (!ok) allCorrect = false;
-      document.querySelectorAll(`.enig-qcm-option[data-item="${itemIdx}"]`).forEach((btn) => {
-        const optIndex = Number(btn.dataset.option);
-        if (optIndex === item.correctIndex) btn.classList.add('correct');
-        else if (btn === selected) btn.classList.add('wrong');
-      });
-      spokenParts.push(`La bonne réponse était : ${item.options[item.correctIndex]}.`);
-    }
-  });
-
-  const pointEarned = allCorrect ? 1 : 0;
-  enigScore = Math.round((enigScore + pointEarned) * 10) / 10;
-  $('enig-score-label').textContent = `${enigScore} point${enigScore > 1 ? 's' : ''}`;
-  enigSpeak(spokenParts.join(' '));
-
-  $('enig-correction').classList.remove('hidden');
-  $('enig-next-button').textContent = enigIndex === ENIG_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
-});
-
-$('enig-next-button')?.addEventListener('click', async () => {
-  if (enigIndex < ENIG_SESSION.length - 1) {
-    enigIndex++;
-    enigShowQuestion();
-  } else {
-    if (firebaseReady && currentUser) {
-      try {
-        await db.collection('users').doc(currentUser.uid).collection('scores').add({
-          type: 'entrainement',
-          exerciseName: 'Énigme',
-          timeSpent: enigTimer.stop(),
-          correct: enigScore, possible: ENIG_SESSION.length,
-          percent: Math.round((enigScore / ENIG_SESSION.length) * 100),
-          questionCount: ENIG_SESSION.length,
-          quizLabel: 'Énigme',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch (e) { /* enregistrement best-effort */ }
-    }
-    showPanel('enigme-setup');
-    const feedback = $('enig-setup-feedback');
-    feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${enigScore} points sur ${ENIG_SESSION.length} questions.`;
+    showExerciseResultsModal('Chronologie', chronoScore, CHRONO_SESSION.length, 'training-hub');
   }
 });
 
@@ -2925,7 +2795,7 @@ function detectCenturyFromDate(dateStr) {
   return `${Math.floor((year - 1) / 100) + 1}e`;
 }
 
-let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [], famStep = 1, famTimers = [], famPickedLabel = null;
+let FAM_SESSION = [], famIndex = 0, famScore = 0, famAnswered = false, famAudioOn = true, famSelectedVoiceRef = null, famSelectedImages = [], famStep = 1, famTimers = [], famPickedLabel = null, famFieldLabel = '';
 const famTimer = createTimer('topbar-timer');
 function famSpeak(text, onEnd) {
   if (!famAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
@@ -2948,6 +2818,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
   saveLastSelection('famille-setup-panel');
   let arts = famSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = famSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  famFieldLabel = buildFieldLabel(arts, centuries);
   let levels = famSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('fam-setup-feedback');
   feedback.classList.remove('hidden');
@@ -2995,8 +2866,10 @@ $('fam-start-button')?.addEventListener('click', async () => {
     FAM_SESSION = questions;
     famIndex = 0; famScore = 0;
     showPanel('famille');
-    famTimer.start();
-    famShowQuestion();
+    $('fam-ready-screen').classList.remove('hidden');
+    $('fam-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(FAM_SESSION.flatMap((q) => q.images.map((w) => w.image)));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -3016,7 +2889,7 @@ function famShowQuestion() {
   const q = FAM_SESSION[famIndex];
   $('fam-progress-label').textContent = `Question ${famIndex + 1} / ${FAM_SESSION.length}`;
   $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
-  updateTopBanner('Famille', `Question ${famIndex + 1}/${FAM_SESSION.length}`);
+  updateTopBanner('Famille', `Question ${famIndex + 1}/${FAM_SESSION.length}`, famFieldLabel);
   updateTopBannerScore(`${famScore} pt${famScore > 1 ? 's' : ''}`);
   $('fam-progress-bar').style.width = `${(famIndex / FAM_SESSION.length) * 100}%`;
   $('fam-correction').classList.add('hidden');
@@ -3048,6 +2921,14 @@ function famShowQuestion() {
   famSpeak(`Trouve ${famNumberWord(q.family.length)} œuvres du même artiste.`);
 }
 
+$('fam-launch-first-button')?.addEventListener('click', () => {
+  $('fam-ready-screen').classList.add('hidden');
+  $('fam-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
+  famTimer.start();
+  famShowQuestion();
+});
 $('fam-validate-selection-button')?.addEventListener('click', () => {
   const q = FAM_SESSION[famIndex];
   if (famSelectedImages.length !== q.family.length) { famStepFeedback('fam-step0', `Sélectionnez exactement ${q.family.length} œuvres avant de valider.`); return; }
@@ -3102,8 +2983,10 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
     function announceWrong(next) {
       if (!wrongSelected.length) { next(); return; }
       $('fam-result-bottom').innerHTML = wrongSelected.map((w) => cellHtml(w, true)).join('');
-      const titles = wrongSelected.map((w) => w.title).join(', ');
-      famSpeak(`Tu as fait ${famNumberWord(wrongSelected.length)} erreur${wrongSelected.length > 1 ? 's' : ''} : ${titles}.`, next);
+      const intro = wrongSelected.length > 1 ? `Tu as fait ${famNumberWord(wrongSelected.length)} erreurs.` : 'Tu as fait une erreur.';
+      const details = wrongSelected.map((w) => `Ce tableau était de ${w.artist}, intitulé ${w.title}.`).join(' ');
+      currentSpeechNationality = wrongSelected[0]?.nationality || '';
+      famSpeak(`${intro} ${details}`, next);
     }
     function announceFound(next) {
       if (!foundFamily.length) { next(); return; }
@@ -3145,10 +3028,7 @@ $('fam-next-button')?.addEventListener('click', async () => {
         });
       } catch (e) { /* enregistrement best-effort */ }
     }
-    showPanel('famille-setup');
-    const feedback = $('fam-setup-feedback');
-    feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${famScore} points sur ${FAM_SESSION.length} questions.`;
+    showExerciseResultsModal('Famille', famScore, FAM_SESSION.length, 'training-hub');
   }
 });
 
@@ -3185,7 +3065,7 @@ function vfFieldValue(row, key) {
   return row[key] || '';
 }
 
-let VF_SESSION = [], vfIndex = 0, vfScore = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null, vfTimers = [];
+let VF_SESSION = [], vfIndex = 0, vfScore = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null, vfTimers = [], vfFieldLabel = '';
 const vfTimer = createTimer('topbar-timer');
 function vfSpeak(text, onEnd) {
   if (!vfAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
@@ -3239,6 +3119,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
     vfAudioOn = getGlobalPrefs().audioOn;
     vfSelectedVoiceRef = getGlobalVoice();
+    vfFieldLabel = buildFieldLabel(arts, centuries);
     const activeFields = vfActiveFields();
     if (!activeFields.length) { feedback.textContent = 'Choisissez au moins une rubrique.'; return; }
     VF_SESSION = pool.slice(0, count).map((correct) => {
@@ -3267,8 +3148,10 @@ $('vf-start-button')?.addEventListener('click', async () => {
     });
     vfIndex = 0; vfScore = 0;
     showPanel('vraifaux');
-    vfTimer.start();
-    vfShowQuestion();
+    $('vf-ready-screen').classList.remove('hidden');
+    $('vf-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(VF_SESSION.map((q) => q.correct.image));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -3280,7 +3163,7 @@ function vfShowQuestion() {
   vfAnswered = false;
   const q = VF_SESSION[vfIndex];
   $('vf-progress-label').textContent = `Question ${vfIndex + 1} / ${VF_SESSION.length}`;
-  updateTopBanner('Vrai/Faux', `Question ${vfIndex + 1}/${VF_SESSION.length}`);
+  updateTopBanner('Vrai/Faux', `Question ${vfIndex + 1}/${VF_SESSION.length}`, vfFieldLabel);
   $('vf-progress-bar').style.width = `${(vfIndex / VF_SESSION.length) * 100}%`;
   $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''}`;
   updateTopBannerScore(`${vfScore} pt${Math.abs(vfScore) >= 2 ? 's' : ''}`);
@@ -3321,6 +3204,16 @@ function vfShowQuestion() {
   vfSpeak(spokenText);
 }
 
+// « Démarrer le jeu » : geste explicite avant d'afficher la toute première œuvre — le jeu ne
+// démarre jamais tout seul juste après avoir fermé la fenêtre de règles ou la configuration.
+$('vf-launch-first-button')?.addEventListener('click', () => {
+  $('vf-ready-screen').classList.add('hidden');
+  $('vf-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
+  vfTimer.start();
+  vfShowQuestion();
+});
 $('vf-validate-button')?.addEventListener('click', () => {
   if (vfAnswered) return;
   vfAnswered = true;
@@ -3377,7 +3270,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
         el.classList.add('vf-updated');
       }
       vfSpeak(naturalPhrase(key, correctVal), () => speakNextCorrection(i + 1));
-    }, 700));
+    }, 2200));
   }
   if (q.errorFields.length) {
     vfSpeak(q.errorFields.length > 1 ? 'Deux références étaient fausses.' : 'Une référence était fausse.', () => speakNextCorrection(0));
@@ -3402,7 +3295,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
       vfTimers.push(setTimeout(() => {
         btn.classList.remove('active');
         trueBtn?.classList.add('active');
-      }, 700));
+      }, 2200));
     }
   });
 
@@ -3431,10 +3324,7 @@ $('vf-next-button')?.addEventListener('click', async () => {
         });
       } catch (e) { /* enregistrement best-effort */ }
     }
-    showPanel('vraifaux-setup');
-    const feedback = $('vf-setup-feedback');
-    feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${vfScore} points sur ${VF_SESSION.length} questions.`;
+    showExerciseResultsModal('Vrai/Faux', vfScore, VF_SESSION.length, 'training-hub');
   }
 });
 
@@ -3462,7 +3352,7 @@ function reconSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '
 function reconSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`recon-zone-${z}`)?.checked); }
 function reconSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`recon-level-${lvl}`)?.checked); }
 
-let RECON_SESSION = [], reconIndex = 0, reconCorrectCount = 0, reconAnswered = false, reconAudioOn = true, reconSelectedVoice = null, reconAutoAdvance = false, reconAutoAdvanceDelay = 5000, reconExtraFields = [], reconTimers = [];
+let RECON_SESSION = [], reconIndex = 0, reconCorrectCount = 0, reconAnswered = false, reconAudioOn = true, reconSelectedVoice = null, reconAutoAdvance = false, reconAutoAdvanceDelay = 5000, reconExtraFields = [], reconTimers = [], reconFieldLabel = '';
 const reconTimer = createTimer('topbar-timer');
 $('recon-opt-autoadvance')?.addEventListener('change', () => { $('recon-delay-row').style.display = $('recon-opt-autoadvance').checked ? 'flex' : 'none'; });
 function reconSpeak(text) {
@@ -3479,6 +3369,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
   saveLastSelection('reconstitution-setup-panel');
   let arts = reconSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = reconSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  reconFieldLabel = buildFieldLabel(arts, centuries);
   let levels = reconSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('recon-setup-feedback');
   feedback.classList.remove('hidden');
@@ -3525,20 +3416,30 @@ $('recon-start-button')?.addEventListener('click', async () => {
     });
     reconIndex = 0; reconCorrectCount = 0;
     showPanel('reconstitution');
-    reconTimer.start();
-    reconShowQuestion();
+    $('recon-ready-screen').classList.remove('hidden');
+    $('recon-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(RECON_SESSION.map((q) => q.correct.image));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
 });
 
+$('recon-launch-first-button')?.addEventListener('click', () => {
+  $('recon-ready-screen').classList.add('hidden');
+  $('recon-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
+  reconTimer.start();
+  reconShowQuestion();
+});
 function reconShowQuestion() {
   speechSynthesis.cancel();
   reconTimers.forEach(clearTimeout); reconTimers = [];
   reconAnswered = false;
   const q = RECON_SESSION[reconIndex];
   $('recon-progress-label').textContent = `Question ${reconIndex + 1} / ${RECON_SESSION.length}`;
-  updateTopBanner('Reconstitution', `Question ${reconIndex + 1}/${RECON_SESSION.length}`);
+  updateTopBanner('Reconstitution', `Question ${reconIndex + 1}/${RECON_SESSION.length}`, reconFieldLabel);
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
   updateTopBannerScore(`${reconCorrectCount}/${reconIndex}`);
   $('recon-progress-bar').style.width = `${(reconIndex / RECON_SESSION.length) * 100}%`;
@@ -3611,10 +3512,7 @@ $('recon-next-button')?.addEventListener('click', async () => {
         });
       } catch (e) { /* enregistrement best-effort */ }
     }
-    showPanel('reconstitution-setup');
-    const feedback = $('recon-setup-feedback');
-    feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${reconCorrectCount} / ${RECON_SESSION.length} bonnes réponses.`;
+    showExerciseResultsModal('Reconstitution', reconCorrectCount, RECON_SESSION.length, 'training-hub');
   }
 });
 // Boutons « Artiste / Titre / Date / Lieu » à côté de chaque champ : sélectionnent le champ comme
@@ -3641,7 +3539,10 @@ function applyHandedness(lefty) {
 applyHandedness(localStorage.getItem('handedness') === 'lefty');
 
 // Bandeau du haut déplaçable : glisser la poignée ⠿, position mémorisée sur l'appareil.
-$('other-works-back-button')?.addEventListener('click', () => { showPanel('training-hub'); openModal('modal-artist-list'); });
+$('other-works-back-button')?.addEventListener('click', () => {
+  const prevIdx = currentArtistWorksIndex - 1;
+  if (prevIdx >= 0) openArtistWorksPage(prevIdx);
+});
 $('other-works-next-button')?.addEventListener('click', () => {
   const nextIdx = currentArtistWorksIndex + 1;
   if (nextIdx < artistListSortedRows.length) openArtistWorksPage(nextIdx);
@@ -3679,8 +3580,28 @@ function initBackgroundMosaic() {
   if (!container) return;
   container.innerHTML = BG_MOSAIC_FILES.map((filename) => {
     const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
-    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" /></div>`;
+    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" draggable="false" /></div>`;
   }).join('');
+  wireBgMosaicTiles();
+}
+// Réutilise le même mécanisme de mosaïque (fond des pages d'accueil) pour la « salle d'attente »
+// de chaque exercice, mais avec les œuvres réellement tirées pour CETTE session — le joueur voit
+// un aperçu de ce qui l'attend pendant qu'il patiente avant de cliquer sur « Démarrer le jeu ».
+function populateSessionMosaic(images) {
+  const container = $('bg-mosaic');
+  if (!container) return;
+  const unique = [...new Set(images.filter(Boolean))];
+  if (!unique.length) return;
+  // Complète toujours les 15 cases (5x3) même si la session a moins d'œuvres — on répète les
+  // images disponibles en boucle plutôt que de laisser des cases vides.
+  const filled = Array.from({ length: 15 }, (_, i) => unique[i % unique.length]);
+  container.innerHTML = filled.map((img) =>
+    `<div class="bg-tile"><img src="${escapeHtml(imageSource(img))}" alt="" loading="lazy" draggable="false" /></div>`
+  ).join('');
+  wireBgMosaicTiles();
+}
+function wireBgMosaicTiles() {
+  const container = $('bg-mosaic');
   // Sur smartphone il n'y a pas de vrai survol à la souris : « :hover » seul ne suffit pas.
   // On bascule une classe au toucher/clic pour obtenir le même effet net + agrandi, et on la
   // retire des autres vignettes pour n'en montrer qu'une nette à la fois.
@@ -3974,7 +3895,7 @@ $('open-impregnation-setup')?.addEventListener('click', () => {
   showExerciseRules('imp', () => { speakObjective('imp'); $('imp-start-button')?.click(); });
 });
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
-['imp', 'intrus', 'recon', 'vf', 'fam', 'enig'].forEach((p) => {
+['imp', 'intrus', 'recon', 'vf', 'fam'].forEach((p) => {
   $(`${p}-hub-link`)?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
 });
 
@@ -4002,7 +3923,7 @@ function impSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19
 function impSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`imp-zone-${z}`)?.checked); }
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
-let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null;
+let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impFieldLabel = '';
 const impTimer = createTimer('topbar-timer');
 
 function impClearTimers() { impTimers.forEach(clearTimeout); impTimers = []; }
@@ -4022,6 +3943,7 @@ $('imp-start-button')?.addEventListener('click', async () => {
   // automatique, qui posait des problèmes de synchronisation difficiles à diagnostiquer.
   let arts = impSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = impSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  impFieldLabel = buildFieldLabel(arts, centuries);
   let levels = impSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('imp-setup-feedback');
   feedback.classList.remove('hidden');
@@ -4048,11 +3970,22 @@ $('imp-start-button')?.addEventListener('click', async () => {
     impSelectedVoice = getGlobalVoice();
     impIndex = 0;
     showPanel('impregnation');
-    impTimer.start();
-    impShowCurrent();
+    $('imp-ready-screen').classList.remove('hidden');
+    $('imp-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(IMP_SESSION.map((w) => w.image));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
+});
+
+$('imp-launch-first-button')?.addEventListener('click', () => {
+  $('imp-ready-screen').classList.add('hidden');
+  $('imp-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
+  impTimer.start();
+  impShowCurrent();
 });
 
 function impShowCurrent() {
@@ -4062,7 +3995,7 @@ function impShowCurrent() {
   $('imp-pause-button').textContent = '⏸';
   const work = IMP_SESSION[impIndex];
   $('imp-progress-label').textContent = `Œuvre ${impIndex + 1} / ${IMP_SESSION.length}`;
-  updateTopBanner('Imprégnation', `Œuvre ${impIndex + 1}/${IMP_SESSION.length}`);
+  updateTopBanner('Imprégnation', `Œuvre ${impIndex + 1}/${IMP_SESSION.length}`, impFieldLabel);
   $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
   $('imp-stage-img').src = imageSource(work.image);
 
@@ -4176,7 +4109,7 @@ function intrusSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', 
 function intrusSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`intrus-zone-${z}`)?.checked); }
 function intrusSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`intrus-level-${lvl}`)?.checked); }
 
-let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false, intrusAudioOn = true, intrusSelectedVoice = null, intrusAutoAdvance = false, intrusAutoAdvanceDelay = 5000, intrusExtraFields = [], intrusTimers = [];
+let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false, intrusAudioOn = true, intrusSelectedVoice = null, intrusAutoAdvance = false, intrusAutoAdvanceDelay = 5000, intrusExtraFields = [], intrusTimers = [], intrusFieldLabel = '';
 const intrusTimer = createTimer('topbar-timer');
 $('intrus-opt-autoadvance')?.addEventListener('change', () => { $('intrus-delay-row').style.display = $('intrus-opt-autoadvance').checked ? 'flex' : 'none'; });
 function intrusSpeak(text) {
@@ -4229,6 +4162,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
   saveLastSelection('intrus-setup-panel');
   let arts = intrusSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = intrusSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  intrusFieldLabel = buildFieldLabel(arts, centuries);
   let levels = intrusSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('intrus-setup-feedback');
   feedback.classList.remove('hidden');
@@ -4271,20 +4205,30 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     intrusIndex = 0; intrusCorrectCount = 0;
     $('intrus-title-label').textContent = `Intrus — ${intrusMode === 'image' ? 'images intruses' : 'références intruses'}`;
     showPanel('intrus');
-    intrusTimer.start();
-    intrusShowQuestion();
+    $('intrus-ready-screen').classList.remove('hidden');
+    $('intrus-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(INTRUS_SESSION.map((q) => q.correct.image));
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
 });
 
+$('intrus-launch-first-button')?.addEventListener('click', () => {
+  $('intrus-ready-screen').classList.add('hidden');
+  $('intrus-quiz-grid').classList.remove('hidden');
+  $('bg-mosaic').classList.add('hidden');
+  document.body.classList.add('in-exercise');
+  intrusTimer.start();
+  intrusShowQuestion();
+});
 function intrusShowQuestion() {
   speechSynthesis.cancel();
   intrusTimers.forEach(clearTimeout); intrusTimers = [];
   intrusAnswered = false;
   const q = INTRUS_SESSION[intrusIndex];
   $('intrus-progress-label').textContent = `Question ${intrusIndex + 1} / ${INTRUS_SESSION.length}`;
-  updateTopBanner('Intrus', `Question ${intrusIndex + 1}/${INTRUS_SESSION.length}`);
+  updateTopBanner('Intrus', `Question ${intrusIndex + 1}/${INTRUS_SESSION.length}`, intrusFieldLabel);
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
   updateTopBannerScore(`${intrusCorrectCount}/${intrusIndex}`);
   $('intrus-progress-bar').style.width = `${(intrusIndex / INTRUS_SESSION.length) * 100}%`;
@@ -4388,10 +4332,7 @@ $('intrus-next-button')?.addEventListener('click', async () => {
         });
       } catch (e) { /* enregistrement best-effort */ }
     }
-    showPanel('intrus-setup');
-    const feedback = $('intrus-setup-feedback');
-    feedback.classList.remove('hidden');
-    feedback.textContent = `Terminé : ${intrusCorrectCount} / ${INTRUS_SESSION.length} bonnes réponses.`;
+    showExerciseResultsModal('Intrus', intrusCorrectCount, INTRUS_SESSION.length, 'training-hub');
   }
 });
 
@@ -4479,9 +4420,11 @@ async function fetchQuizRows(art, century) {
   return normaliseRows(rows).map((q) => ({ ...q, art }));
 }
 
+let quizFieldLabel = '';
 $('launch-quiz-button')?.addEventListener('click', async () => {
   let arts = selectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = selectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  quizFieldLabel = buildFieldLabel(arts, centuries);
   let levels = selectedLevels(); if (!levels.length) levels = ['1','2','3'];
   let chosenKeys = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.key);
   if (!chosenKeys.length) chosenKeys = allFields.map((field) => field.key);
@@ -4578,8 +4521,10 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     const refEl = $('quiz-reference');
     if (refEl) refEl.textContent = quizReference;
     showPanel('quiz');
-    quizTimer.start();
-    renderQuestion();
+    $('quiz-ready-screen').classList.remove('hidden');
+    $('quiz-quiz-grid').classList.add('hidden');
+    $('bg-mosaic').classList.remove('hidden');
+    populateSessionMosaic(state.questions.map((q) => q.image));
   } catch (error) {
     // Le message « site en construction » se suffit à lui-même, sans préfixe « Erreur : ».
     feedback.textContent = error.message === 'Ce site est en construction. Le quiz sera bientôt disponible.' ? error.message : `Erreur : ${error.message}`;
@@ -4610,7 +4555,7 @@ $('previous-button-overlay').addEventListener('click', () => {
   if (state.index > 0) { state.index--; renderQuestion(); }
 });
 $('next-button-overlay').addEventListener('click', goToNextOrResults);
-$('lightbox-close-button')?.addEventListener('click', () => $('image-lightbox').classList.add('hidden'));
+$('lightbox-close-button')?.addEventListener('click', () => { $('image-lightbox').classList.add('hidden'); setLightboxScaleData(null); });
 // Recliquer sur l'image (ou le fond) referme aussi la visionneuse : plus fiable que le seul
 // bouton ✕, notamment sur mobile.
 $('lightbox-image')?.addEventListener('click', () => $('image-lightbox').classList.add('hidden'));

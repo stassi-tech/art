@@ -1,21 +1,116 @@
 :root { --ink:#24313f; --muted:#65707d; --paper:#fffdf9; --canvas:#f1eee7; --accent:#1f3a5f; --accent-dark:#16293f; --cta:#8a6a2f; --cta-dark:#6f5526; --border:#ded8cc; --ok:#15734b; --wrong:#b3392d; }
-/* Ambiances esthétiques (Mon compte) : redéfinissent juste les couleurs d'accent et le fond de
-   page autour du contenu — le contenu lui-même (--paper/--ink) reste lisible partout, seule
-   l'habillage change. Premier essai avec 3 salles, d'autres suivront. */
-body[data-ambiance="pitti"] { --accent:#caa03f; --accent-dark:#7a5a1e; --cta:#8a1c2c; --cta-dark:#6b1420; }
-body[data-ambiance="pitti"] .app-shell { background:radial-gradient(circle at top right,#1a4a34 0,transparent 32rem),#0d3324; }
-body[data-ambiance="bauhaus"] { --accent:#1c4fa0; --accent-dark:#14356e; --cta:#c1272d; --cta-dark:#8a1a1e; }
-body[data-ambiance="bauhaus"] .app-shell { background:#f4f1ea; }
-body[data-ambiance="space"] { --accent:#e0562b; --accent-dark:#a83e1c; --cta:#5a6b74; --cta-dark:#3d4a52; }
-body[data-ambiance="space"] .app-shell { background:#eef0f2; }
+/* ============================================================
+   AMBIANCES ESTHÉTIQUES (Mon compte / bouton 🎨 du bandeau)
+   ============================================================ */
+
+/* ---- Salon Renoir (par défaut, sans attribut data-ambiance) ----
+   Touches impressionnistes beige/bronze, inspirées de « Jeunes filles au piano ». Discret par
+   nature : c'est l'ambiance "de base", pas un décor à part entière. */
+body:not([data-ambiance]) { --accent:#9c7a4a; --accent-dark:#7a5c35; --cta:#b5766a; --cta-dark:#8a5449; }
+body:not([data-ambiance]).in-exercise {
+  background:#ece0c8 url('assets/renoir-fond.jpg') center/cover no-repeat;
+}
+body:not([data-ambiance]).in-exercise .app-shell { background:transparent; }
+body:not([data-ambiance]) .primary-button, body:not([data-ambiance]) .home-mode-button {
+  background:#6f4a30; color:#fff; border-color:#4a2f1c;
+}
+
+/* ---- Le Salon Pitti ---- réf. Palazzo Pitti, Florence */
+body[data-ambiance] .bg-mosaic::after { content:''; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; opacity:.55; }
+body[data-ambiance="pitti"] { --accent:#c9a24a; --accent-dark:#8a6a24; --cta:#8a1c2c; --cta-dark:#6b1420; }
+body[data-ambiance="pitti"] .bg-mosaic::after { background:#0d3324; }
+body[data-ambiance="pitti"].in-exercise { --ink:#f2ecd8; --paper:#0f4d3c; --canvas:#0c3c2f; --border:#1f6b52; }
+body[data-ambiance="pitti"].in-exercise { background:#0c3c2f; }
+body[data-ambiance="pitti"].in-exercise .app-shell {
+  background:#0c3c2f;
+  background-image:
+    repeating-linear-gradient(45deg, #ffffff05 0 3px, transparent 3px 9px),
+    repeating-linear-gradient(-45deg, #00000012 0 3px, transparent 3px 9px);
+}
+body[data-ambiance="pitti"] .primary-button, body[data-ambiance="pitti"] .home-mode-button {
+  background:linear-gradient(160deg, #d8b866 0%, #a8842f 35%, #8a6a24 50%, #c9a24a 65%, #8a6a24 100%);
+  border-color:#5c4718; color:#3a2c10;
+}
+body[data-ambiance="pitti"] .home-mode-button .label { color:#3a2c10; }
+
+/* ---- Bauhaus ---- réf. MoMA, New York */
+body[data-ambiance="bauhaus"] { --accent:#1c4fa0; --accent-dark:#14356e; --cta:#2b2b28; --cta-dark:#1a1a18; }
+body[data-ambiance="bauhaus"] .bg-mosaic::after { background:#1c4fa0; }
+body[data-ambiance="bauhaus"].in-exercise { --ink:#f4f1ea; --paper:#3d3d3f; --canvas:#333335; --border:#5a5a5c; }
+body[data-ambiance="bauhaus"].in-exercise { background:#333335; }
+body[data-ambiance="bauhaus"].in-exercise .app-shell {
+  background:#333335;
+  background-image:linear-gradient(90deg,#f2c318 0 33%,#1c4fa0 33% 66%,#f4f1ea 66% 100%);
+  background-size:100% 6px; background-repeat:no-repeat;
+}
+body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn { background:#55555a; color:#f4f1ea; border-color:#77777c; }
+body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn:hover:not(:disabled) { background:#68686e; border-color:#f2c318; }
+body[data-ambiance="bauhaus"] .primary-button, body[data-ambiance="bauhaus"] .home-mode-button {
+  background:#fff; color:#1a1a18; border-color:#c1272d;
+}
+body[data-ambiance="bauhaus"] .home-mode-button .label { color:#1a1a18; }
+
+/* ---- Space Age ---- réf. Guggenheim, New York */
+body[data-ambiance="space"] { --accent:#5a9e2a; --accent-dark:#3d7018; --cta:#6a2fb5; --cta-dark:#4d1f8a; }
+body[data-ambiance="space"] .bg-mosaic::after { background:#e8843c; }
+body[data-ambiance="space"].in-exercise { --ink:#3a1f0a; --paper:#fff3e0; }
+body[data-ambiance="space"].in-exercise { background:#e07a2e; }
+body[data-ambiance="space"].in-exercise .app-shell {
+  background:#e07a2e;
+  background-image:repeating-radial-gradient(circle at 50% 120%, transparent 0 42px, #00000022 42px 45px);
+}
+body[data-ambiance="space"] .primary-button, body[data-ambiance="space"] .home-mode-button {
+  background:#5b3d8a url('assets/space-bouton.jpg') center/cover no-repeat;
+  box-shadow:inset 0 3px 6px rgba(255,255,255,.35), inset 0 -4px 8px rgba(0,0,0,.35);
+  border-color:#3a2560;
+}
+
+/* ---- Versailles ---- réf. Galerie des Glaces */
+body[data-ambiance="versailles"] { --accent:#d8b25c; --accent-dark:#8a6a24; --cta:#7a1418; --cta-dark:#560e10; }
+body[data-ambiance="versailles"] .bg-mosaic::after { background:#7a1418; }
+body[data-ambiance="versailles"].in-exercise { --ink:#f2ece0; --paper:#5c1015; }
+body[data-ambiance="versailles"].in-exercise { background:#5c1015 url('assets/versailles-fond.jpg') center/cover no-repeat; }
+body[data-ambiance="versailles"].in-exercise .app-shell { background:transparent; }
+body[data-ambiance="versailles"] .primary-button, body[data-ambiance="versailles"] .home-mode-button {
+  background:#a8842f url('assets/versailles-bouton.jpg') center/cover no-repeat;
+  border-color:#6f5320; color:#3a2c10;
+}
+body[data-ambiance="versailles"] .home-mode-button .label { color:#3a2c10; }
+
+/* ---- Wedgwood ---- camée bleu pâle */
+body[data-ambiance="wedgwood"] { --accent:#7396b8; --accent-dark:#4a6d8f; --cta:#e8e0cf; --cta-dark:#cfc4a8; }
+body[data-ambiance="wedgwood"] .bg-mosaic::after { background:#a8c0d4; }
+body[data-ambiance="wedgwood"].in-exercise { --ink:#2c3e4a; --paper:#c3d5e2; --canvas:#a8c0d4; --border:#f2ede0; }
+body[data-ambiance="wedgwood"].in-exercise { background:#a8c0d4; }
+body[data-ambiance="wedgwood"].in-exercise .app-shell { background:#a8c0d4; }
+body[data-ambiance="wedgwood"] .primary-button, body[data-ambiance="wedgwood"] .home-mode-button {
+  background:linear-gradient(160deg, #faf6ea 0%, #e8e0cf 50%, #d8cdb4 100%);
+  border-color:#a8967a; color:#4a3e2c;
+}
+body[data-ambiance="wedgwood"] .home-mode-button .label { color:#4a3e2c; }
+
+/* ---- Palais de l'Ermitage ---- réf. Saint-Pétersbourg */
+body[data-ambiance="ermitage"] { --accent:#d8b23c; --accent-dark:#8a6a1e; --cta:#0c2a4a; --cta-dark:#081c33; }
+body[data-ambiance="ermitage"] .bg-mosaic::after { background:#0c2a4a; }
+body[data-ambiance="ermitage"].in-exercise { --ink:#eef2ea; --paper:#0e335a; --canvas:#0a2745; --border:#2a4f78; }
+body[data-ambiance="ermitage"].in-exercise { background:#0a2745; }
+body[data-ambiance="ermitage"].in-exercise .app-shell {
+  background:#0a2745;
+  background-image:repeating-linear-gradient(90deg, #ffffff06 0 1px, transparent 1px 40px);
+}
+body[data-ambiance="ermitage"] .primary-button, body[data-ambiance="ermitage"] .home-mode-button {
+  background:linear-gradient(160deg, #f2d98a 0%, #d8b23c 40%, #8a6a1e 55%, #e8c874 70%, #8a6a1e 100%);
+  border-color:#5c4712; color:#3a2c10;
+}
+body[data-ambiance="ermitage"] .home-mode-button .label { color:#3a2c10; }
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
 .bg-mosaic { position:fixed; inset:0; z-index:0; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; }
 body.dragging-topbar .bg-mosaic { pointer-events:none; }
 body.dragging-topbar { touch-action:none; user-select:none; }
 .bg-tile { position:relative; overflow:hidden; background:#c9c1ae; cursor:pointer; }
-.bg-tile.touched, .bg-tile:hover { z-index:2; }
-.bg-tile img { width:100%; height:100%; object-fit:cover; display:block; filter:blur(6px) grayscale(.3); opacity:.45; transform:scale(1.15); transition:filter .35s, opacity .35s, transform .35s; }
+.bg-tile.touched, .bg-tile:hover { z-index:2; box-shadow:inset 0 0 0 3px var(--accent); }
+.bg-tile img { width:100%; height:100%; object-fit:cover; display:block; filter:blur(6px) grayscale(.3); opacity:.45; transform:scale(1.15); transition:filter .35s, opacity .35s, transform .35s; -webkit-user-drag:none; user-select:none; pointer-events:none; }
 .bg-tile:hover img, .bg-tile.touched img { filter:blur(0) grayscale(0); opacity:1; transform:scale(1.3); }
 button, input { font:inherit; }
 
@@ -42,31 +137,13 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 /* Croix de fermeture standard d'une fenêtre modale, dans son coin supérieur droit — invisible
    hors du mode fenêtre superposée (elle ne sert à rien sur une page normale). */
 .modal-close-x { display:none; }
-.config-popup-mode .modal-close-x { display:flex; position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:#fff; border:1px solid var(--border); color:var(--ink); font-size:1rem; align-items:center; justify-content:center; cursor:pointer; z-index:5; box-shadow:0 1px 4px rgba(0,0,0,.15); }
+.config-popup-mode .modal-close-x { display:flex; position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--paper); border:1px solid var(--border); color:var(--ink); font-size:1rem; align-items:center; justify-content:center; cursor:pointer; z-index:5; box-shadow:0 1px 4px rgba(0,0,0,.15); }
 .config-popup-mode .modal-close-x:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); }
 .config-popup-mode .settings-title-band { padding-right:60px; }
 /* Panneaux "hauts" (plusieurs accordéons empilés) : marge fixe en haut plutôt que centrage
    vertical automatique, sinon leur partie supérieure dépasse au-dessus de l'écran et tout
    semble tassé vers le bas. Plus larges aussi, pour respirer davantage. */
-#impregnation-setup-panel, #quiz-setup-panel, #intrus-setup-panel, #reconstitution-setup-panel, #vraifaux-setup-panel, #famille-setup-panel, #enigme-setup-panel { margin:30px auto; max-width:720px; }
-.enig-image-wrap { position:relative; display:inline-block; max-width:100%; }
-.enig-image-wrap img { max-width:100%; max-height:min(760px,74vh); display:block; }
-.enig-circle { position:absolute; border:3px solid #ffd23f; border-radius:50%; box-shadow:0 0 0 2px rgba(0,0,0,.5); transform:translate(-50%, -50%); display:flex; align-items:flex-end; justify-content:center; }
-.enig-circle span { position:absolute; top:-24px; left:50%; transform:translateX(-50%); background:#ffd23f; color:#1b1c1e; font-family:Arial,sans-serif; font-weight:700; font-size:.85rem; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
-.enig-item { margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border); }
-.enig-item:last-child { border-bottom:0; }
-.enig-item-title { font-family:Arial,sans-serif; font-size:.82rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:8px; }
-.enig-person-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-.enig-person-row .enig-letter { flex:0 0 26px; height:26px; border-radius:50%; background:#ffd23f; color:#1b1c1e; font-family:Arial,sans-serif; font-weight:700; font-size:.85rem; display:flex; align-items:center; justify-content:center; }
-.enig-person-row input { flex:1; padding:8px; border:1px solid #cfc8bc; border-radius:4px; font-family:Arial,sans-serif; }
-.enig-qcm-question { font-size:1rem; margin-bottom:10px; }
-.enig-qcm-option { display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:6px; border:1px solid var(--border); border-radius:5px; background:#fff; cursor:pointer; font-family:Arial,sans-serif; font-size:.9rem; transition:border-color .15s, background .15s; }
-.enig-qcm-option:hover:not(:disabled) { border-color:var(--accent); background:#f7f2ea; }
-.enig-qcm-option.selected { border-color:var(--accent); background:#eef2f6; }
-.enig-qcm-option.correct { border-color:var(--ok); background:#eaf6f0; }
-.enig-qcm-option.wrong { border-color:var(--wrong); background:#fbeceb; }
-.enig-person-verdict { font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; margin-left:6px; }
-.enig-correct-note { display:block; margin-top:6px; color:var(--ok); font-weight:700; font-family:Arial,sans-serif; font-size:.85rem; }
+#impregnation-setup-panel, #quiz-setup-panel, #intrus-setup-panel, #reconstitution-setup-panel, #vraifaux-setup-panel, #famille-setup-panel { margin:30px auto; max-width:720px; }
 .fam-image-grid { display:grid; grid-template-columns:repeat(4, 1fr); grid-auto-rows:1fr; gap:10px; width:100%; min-height:min(640px,72vh); padding:10px; background:#1b1c1e; }
 .fam-image-grid.fam-count-6 { grid-template-columns:repeat(3, 1fr); }
 .chrono-row { display:grid; gap:10px; padding:10px; background:#1b1c1e; min-height:min(260px,30vh); }
@@ -76,6 +153,13 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
   .chrono-row { min-height:min(160px,20vh); gap:6px; padding:6px; }
   .chrono-row .fam-image-cell, .chrono-row .chrono-target-slot { min-height:min(145px,18vh); }
   .chrono-row img { max-height:min(140px,17vh); }
+}
+/* Sur smartphone, la mosaïque de fond passe à des colonnes plus étroites, et l'effet de zoom au
+   survol/toucher est retiré (« figé ») — cet agrandissement, pensé pour la souris, peut sembler
+   instable au doigt sur petit écran. */
+@media (max-width:640px) {
+  .bg-mosaic { grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(5, 1fr); }
+  .bg-tile:hover img, .bg-tile.touched img { transform:none; }
 }
 .fam-result-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; width:100%; padding:14px; background:#1b1c1e; min-height:min(500px,60vh); }
 .fam-result-rows { display:flex; flex-direction:column; gap:14px; width:100%; background:#1b1c1e; padding:14px 0; }
@@ -165,7 +249,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intrus-mode-btn.inactive { background:transparent; color:var(--cta); }
 .intrus-mode-btn.inactive:hover { background:#f7f2ea; }
 .intrus-choice-list { display:grid; gap:12px; }
-.intrus-choice-btn { display:block; width:100%; text-align:left; padding:14px 16px; border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--ink); font-family:Arial,sans-serif; font-size:.95rem; cursor:pointer; transition:border-color .15s, background .15s; }
+.intrus-choice-btn { display:block; width:100%; text-align:left; padding:14px 16px; border:1px solid var(--border); border-radius:6px; background:var(--paper); color:var(--ink); font-family:Arial,sans-serif; font-size:.95rem; cursor:pointer; transition:border-color .15s, background .15s; }
 .intrus-choice-btn:hover:not(:disabled) { border-color:var(--accent); background:#f7f2ea; }
 .intrus-choice-btn img { width:100%; height:140px; object-fit:contain; background:#1b1c1e; border-radius:4px; display:block; margin-bottom:8px; }
 .intrus-choice-btn.correct { border-color:var(--ok); background:#eaf6f0; }
@@ -247,7 +331,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .choices-group .rubrique-option { padding:5px 0; }
 .choices-group .modal-hint { margin:6px 0 0; }
 .accordion-group { margin-bottom:10px; }
-.accordion-toggle { display:block; width:100%; text-align:left; padding:14px 16px; border:1px solid var(--border); border-radius:6px; background:#fff; color:var(--ink); font-family:Arial,sans-serif; font-weight:700; font-size:.95rem; cursor:pointer; transition:border-color .15s, background .15s; }
+.accordion-toggle { display:block; width:100%; text-align:left; padding:14px 16px; border:1px solid var(--border); border-radius:6px; background:var(--paper); color:var(--ink); font-family:Arial,sans-serif; font-weight:700; font-size:.95rem; cursor:pointer; transition:border-color .15s, background .15s; }
 .accordion-toggle:hover { border-color:var(--accent); background:#f7f2ea; }
 .accordion-toggle.accordion-toggle-done { border-color:var(--accent); color:var(--accent-dark); }
 .accordion-body { padding:14px 4px 4px; text-align:left; }
@@ -287,7 +371,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 #topbar-exercise-name { font-weight:700; font-size:.85rem; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 #topbar-exercise-progress { font-size:.75rem; color:var(--muted); }
 .topbar-zone-center { flex:0 0 auto; }
-#topbar-timer { font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:var(--ink); min-width:36px; text-align:center; }
+#topbar-timer { font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:var(--ink); min-width:36px; text-align:center; cursor:pointer; }
 .topbar-zone-right { flex:1 1 0; justify-content:flex-end; font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:#c0392b; white-space:nowrap; }
 @media (max-width:640px) {
   .topbar-banner { padding:6px 8px; gap:4px; }
@@ -360,7 +444,7 @@ body.lefty .quiz-grid .answer-card { order:1; }
 
 .field-row { display:flex; gap:8px; align-items:stretch; }
 .field-row input { flex:1; min-width:0; }
-.field-label-button { flex-shrink:0; min-width:64px; border-radius:4px; border:1px solid #cfc8bc; background:#fff; color:var(--ink); cursor:pointer; font-family:Arial,sans-serif; font-size:.82rem; font-weight:700; transition:background .15s, border-color .15s; }
+.field-label-button { flex-shrink:0; min-width:64px; border-radius:4px; border:1px solid #cfc8bc; background:var(--paper); color:var(--ink); cursor:pointer; font-family:Arial,sans-serif; font-size:.82rem; font-weight:700; transition:background .15s, border-color .15s; }
 .field-label-button:hover { background:#f7f2ea; border-color:var(--accent); }
 .field-label-button.field-target-active { background:#fdeb8f; border-color:var(--accent); }
 body.lefty .field-row { flex-direction:row-reverse; }
@@ -369,7 +453,7 @@ body.lefty .field-row { flex-direction:row-reverse; }
 .nav-arrow-button { flex:0 0 auto; width:38px; height:38px; border-radius:50%; border:1px solid var(--accent); background:var(--accent); color:#fff; font-size:1rem; font-weight:700; cursor:pointer; transition:background .15s; }
 .nav-arrow-button:hover:not(:disabled) { background:var(--accent-dark); }
 .nav-arrow-button:disabled { opacity:.35; cursor:not-allowed; }
-.mic-icon-button { flex-shrink:0; width:44px; height:44px; border-radius:50%; border:1px solid #cfc8bc; background:#fff; color:var(--ink); cursor:pointer; font-size:1.1rem; transition:background .15s, border-color .15s; }
+.mic-icon-button { flex-shrink:0; width:44px; height:44px; border-radius:50%; border:1px solid #cfc8bc; background:var(--paper); color:var(--ink); cursor:pointer; font-size:1.1rem; transition:background .15s, border-color .15s; }
 .mic-icon-button:hover:not(:disabled) { background:#f7f2ea; border-color:var(--accent); }
 .mic-icon-button:disabled { cursor:not-allowed; opacity:.4; }
 .mic-icon-button.listening { background:var(--accent); border-color:var(--accent); color:#fff; animation:mic-pulse 1.1s ease-in-out infinite; }
@@ -428,23 +512,27 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
   #other-works-artist-dates { font-size:.7rem; }
   #other-works-artist-flag { font-size:1rem; }
 }
-.other-works-panel-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; }
+.other-works-panel-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; align-items:end; }
 .other-works-panel-list .other-work-card-big { width:auto; text-align:center; border:2px solid transparent; border-radius:8px; background:none; padding:8px; cursor:pointer; font:inherit; transition:border-color .15s, background .15s; }
 .other-works-panel-list .other-work-card-big:hover { background:#f7f2ea; border-color:var(--accent); }
-.other-works-panel-list .other-work-card-big img { width:100%; height:min(30vh, 260px); object-fit:contain; border-radius:6px; display:block; margin-bottom:10px; background:#1b1c1e; }
+/* On ne force plus une hauteur fixe avec fond sombre en repli (ça ajoutait des bandes noires
+   autour de toute image dont les proportions ne remplissaient pas le cadre) : chaque image garde
+   sa taille naturelle, juste plafonnée pour ne pas déborder de l'écran. */
+.other-works-panel-list .other-work-card-big img { width:auto; max-width:100%; height:auto; max-height:min(30vh, 260px); object-fit:contain; border-radius:6px; display:block; margin:0 auto 10px; }
 .other-works-panel-list .other-work-card-big .other-work-caption { font-family:Arial,sans-serif; font-size:.9rem; }
 /* Les images s'adaptent au nombre d'œuvres à afficher, pour limiter le défilement (voir
-   renderOtherWorksPanel en JS, qui pose ces classes selon le nombre). */
+   renderOtherWorksPanel en JS, qui pose ces classes selon le nombre) — max-height seulement,
+   jamais de hauteur imposée. */
 .other-works-panel-list.count-1 { grid-template-columns:1fr; }
-.other-works-panel-list.count-1 .other-work-card-big img { height:min(76vh, 880px); object-fit:contain; background:#1b1c1e; }
+.other-works-panel-list.count-1 .other-work-card-big img { max-height:min(76vh, 880px); }
 .other-works-panel-list.count-2 { grid-template-columns:repeat(2, 1fr); }
-.other-works-panel-list.count-2 .other-work-card-big img { height:min(56vh, 540px); }
+.other-works-panel-list.count-2 .other-work-card-big img { max-height:min(56vh, 540px); }
 .other-works-panel-list.count-3-4 { grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); }
-.other-works-panel-list.count-3-4 .other-work-card-big img { height:min(42vh, 400px); }
+.other-works-panel-list.count-3-4 .other-work-card-big img { max-height:min(42vh, 400px); }
 .other-works-panel-list.count-5-8 { grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); }
-.other-works-panel-list.count-5-8 .other-work-card-big img { height:min(28vh, 260px); }
+.other-works-panel-list.count-5-8 .other-work-card-big img { max-height:min(28vh, 260px); }
 .other-works-panel-list.count-9plus { grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); }
-.other-works-panel-list.count-9plus .other-work-card-big img { height:min(20vh, 190px); }
+.other-works-panel-list.count-9plus .other-work-card-big img { max-height:min(20vh, 190px); }
 /* Sur PC, on force explicitement plusieurs colonnes (rangée horizontale) plutôt que de laisser
    auto-fit décider seul — plus fiable pour un alignement visiblement horizontal. */
 @media (min-width:641px) {
@@ -456,6 +544,16 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 .image-lightbox .quiz-topbar { position:absolute; top:12px; right:12px; margin:0; }
 .image-lightbox img { max-width:92vw; max-height:78vh; object-fit:contain; border-radius:4px; cursor:pointer; }
 .lightbox-caption { color:#fff; font-family:Arial,sans-serif; font-size:1rem; text-align:center; margin-top:16px; }
+/* Vue à l'échelle : une silhouette de référence (170 cm, hauteur fixe) posée à côté de l'œuvre,
+   dimensionnée en JS selon ses dimensions réelles (voir openScaleView / SILHOUETTE_PX_PER_CM). */
+#lightbox-scale-view { display:flex; flex-direction:column; align-items:center; gap:16px; }
+#lightbox-scale-stage { display:flex; align-items:flex-end; gap:24px; justify-content:center; max-width:92vw; overflow-x:auto; padding-bottom:4px; }
+#scale-silhouette { height:300px; width:auto; flex-shrink:0; color:var(--muted); opacity:.85; }
+#scale-artwork-wrap { flex-shrink:0; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+#scale-artwork-wrap img { display:block; width:100%; height:100%; object-fit:contain; background:#fff; }
+@media (max-width:640px) {
+  #scale-silhouette { height:180px; }
+}
 .other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
 .other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }
 .other-works-list { display:flex; flex-wrap:wrap; gap:12px; }
@@ -548,5 +646,5 @@ body.has-other-works .correction-label { font-size:.76rem; }
   .other-works-toggle { margin-top:10px; padding:10px; font-size:.85rem; }
   .other-works-panel { padding:20px 16px; margin:14px auto; }
   .other-works-panel-list { grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; }
-  .other-works-panel-list .other-work-card-big img { height:140px; }
+  .other-works-panel-list .other-work-card-big img { max-height:140px; }
 }
