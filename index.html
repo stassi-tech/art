@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=108" />
+    <link rel="stylesheet" href="style.css?v=110" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -923,6 +923,16 @@
           </div>
           <img id="lightbox-image" alt="" />
           <p id="lightbox-caption" class="lightbox-caption"></p>
+          <button type="button" id="lightbox-scale-toggle" class="secondary-button hidden" style="margin:8px auto 0;display:block;">Voir à l'échelle d'une personne</button>
+          <div id="lightbox-scale-view" class="hidden">
+            <div id="lightbox-scale-stage">
+              <svg id="scale-silhouette" viewBox="0 0 100 340" aria-hidden="true">
+                <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+              </svg>
+              <div id="scale-artwork-wrap"><img id="scale-artwork-img" src="" alt="" /></div>
+            </div>
+            <p id="lightbox-scale-caption" class="lightbox-caption"></p>
+          </div>
           <a id="lightbox-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
         </div>
 
@@ -1084,6 +1094,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=122"></script>
+    <script src="app.js?v=123"></script>
   </body>
 </html>

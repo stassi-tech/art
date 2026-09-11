@@ -11,7 +11,7 @@ body:not([data-ambiance]).in-exercise {
   background:#ece0c8 url('assets/renoir-fond.jpg') center/cover no-repeat;
 }
 body:not([data-ambiance]).in-exercise .app-shell { background:transparent; }
-body:not([data-ambiance]).in-exercise .primary-button {
+body:not([data-ambiance]) .primary-button, body:not([data-ambiance]) .home-mode-button {
   background:#6f4a30; color:#fff; border-color:#4a2f1c;
 }
 
@@ -27,10 +27,11 @@ body[data-ambiance="pitti"].in-exercise .app-shell {
     repeating-linear-gradient(45deg, #ffffff05 0 3px, transparent 3px 9px),
     repeating-linear-gradient(-45deg, #00000012 0 3px, transparent 3px 9px);
 }
-body[data-ambiance="pitti"].in-exercise .primary-button {
+body[data-ambiance="pitti"] .primary-button, body[data-ambiance="pitti"] .home-mode-button {
   background:linear-gradient(160deg, #d8b866 0%, #a8842f 35%, #8a6a24 50%, #c9a24a 65%, #8a6a24 100%);
   border-color:#5c4718; color:#3a2c10;
 }
+body[data-ambiance="pitti"] .home-mode-button .label { color:#3a2c10; }
 
 /* ---- Bauhaus ---- réf. MoMA, New York */
 body[data-ambiance="bauhaus"] { --accent:#1c4fa0; --accent-dark:#14356e; --cta:#2b2b28; --cta-dark:#1a1a18; }
@@ -44,9 +45,10 @@ body[data-ambiance="bauhaus"].in-exercise .app-shell {
 }
 body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn { background:#55555a; color:#f4f1ea; border-color:#77777c; }
 body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn:hover:not(:disabled) { background:#68686e; border-color:#f2c318; }
-body[data-ambiance="bauhaus"].in-exercise .primary-button {
+body[data-ambiance="bauhaus"] .primary-button, body[data-ambiance="bauhaus"] .home-mode-button {
   background:#fff; color:#1a1a18; border-color:#c1272d;
 }
+body[data-ambiance="bauhaus"] .home-mode-button .label { color:#1a1a18; }
 
 /* ---- Space Age ---- réf. Guggenheim, New York */
 body[data-ambiance="space"] { --accent:#5a9e2a; --accent-dark:#3d7018; --cta:#6a2fb5; --cta-dark:#4d1f8a; }
@@ -57,7 +59,7 @@ body[data-ambiance="space"].in-exercise .app-shell {
   background:#e07a2e;
   background-image:repeating-radial-gradient(circle at 50% 120%, transparent 0 42px, #00000022 42px 45px);
 }
-body[data-ambiance="space"].in-exercise .primary-button {
+body[data-ambiance="space"] .primary-button, body[data-ambiance="space"] .home-mode-button {
   background:#5b3d8a url('assets/space-bouton.jpg') center/cover no-repeat;
   box-shadow:inset 0 3px 6px rgba(255,255,255,.35), inset 0 -4px 8px rgba(0,0,0,.35);
   border-color:#3a2560;
@@ -69,10 +71,11 @@ body[data-ambiance="versailles"] .bg-mosaic::after { background:#7a1418; }
 body[data-ambiance="versailles"].in-exercise { --ink:#f2ece0; --paper:#5c1015; }
 body[data-ambiance="versailles"].in-exercise { background:#5c1015 url('assets/versailles-fond.jpg') center/cover no-repeat; }
 body[data-ambiance="versailles"].in-exercise .app-shell { background:transparent; }
-body[data-ambiance="versailles"].in-exercise .primary-button {
+body[data-ambiance="versailles"] .primary-button, body[data-ambiance="versailles"] .home-mode-button {
   background:#a8842f url('assets/versailles-bouton.jpg') center/cover no-repeat;
   border-color:#6f5320; color:#3a2c10;
 }
+body[data-ambiance="versailles"] .home-mode-button .label { color:#3a2c10; }
 
 /* ---- Wedgwood ---- camée bleu pâle */
 body[data-ambiance="wedgwood"] { --accent:#7396b8; --accent-dark:#4a6d8f; --cta:#e8e0cf; --cta-dark:#cfc4a8; }
@@ -80,10 +83,11 @@ body[data-ambiance="wedgwood"] .bg-mosaic::after { background:#a8c0d4; }
 body[data-ambiance="wedgwood"].in-exercise { --ink:#2c3e4a; --paper:#c3d5e2; --canvas:#a8c0d4; --border:#f2ede0; }
 body[data-ambiance="wedgwood"].in-exercise { background:#a8c0d4; }
 body[data-ambiance="wedgwood"].in-exercise .app-shell { background:#a8c0d4; }
-body[data-ambiance="wedgwood"].in-exercise .primary-button {
+body[data-ambiance="wedgwood"] .primary-button, body[data-ambiance="wedgwood"] .home-mode-button {
   background:linear-gradient(160deg, #faf6ea 0%, #e8e0cf 50%, #d8cdb4 100%);
   border-color:#a8967a; color:#4a3e2c;
 }
+body[data-ambiance="wedgwood"] .home-mode-button .label { color:#4a3e2c; }
 
 /* ---- Palais de l'Ermitage ---- réf. Saint-Pétersbourg */
 body[data-ambiance="ermitage"] { --accent:#d8b23c; --accent-dark:#8a6a1e; --cta:#0c2a4a; --cta-dark:#081c33; }
@@ -94,10 +98,11 @@ body[data-ambiance="ermitage"].in-exercise .app-shell {
   background:#0a2745;
   background-image:repeating-linear-gradient(90deg, #ffffff06 0 1px, transparent 1px 40px);
 }
-body[data-ambiance="ermitage"].in-exercise .primary-button {
+body[data-ambiance="ermitage"] .primary-button, body[data-ambiance="ermitage"] .home-mode-button {
   background:linear-gradient(160deg, #f2d98a 0%, #d8b23c 40%, #8a6a1e 55%, #e8c874 70%, #8a6a1e 100%);
   border-color:#5c4712; color:#3a2c10;
 }
+body[data-ambiance="ermitage"] .home-mode-button .label { color:#3a2c10; }
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
 .bg-mosaic { position:fixed; inset:0; z-index:0; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; }
@@ -539,6 +544,16 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 .image-lightbox .quiz-topbar { position:absolute; top:12px; right:12px; margin:0; }
 .image-lightbox img { max-width:92vw; max-height:78vh; object-fit:contain; border-radius:4px; cursor:pointer; }
 .lightbox-caption { color:#fff; font-family:Arial,sans-serif; font-size:1rem; text-align:center; margin-top:16px; }
+/* Vue à l'échelle : une silhouette de référence (170 cm, hauteur fixe) posée à côté de l'œuvre,
+   dimensionnée en JS selon ses dimensions réelles (voir openScaleView / SILHOUETTE_PX_PER_CM). */
+#lightbox-scale-view { display:flex; flex-direction:column; align-items:center; gap:16px; }
+#lightbox-scale-stage { display:flex; align-items:flex-end; gap:24px; justify-content:center; max-width:92vw; overflow-x:auto; padding-bottom:4px; }
+#scale-silhouette { height:300px; width:auto; flex-shrink:0; color:var(--muted); opacity:.85; }
+#scale-artwork-wrap { flex-shrink:0; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+#scale-artwork-wrap img { display:block; width:100%; height:100%; object-fit:contain; background:#fff; }
+@media (max-width:640px) {
+  #scale-silhouette { height:180px; }
+}
 .other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
 .other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }
 .other-works-list { display:flex; flex-wrap:wrap; gap:12px; }
