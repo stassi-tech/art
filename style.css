@@ -1,31 +1,108 @@
 :root { --ink:#24313f; --muted:#65707d; --paper:#fffdf9; --canvas:#f1eee7; --accent:#1f3a5f; --accent-dark:#16293f; --cta:#8a6a2f; --cta-dark:#6f5526; --border:#ded8cc; --ok:#15734b; --wrong:#b3392d; }
-/* Ambiances esthétiques (Mon compte) : redéfinissent juste les couleurs d'accent et le fond de
-   page autour du contenu — le contenu lui-même (--paper/--ink) reste lisible partout, seule
-   l'habillage change. Premier essai avec 3 salles, d'autres suivront. */
-body[data-ambiance="pitti"] { --accent:#caa03f; --accent-dark:#7a5a1e; --cta:#8a1c2c; --cta-dark:#6b1420; }
-body[data-ambiance="bauhaus"] { --accent:#1c4fa0; --accent-dark:#14356e; --cta:#c1272d; --cta-dark:#8a1a1e; }
-body[data-ambiance="space"] { --accent:#6bb52c; --accent-dark:#4d8a1c; --cta:#7c3aed; --cta-dark:#5b21b6; }
-/* La mosaïque de fond reste visible avec chaque ambiance — teintée à sa couleur plutôt que
-   recouverte par un fond plein écran (qui la cachait entièrement). */
+/* ============================================================
+   AMBIANCES ESTHÉTIQUES (Mon compte / bouton 🎨 du bandeau)
+   ============================================================ */
+
+/* ---- Salon Renoir (par défaut, sans attribut data-ambiance) ----
+   Touches impressionnistes beige/bronze, inspirées de « Jeunes filles au piano ». Discret par
+   nature : c'est l'ambiance "de base", pas un décor à part entière. */
+body:not([data-ambiance]) { --accent:#9c7a4a; --accent-dark:#7a5c35; --cta:#b5766a; --cta-dark:#8a5449; }
+body:not([data-ambiance]).in-exercise .app-shell {
+  background:#ece0c8;
+  background-image:
+    radial-gradient(circle at 18% 25%, #d4a97350 0 42px, transparent 44px),
+    radial-gradient(circle at 72% 55%, #b98a5e40 0 54px, transparent 56px),
+    radial-gradient(circle at 42% 82%, #c9a87635 0 36px, transparent 38px),
+    radial-gradient(circle at 85% 15%, #a9c9a840 0 30px, transparent 32px);
+}
+body:not([data-ambiance]).in-exercise .primary-button {
+  background:repeating-linear-gradient(125deg, #a8794a 0 4px, #8a6238 4px 7px, #b98f5c 7px 12px, #9c7040 12px 15px);
+  border-color:#6f4e2a;
+}
+
+/* ---- Le Salon Pitti ---- réf. Palazzo Pitti, Florence */
 body[data-ambiance] .bg-mosaic::after { content:''; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; opacity:.55; }
+body[data-ambiance="pitti"] { --accent:#c9a24a; --accent-dark:#8a6a24; --cta:#8a1c2c; --cta-dark:#6b1420; }
 body[data-ambiance="pitti"] .bg-mosaic::after { background:#0d3324; }
+body[data-ambiance="pitti"].in-exercise { --ink:#f2ecd8; --paper:#0f4d3c; --canvas:#0c3c2f; --border:#1f6b52; }
+body[data-ambiance="pitti"].in-exercise .app-shell {
+  background:#0c3c2f;
+  background-image:
+    repeating-linear-gradient(45deg, #ffffff05 0 3px, transparent 3px 9px),
+    repeating-linear-gradient(-45deg, #00000012 0 3px, transparent 3px 9px);
+}
+body[data-ambiance="pitti"].in-exercise .primary-button {
+  background:linear-gradient(160deg, #d8b866 0%, #a8842f 35%, #8a6a24 50%, #c9a24a 65%, #8a6a24 100%);
+  border-color:#5c4718; color:#3a2c10;
+}
+
+/* ---- Bauhaus ---- réf. MoMA, New York */
+body[data-ambiance="bauhaus"] { --accent:#1c4fa0; --accent-dark:#14356e; --cta:#2b2b28; --cta-dark:#1a1a18; }
 body[data-ambiance="bauhaus"] .bg-mosaic::after { background:#1c4fa0; }
+body[data-ambiance="bauhaus"].in-exercise { --ink:#f4f1ea; --paper:#3d3d3f; --canvas:#333335; --border:#5a5a5c; }
+body[data-ambiance="bauhaus"].in-exercise .app-shell {
+  background:#333335;
+  background-image:linear-gradient(90deg,#f2c318 0 33%,#1c4fa0 33% 66%,#f4f1ea 66% 100%);
+  background-size:100% 6px; background-repeat:no-repeat;
+}
+body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn { background:#55555a; color:#f4f1ea; border-color:#77777c; }
+body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn:hover:not(:disabled) { background:#68686e; border-color:#f2c318; }
+body[data-ambiance="bauhaus"].in-exercise .primary-button {
+  background:repeating-linear-gradient(100deg, #d8d8da 0 2px, #a8a8ac 2px 4px, #ececee 4px 6px, #b8b8bc 6px 9px);
+  color:#1a1a18; border-color:#7a7a7e; text-shadow:0 1px 0 rgba(255,255,255,.4);
+}
+
+/* ---- Space Age ---- réf. Guggenheim, New York */
+body[data-ambiance="space"] { --accent:#5a9e2a; --accent-dark:#3d7018; --cta:#6a2fb5; --cta-dark:#4d1f8a; }
 body[data-ambiance="space"] .bg-mosaic::after { background:#e8843c; }
-/* Le fond plein écran de l'ambiance ne s'applique qu'en plein exercice (classe posée par le JS
-   juste après le clic sur « Démarrer le jeu », retirée au retour) — jamais pendant que la
-   mosaïque est censée être visible (accueil, salle d'attente). */
-body[data-ambiance="pitti"].in-exercise .app-shell { background:radial-gradient(circle at top right,#1a4a34 0,transparent 32rem),#0d3324; }
-body[data-ambiance="bauhaus"].in-exercise { --ink:#f4f1ea; --paper:#3a3a38; --canvas:#2b2b28; --border:#55554e; }
-body[data-ambiance="bauhaus"].in-exercise .app-shell { background:#2b2b28; background-image:linear-gradient(90deg,#c1272d 0 25%,#f2c318 25% 50%,#1c4fa0 50% 75%,#f4f1ea 75% 100%); background-size:100% 6px; background-repeat:no-repeat; }
-/* Boutons de choix (Reconstitution, Intrus) inversés en rouge Bauhaus, texte blanc — plus lisible
-   et plus dans l'esprit que le gris neutre. Léger reflet métallique en diagonale sur les boutons
-   principaux, en clin d'œil aux structures chromées des fauteuils Breuer/Wassily. */
-body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn { background:#c1272d; color:#f4f1ea; border-color:#8a1a1e; }
-body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn:hover:not(:disabled) { background:#a81f24; border-color:#f2c318; }
-body[data-ambiance="bauhaus"].in-exercise .primary-button { background:linear-gradient(115deg,var(--accent) 0%,#6b8fc9 45%,var(--accent) 55%,#6b8fc9 100%); background-size:220% 100%; }
-body[data-ambiance="bauhaus"].in-exercise .primary-button:hover { background-position:100% 0; }
 body[data-ambiance="space"].in-exercise { --ink:#3a1f0a; --paper:#fff3e0; }
-body[data-ambiance="space"].in-exercise .app-shell { background:#e8843c; background-image:repeating-radial-gradient(circle at 50% 120%, transparent 0 46px, #00000012 46px 48px); }
+body[data-ambiance="space"].in-exercise .app-shell {
+  background:#e07a2e;
+  background-image:repeating-radial-gradient(circle at 50% 120%, transparent 0 42px, #00000022 42px 45px);
+}
+body[data-ambiance="space"].in-exercise .primary-button {
+  background:radial-gradient(circle at 32% 28%, #8ed456 0%, #5a9e2a 42%, #3d7018 100%);
+  box-shadow:inset 0 3px 6px rgba(255,255,255,.5), inset 0 -4px 8px rgba(0,0,0,.3);
+  border-color:#2c5410;
+}
+
+/* ---- Versailles ---- réf. Galerie des Glaces */
+body[data-ambiance="versailles"] { --accent:#d8b25c; --accent-dark:#8a6a24; --cta:#7a1418; --cta-dark:#560e10; }
+body[data-ambiance="versailles"] .bg-mosaic::after { background:#7a1418; }
+body[data-ambiance="versailles"].in-exercise { --ink:#f2ece0; --paper:#5c1015; }
+body[data-ambiance="versailles"].in-exercise .app-shell {
+  background:
+    repeating-linear-gradient(72deg, #ffffff08 0 2px, transparent 2px 40px),
+    repeating-linear-gradient(-68deg, #00000030 0 1px, transparent 1px 55px),
+    linear-gradient(155deg, #8a1c20, #5c1015 45%, #7a1418 70%, #4a0d10);
+}
+body[data-ambiance="versailles"].in-exercise .primary-button {
+  background:linear-gradient(160deg, #f2d98a 0%, #d8b25c 35%, #a8842f 50%, #e8c874 65%, #a8842f 100%);
+  border-color:#6f5320; color:#3a2c10;
+}
+
+/* ---- Wedgwood ---- camée bleu pâle */
+body[data-ambiance="wedgwood"] { --accent:#7396b8; --accent-dark:#4a6d8f; --cta:#e8e0cf; --cta-dark:#cfc4a8; }
+body[data-ambiance="wedgwood"] .bg-mosaic::after { background:#a8c0d4; }
+body[data-ambiance="wedgwood"].in-exercise { --ink:#2c3e4a; --paper:#c3d5e2; --canvas:#a8c0d4; --border:#f2ede0; }
+body[data-ambiance="wedgwood"].in-exercise .app-shell { background:#a8c0d4; }
+body[data-ambiance="wedgwood"].in-exercise .primary-button {
+  background:linear-gradient(160deg, #faf6ea 0%, #e8e0cf 50%, #d8cdb4 100%);
+  border-color:#a8967a; color:#4a3e2c;
+}
+
+/* ---- Palais de l'Ermitage ---- réf. Saint-Pétersbourg */
+body[data-ambiance="ermitage"] { --accent:#d8b23c; --accent-dark:#8a6a1e; --cta:#0c2a4a; --cta-dark:#081c33; }
+body[data-ambiance="ermitage"] .bg-mosaic::after { background:#0c2a4a; }
+body[data-ambiance="ermitage"].in-exercise { --ink:#eef2ea; --paper:#0e335a; --canvas:#0a2745; --border:#2a4f78; }
+body[data-ambiance="ermitage"].in-exercise .app-shell {
+  background:#0a2745;
+  background-image:repeating-linear-gradient(90deg, #ffffff06 0 1px, transparent 1px 40px);
+}
+body[data-ambiance="ermitage"].in-exercise .primary-button {
+  background:linear-gradient(160deg, #f2d98a 0%, #d8b23c 40%, #8a6a1e 55%, #e8c874 70%, #8a6a1e 100%);
+  border-color:#5c4712; color:#3a2c10;
+}
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
 .bg-mosaic { position:fixed; inset:0; z-index:0; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; }

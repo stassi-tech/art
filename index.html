@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=103" />
+    <link rel="stylesheet" href="style.css?v=104" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -930,10 +930,13 @@
 
         <div id="ambiance-quick-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:10px;min-width:220px;">
           <p style="font-family:Arial,sans-serif;font-size:.78rem;font-weight:700;color:var(--muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.03em;">Ambiance</p>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="" /><span>Aucune</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="" /><span>Salon Renoir</span></label>
           <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="pitti" /><span>Le Salon Pitti</span></label>
           <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="bauhaus" /><span>Bauhaus</span></label>
           <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="space" /><span>Space Age</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="versailles" /><span>Versailles</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="wedgwood" /><span>Wedgwood</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="ermitage" /><span>Palais de l'Ermitage</span></label>
         </div>
 
         <section id="results-panel" class="results-panel hidden">
@@ -988,10 +991,13 @@
 
           <div id="profile-section-esthetique" class="hidden">
             <p class="modal-hint" style="margin-top:0;">Change l'apparence de l'application — fond, cadres des œuvres. Rien coché = apparence actuelle, inchangée. Premier essai avec quelques salles ; d'autres suivront.</p>
-            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="" checked /><span>Aucune (apparence actuelle)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="" checked /><span>Salon Renoir — touches impressionnistes, bronze et beige</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="pitti" /><span>Le Salon Pitti — velours et or (réf. Palazzo Pitti, Florence)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="bauhaus" /><span>Bauhaus — cercle, triangle, carré (réf. MoMA, New York)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="space" /><span>Space Age — orbite et chrome (réf. Guggenheim, New York)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="versailles" /><span>Versailles — or et marbre veiné (réf. Galerie des Glaces)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="wedgwood" /><span>Wedgwood — bleu pâle et camée crème</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="ermitage" /><span>Palais de l'Ermitage — bleu impérial et or (réf. Saint-Pétersbourg)</span></label>
           </div>
 
           <div id="profile-section-fields" class="hidden">
