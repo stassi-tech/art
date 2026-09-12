@@ -2337,11 +2337,8 @@ function populateArtistListFilters() {
 $('filter-nationalite')?.addEventListener('change', (e) => { artistListFilters.nationalite = e.target.value; renderArtistListTable(); });
 $('filter-art')?.addEventListener('change', (e) => { artistListFilters.art = e.target.value; renderArtistListTable(); });
 $('filter-siecle')?.addEventListener('change', (e) => { artistListFilters.siecle = e.target.value; renderArtistListTable(); });
-$('menu-item-artistes')?.addEventListener('click', async () => {
-  closeHamburgerMenu();
-  openModal('modal-artist-list');
-  if (artistListLoaded) return;
-  const status = $('artist-list-status');
+async function loadArtistListIfNeeded() {
+  if (artistListLoaded) return true;
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé.');
     const response = await fetch('quizzes/artistes-nationalites-maitre.xlsx');
@@ -2351,10 +2348,103 @@ $('menu-item-artistes')?.addEventListener('click', async () => {
     const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
     if (!rows.length) throw new Error('liste vide');
     artistListRows = rows;
+    artistListLoaded = true;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+// --- Salle d'exposition : entrée par nom d'artiste (un ou plusieurs), directement dans la vue à
+// l'échelle avec les œuvres combinées de tous les artistes demandés.
+function findArtistRow(query) {
+  const q = keyName(query);
+  if (!q) return null;
+  return artistListRows.find((row) => {
+    const full = keyName(`${row['Prénom'] || ''} ${row['Patronyme'] || ''}`);
+    const surnom = keyName(row['Surnom'] || '');
+    return full === q || surnom === q || full.includes(q) || (surnom && surnom.includes(q)) || (q.includes(keyName(row['Patronyme'])) && keyName(row['Patronyme']));
+  }) || null;
+}
+async function fetchWorksForArtistRow(row) {
+  const artistName = [row['Prénom'], row['Patronyme']].filter(Boolean).join(' ').trim();
+  const arts = String(row['Art(s)'] || '').split(',').map((s) => s.trim().toLocaleLowerCase('fr-FR')).filter(Boolean);
+  const centuries = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const works = [];
+  for (const art of arts) {
+    for (const century of centuries) {
+      try {
+        const rows = await fetchQuizRows(art, century);
+        rows.filter((w) => keyName(w.artist) === keyName(artistName)).forEach((w) => { w.artCategory = art; works.push(w); });
+      } catch (e) { /* fichier absent, ignoré */ }
+    }
+  }
+  return works;
+}
+$('global-exhibition-button')?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  const picker = $('exhibition-picker');
+  picker.classList.toggle('hidden');
+  if (!picker.classList.contains('hidden')) $('exhibition-artist-input')?.focus();
+});
+$('exhibition-launch-button')?.addEventListener('click', async () => {
+  const feedback = $('exhibition-feedback');
+  const names = $('exhibition-artist-input').value.split(',').map((s) => s.trim()).filter(Boolean);
+  if (!names.length) { feedback.textContent = 'Indique au moins un nom d’artiste.'; return; }
+  feedback.style.color = 'var(--muted)';
+  feedback.textContent = 'Recherche en cours…';
+  const ok = await loadArtistListIfNeeded();
+  if (!ok) { feedback.style.color = 'var(--wrong)'; feedback.textContent = "La liste des artistes n'est pas disponible pour le moment."; return; }
+  const matchedRows = [];
+  const notFound = [];
+  names.forEach((name) => {
+    const row = findArtistRow(name);
+    if (row) matchedRows.push(row); else notFound.push(name);
+  });
+  if (!matchedRows.length) {
+    feedback.style.color = 'var(--wrong)';
+    feedback.textContent = `Aucun artiste trouvé pour : ${notFound.join(', ')}.`;
+    return;
+  }
+  let allWorks = [];
+  for (const row of matchedRows) {
+    allWorks = allWorks.concat(await fetchWorksForArtistRow(row));
+  }
+  if (!allWorks.length) {
+    feedback.style.color = 'var(--wrong)';
+    feedback.textContent = 'Aucune œuvre trouvée pour cette sélection.';
+    return;
+  }
+  state.currentOtherWorks = allWorks;
+  $('exhibition-picker').classList.add('hidden');
+  $('exhibition-artist-input').value = '';
+  feedback.textContent = '';
+  const firstWithHeight = allWorks.find((w) => parseCmValue(w.hauteur)) || allWorks[0];
+  const titleValue = formatCorrectionValue('title', firstWithHeight.title);
+  $('lightbox-image').src = imageSourceSized(firstWithHeight.image, 1000);
+  $('lightbox-caption').innerHTML = `<strong>${titleValue}</strong><br>${escapeHtml(firstWithHeight.date)} — ${escapeHtml(firstWithHeight.location)}`;
+  setLightboxScaleData(firstWithHeight);
+  $('image-lightbox').classList.remove('hidden');
+  enterScaleView();
+  if (notFound.length) { /* signalé silencieusement pour l'instant : l'essentiel a été trouvé */ }
+});
+document.addEventListener('click', (event) => {
+  const picker = $('exhibition-picker');
+  if (!picker || picker.classList.contains('hidden')) return;
+  if (!picker.contains(event.target) && event.target !== $('global-exhibition-button')) {
+    picker.classList.add('hidden');
+  }
+});
+
+$('menu-item-artistes')?.addEventListener('click', async () => {
+  closeHamburgerMenu();
+  openModal('modal-artist-list');
+  if (artistListLoaded) return;
+  const status = $('artist-list-status');
+  const ok = await loadArtistListIfNeeded();
+  if (ok) {
     populateArtistListFilters();
     setArtistListMode('full');
-    artistListLoaded = true;
-  } catch (error) {
+  } else {
     status.textContent = "La liste des artistes n'est pas disponible pour le moment.";
   }
 });

@@ -29,6 +29,7 @@
         <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
         <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
         <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
+        <button type="button" id="global-exhibition-button" class="global-topbar-button" aria-label="Salle d'exposition" title="Salle d'exposition">🖼️</button>
         <button type="button" id="global-account-button" class="global-topbar-button" aria-label="Mon compte" title="Mon compte">👤</button>
       </div>
       <div class="topbar-zone topbar-zone-right" id="topbar-score"></div>
@@ -949,6 +950,13 @@
           <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="ermitage" /><span>Palais de l'Ermitage</span></label>
         </div>
 
+        <div id="exhibition-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:16px;width:min(340px, 90vw);">
+          <p style="font-family:Georgia,serif;font-size:1rem;margin:0 0 10px;">Quel artiste veux-tu exposer dans la salle aujourd'hui ?</p>
+          <input type="text" id="exhibition-artist-input" placeholder="Ex. Jean Fouquet, ou plusieurs noms séparés par une virgule" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:8px;" />
+          <p id="exhibition-feedback" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--wrong);margin:0 0 8px;"></p>
+          <button type="button" class="primary-button" id="exhibition-launch-button" style="width:100%;">Entrer dans la salle →</button>
+        </div>
+
         <section id="results-panel" class="results-panel hidden">
           <p class="eyebrow">QUIZ TERMINÉ</p>
           <h2>Votre score : <span id="final-score"></span></h2>
@@ -1094,6 +1102,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=131"></script>
+    <script src="app.js?v=132"></script>
   </body>
 </html>
