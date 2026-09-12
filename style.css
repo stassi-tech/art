@@ -542,7 +542,7 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
    l'échelle des œuvres les plus grandes (repéré via un vrai cas : la Pietà de Nouans, la plus
    grande œuvre de Fouquet, ressortait plus petite que d'autres au lieu de dominer la vignette). */
 .other-works-panel-list .other-work-card-big.scaled img { height:calc(320px * var(--scale-ratio, 1)); max-height:70vh; align-self:flex-end; }
-.other-works-panel-list .other-work-card-big.scaled { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
+.other-works-panel-list .other-work-card-big.scaled { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; align-self:end; height:fit-content; }
 /* Sur PC, on force explicitement plusieurs colonnes (rangée horizontale) plutôt que de laisser
    auto-fit décider seul — plus fiable pour un alignement visiblement horizontal. */
 @media (min-width:641px) {
