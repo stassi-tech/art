@@ -2384,11 +2384,21 @@ $('global-exhibition-button')?.addEventListener('click', (event) => {
   event.stopPropagation();
   const picker = $('exhibition-picker');
   picker.classList.toggle('hidden');
-  if (!picker.classList.contains('hidden')) $('exhibition-artist-input')?.focus();
+  if (!picker.classList.contains('hidden')) picker.querySelector('.exhibition-artist-field')?.focus();
+});
+$('exhibition-add-artist-button')?.addEventListener('click', () => {
+  const wrap = $('exhibition-artist-inputs');
+  const field = document.createElement('input');
+  field.type = 'text';
+  field.className = 'exhibition-artist-field';
+  field.placeholder = 'Ex. Le Bernin';
+  field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
+  wrap.appendChild(field);
+  field.focus();
 });
 $('exhibition-launch-button')?.addEventListener('click', async () => {
   const feedback = $('exhibition-feedback');
-  const names = $('exhibition-artist-input').value.split(',').map((s) => s.trim()).filter(Boolean);
+  const names = [...document.querySelectorAll('.exhibition-artist-field')].map((f) => f.value.trim()).filter(Boolean);
   if (!names.length) { feedback.textContent = 'Indique au moins un nom d’artiste.'; return; }
   feedback.style.color = 'var(--muted)';
   feedback.textContent = 'Recherche en cours…';
@@ -2414,9 +2424,13 @@ $('exhibition-launch-button')?.addEventListener('click', async () => {
     feedback.textContent = 'Aucune œuvre trouvée pour cette sélection.';
     return;
   }
+  // Peintures d'abord, sculptures ensuite — plutôt qu'un simple enchaînement dans l'ordre de
+  // récupération, pour préparer visuellement la distinction « tableaux en haut, statues au sol »
+  // une fois affichées dans la salle.
+  allWorks.sort((a, b) => (a.artCategory === b.artCategory ? 0 : a.artCategory === 'sculpture' ? 1 : -1));
   state.currentOtherWorks = allWorks;
   $('exhibition-picker').classList.add('hidden');
-  $('exhibition-artist-input').value = '';
+  document.querySelectorAll('.exhibition-artist-field').forEach((f, i) => { if (i > 0) f.remove(); else f.value = ''; });
   feedback.textContent = '';
   const firstWithHeight = allWorks.find((w) => parseCmValue(w.hauteur)) || allWorks[0];
   const titleValue = formatCorrectionValue('title', firstWithHeight.title);
