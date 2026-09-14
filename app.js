@@ -1811,13 +1811,19 @@ function formatArtistName(name) {
   const surname = parts.pop().toLocaleUpperCase('fr-FR');
   return [...parts, surname].join(' ');
 }
+// Lieu affiché avec son petit drapeau quand la ville est reconnue (voir CITY_TO_COUNTRY) — factorisé
+// ici pour que TOUS les exercices en bénéficient de la même façon, pas seulement Imprégnation et
+// le quiz principal qui l'avaient chacun réimplémenté à leur façon (bug repéré : Famille,
+// Reconstitution et Intrus affichaient le lieu en texte brut, sans jamais appeler cityFlag).
+function locationWithFlag(work) {
+  const flag = work ? cityFlag(work.ville) : '';
+  const loc = escapeHtml(work?.location || '');
+  return flag ? `${loc} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${flag}</span>` : loc;
+}
 function formatCorrectionValue(key, rawValue, work) {
   if (key === 'artist') return escapeHtml(formatArtistName(rawValue));
   if (key === 'title') return `<em>${escapeHtml(rawValue)}</em>`;
-  if (key === 'location') {
-    const flag = work ? cityFlag(work.ville) : '';
-    return flag ? `${escapeHtml(rawValue)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${flag}</span>` : escapeHtml(rawValue);
-  }
+  if (key === 'location') return locationWithFlag(work);
   return escapeHtml(rawValue);
 }
 function formatArtistDisplayName(work) {
@@ -2812,11 +2818,11 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   // La rangée reprend l'ordre choisi par le joueur (déjà rangé visuellement), encadrée en
   // rouge sur toute carte où l'ordre était faux, avec la référence complète sous chaque image.
   $('chrono-cards-row').innerHTML = playerOrder.map((work, i) => {
-    const meta = [work.date, work.location].filter(Boolean).join(' — ');
+    const meta = [escapeHtml(work.date), locationWithFlag(work)].filter(Boolean).join(' — ');
     return `<div class="fam-image-cell ${rightFlags[i] ? 'right' : 'wrong'}" style="position:relative;margin-bottom:58px;">
       <span class="chrono-slot-num">${i + 1}</span><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" />
       <span class="fam-result-caption" style="position:absolute;bottom:-58px;left:0;right:0;">
-        <strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}
+        <strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${meta}
       </span>
     </div>`;
   }).join('');
@@ -2826,10 +2832,10 @@ $('chrono-validate-button')?.addEventListener('click', () => {
     $('chrono-correct-table').classList.remove('hidden');
     $('chrono-correct-table').innerHTML = `<p class="modal-subheading" style="margin:70px 0 8px;">Le bon ordre était :</p>
       <div class="fam-result-grid">${correctOrder.map((work) => {
-        const meta = [work.date, work.location].filter(Boolean).join(' — ');
+        const meta = [escapeHtml(work.date), locationWithFlag(work)].filter(Boolean).join(' — ');
         return `<div class="fam-result-item">
           <img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" />
-          <span class="fam-result-caption"><strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
+          <span class="fam-result-caption"><strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${meta}</span>
         </div>`;
       }).join('')}</div>`;
   }
@@ -3146,8 +3152,8 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
   const missedFamily = chronological.filter((w) => !foundFamily.includes(w));
 
   const captionOf = (work) => {
-    const meta = [work.date, work.location].filter(Boolean).join(' — ');
-    return `<strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}`;
+    const meta = [escapeHtml(work.date), locationWithFlag(work)].filter(Boolean).join(' — ');
+    return `<strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${meta}`;
   };
   const cellHtml = (work, revealed) => `<div class="fam-result-item${revealed ? '' : ' fam-result-pending'}">
       ${revealed ? `<img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" /><span class="fam-result-caption">${captionOf(work)}</span>` : ''}
@@ -3673,7 +3679,7 @@ function reconAnswer(chosenIndex) {
   if (reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if (reconExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if (reconExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
-  if (reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
+  if (reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   $('recon-correction-details').innerHTML = detailsParts.join('');
   $('recon-correction').classList.remove('hidden');
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex + 1} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
@@ -4492,7 +4498,7 @@ function intrusAnswer(chosenIndex) {
   if (intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if (intrusExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if (intrusExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
-  if (intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${escapeHtml(q.correct.location || '—')}</span>`);
+  if (intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
   $('intrus-correction').classList.remove('hidden');
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
