@@ -387,6 +387,13 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 body.lefty .hamburger-menu { right:auto; left:16px; }
 .hamburger-item { display:block; width:100%; text-align:left; padding:12px 14px; border-radius:6px; border:0; background:transparent; cursor:pointer; font-family:Arial,sans-serif; font-size:.92rem; color:var(--ink); }
 .hamburger-item:hover { background:#f7f2ea; }
+/* Ces 4 entrées font double emploi avec les boutons du bandeau sur grand écran (masquées par
+   défaut) — elles ne servent que sur petit écran, où ces boutons disparaissent du bandeau faute
+   de place (voir @media max-width:640px plus bas). */
+.mobile-only-menu-item { display:none; }
+@media (max-width:640px) {
+  .mobile-only-menu-item { display:block; }
+}
 .home-icon-button { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:6px; border:1px solid var(--border); background:#e9e5dc; color:#8a837a; font-size:.95rem; cursor:pointer; opacity:.8; filter:grayscale(1); transition:opacity .15s, background .15s; }
 .exercise-icon-button { background:var(--accent); border-color:var(--accent); color:#fff; opacity:1; filter:none; width:38px; height:38px; border-radius:50%; font-size:1.05rem; }
 .exercise-icon-button:hover { background:var(--accent-dark); border-color:var(--accent-dark); }
@@ -576,10 +583,18 @@ body[data-ambiance="ermitage"] .image-lightbox:has(#lightbox-scale-view:not(.hid
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-image,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-source-link { display:none; }
 #lightbox-scale-view { position:fixed; inset:0; }
-#scale-silhouette { position:fixed; bottom:0; left:32px; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); }
-#scale-silhouette-label { position:fixed; bottom:4px; left:20px; font-family:Arial,sans-serif; font-size:.75rem; color:#4a453c; background:rgba(255,255,255,.75); padding:3px 8px; border-radius:4px; margin:0; }
+/* Sol de la salle, distinct du mur (voir ambiance : le mur garde la couleur/texture choisie par
+   le joueur, le sol aura ses propres revêtements au choix plus tard — parquet Versailles, béton
+   ciré, etc. En attendant ces choix, un parquet neutre par défaut, clairement différent du mur
+   pour qu'on distingue bien les deux plans). Les sculptures reposent dessus (voir --scale-ratio et
+   la classe .scale-sculpture, qui les pose à bottom:0 — juste au-dessus du sol, pas dedans). */
+#scale-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
+  background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a);
+  box-shadow:0 -3px 8px rgba(0,0,0,.25); }
+#scale-silhouette { position:fixed; bottom:0; left:32px; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); z-index:2; }
+#scale-silhouette-label { position:fixed; bottom:4px; left:20px; font-family:Arial,sans-serif; font-size:.75rem; color:#4a453c; background:rgba(255,255,255,.75); padding:3px 8px; border-radius:4px; margin:0; z-index:2; }
 #scale-wall { position:fixed; inset:0; overflow-x:auto; overflow-y:hidden; }
-.scale-wall-item { position:absolute; box-shadow:0 10px 28px rgba(0,0,0,.3); cursor:pointer; transition:box-shadow .15s; }
+.scale-wall-item { position:absolute; box-shadow:0 10px 28px rgba(0,0,0,.3); cursor:pointer; transition:box-shadow .15s; z-index:2; }
 .scale-wall-item.current { box-shadow:0 0 0 3px var(--accent), 0 10px 28px rgba(0,0,0,.3); }
 .scale-wall-item img { display:block; width:100%; height:100%; object-fit:contain; background:#fff; }
 /* Les sculptures posent directement sur le sol, sans cadre ni ombre encadrante (ce n'est pas un
@@ -634,6 +649,10 @@ body.has-other-works .correction-label { font-size:.76rem; }
   /* Boutons du bandeau plus espacés au doigt : sur souris un léger espacement suffit, mais au
      doigt les zones de clic trop rapprochées font toucher le mauvais bouton par erreur. */
   .topbar-zone-center { gap:20px; }
+  /* La zone centrale à 6 icônes écrasait le titre de l'exercice et le score sur petit écran — on
+     ne garde que l'essentiel (accueil, menu) et les 4 autres passent dans le menu hamburger (voir
+     .mobile-only-menu-item plus bas, masqués sur grand écran où les boutons du bandeau suffisent). */
+  #global-fullscreen-button, #global-ambiance-button, #global-exhibition-button, #global-account-button { display:none; }
   .welcome-panel,.results-panel { padding:24px 14px; margin:24px auto; }
   .home-mode-buttons { gap:8px; }
   .home-mode-button { padding:12px 8px; }

@@ -1203,6 +1203,36 @@ const PRONUNCIATION_FIXES = {
   'bacchante': 'Bakante',
   'canova': 'Kanova',
   'méphistophélès': 'méphistophélèsse',
+  'jason': 'Jazon',
+  'thorvaldsen': 'Thordvalsenne',
+  'tate britain': 'Téte Britèn',
+  'mcneill': 'Macnil',
+  'jongkind': 'Jonkin',
+  'fine': 'Faïne',
+  'oxbow': 'Oxbo',
+  'jaleo': 'raléo',
+  'repin': 'Ryépine',
+  'waterhouse': 'WaterHaouse',
+  'hayez': 'Aiez',
+  'hodler': 'Hodleur',
+  'epsom': 'Epsome',
+  'haussmann': 'Hosmane',
+  'rügen': 'Ruguéne',
+  'böcklin': 'Beuklin',
+  'edwin': 'Edwine',
+  'iceberg': 'Aïceberg',
+  'tahitiennes': 'Tahissiennes',
+  'phryné': 'Friné',
+  'vallotton': 'Vallotto',
+  'gismonda': 'Guismonda',
+  'léonidas': 'Léonidasse',
+  'caliban': 'Caliba',
+  'hylas': 'Ilasse',
+  'thétis': 'Thétisse',
+  'carlyle': 'Carlaile',
+  'alyscamps': 'Aliscan',
+  'poisson': 'Pouasson',
+  'vœu': 'veu',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -1296,7 +1326,7 @@ function normaliseRows(rows) {
 
     // --- Lieu : nouvelle structure Ville/Lieu précis/Sous-lieu si présente, sinon ancienne
     // colonne unique « lieu de conservation ». Affichage : Sous-lieu, Lieu précis, Ville.
-    const villeKey = findColumn(row, ['ville', 'ville de creation']);
+    const villeKey = findColumn(row, ['ville', 'ville de creation', 'lieu de conservation']);
     const lieuPrecisKey = findColumn(row, ['lieu precis', 'lieu precis de conservation']);
     const sousLieuKey = findColumn(row, ['sous lieu', 'sous lieu de conservation']);
     let location, ville = '';
@@ -1692,9 +1722,6 @@ function showPanel(name) {
   $('account-panel')?.classList.toggle('hidden', name !== 'account');
   $('profile-panel')?.classList.toggle('hidden', name !== 'profile');
   $('other-works-panel')?.classList.toggle('hidden', name !== 'other-works');
-  // La fiche « Autres œuvres » reprend le fond de l'ambiance active, comme les pages d'exercice —
-  // elle n'en est pas une, mais elle bénéficie du même traitement visuel.
-  if (name === 'other-works') document.body.classList.add('in-exercise');
   $('sidebar')?.classList.toggle('hidden', name !== 'welcome');
   $('bg-mosaic')?.classList.toggle('hidden', name !== 'welcome' && name !== 'training-hub');
 }
@@ -2415,6 +2442,14 @@ $('exhibition-launch-button')?.addEventListener('click', async () => {
     feedback.textContent = `Aucun artiste trouvé pour : ${notFound.join(', ')}.`;
     return;
   }
+  // Si certains noms ne correspondent à aucun artiste, on le signale clairement avant de
+  // continuer avec les autres — plutôt que d'avancer en silence avec une partie seulement de la
+  // sélection, ce qui donnait l'impression trompeuse qu'un nom tapé n'était « pas pris en
+  // compte » sans jamais dire pourquoi.
+  if (notFound.length) {
+    const continuer = window.confirm(`Artiste(s) introuvable(s) : ${notFound.join(', ')}.\n\nContinuer quand même avec : ${matchedRows.map((r) => [r['Prénom'], r['Patronyme'] || r['Surnom']].filter(Boolean).join(' ')).join(', ')} ?`);
+    if (!continuer) { feedback.style.color = 'var(--wrong)'; feedback.textContent = `Corrige le nom : ${notFound.join(', ')}.`; return; }
+  }
   let allWorks = [];
   for (const row of matchedRows) {
     allWorks = allWorks.concat(await fetchWorksForArtistRow(row));
@@ -2475,6 +2510,12 @@ document.addEventListener('click', (event) => {
 });
 $('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-fonctionnement'); });
 $('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
+// Sur petit écran, ces 4 boutons disparaissent du bandeau (faute de place) — ces entrées
+// déclenchent le même bouton d'origine plutôt que de dupliquer sa logique.
+$('menu-item-fullscreen')?.addEventListener('click', () => { closeHamburgerMenu(); $('global-fullscreen-button')?.click(); });
+$('menu-item-ambiance')?.addEventListener('click', () => { closeHamburgerMenu(); $('global-ambiance-button')?.click(); });
+$('menu-item-exhibition')?.addEventListener('click', () => { closeHamburgerMenu(); $('global-exhibition-button')?.click(); });
+$('menu-item-account')?.addEventListener('click', () => { closeHamburgerMenu(); $('global-account-button')?.click(); });
 $('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
 $('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
 
@@ -2775,7 +2816,7 @@ $('chrono-validate-button')?.addEventListener('click', () => {
     return `<div class="fam-image-cell ${rightFlags[i] ? 'right' : 'wrong'}" style="position:relative;margin-bottom:58px;">
       <span class="chrono-slot-num">${i + 1}</span><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" />
       <span class="fam-result-caption" style="position:absolute;bottom:-58px;left:0;right:0;">
-        <strong>${formatArtistDisplayName(work)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}
+        <strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}
       </span>
     </div>`;
   }).join('');
@@ -2788,7 +2829,7 @@ $('chrono-validate-button')?.addEventListener('click', () => {
         const meta = [work.date, work.location].filter(Boolean).join(' — ');
         return `<div class="fam-result-item">
           <img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" />
-          <span class="fam-result-caption"><strong>${formatArtistDisplayName(work)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
+          <span class="fam-result-caption"><strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}</span>
         </div>`;
       }).join('')}</div>`;
   }
@@ -2995,7 +3036,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
     famAudioOn = getGlobalPrefs().audioOn;
     famSelectedVoiceRef = getGlobalVoice();
     const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
-    const count = Number(countChoice);
+    const count = countChoice === 'max' ? 40 : Number(countChoice);
     const imgCountChoice = Number(document.querySelector('input[name="fam-images"]:checked').value);
     // La moitié des images ont le point commun (règle simple, quel que soit le nombre choisi).
     const familySize = imgCountChoice / 2;
@@ -3106,7 +3147,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
 
   const captionOf = (work) => {
     const meta = [work.date, work.location].filter(Boolean).join(' — ');
-    return `<strong>${formatArtistDisplayName(work)}</strong><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}`;
+    return `<strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${escapeHtml(meta)}`;
   };
   const cellHtml = (work, revealed) => `<div class="fam-result-item${revealed ? '' : ' fam-result-pending'}">
       ${revealed ? `<img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" /><span class="fam-result-caption">${captionOf(work)}</span>` : ''}

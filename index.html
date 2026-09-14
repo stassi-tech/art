@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=122" />
+    <link rel="stylesheet" href="style.css?v=124" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -34,6 +34,10 @@
       </div>
       <div class="topbar-zone topbar-zone-right" id="topbar-score"></div>
       <div class="hamburger-menu hidden" id="hamburger-menu">
+        <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-fullscreen">⛶ Plein écran</button>
+        <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-ambiance">🎨 Changer l'ambiance</button>
+        <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-exhibition">🖼️ Salle d'exposition</button>
+        <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-account">👤 Mon compte</button>
         <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Comment fonctionne l'application</button>
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 Liste des artistes et des œuvres</button>
         <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
@@ -536,6 +540,8 @@
               <p class="config-table-col-title">Nb de questions</p>
               <label class="rubrique-option"><input type="radio" name="fam-count" value="5" checked /><span>5 questions</span></label>
               <label class="rubrique-option"><input type="radio" name="fam-count" value="10" /><span>10 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="fam-count" value="20" /><span>20 questions</span></label>
+              <label class="rubrique-option"><input type="radio" name="fam-count" value="max" /><span>Maximum disponible</span></label>
             </div>
           </div>
           <button type="button" class="secondary-button" id="fam-validate-choice-button" style="width:100%;margin-top:8px;">Valider mon choix pour ce jeu →</button>
@@ -927,6 +933,7 @@
           <img id="lightbox-image" alt="" />
           <p id="lightbox-caption" class="lightbox-caption"></p>
           <div id="lightbox-scale-view" class="hidden">
+            <div id="scale-floor" aria-hidden="true"></div>
             <svg id="scale-silhouette" viewBox="0 0 100 340" aria-hidden="true">
               <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
             </svg>
@@ -1105,6 +1112,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=133"></script>
+    <script src="app.js?v=135"></script>
   </body>
 </html>
