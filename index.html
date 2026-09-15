@@ -1060,9 +1060,9 @@
           <div class="training-exercise-grid" id="profile-menu-grid" style="margin-bottom:24px;">
             <button type="button" class="home-mode-button profile-menu-btn" id="profile-menu-tech" data-target="profile-section-tech">Mes paramètres techniques</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-esthetique" data-target="profile-section-esthetique">Esthétique</button>
+            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-rubriques" data-target="profile-section-rubriques">Mes choix de rubrique et de niveau</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-fields" data-target="profile-section-fields">Mes choix de champ</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-artists" data-target="profile-section-artists">Mes choix d'artiste</button>
-            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-rubriques" data-target="profile-section-rubriques">Mes choix de rubrique et de niveau</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-scores" data-target="profile-section-scores">Mes scores</button>
           </div>
 
@@ -1129,7 +1129,7 @@
           </div>
 
           <div id="profile-section-artists" class="hidden">
-            <p class="modal-hint" id="pf-artists-explanation" style="margin-top:0;">Pour restreindre encore votre sélection à un ou plusieurs artistes précis (à la place d'un champ entier). La liste proposée ne montre que les artistes déjà compatibles avec vos « Choix de champ » — impossible donc de choisir ici un artiste qui contredirait ce que vous avez coché avant.</p>
+            <p class="modal-hint" id="pf-artists-explanation" style="margin-top:0;">Pour restreindre encore votre sélection à un ou plusieurs artistes précis. Rien coché ici = tous les artistes compatibles avec vos choix précédents (niveau, champ) restent possibles. La liste proposée ne montre que les artistes déjà compatibles avec votre niveau et votre champ — impossible donc de choisir ici un artiste qui les contredirait.</p>
             <div id="pf-artist-inputs">
               <input type="text" class="pf-artist-input" placeholder="Ex. Jean Fouquet" autocapitalize="words" list="pf-artist-suggestions" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;" />
             </div>
@@ -1193,6 +1193,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=158"></script>
+    <script src="app.js?v=159"></script>
   </body>
 </html>

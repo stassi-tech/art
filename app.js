@@ -673,13 +673,26 @@ async function revalidateArtistChoice() {
   if (!names.length) { feedback.textContent = ''; return; }
   const ok = await loadArtistListIfNeeded();
   if (!ok) return;
-  const incompatible = names.filter((name) => {
+  const levels = readGlobalRubriqueDefaults().levels || [];
+  const incompatibleField = [];
+  const incompatibleLevel = [];
+  for (const name of names) {
     const row = findArtistRow(name);
-    return row && !artistMatchesCurrentField(row);
-  });
-  feedback.textContent = incompatible.length
-    ? `Incompatible avec le champ choisi ci-dessus : ${incompatible.join(', ')}.`
-    : '';
+    if (!row) continue;
+    if (!artistMatchesCurrentField(row)) { incompatibleField.push(name); continue; }
+    // Le niveau de célébrité n'est pas une colonne du fichier maître des artistes — il se lit sur
+    // leurs œuvres elles-mêmes (colonne Niveau des fichiers quiz). On ne vérifie ceci que pour un
+    // artiste tapé explicitement (pas sur toute la liste de suggestions, trop coûteux à vérifier
+    // pour des centaines de noms à chaque frappe).
+    if (levels.length) {
+      const works = await fetchWorksForArtistRow(row);
+      if (works.length && !works.some((w) => levels.includes(String(w.niveau || 1)))) incompatibleLevel.push(name);
+    }
+  }
+  const messages = [];
+  if (incompatibleField.length) messages.push(`Incompatible avec le champ choisi : ${incompatibleField.join(', ')}.`);
+  if (incompatibleLevel.length) messages.push(`Incompatible avec le niveau choisi : ${incompatibleLevel.join(', ')}.`);
+  feedback.textContent = messages.join(' ');
 }
 function handleArtistFieldChange() {
   saveArtistChoiceGeneral();
@@ -715,6 +728,9 @@ function saveRubriqueChoiceGeneral() {
   if (count === 'custom') count = $('pf-count-custom').value?.trim() || '';
   localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, count, remember: true }));
   updateExerciseSummaries();
+  // Le niveau vient éventuellement de changer : un artiste déjà choisi peut être devenu
+  // incompatible (ses œuvres ne correspondent plus au niveau sélectionné).
+  revalidateArtistChoice();
 }
 document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => {
   el.addEventListener('change', saveRubriqueChoiceGeneral);
