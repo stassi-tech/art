@@ -3990,13 +3990,18 @@ const BG_MOSAIC_FILES = [
   'Aubrey Beardsley - The Climax.jpg',
   'Michelangelos David.jpg',
   'Venus de Milo Louvre.jpg',
+  'Sandro Botticelli - La nascita di Venere - Google Art Project.jpg',
 ];
 function initBackgroundMosaic() {
   const container = $('bg-mosaic');
   if (!container) return;
   container.innerHTML = BG_MOSAIC_FILES.map((filename) => {
     const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
-    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" draggable="false" /></div>`;
+    // Filet de sécurité : si un nom de fichier s'avère incorrect côté Wikimedia, la case reste
+    // vide plutôt que de planter — on bascule alors sur une image de repli déjà éprouvée, pour
+    // ne jamais laisser une case neutre dans les 15.
+    const fallback = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent('Michelangelos David.jpg')}?width=400`;
+    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" draggable="false" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='${fallback}';}" /></div>`;
   }).join('');
   wireBgMosaicTiles();
 }

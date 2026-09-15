@@ -40,8 +40,8 @@ body[data-ambiance="pitti"] .home-mode-button .label { color:#3a2c10; }
 
 /* ---- Bauhaus ---- réf. MoMA, New York */
 body[data-ambiance="bauhaus"] { --accent:#1c4fa0; --accent-dark:#14356e; --cta:#2b2b28; --cta-dark:#1a1a18; }
-body[data-ambiance="bauhaus"] .bg-tile:nth-child(odd)::before { background:#3d3d3f; }
-body[data-ambiance="bauhaus"] .bg-tile:nth-child(even)::before { background:#c8c8c8; }
+body[data-ambiance="bauhaus"] .bg-tile:nth-child(odd)::before { background:#5a5a5c; }
+body[data-ambiance="bauhaus"] .bg-tile:nth-child(even)::before { background:#e0e0e0; }
 body[data-ambiance="bauhaus"].in-exercise { --ink:#f4f1ea; --paper:#3d3d3f; --canvas:#333335; --border:#5a5a5c; }
 body[data-ambiance="bauhaus"].in-exercise { background:#333335; }
 body[data-ambiance="bauhaus"].in-exercise .app-shell {
@@ -129,11 +129,11 @@ body[data-ambiance="renaissance"] .primary-button, body[data-ambiance="renaissan
 body[data-ambiance="renaissance"] .home-mode-button .label { color:#3a2410; }
 /* Gothique international — or et bleu lapis-lazuli, dans l'esprit des enluminures et retables du
    14e siècle (fond très outremer, rehauts d'or). */
-body[data-ambiance="gothique"] { --accent:#d4af37; --accent-dark:#8a6a1e; --cta:#1a2f5c; --cta-dark:#101d3c; }
+body[data-ambiance="gothique"] { --accent:#d4af37; --accent-dark:#8a6a1e; --cta:#1830c4; --cta-dark:#0f1e80; }
 body[data-ambiance="gothique"] .bg-tile:nth-child(odd)::before { background:#d4af37; }
-body[data-ambiance="gothique"] .bg-tile:nth-child(even)::before { background:#1c3f9e; }
-body[data-ambiance="gothique"].in-exercise { --ink:#f2ecd8; --paper:#152850; --canvas:#101d3c; --border:#2c4578; }
-body[data-ambiance="gothique"].in-exercise { background:#101d3c; }
+body[data-ambiance="gothique"] .bg-tile:nth-child(even)::before { background:#1830c4; }
+body[data-ambiance="gothique"].in-exercise { --ink:#f2ecd8; --paper:#1830a0; --canvas:#101d70; --border:#2c4a9c; }
+body[data-ambiance="gothique"].in-exercise { background:#101d70; }
 body[data-ambiance="gothique"].in-exercise .app-shell {
   background:#101d3c;
   background-image:repeating-linear-gradient(60deg, #ffffff06 0 2px, transparent 2px 34px), repeating-linear-gradient(-60deg, #ffd70008 0 1px, transparent 1px 50px);
@@ -627,7 +627,7 @@ body[data-ambiance="versailles"] .image-lightbox:has(#lightbox-scale-view:not(.h
 body[data-ambiance="wedgwood"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#a8c0d4; }
 body[data-ambiance="ermitage"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#0a2745; }
 body[data-ambiance="renaissance"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#7a3820; }
-body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#101d3c; }
+body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#101d70; }
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-caption,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-image,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-source-link { display:none; }
@@ -667,7 +667,7 @@ body[data-ambiance="versailles"] #scale-overview-trapezoid { background-color:#5
 body[data-ambiance="wedgwood"] #scale-overview-trapezoid { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
 body[data-ambiance="ermitage"] #scale-overview-trapezoid { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
 body[data-ambiance="renaissance"] #scale-overview-trapezoid { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
-body[data-ambiance="gothique"] #scale-overview-trapezoid { background-color:#101d3c; background-image:url('assets/salle-gothique-mur.jpg'); }
+body[data-ambiance="gothique"] #scale-overview-trapezoid { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
 body:not([data-ambiance]) #scale-overview-trapezoid { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
 #scale-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
