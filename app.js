@@ -2248,7 +2248,7 @@ function isNearBottomCorner(clientX, clientY) {
 }
 makeSilhouetteDraggable($('scale-overview-silhouette'), {
   onDragEnd: (dx, dy, endX, endY) => {
-    if (isNearBottomCorner(endX, endY)) { exitScaleView(); return; }
+    if (isNearBottomCorner(endX, endY)) { exitScaleViewCompletely(); return; }
     // Tirer vers le haut (vers le fond de la salle) fait avancer vers le mur rapproché.
     if (dy < -40) enterCloserPlan();
   },
@@ -2265,7 +2265,7 @@ makeSilhouetteDraggable($('scale-silhouette'), {
     // valeur — bug réel repéré : la silhouette s'inclinait mais le mur ne bougeait plus du tout
     // après un premier aller-retour.
     delete $('scale-wall').dataset.dragStartScroll;
-    if (isNearBottomCorner(endX, endY)) { exitScaleView(); return; }
+    if (isNearBottomCorner(endX, endY)) { exitScaleViewCompletely(); return; }
     // Seuil plus élevé, et le geste doit être franchement vertical (pas un déplacement latéral
     // avec un peu de tremblement) — trop sensible avant, un retour brutal au plan général pouvait
     // se déclencher par erreur en voulant simplement se déplacer le long du mur.
@@ -2277,6 +2277,15 @@ function exitScaleView() {
   $('lightbox-scale-back-button').classList.add('hidden');
   $('scale-focus-view').classList.add('hidden');
   $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
+}
+// Sortie complète de la salle (geste du coin) : referme toute la visionneuse, pas seulement la
+// vue à l'échelle — sinon l'image normale restait affichée en dessous (celle de la première
+// œuvre, ex. « Charles VII »), obligeant à appuyer une seconde fois sur la croix pour vraiment
+// sortir. Bug réel repéré.
+function exitScaleViewCompletely() {
+  exitScaleView();
+  $('image-lightbox').classList.add('hidden');
+  currentLightboxWork = null;
 }
 $('lightbox-scale-toggle-topbar')?.addEventListener('click', enterScaleView);
 $('lightbox-scale-back-button')?.addEventListener('click', exitScaleView);
@@ -2708,6 +2717,9 @@ $('exhibition-add-artist-button')?.addEventListener('click', () => {
 });
 $('exhibition-resume-button')?.addEventListener('click', () => {
   $('exhibition-picker').classList.add('hidden');
+  // La visionneuse elle-même doit être rouverte : si on avait quitté la salle par le coin, elle
+  // avait été entièrement refermée (voir exitScaleViewCompletely), sinon rien ne s'affichait.
+  $('image-lightbox').classList.remove('hidden');
   enterScaleView();
 });
 $('exhibition-change-button')?.addEventListener('click', () => {
@@ -2715,11 +2727,24 @@ $('exhibition-change-button')?.addEventListener('click', () => {
   $('exhibition-picker-form').classList.remove('hidden');
   $('exhibition-picker').querySelector('.exhibition-artist-field')?.focus();
 });
+// Libellé compact des artistes en cours d'exposition, sur le bouton salle lui-même — même
+// principe que sur les boutons de jeux, pour qu'on sache d'un coup d'œil ce qui est chargé.
+function updateExhibitionButtonLabel() {
+  const label = $('exhibition-button-label');
+  if (!label) return;
+  let artists = [];
+  try { artists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
+  if (!artists.length) { label.textContent = ''; return; }
+  const shown = artists.slice(0, 2).join('/');
+  label.textContent = artists.length > 2 ? `${shown} +${artists.length - 2}` : shown;
+}
+updateExhibitionButtonLabel();
 $('exhibition-launch-button')?.addEventListener('click', async () => {
   const feedback = $('exhibition-feedback');
   const names = [...document.querySelectorAll('.exhibition-artist-field')].map((f) => f.value.trim()).filter(Boolean);
   if (!names.length) { feedback.textContent = 'Indique au moins un nom d’artiste.'; return; }
   localStorage.setItem('lastExhibitionArtists', JSON.stringify(names));
+  updateExhibitionButtonLabel();
   feedback.style.color = 'var(--muted)';
   feedback.textContent = 'Recherche en cours…';
   const ok = await loadArtistListIfNeeded();
