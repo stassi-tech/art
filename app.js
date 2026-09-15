@@ -2567,10 +2567,14 @@ $('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerM
 $('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
 // Sur petit écran, ces 4 boutons disparaissent du bandeau (faute de place) — ces entrées
 // déclenchent le même bouton d'origine plutôt que de dupliquer sa logique.
-$('menu-item-fullscreen')?.addEventListener('click', () => { closeHamburgerMenu(); $('global-fullscreen-button')?.click(); });
-$('menu-item-ambiance')?.addEventListener('click', () => { closeHamburgerMenu(); $('global-ambiance-button')?.click(); });
-$('menu-item-exhibition')?.addEventListener('click', () => { closeHamburgerMenu(); $('global-exhibition-button')?.click(); });
-$('menu-item-account')?.addEventListener('click', () => { closeHamburgerMenu(); $('global-account-button')?.click(); });
+// event.stopPropagation() est nécessaire ici : sans lui, le clic d'origine continue de remonter
+// jusqu'au document APRÈS avoir déclenché le bouton visé, et se fait alors interpréter comme un
+// « clic à l'extérieur » qui referme aussitôt le panneau qu'on vient d'ouvrir (repéré sur le
+// bouton Salle d'exposition, resté inactif sur mobile pour cette raison).
+$('menu-item-fullscreen')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-fullscreen-button')?.click(); });
+$('menu-item-ambiance')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-ambiance-button')?.click(); });
+$('menu-item-exhibition')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-exhibition-button')?.click(); });
+$('menu-item-account')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-account-button')?.click(); });
 $('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
 $('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
 
