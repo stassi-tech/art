@@ -452,15 +452,19 @@ function initProfilePage() {
   document.querySelectorAll('.pf-field-art').forEach((el) => { el.checked = (fieldDefaults.arts || []).includes(el.value); });
   document.querySelectorAll('.pf-field-century').forEach((el) => { el.checked = (fieldDefaults.centuries || []).includes(el.value); });
   document.querySelectorAll('.pf-field-zone').forEach((el) => { el.checked = (fieldDefaults.zones || []).includes(el.value); });
-  if ((fieldDefaults.artists || []).length && $('pf-field-artist-inputs')) {
-    const wrap = $('pf-field-artist-inputs');
+  let artistDefaults = {};
+  try { artistDefaults = JSON.parse(localStorage.getItem('globalArtistDefaults') || '{}'); } catch (e) {}
+  if ((artistDefaults.artists || []).length && $('pf-artist-inputs')) {
+    const wrap = $('pf-artist-inputs');
     wrap.innerHTML = '';
-    fieldDefaults.artists.forEach((name) => {
+    artistDefaults.artists.forEach((name) => {
       const field = document.createElement('input');
       field.type = 'text';
-      field.className = 'pf-field-artist-input';
+      field.className = 'pf-artist-input';
       field.placeholder = 'Ex. Jean Fouquet';
       field.value = name;
+      field.autocapitalize = 'words';
+      field.setAttribute('list', 'pf-artist-suggestions');
       field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
       field.addEventListener('change', handleArtistFieldChange);
       wrap.appendChild(field);
@@ -604,51 +608,104 @@ function saveFieldChoiceGeneral() {
   const arts = [...document.querySelectorAll('.pf-field-art:checked')].map((el) => el.value);
   const centuries = [...document.querySelectorAll('.pf-field-century:checked')].map((el) => el.value);
   const zones = [...document.querySelectorAll('.pf-field-zone:checked')].map((el) => el.value);
-  const artists = [...document.querySelectorAll('.pf-field-artist-input')].map((el) => el.value.trim()).filter(Boolean);
-  localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, artists, remember: true }));
+  localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember: true }));
   updateExerciseSummaries();
+  // Le champ vient de changer : la liste d'artistes compatibles change avec lui, et un artiste
+  // déjà choisi peut être devenu incompatible — on rafraîchit les suggestions et on revalide.
+  populateArtistSuggestions();
+  revalidateArtistChoice();
 }
 // Enregistrement automatique à chaque coche — comme les paramètres techniques juste au-dessus,
-// plutôt que d'exiger un clic sur « Appliquer » qu'on peut oublier. Le bouton reste disponible
-// pour ceux qui préfèrent un geste explicite, mais n'est plus nécessaire.
+// plutôt que d'exiger un clic sur « Appliquer » qu'on peut oublier.
 document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => {
-  el.addEventListener('change', () => {
-    // Choisir Art/Siècle/Zone efface le choix d'artiste(s) — les deux modes de sélection sont
-    // incompatibles, pas la peine de laisser les deux actifs en même temps.
-    if (el.checked) {
-      document.querySelectorAll('.pf-field-artist-input').forEach((f, i) => { if (i > 0) f.remove(); else f.value = ''; });
-    }
-    saveFieldChoiceGeneral();
-  });
-});
-function handleArtistFieldChange() {
-  const anyArtist = [...document.querySelectorAll('.pf-field-artist-input')].some((f) => f.value.trim());
-  // Réciproquement, choisir un artiste efface Art/Siècle/Zone — pour éviter toute contradiction
-  // entre « ce peintre précis » et « tous les peintres du 17e siècle », par exemple.
-  if (anyArtist) {
-    document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => { el.checked = false; });
-  }
-  saveFieldChoiceGeneral();
-}
-document.querySelectorAll('.pf-field-artist-input').forEach((el) => el.addEventListener('change', handleArtistFieldChange));
-$('pf-field-artist-add')?.addEventListener('click', () => {
-  const wrap = $('pf-field-artist-inputs');
-  const field = document.createElement('input');
-  field.type = 'text';
-  field.className = 'pf-field-artist-input';
-  field.placeholder = 'Ex. Le Bernin';
-  field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
-  field.addEventListener('change', handleArtistFieldChange);
-  wrap.appendChild(field);
-  field.focus();
+  el.addEventListener('change', saveFieldChoiceGeneral);
 });
 $('pf-fields-apply')?.addEventListener('click', saveFieldChoiceGeneral);
 $('pf-fields-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalFieldDefaults');
   document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => { el.checked = false; });
-  document.querySelectorAll('.pf-field-artist-input').forEach((f, i) => { if (i > 0) f.remove(); else f.value = ''; });
+  updateExerciseSummaries();
+  populateArtistSuggestions();
+  revalidateArtistChoice();
+});
+
+// --- Choix d'artiste(s) : section séparée, qui affine le champ ci-dessus plutôt que de le
+// remplacer — la liste proposée (et la validation) tient toujours compte du champ courant, pour
+// qu'il soit impossible de choisir ici un artiste qui le contredirait. ---
+function currentArtistNames() {
+  return [...document.querySelectorAll('.pf-artist-input')].map((el) => el.value.trim()).filter(Boolean);
+}
+// Un artiste est éligible s'il correspond à l'art/siècle/zone actuellement cochés — un champ vide
+// pour une dimension donnée ne restreint rien sur cette dimension (comportement identique à
+// celui des exercices eux-mêmes : rien coché = tout accepté).
+function artistMatchesCurrentField(row) {
+  const fields = readGlobalFieldDefaults();
+  const rowArts = String(row['Art(s)'] || '').split(',').map((s) => s.trim().toLocaleLowerCase('fr-FR'));
+  const rowCenturies = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim());
+  if (fields.arts?.length && !rowArts.some((a) => fields.arts.includes(a))) return false;
+  if (fields.centuries?.length && !rowCenturies.some((c) => fields.centuries.includes(c))) return false;
+  if (fields.zones?.length) {
+    const z = zoneOfNationality(row['Nationalité']);
+    if (z && !fields.zones.includes(z)) return false;
+  }
+  return true;
+}
+async function populateArtistSuggestions() {
+  const datalist = $('pf-artist-suggestions');
+  if (!datalist) return;
+  const ok = await loadArtistListIfNeeded();
+  if (!ok) return;
+  const matching = artistListRows.filter(artistMatchesCurrentField);
+  datalist.innerHTML = matching.slice(0, 300).map((r) => {
+    const name = [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim();
+    return `<option value="${escapeHtml(name)}"></option>`;
+  }).join('');
+}
+async function saveArtistChoiceGeneral() {
+  const names = currentArtistNames();
+  localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: names, remember: true }));
+  updateExerciseSummaries();
+}
+async function revalidateArtistChoice() {
+  const feedback = $('pf-artists-feedback');
+  if (!feedback) return;
+  const names = currentArtistNames();
+  if (!names.length) { feedback.textContent = ''; return; }
+  const ok = await loadArtistListIfNeeded();
+  if (!ok) return;
+  const incompatible = names.filter((name) => {
+    const row = findArtistRow(name);
+    return row && !artistMatchesCurrentField(row);
+  });
+  feedback.textContent = incompatible.length
+    ? `Incompatible avec le champ choisi ci-dessus : ${incompatible.join(', ')}.`
+    : '';
+}
+function handleArtistFieldChange() {
+  saveArtistChoiceGeneral();
+  revalidateArtistChoice();
+}
+document.querySelectorAll('.pf-artist-input').forEach((el) => el.addEventListener('change', handleArtistFieldChange));
+$('pf-artist-add')?.addEventListener('click', () => {
+  const wrap = $('pf-artist-inputs');
+  const field = document.createElement('input');
+  field.type = 'text';
+  field.className = 'pf-artist-input';
+  field.placeholder = 'Ex. Le Bernin';
+  field.autocapitalize = 'words';
+  field.setAttribute('list', 'pf-artist-suggestions');
+  field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
+  field.addEventListener('change', handleArtistFieldChange);
+  wrap.appendChild(field);
+  field.focus();
+});
+$('pf-artists-clear')?.addEventListener('click', () => {
+  localStorage.removeItem('globalArtistDefaults');
+  document.querySelectorAll('.pf-artist-input').forEach((f, i) => { if (i > 0) f.remove(); else f.value = ''; });
+  $('pf-artists-feedback').textContent = '';
   updateExerciseSummaries();
 });
+$('profile-menu-artists')?.addEventListener('click', populateArtistSuggestions);
 // --- Choix de rubrique et de niveau : idem, sur ce qui est testé et le niveau. Enregistrement
 // automatique à chaque coche, comme ci-dessus. ---
 function saveRubriqueChoiceGeneral() {
@@ -901,11 +958,10 @@ function applyDefaultAdvance(checkboxId, delayId, delayRowId) {
 // Étiquette de champ courte (ex. « Peint/15e ») affichée dans le bandeau, à côté du nom de
 // l'exercice — calculée une fois au démarrage de la session à partir des arts/siècles choisis.
 function buildFieldLabel(arts, centuries) {
-  // Priorité aux artistes précis choisis dans « Mes choix de champ » : chaque appelant remplace
-  // déjà un art/siècle vide par la liste complète par défaut AVANT d'appeler cette fonction (pour
-  // que le jeu porte sur toute la base), donc vérifier "arts vide" ici ne peut jamais suffire —
-  // bug réel repéré : le bandeau affichait "Peint/15e" au lieu des noms d'artistes choisis.
-  const artists = readGlobalFieldDefaults().artists || [];
+  // Le choix d'artiste(s) est maintenant une section séparée qui affine le champ plutôt que de le
+  // remplacer — dans ce bandeau compact, on privilégie l'affichage des noms d'artistes quand ils
+  // sont choisis (plus parlant), sinon le résumé art/siècle habituel.
+  const artists = readGlobalArtistDefaults().artists || [];
   if (artists.length) {
     const shown = artists.slice(0, 2).join(', ');
     return artists.length > 2 ? `${shown} +${artists.length - 2}` : shown;
@@ -3366,7 +3422,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
   saveLastSelection('famille-setup-panel');
   // Famille a besoin d'œuvres « intruses » d'autres artistes pour que le jeu ait un sens —
   // impossible à construire avec un seul artiste choisi (tout serait alors « famille »).
-  const globalArtistsFam = (readGlobalFieldDefaults().artists || []);
+  const globalArtistsFam = (readGlobalArtistDefaults().artists || []);
   if (globalArtistsFam.length === 1) {
     $('fam-setup-feedback').classList.remove('hidden');
     $('fam-setup-feedback').textContent = "Famille a besoin d'au moins 2 artistes choisis (pour proposer des œuvres intruses d'un autre artiste) — ajoute-en un second dans Mes choix de champ, ou choisis un art/siècle/zone à la place.";
@@ -3413,7 +3469,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
     // (la moitié des images vient forcément de l'autre artiste, faute d'un 3e) — sur une grille de
     // 4 images, ça donne 2 paires très reconnaissables d'un coup d'œil. On passe alors à 6 images
     // pour que ce soit un peu moins immédiat, même si le partage reste 50/50 dans ce cas précis.
-    const globalArtistsCount = (readGlobalFieldDefaults().artists || []).length;
+    const globalArtistsCount = (readGlobalArtistDefaults().artists || []).length;
     if (globalArtistsCount === 2 && imgCountChoice < 6) imgCountChoice = 6;
     // La moitié des images ont le point commun (règle simple, quel que soit le nombre choisi).
     const familySize = imgCountChoice / 2;
@@ -3659,7 +3715,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
   saveLastSelection('vraifaux-setup-panel');
   // Vrai/Faux a besoin de proposer une fausse attribution crédible — impossible à construire
   // avec un seul artiste choisi (il n'y aurait personne d'autre à qui l'attribuer par erreur).
-  const globalArtists = (readGlobalFieldDefaults().artists || []);
+  const globalArtists = (readGlobalArtistDefaults().artists || []);
   if (globalArtists.length === 1) {
     $('vf-setup-feedback').classList.remove('hidden');
     $('vf-setup-feedback').textContent = "Vrai/Faux a besoin d'au moins 2 artistes choisis (pour proposer une fausse attribution) — ajoute-en un second dans Mes choix de champ, ou choisis un art/siècle/zone à la place.";
@@ -4292,6 +4348,9 @@ const EXERCISE_INFO = {
 function readGlobalFieldDefaults() {
   try { return JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) { return {}; }
 }
+function readGlobalArtistDefaults() {
+  try { return JSON.parse(localStorage.getItem('globalArtistDefaults') || '{}'); } catch (e) { return {}; }
+}
 // Quand un ou plusieurs artistes précis sont choisis dans « Mes choix de champ » (plutôt qu'un
 // choix d'art/siècle/zone), le réservoir de questions doit se limiter à leurs œuvres — appliqué
 // après la récupération habituelle par art/siècle, qui aura alors tout ramené faute de filtre.
@@ -4300,7 +4359,7 @@ function readGlobalFieldDefaults() {
 // l'ensemble de leurs œuvres tous niveaux confondus plutôt que de ne rien pouvoir lancer — bug
 // réel repéré : le jeu refusait de démarrer sans que la cause (niveau incompatible) soit claire.
 function filterPoolByGlobalArtists(pool, fallbackPool) {
-  const artists = (readGlobalFieldDefaults().artists || []).map((n) => keyName(n)).filter(Boolean);
+  const artists = (readGlobalArtistDefaults().artists || []).map((n) => keyName(n)).filter(Boolean);
   if (!artists.length) return pool;
   const matches = (r) => artists.some((a) => keyName(r.artist).includes(a) || a.includes(keyName(r.artist)));
   const filtered = pool.filter(matches);
@@ -4328,20 +4387,24 @@ function buildExerciseSummary(prefix) {
     return `▶ ${artLabel}${ownCenturies.join('+')}`;
   }
   const gf = readGlobalFieldDefaults();
+  const ga = readGlobalArtistDefaults();
   const gr = readGlobalRubriqueDefaults();
-  const hasGlobalField = gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length || gf.artists?.length);
+  const hasGlobalField = gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length);
+  const hasGlobalArtists = ga.remember && ga.artists?.length;
   const hasGlobalRubrique = gr.remember && (gr.rubriques?.length || gr.levels?.length);
-  if (hasGlobalField || hasGlobalRubrique) {
-    // Un ou plusieurs artistes précis choisis (à la place d'art/siècle/zone) : on les affiche par
-    // leur nom plutôt que par art/siècle, qui seraient vides dans ce cas — bien plus parlant pour
-    // se rappeler quelle sélection est active sans avoir à rouvrir Mon compte.
-    if (gf.artists?.length) {
-      const shown = gf.artists.slice(0, 2).join(', ');
-      const extra = gf.artists.length > 2 ? ` +${gf.artists.length - 2}` : '';
-      return `🌐 ${shown}${extra}${gr.levels?.length ? ' N' + gr.levels.join('+') : ''}`;
-    }
+  if (hasGlobalField || hasGlobalArtists || hasGlobalRubrique) {
+    // Le choix d'artiste(s) affine le champ plutôt que de le remplacer — les deux s'affichent
+    // ensemble s'ils sont actifs tous les deux, pour qu'on voie bien qu'ils se combinent.
     const artLabel = (gf.arts || []).map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
-    return `🌐 ${artLabel}${(gf.centuries || []).join('+')}${gr.levels?.length ? ' N' + gr.levels.join('+') : ''}`;
+    const fieldPart = hasGlobalField ? `${artLabel}${(gf.centuries || []).join('+')}` : '';
+    let artistPart = '';
+    if (hasGlobalArtists) {
+      const shown = ga.artists.slice(0, 2).join(', ');
+      const extra = ga.artists.length > 2 ? ` +${ga.artists.length - 2}` : '';
+      artistPart = `${shown}${extra}`;
+    }
+    const levelPart = gr.levels?.length ? ' N' + gr.levels.join('+') : '';
+    return `🌐 ${[fieldPart, artistPart].filter(Boolean).join(' · ')}${levelPart}`;
   }
   return '';
 }
