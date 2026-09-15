@@ -1058,7 +1058,7 @@
           </div>
 
           <div class="training-exercise-grid" id="profile-menu-grid" style="margin-bottom:24px;">
-            <button type="button" class="home-mode-button profile-menu-btn" id="profile-menu-tech" data-target="profile-section-tech">Mes paramètres techniques</button>
+            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-tech" data-target="profile-section-tech">Mes paramètres techniques</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-esthetique" data-target="profile-section-esthetique">Esthétique</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-rubriques" data-target="profile-section-rubriques">Mes choix de rubrique et de niveau<br><span id="profile-menu-rubriques-badge" style="font-size:.75em;font-weight:400;"></span></button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-fields" data-target="profile-section-fields">Mes choix de champ<br><span id="profile-menu-fields-badge" style="font-size:.75em;font-weight:400;"></span></button>
@@ -1070,7 +1070,9 @@
             Valider mes paramètres et commencer les jeux →
           </button>
 
-          <div id="profile-section-tech">
+          <button type="button" id="pf-section-back-button" class="secondary-button hidden" style="width:100%;margin-bottom:16px;">← Retour à Mon compte</button>
+
+          <div id="profile-section-tech" class="hidden">
             <p class="modal-hint" id="pf-tech-explanation" style="margin-top:0;">Emplacement des boutons, touche Entrée, chronomètre — réglages purement techniques, sans rapport avec le contenu des exercices.</p>
             <label class="rubrique-option"><input type="checkbox" id="pf-show-timer" /><span>Afficher le chronomètre dans les exercices</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-enter-validate" /><span>Valider les réponses dans les jeux avec la touche Entrée</span></label>
@@ -1083,6 +1085,8 @@
             <div class="opt-row"><span>Emplacement des boutons :</span>
               <select id="pf-handedness"><option value="right">Droite (droitier)</option><option value="left">Gauche (gaucher)</option></select>
             </div>
+            <button type="button" class="secondary-button pf-clear-inline-button" style="width:100%;margin-top:8px;">Effacer la sélection</button>
+            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Revenir à Mon compte</button>
             <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-esthetique" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
           </div>
 
@@ -1097,6 +1101,8 @@
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="" checked /><span>Salon Renoir — touches impressionnistes, bronze et beige</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="bauhaus" /><span>Bauhaus — cercle, triangle, carré (réf. MoMA, New York)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="space" /><span>Space Age — orbite et chrome (réf. Guggenheim, New York)</span></label>
+            <button type="button" class="secondary-button pf-clear-inline-button" style="width:100%;margin-top:8px;">Effacer la sélection</button>
+            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Revenir à Mon compte</button>
             <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-rubriques" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
           </div>
 
@@ -1131,23 +1137,17 @@
               </div>
             </div>
             <button type="button" class="secondary-button" id="pf-fields-clear" style="width:100%;margin-top:8px;">Effacer le choix de champ</button>
+            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Revenir à Mon compte</button>
             <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-artists" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
             <div id="pf-fields-overrides" style="margin-top:14px;"></div>
           </div>
 
           <div id="profile-section-artists" class="hidden">
-            <p class="modal-hint" id="pf-artists-explanation" style="margin-top:0;">Pour restreindre encore votre sélection à un ou plusieurs artistes précis. Rien coché ici = tous les artistes compatibles avec vos choix précédents (niveau, champ) restent possibles. La liste ci-dessous ne montre que les artistes déjà compatibles avec votre niveau et votre champ — cliquez un nom pour l'ajouter, impossible donc de choisir ici un artiste qui les contredirait.</p>
-            <div id="pf-artist-inputs">
-              <input type="text" class="pf-artist-input" placeholder="Ex. Jean Fouquet" autocapitalize="words" list="pf-artist-suggestions" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;" />
-            </div>
-            <datalist id="pf-artist-suggestions"></datalist>
-            <button type="button" class="secondary-button" id="pf-artist-add" style="width:100%;margin-bottom:8px;font-size:.85rem;padding:6px;">+ Ajouter un autre artiste</button>
-            <p id="pf-artists-feedback" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--wrong);margin:0 0 8px;"></p>
+            <p id="pf-artist-list-status" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);margin:0 0 8px;"></p>
+            <div id="pf-artist-clickable-list" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px;margin-bottom:8px;"></div>
             <button type="button" class="secondary-button" id="pf-artists-clear" style="width:100%;margin-top:8px;">Effacer le choix d'artiste</button>
+            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Revenir à Mon compte</button>
             <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-scores" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
-            <p class="config-table-col-title" style="margin-top:16px;">Ou cliquez directement un nom dans la liste compatible :</p>
-            <p id="pf-artist-list-status" style="font-family:Arial,sans-serif;font-size:.8rem;color:var(--muted);margin:0 0 8px;"></p>
-            <div id="pf-artist-clickable-list" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px;"></div>
           </div>
 
           <div id="profile-section-rubriques" class="hidden">
@@ -1180,6 +1180,7 @@
               </div>
             </div>
             <button type="button" class="secondary-button" id="pf-rubriques-clear" style="width:100%;margin-top:8px;">Effacer ce choix</button>
+            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Revenir à Mon compte</button>
             <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-fields" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
             <div id="pf-rubriques-overrides" style="margin-top:14px;"></div>
           </div>
@@ -1204,6 +1205,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=161"></script>
+    <script src="app.js?v=164"></script>
   </body>
 </html>

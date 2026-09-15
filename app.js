@@ -395,14 +395,61 @@ async function deleteScore(docId) {
 }
 $('account-page-button')?.addEventListener('click', () => { showPanel('profile'); initProfilePage(); });
 $('profile-back-button')?.addEventListener('click', () => showPanel('welcome'));
-// --- Bascule entre les 2 sections restantes (technique/champs), et accès direct aux scores ---
+// --- Page « Mon compte » à deux niveaux : le tableau de bord (les 6 boutons + le bouton vert,
+// sans aucune case à cocher visible) et une page dédiée par choix (une seule section à la fois,
+// les 5 autres boutons disparaissent, un « ← Retour » permet de revenir au tableau de bord). ---
+function showProfileHub() {
+  $('profile-menu-grid').classList.remove('hidden');
+  $('pf-validate-button').classList.remove('hidden');
+  $('pf-section-back-button').classList.add('hidden');
+  document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.add('inactive'));
+  ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => {
+    $(id)?.classList.add('hidden');
+  });
+}
 document.querySelectorAll('.profile-menu-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (btn.id === 'profile-menu-scores') { showPanel('account'); loadAccountPage(); return; }
+    $('profile-menu-grid').classList.add('hidden');
+    $('pf-validate-button').classList.add('hidden');
+    $('pf-section-back-button').classList.remove('hidden');
     document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
     ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => {
       $(id)?.classList.toggle('hidden', id !== btn.dataset.target);
     });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+$('pf-section-back-button')?.addEventListener('click', () => { showProfileHub(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+document.querySelectorAll('.pf-back-to-menu-button').forEach((btn) => {
+  btn.addEventListener('click', () => { showProfileHub(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+});
+document.querySelectorAll('.pf-next-button').forEach((btn) => {
+  btn.addEventListener('click', () => { $(btn.dataset.next)?.click(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+});
+// « Effacer la sélection » pour Technique et Esthétique (les seules 2 pages sans bouton dédié
+// déjà existant) : remet les réglages à leur valeur par défaut, comme les autres pages le font
+// pour leur propre choix.
+document.querySelectorAll('.pf-clear-inline-button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const section = btn.closest('[id^="profile-section-"]');
+    if (section?.id === 'profile-section-tech') {
+      $('pf-show-timer').checked = false; setGlobalPref('showTimer', false);
+      $('pf-enter-validate').checked = false; setGlobalPref('enterValidate', false);
+      $('pf-show-explanations').checked = false; setGlobalPref('showExplanations', false);
+      $('pf-show-rules').checked = true; setGlobalPref('showRules', true);
+      $('pf-flags-artists').checked = true; setGlobalPref('flagsArtists', true);
+      $('pf-flags-locations').checked = true; setGlobalPref('flagsLocations', true);
+      $('pf-audio').checked = false; setGlobalPref('audioOn', false);
+      $('pf-handedness').value = 'right';
+      localStorage.setItem('handedness', 'righty');
+      applyHandedness(false);
+    } else if (section?.id === 'profile-section-esthetique') {
+      const defaultRadio = document.querySelector('input[name="pf-ambiance"][value=""]');
+      if (defaultRadio) defaultRadio.checked = true;
+      applyAmbiance('');
+      localStorage.removeItem('ambiance');
+    }
   });
 });
 
@@ -428,6 +475,7 @@ $('profile-photo-input')?.addEventListener('change', (event) => {
 
 // --- Réglages techniques (section 1), reliés aux mêmes préférences globales que l'icône ⚙ ---
 function initProfilePage() {
+  showProfileHub();
   loadProfilePhoto();
   $('profile-email').textContent = currentUser?.email || '';
   $('profile-resume-exercise-button')?.classList.toggle('hidden', !returnToExercisePanel);
@@ -452,24 +500,8 @@ function initProfilePage() {
   document.querySelectorAll('.pf-field-art').forEach((el) => { el.checked = (fieldDefaults.arts || []).includes(el.value); });
   document.querySelectorAll('.pf-field-century').forEach((el) => { el.checked = (fieldDefaults.centuries || []).includes(el.value); });
   document.querySelectorAll('.pf-field-zone').forEach((el) => { el.checked = (fieldDefaults.zones || []).includes(el.value); });
-  let artistDefaults = {};
-  try { artistDefaults = JSON.parse(localStorage.getItem('globalArtistDefaults') || '{}'); } catch (e) {}
-  if ((artistDefaults.artists || []).length && $('pf-artist-inputs')) {
-    const wrap = $('pf-artist-inputs');
-    wrap.innerHTML = '';
-    artistDefaults.artists.forEach((name) => {
-      const field = document.createElement('input');
-      field.type = 'text';
-      field.className = 'pf-artist-input';
-      field.placeholder = 'Ex. Jean Fouquet';
-      field.value = name;
-      field.autocapitalize = 'words';
-      field.setAttribute('list', 'pf-artist-suggestions');
-      field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
-      field.addEventListener('change', handleArtistFieldChange);
-      wrap.appendChild(field);
-    });
-  }
+  // Le choix d'artiste(s) est une simple liste cliquable (voir populateArtistSuggestions), rien à
+  // pré-remplir ici — elle se construit et se coche toute seule à l'ouverture de sa section.
   let rubriqueDefaults = {};
   try { rubriqueDefaults = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) {}
   document.querySelectorAll('.pf-rubrique-field').forEach((el) => { el.checked = (rubriqueDefaults.rubriques || []).includes(el.value); });
@@ -614,7 +646,6 @@ function saveFieldChoiceGeneral() {
   // Le champ vient de changer : la liste d'artistes compatibles change avec lui, et un artiste
   // déjà choisi peut être devenu incompatible — on rafraîchit les suggestions et on revalide.
   populateArtistSuggestions();
-  revalidateArtistChoice();
 }
 // Enregistrement automatique à chaque coche — comme les paramètres techniques juste au-dessus,
 // plutôt que d'exiger un clic sur « Appliquer » qu'on peut oublier.
@@ -628,15 +659,12 @@ $('pf-fields-clear')?.addEventListener('click', () => {
   updateExerciseSummaries();
   updateProfileMenuBadges();
   populateArtistSuggestions();
-  revalidateArtistChoice();
 });
 
-// --- Choix d'artiste(s) : section séparée, qui affine le champ ci-dessus plutôt que de le
-// remplacer — la liste proposée (et la validation) tient toujours compte du champ courant, pour
-// qu'il soit impossible de choisir ici un artiste qui le contredirait. ---
-function currentArtistNames() {
-  return [...document.querySelectorAll('.pf-artist-input')].map((el) => el.value.trim()).filter(Boolean);
-}
+// --- Choix d'artiste(s) : section séparée, qui affine le champ et le niveau ci-dessus plutôt que
+// de les remplacer — on clique un nom dans la liste pour le sélectionner/désélectionner, la liste
+// elle-même ne montrant que des artistes déjà compatibles (impossible donc de choisir ici un
+// artiste qui contredirait un choix précédent). ---
 // Un artiste est éligible s'il correspond à l'art/siècle/zone actuellement cochés — un champ vide
 // pour une dimension donnée ne restreint rien sur cette dimension (comportement identique à
 // celui des exercices eux-mêmes : rien coché = tout accepté).
@@ -653,112 +681,56 @@ function artistMatchesCurrentField(row) {
   return true;
 }
 async function populateArtistSuggestions() {
-  const datalist = $('pf-artist-suggestions');
   const list = $('pf-artist-clickable-list');
   const status = $('pf-artist-list-status');
-  if (!datalist && !list) return;
-  if (status) status.textContent = 'Chargement de la liste des artistes…';
+  if (!list) return;
+  status.textContent = 'Chargement de la liste des artistes…';
   const ok = await loadArtistListIfNeeded();
   if (!ok) {
-    if (status) status.textContent = "La liste des artistes n'a pas pu être chargée (connexion internet ?).";
-    if (list) list.innerHTML = '';
+    status.textContent = "La liste des artistes n'a pas pu être chargée (connexion internet ?).";
+    list.innerHTML = '';
     return;
   }
-  const matching = artistListRows.filter(artistMatchesCurrentField)
-    .map((r) => [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim())
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b, 'fr'));
-  if (datalist) datalist.innerHTML = matching.slice(0, 300).map((name) => `<option value="${escapeHtml(name)}"></option>`).join('');
-  if (list) {
-    list.innerHTML = matching.map((name) => `<button type="button" class="pf-artist-pick" style="display:block;width:100%;text-align:left;padding:6px 8px;border:0;background:none;cursor:pointer;font:inherit;border-radius:4px;">${escapeHtml(name)}</button>`).join('');
-    list.querySelectorAll('.pf-artist-pick').forEach((btn) => {
-      btn.addEventListener('mouseenter', () => { btn.style.background = '#f0ece0'; });
-      btn.addEventListener('mouseleave', () => { btn.style.background = 'none'; });
-      btn.addEventListener('click', () => addArtistToChoice(btn.textContent));
-    });
+  let matchingRows = artistListRows.filter(artistMatchesCurrentField);
+  // Le niveau de célébrité n'est pas une colonne du fichier maître des artistes — il se lit sur
+  // leurs œuvres elles-mêmes (colonne Niveau des fichiers quiz). On ne va vérifier ceci œuvre par
+  // œuvre que si la liste est déjà raisonnablement réduite par le champ (sinon, trop d'artistes à
+  // interroger un par un pour rester fluide) — sinon on affiche la liste filtrée par champ seule.
+  const levels = readGlobalRubriqueDefaults().levels || [];
+  if (levels.length && matchingRows.length <= 80) {
+    status.textContent = 'Vérification du niveau des artistes…';
+    const kept = [];
+    for (const row of matchingRows) {
+      const works = await fetchWorksForArtistRow(row);
+      if (!works.length || works.some((w) => levels.includes(String(w.niveau || 1)))) kept.push(row);
+    }
+    matchingRows = kept;
   }
-  if (status) status.textContent = `${matching.length} artiste${matching.length > 1 ? 's' : ''} compatible${matching.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels.`;
+  const names = matchingRows.map((r) => [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim())
+    .filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
+  const selected = (readGlobalArtistDefaults().artists || []);
+  list.innerHTML = names.map((name) => {
+    const isSel = selected.includes(name);
+    return `<button type="button" class="pf-artist-pick" data-name="${escapeHtml(name)}" style="display:block;width:100%;text-align:left;padding:7px 10px;border:0;cursor:pointer;font:inherit;border-radius:4px;margin-bottom:2px;background:${isSel ? 'var(--accent)' : 'none'};color:${isSel ? '#fff' : 'inherit'};font-weight:${isSel ? '700' : '400'};">${isSel ? '✓ ' : ''}${escapeHtml(name)}</button>`;
+  }).join('');
+  list.querySelectorAll('.pf-artist-pick').forEach((btn) => {
+    btn.addEventListener('click', () => toggleArtistSelection(btn.dataset.name));
+  });
+  status.textContent = `${names.length} artiste${names.length > 1 ? 's' : ''} compatible${names.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels.`;
 }
-// Ajoute un nom cliqué dans la liste : dans le premier champ vide s'il y en a un, sinon dans un
-// nouveau champ — pour que cliquer dans la liste fonctionne aussi simplement que taper à la main.
-function addArtistToChoice(name) {
-  const wrap = $('pf-artist-inputs');
-  const emptyField = [...wrap.querySelectorAll('.pf-artist-input')].find((f) => !f.value.trim());
-  if (emptyField) {
-    emptyField.value = name;
-  } else {
-    const field = document.createElement('input');
-    field.type = 'text';
-    field.className = 'pf-artist-input';
-    field.placeholder = 'Ex. Le Bernin';
-    field.autocapitalize = 'words';
-    field.setAttribute('list', 'pf-artist-suggestions');
-    field.value = name;
-    field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
-    field.addEventListener('change', handleArtistFieldChange);
-    wrap.appendChild(field);
-  }
-  saveArtistChoiceGeneral();
-  revalidateArtistChoice();
-}
-async function saveArtistChoiceGeneral() {
-  const names = currentArtistNames();
-  localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: names, remember: true }));
+function toggleArtistSelection(name) {
+  const current = readGlobalArtistDefaults().artists || [];
+  const next = current.includes(name) ? current.filter((n) => n !== name) : [...current, name];
+  localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: next, remember: true }));
   updateExerciseSummaries();
   updateProfileMenuBadges();
+  populateArtistSuggestions(); // rafraîchit la liste pour montrer la coche à jour
 }
-async function revalidateArtistChoice() {
-  const feedback = $('pf-artists-feedback');
-  if (!feedback) return;
-  const names = currentArtistNames();
-  if (!names.length) { feedback.textContent = ''; return; }
-  const ok = await loadArtistListIfNeeded();
-  if (!ok) return;
-  const levels = readGlobalRubriqueDefaults().levels || [];
-  const incompatibleField = [];
-  const incompatibleLevel = [];
-  for (const name of names) {
-    const row = findArtistRow(name);
-    if (!row) continue;
-    if (!artistMatchesCurrentField(row)) { incompatibleField.push(name); continue; }
-    // Le niveau de célébrité n'est pas une colonne du fichier maître des artistes — il se lit sur
-    // leurs œuvres elles-mêmes (colonne Niveau des fichiers quiz). On ne vérifie ceci que pour un
-    // artiste tapé explicitement (pas sur toute la liste de suggestions, trop coûteux à vérifier
-    // pour des centaines de noms à chaque frappe).
-    if (levels.length) {
-      const works = await fetchWorksForArtistRow(row);
-      if (works.length && !works.some((w) => levels.includes(String(w.niveau || 1)))) incompatibleLevel.push(name);
-    }
-  }
-  const messages = [];
-  if (incompatibleField.length) messages.push(`Incompatible avec le champ choisi : ${incompatibleField.join(', ')}.`);
-  if (incompatibleLevel.length) messages.push(`Incompatible avec le niveau choisi : ${incompatibleLevel.join(', ')}.`);
-  feedback.textContent = messages.join(' ');
-}
-function handleArtistFieldChange() {
-  saveArtistChoiceGeneral();
-  revalidateArtistChoice();
-}
-document.querySelectorAll('.pf-artist-input').forEach((el) => el.addEventListener('change', handleArtistFieldChange));
-$('pf-artist-add')?.addEventListener('click', () => {
-  const wrap = $('pf-artist-inputs');
-  const field = document.createElement('input');
-  field.type = 'text';
-  field.className = 'pf-artist-input';
-  field.placeholder = 'Ex. Le Bernin';
-  field.autocapitalize = 'words';
-  field.setAttribute('list', 'pf-artist-suggestions');
-  field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
-  field.addEventListener('change', handleArtistFieldChange);
-  wrap.appendChild(field);
-  field.focus();
-});
 $('pf-artists-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalArtistDefaults');
-  document.querySelectorAll('.pf-artist-input').forEach((f, i) => { if (i > 0) f.remove(); else f.value = ''; });
-  $('pf-artists-feedback').textContent = '';
   updateExerciseSummaries();
   updateProfileMenuBadges();
+  populateArtistSuggestions();
 });
 $('profile-menu-artists')?.addEventListener('click', populateArtistSuggestions);
 // « Aller au choix suivant » : simple raccourci qui clique le bouton de menu correspondant, pour
@@ -808,7 +780,7 @@ function saveRubriqueChoiceGeneral() {
   updateProfileMenuBadges();
   // Le niveau vient éventuellement de changer : un artiste déjà choisi peut être devenu
   // incompatible (ses œuvres ne correspondent plus au niveau sélectionné).
-  revalidateArtistChoice();
+  populateArtistSuggestions();
 }
 document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => {
   el.addEventListener('change', saveRubriqueChoiceGeneral);
