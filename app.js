@@ -201,6 +201,7 @@ async function fetchScoreLevelGroups() {
   return levelGroups;
 }
 async function loadAccountPage() {
+  renderSavedGuidedConfigsList();
   const groupsBox = $('account-page-groups');
   const emptyMsg = $('account-page-empty');
   const downloadButton = $('account-page-download-button');
@@ -429,10 +430,12 @@ function showProfileSection(btn) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 document.querySelectorAll('.profile-menu-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    if (btn.id === 'profile-menu-scores') { showPanel('account'); loadAccountPage(); return; }
-    showProfileSection(btn);
-  });
+  btn.addEventListener('click', () => { showProfileSection(btn); });
+});
+$('profile-menu-scores')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+$('profile-menu-saved-configs')?.addEventListener('click', () => {
+  showPanel('account'); loadAccountPage();
+  setTimeout(() => $('account-saved-configs-section')?.scrollIntoView({ behavior: 'smooth' }), 50);
 });
 $('pf-section-prev')?.addEventListener('click', () => {
   const idx = PROFILE_CONFIG_SEQUENCE.indexOf(document.querySelector('.profile-menu-btn:not(.inactive)')?.id);
@@ -3014,6 +3017,12 @@ $('menu-item-exhibition')?.addEventListener('click', (event) => { event.stopProp
 $('menu-item-account')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-account-button')?.click(); });
 $('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
 $('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
+// Bouton « page précédente » — utile seulement quand l'appli est installée comme application
+// (barre d'adresse du navigateur, avec son propre bouton retour, non visible dans ce mode) : on
+// s'appuie sur l'historique interne déjà tenu à jour par showPanel() à chaque navigation.
+const isStandaloneApp = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+if (isStandaloneApp) $('global-back-button')?.classList.remove('hidden');
+$('global-back-button')?.addEventListener('click', () => history.back());
 
 // ============================================================
 // MODULE RECONSTITUTION — un détail très resserré (< 10 % de la surface) sert d'indice ; 3
@@ -4507,29 +4516,35 @@ function updateExerciseSummaries() {
 }
 // Configurations enregistrées depuis le parcours guidé : affichées ici, là où le joueur revient
 // naturellement, pour répondre simplement à « où est-ce que je les retrouve ? ».
-function renderSavedGuidedConfigsList() {
-  const wrap = $('training-hub-saved-configs');
-  const list = $('training-hub-saved-configs-list');
+function loadSavedGuidedConfig(name, savedConfigs) {
+  const cfg = savedConfigs[name];
+  if (!cfg) return;
+  localStorage.setItem('globalFieldDefaults', JSON.stringify(cfg.field || {}));
+  localStorage.setItem('globalArtistDefaults', JSON.stringify(cfg.artists || {}));
+  localStorage.setItem('globalRubriqueDefaults', JSON.stringify(cfg.rubrique || {}));
+  if (cfg.allGames) localStorage.removeItem('globalGamesDefaults');
+  else localStorage.setItem('globalGamesDefaults', JSON.stringify({ games: cfg.games || [], remember: true }));
+  loadedGuidedConfigName = name;
+  showPanel('training-hub');
+  updateExerciseSummaries();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function renderSavedConfigsInto(wrapId, listId, saved) {
+  const wrap = $(wrapId);
+  const list = $(listId);
   if (!wrap || !list) return;
-  let saved = {};
-  try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
   const names = Object.keys(saved);
   wrap.classList.toggle('hidden', !names.length);
   list.innerHTML = names.map((name) => `<button type="button" class="secondary-button gc-load-config" data-name="${escapeHtml(name)}" style="padding:6px 12px;font-size:.85rem;">${escapeHtml(name)} →</button>`).join('');
   list.querySelectorAll('.gc-load-config').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const cfg = saved[btn.dataset.name];
-      if (!cfg) return;
-      localStorage.setItem('globalFieldDefaults', JSON.stringify(cfg.field || {}));
-      localStorage.setItem('globalArtistDefaults', JSON.stringify(cfg.artists || {}));
-      localStorage.setItem('globalRubriqueDefaults', JSON.stringify(cfg.rubrique || {}));
-      if (cfg.allGames) localStorage.removeItem('globalGamesDefaults');
-      else localStorage.setItem('globalGamesDefaults', JSON.stringify({ games: cfg.games || [], remember: true }));
-      loadedGuidedConfigName = btn.dataset.name;
-      updateExerciseSummaries();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    btn.addEventListener('click', () => loadSavedGuidedConfig(btn.dataset.name, saved));
   });
+}
+function renderSavedGuidedConfigsList() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
+  renderSavedConfigsInto('training-hub-saved-configs', 'training-hub-saved-configs-list', saved);
+  renderSavedConfigsInto('account-saved-configs-section', 'account-saved-configs-list', saved);
 }
 // Si le parcours guidé (ou une configuration enregistrée rechargée) a limité la partie à certains
 // jeux seulement, on ne montre que ceux-là sur la page d'accueil des exercices — pas la peine de
@@ -4550,6 +4565,9 @@ function applyGamesFilterToHub() {
       ? `Configuration chargée : ${loadedGuidedConfigName}.`
       : (games ? `${games.length} jeu${games.length > 1 ? 'x' : ''} sélectionné${games.length > 1 ? 's' : ''} pour cette partie.` : '');
   }
+  // Le long texte explicatif ne sert plus à rien une fois qu'on arrive ici avec une sélection
+  // déjà faite par le parcours guidé — il ne fait alors que répéter ce qui vient d'être choisi.
+  $('training-hub-intro-text')?.classList.toggle('hidden', !!games);
 }
 // Filet de sécurité : si le démarrage automatique est activé mais que la sélection réellement
 // appliquée est vide (réglage ancien ou incomplet resté en mémoire), on n'insiste pas — on
@@ -4697,6 +4715,15 @@ $('open-training')?.addEventListener('click', () => { showPanel('training-hub');
 // compte (Mes choix de champ / d'artiste / de rubrique et de niveau), donc tout le reste de
 // l'application (jeux, résumés) s'appuie dessus exactement pareil, sans code séparé à maintenir.
 function resetGuidedConfig() {
+  // Efface tout, y compris ce qui est déjà enregistré (pas seulement l'état visible des cases) —
+  // bug réel repéré : refaire le parcours une 2e fois sans choisir d'artiste laissait l'ancien
+  // choix (ex. Poussin) bien réel en mémoire, puisque « Non » démarre déjà coché et ne déclenche
+  // alors aucun événement de changement pour l'effacer. Le jeu se lançait ensuite sur une
+  // combinaison incohérente (nouveau champ + vieil artiste), d'où le blocage sans image.
+  localStorage.removeItem('globalFieldDefaults');
+  localStorage.removeItem('globalArtistDefaults');
+  localStorage.removeItem('globalRubriqueDefaults');
+  localStorage.removeItem('globalGamesDefaults');
   document.querySelectorAll('.gc-step').forEach((el, i) => el.classList.toggle('hidden', i !== 0));
   document.querySelectorAll('.gc-art, .gc-century, .gc-zone, .gc-level, .gc-rubrique').forEach((el) => { el.checked = false; });
   document.querySelector('input[name="gc-want-artists"][value="no"]').checked = true;
@@ -4811,14 +4838,25 @@ function buildGuidedSummary() {
   $('gc-summary-sentence').textContent = `Aujourd'hui nous allons jouer avec ${artsPart}${centPart}${zonePart}${levelPart}${artistsPart}, à travers des questionnaires de ${countLabel} questions chacun portant sur ${rubriquePart}, pour ${gamesPart}.`;
 }
 $('gc-start-button')?.addEventListener('click', () => {
+  let games;
   if (document.querySelector('input[name="gc-allgames"]:checked')?.value === 'no') {
-    const games = [...document.querySelectorAll('.gc-game:checked')].map((el) => el.value);
+    games = [...document.querySelectorAll('.gc-game:checked')].map((el) => el.value);
     localStorage.setItem('globalGamesDefaults', JSON.stringify({ games, remember: true }));
   } else {
     localStorage.removeItem('globalGamesDefaults');
+    games = [...document.querySelectorAll('#gc-step-games .gc-game')].map((el) => el.value); // ordre d'affichage
   }
-  showPanel('training-hub');
   updateExerciseSummaries();
+  // On ne repasse pas par la page d'accueil des exercices : on entre directement dans le premier
+  // jeu choisi (dans l'ordre où ils sont proposés), comme si le joueur venait de cliquer dessus.
+  const firstGame = games[0];
+  const openButtonId = GAME_TO_BUTTON_ID[firstGame];
+  if (openButtonId && $(openButtonId)) {
+    showPanel('training-hub'); // nécessaire pour que le clic simulé se comporte normalement
+    $(openButtonId).click();
+  } else {
+    showPanel('training-hub');
+  }
 });
 $('gc-save-button')?.addEventListener('click', () => {
   const name = $('gc-save-name').value.trim();

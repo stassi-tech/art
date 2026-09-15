@@ -25,6 +25,7 @@
       </div>
       <div class="topbar-zone topbar-zone-center">
         <span id="topbar-timer"></span>
+        <button type="button" id="global-back-button" class="global-topbar-button hidden" aria-label="Page précédente" title="Page précédente">←</button>
         <button type="button" id="global-home-button" class="global-topbar-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
         <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
         <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
@@ -199,7 +200,7 @@
           <p class="eyebrow home-eyebrow">Peinture et sculpture en Occident<br>14e au 20e siècle</p>
           <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
 
-          <p class="intro-banner">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique, sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pouvez le faire depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>), ou avec les boutons de chaque exercice (icône <span aria-hidden="true">✏️</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
+          <p class="intro-banner" id="training-hub-intro-text">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique, sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pouvez le faire depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>), ou avec les boutons de chaque exercice (icône <span aria-hidden="true">✏️</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
           <p id="training-hub-config-name" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--accent);font-weight:700;margin:-10px 0 14px;"></p>
           <div id="training-hub-saved-configs" class="hidden" style="margin:-6px 0 16px;">
             <p class="modal-hint" style="margin:0 0 6px;">Vos configurations enregistrées :</p>
@@ -1181,16 +1182,19 @@
 
           <div class="training-exercise-grid" id="profile-menu-grid" style="margin-bottom:24px;">
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-tech" data-target="profile-section-tech">Mes paramètres techniques</button>
-            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-esthetique" data-target="profile-section-esthetique">Esthétique</button>
+            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-esthetique" data-target="profile-section-esthetique">Personnalisation de l'interface</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-rubriques" data-target="profile-section-rubriques">Mes choix de rubrique et de niveau<br><span id="profile-menu-rubriques-badge" style="font-size:.75em;font-weight:400;"></span></button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-fields" data-target="profile-section-fields">Mes choix de champ<br><span id="profile-menu-fields-badge" style="font-size:.75em;font-weight:400;"></span></button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-artists" data-target="profile-section-artists">Mes choix d'artiste<br><span id="profile-menu-artists-badge" style="font-size:.75em;font-weight:400;"></span></button>
-            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-scores" data-target="profile-section-scores">Mes scores</button>
           </div>
-          <button type="button" id="pf-validate-button" style="width:100%;margin-bottom:24px;padding:16px;border:0;border-radius:6px;background:var(--ok);color:#fff;font-family:Arial,sans-serif;font-size:1.05rem;font-weight:700;cursor:pointer;">
+          <button type="button" id="pf-validate-button" style="width:100%;margin-bottom:16px;padding:16px;border:0;border-radius:6px;background:var(--ok);color:#fff;font-family:Arial,sans-serif;font-size:1.05rem;font-weight:700;cursor:pointer;">
             <span id="pf-validate-summary" style="display:block;font-size:.8rem;font-weight:400;margin-bottom:4px;"></span>
             Valider mes paramètres et commencer les jeux →
           </button>
+          <div class="home-mode-buttons account-buttons-row" style="margin-bottom:24px;">
+            <button type="button" class="home-mode-button" id="profile-menu-saved-configs">Mes configurations enregistrées</button>
+            <button type="button" class="home-mode-button" id="profile-menu-scores">Mes scores</button>
+          </div>
 
           <!-- Affiché uniquement sur une page dédiée (à la place de la grille des 6 boutons) : le
                bouton du choix courant (grisé, comme dans le menu), avec de chaque côté une flèche
@@ -1318,6 +1322,11 @@
           <p class="eyebrow">MES SCORES</p>
           <h2 id="account-scores-title">Historique de mes scores</h2>
 
+          <div id="account-saved-configs-section" class="hidden" style="max-width:640px;margin:0 auto 24px;">
+            <p class="config-table-col-title">Mes configurations enregistrées</p>
+            <div id="account-saved-configs-list" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+          </div>
+
           <div class="training-exercise-grid" style="grid-template-columns:repeat(3,1fr);max-width:640px;margin:0 auto 20px;">
             <button type="button" class="home-mode-button score-filter-btn inactive" id="account-scores-training-button">Scores d'entraînement</button>
             <button type="button" class="home-mode-button score-filter-btn" id="account-scores-quiz-button">Scores de quiz</button>
@@ -1332,6 +1341,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=168"></script>
+    <script src="app.js?v=170"></script>
   </body>
 </html>
