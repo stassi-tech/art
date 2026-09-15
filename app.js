@@ -400,7 +400,7 @@ document.querySelectorAll('.profile-menu-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (btn.id === 'profile-menu-scores') { showPanel('account'); loadAccountPage(); return; }
     document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
-    ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-rubriques'].forEach((id) => {
+    ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => {
       $(id)?.classList.toggle('hidden', id !== btn.dataset.target);
     });
   });
@@ -610,6 +610,7 @@ function saveFieldChoiceGeneral() {
   const zones = [...document.querySelectorAll('.pf-field-zone:checked')].map((el) => el.value);
   localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember: true }));
   updateExerciseSummaries();
+  updateProfileMenuBadges();
   // Le champ vient de changer : la liste d'artistes compatibles change avec lui, et un artiste
   // déjà choisi peut être devenu incompatible — on rafraîchit les suggestions et on revalide.
   populateArtistSuggestions();
@@ -625,6 +626,7 @@ $('pf-fields-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalFieldDefaults');
   document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => { el.checked = false; });
   updateExerciseSummaries();
+  updateProfileMenuBadges();
   populateArtistSuggestions();
   revalidateArtistChoice();
 });
@@ -703,6 +705,7 @@ async function saveArtistChoiceGeneral() {
   const names = currentArtistNames();
   localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: names, remember: true }));
   updateExerciseSummaries();
+  updateProfileMenuBadges();
 }
 async function revalidateArtistChoice() {
   const feedback = $('pf-artists-feedback');
@@ -755,10 +758,46 @@ $('pf-artists-clear')?.addEventListener('click', () => {
   document.querySelectorAll('.pf-artist-input').forEach((f, i) => { if (i > 0) f.remove(); else f.value = ''; });
   $('pf-artists-feedback').textContent = '';
   updateExerciseSummaries();
+  updateProfileMenuBadges();
 });
 $('profile-menu-artists')?.addEventListener('click', populateArtistSuggestions);
+// « Aller au choix suivant » : simple raccourci qui clique le bouton de menu correspondant, pour
+// avancer dans l'ordre logique (technique → esthétique → rubrique/niveau → champ → artiste →
+// scores) sans devoir remonter chercher le bon bouton en haut de page à chaque fois.
+document.querySelectorAll('.pf-next-button').forEach((btn) => {
+  btn.addEventListener('click', () => { $(btn.dataset.next)?.click(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+});
 // --- Choix de rubrique et de niveau : idem, sur ce qui est testé et le niveau. Enregistrement
 // automatique à chaque coche, comme ci-dessus. ---
+// Résumés en temps réel sur les boutons de menu et le bouton vert — pour voir d'un coup d'œil,
+// en progressant, ce qui a déjà été choisi. Rien coché nulle part = rien n'apparaît (pas de
+// placeholder trompeur laissant croire à un choix qui n'existe pas).
+function updateProfileMenuBadges() {
+  const gr = readGlobalRubriqueDefaults();
+  const gf = readGlobalFieldDefaults();
+  const ga = readGlobalArtistDefaults();
+  const rubriqueParts = [];
+  if (gr.levels?.length) rubriqueParts.push('N' + gr.levels.join('+'));
+  if (gr.rubriques?.length) rubriqueParts.push(gr.rubriques.join('+'));
+  if ($('profile-menu-rubriques-badge')) $('profile-menu-rubriques-badge').textContent = rubriqueParts.join(' · ');
+  const fieldParts = [];
+  if (gf.arts?.length) fieldParts.push(gf.arts.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+'));
+  if (gf.centuries?.length) fieldParts.push(gf.centuries.join('+'));
+  if (gf.zones?.length) fieldParts.push(gf.zones.length + ' zone(s)');
+  if ($('profile-menu-fields-badge')) $('profile-menu-fields-badge').textContent = fieldParts.join(' · ');
+  if ($('profile-menu-artists-badge')) {
+    const artists = ga.artists || [];
+    $('profile-menu-artists-badge').textContent = artists.length
+      ? artists.slice(0, 2).join(', ') + (artists.length > 2 ? ` +${artists.length - 2}` : '')
+      : '';
+  }
+  if ($('pf-validate-summary')) {
+    const all = [...rubriqueParts, ...fieldParts];
+    if (ga.artists?.length) all.push(ga.artists.slice(0, 3).join(', ') + (ga.artists.length > 3 ? '…' : ''));
+    $('pf-validate-summary').textContent = all.length ? all.join(' · ') : 'Aucun choix particulier — champs les plus étendus';
+  }
+}
+updateProfileMenuBadges();
 function saveRubriqueChoiceGeneral() {
   const rubriques = [...document.querySelectorAll('.pf-rubrique-field:checked')].map((el) => el.value);
   const levels = [...document.querySelectorAll('.pf-rubrique-level:checked')].map((el) => el.value);
@@ -766,6 +805,7 @@ function saveRubriqueChoiceGeneral() {
   if (count === 'custom') count = $('pf-count-custom').value?.trim() || '';
   localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, count, remember: true }));
   updateExerciseSummaries();
+  updateProfileMenuBadges();
   // Le niveau vient éventuellement de changer : un artiste déjà choisi peut être devenu
   // incompatible (ses œuvres ne correspondent plus au niveau sélectionné).
   revalidateArtistChoice();
@@ -780,6 +820,7 @@ $('pf-rubriques-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalRubriqueDefaults');
   document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => { el.checked = false; });
   updateExerciseSummaries();
+  updateProfileMenuBadges();
 });
 // Bouton « Valider mes paramètres » : tous les réglages s'enregistrent déjà automatiquement à
 // chaque coche, mais l'absence de confirmation explicite déroutait certains joueurs (impression
