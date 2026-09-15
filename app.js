@@ -1929,9 +1929,10 @@ function showPanel(name) {
   $('results-panel').classList.toggle('hidden', name !== 'results');
   $('account-panel')?.classList.toggle('hidden', name !== 'account');
   $('profile-panel')?.classList.toggle('hidden', name !== 'profile');
+  $('guided-config-panel')?.classList.toggle('hidden', name !== 'guided-config');
   $('other-works-panel')?.classList.toggle('hidden', name !== 'other-works');
   $('sidebar')?.classList.toggle('hidden', name !== 'welcome');
-  $('bg-mosaic')?.classList.toggle('hidden', name !== 'welcome' && name !== 'training-hub');
+  $('bg-mosaic')?.classList.toggle('hidden', name !== 'welcome' && name !== 'training-hub' && name !== 'guided-config');
 }
 
 function commonsFilePageUrl(imageUrl) {
@@ -4643,6 +4644,117 @@ Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
   });
 });
 $('open-training')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
+// --- Parcours guidé de configuration (page d'accueil → « pour débuter ») : une question à la
+// fois, la suivante apparaît dès qu'on répond — écrit dans les mêmes réglages globaux que Mon
+// compte (Mes choix de champ / d'artiste / de rubrique et de niveau), donc tout le reste de
+// l'application (jeux, résumés) s'appuie dessus exactement pareil, sans code séparé à maintenir.
+function resetGuidedConfig() {
+  document.querySelectorAll('.gc-step').forEach((el, i) => el.classList.toggle('hidden', i !== 0));
+  document.querySelectorAll('.gc-art, .gc-century, .gc-zone, .gc-level, .gc-rubrique').forEach((el) => { el.checked = false; });
+  document.querySelector('input[name="gc-count"][value="10"]').checked = true;
+  document.querySelector('input[name="gc-allgames"][value="yes"]').checked = true;
+  $('gc-games-list').classList.add('hidden');
+  document.querySelectorAll('.gc-game').forEach((el) => { el.checked = true; });
+  $('gc-save-feedback').textContent = '';
+  $('gc-save-name').value = '';
+}
+$('open-guided-config')?.addEventListener('click', () => {
+  resetGuidedConfig();
+  showPanel('guided-config');
+});
+function saveGuidedFieldAndRubrique() {
+  const arts = [...document.querySelectorAll('.gc-art:checked')].map((el) => el.value);
+  const centuries = [...document.querySelectorAll('.gc-century:checked')].map((el) => el.value);
+  const zones = [...document.querySelectorAll('.gc-zone:checked')].map((el) => el.value);
+  localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember: true }));
+  const levels = [...document.querySelectorAll('.gc-level:checked')].map((el) => el.value);
+  const rubriques = [...document.querySelectorAll('.gc-rubrique:checked')].map((el) => el.value);
+  let count = document.querySelector('input[name="gc-count"]:checked')?.value || '10';
+  const prevRubrique = readGlobalRubriqueDefaults();
+  localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques: rubriques.length ? rubriques : (prevRubrique.rubriques || []), levels, count, remember: true }));
+}
+document.querySelectorAll('.gc-continue').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    saveGuidedFieldAndRubrique();
+    $(btn.closest('.gc-step').id).classList.add('hidden');
+    const next = $(btn.dataset.next);
+    next.classList.remove('hidden');
+    if (next.id === 'gc-step-artists') populateGuidedArtistList();
+    if (next.id === 'gc-step-summary') buildGuidedSummary();
+    window.scrollTo({ top: next.offsetTop - 80, behavior: 'smooth' });
+  });
+});
+async function populateGuidedArtistList() {
+  const list = $('gc-artist-list');
+  const status = $('gc-artist-status');
+  status.textContent = 'Chargement de la liste des artistes…';
+  const ok = await loadArtistListIfNeeded();
+  if (!ok) { status.textContent = "La liste des artistes n'a pas pu être chargée (connexion internet ?)."; list.innerHTML = ''; return; }
+  let matchingRows = artistListRows.filter(artistMatchesCurrentField);
+  const levels = readGlobalRubriqueDefaults().levels || [];
+  if (levels.length && matchingRows.length <= 80) {
+    status.textContent = 'Vérification du niveau des artistes…';
+    const kept = [];
+    for (const row of matchingRows) {
+      const works = await fetchWorksForArtistRow(row);
+      if (!works.length || works.some((w) => levels.includes(String(w.niveau || 1)))) kept.push(row);
+    }
+    matchingRows = kept;
+  }
+  const names = matchingRows.map((r) => [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
+  const selected = readGlobalArtistDefaults().artists || [];
+  list.innerHTML = names.map((name) => {
+    const isSel = selected.includes(name);
+    return `<button type="button" class="pf-artist-pick" data-name="${escapeHtml(name)}" style="display:block;width:100%;text-align:left;padding:7px 10px;border:0;cursor:pointer;font:inherit;border-radius:4px;margin-bottom:2px;background:${isSel ? 'var(--accent)' : 'none'};color:${isSel ? '#fff' : 'inherit'};font-weight:${isSel ? '700' : '400'};">${isSel ? '✓ ' : ''}${escapeHtml(name)}</button>`;
+  }).join('');
+  list.querySelectorAll('.pf-artist-pick').forEach((b) => b.addEventListener('click', () => { toggleArtistSelection(b.dataset.name); populateGuidedArtistList(); }));
+  status.textContent = `${names.length} artiste${names.length > 1 ? 's' : ''} compatible${names.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels. Cliquez sur des noms d'artiste si vous voulez réduire le nombre d'artistes dans votre jeu.`;
+}
+document.querySelectorAll('input[name="gc-allgames"]').forEach((el) => {
+  el.addEventListener('change', () => { $('gc-games-list').classList.toggle('hidden', el.value !== 'no' || !el.checked); });
+});
+function buildGuidedSummary() {
+  const gf = readGlobalFieldDefaults();
+  const gr = readGlobalRubriqueDefaults();
+  const ga = readGlobalArtistDefaults();
+  const artLabel = { peinture: 'la peinture', sculpture: 'la sculpture' };
+  const artsPart = (gf.arts || []).map((a) => artLabel[a] || a).join(' et ') || 'la peinture et la sculpture';
+  const centPart = gf.centuries?.length ? ` du ${gf.centuries.join(', du ')} siècle` : '';
+  const zonePart = gf.zones?.length ? ` en zone ${gf.zones.join(', ')}` : '';
+  const levelLabels = { '1': 'très célèbres', '2': 'connus', '3': 'moins connus' };
+  const levelPart = gr.levels?.length ? `, avec des artistes ${gr.levels.map((l) => levelLabels[l]).join('/')}` : '';
+  const artistsPart = ga.artists?.length ? `, en particulier ${ga.artists.join(', ')}` : '';
+  const rubriqueLabels = { artist: "le nom de l'artiste", title: 'le titre', date: 'la date', materiaux: 'le matériau', dimensions: 'les dimensions', location: 'le lieu' };
+  const rubriquePart = gr.rubriques?.length ? gr.rubriques.map((r) => rubriqueLabels[r] || r).join(', ') : 'plusieurs informations';
+  const countLabel = gr.count === 'max' ? 'un maximum de' : gr.count;
+  const allGames = document.querySelector('input[name="gc-allgames"]:checked')?.value === 'yes';
+  const gamesPart = allGames ? 'tous les jeux' : [...document.querySelectorAll('.gc-game:checked')].map((el) => el.parentElement.textContent.trim()).join(', ');
+  $('gc-summary-sentence').textContent = `Aujourd'hui nous allons jouer avec ${artsPart}${centPart}${zonePart}${levelPart}${artistsPart}, à travers des questionnaires de ${countLabel} questions chacun portant sur ${rubriquePart}, pour ${gamesPart}.`;
+}
+$('gc-start-button')?.addEventListener('click', () => {
+  if (document.querySelector('input[name="gc-allgames"]:checked')?.value === 'no') {
+    const games = [...document.querySelectorAll('.gc-game:checked')].map((el) => el.value);
+    localStorage.setItem('globalGamesDefaults', JSON.stringify({ games, remember: true }));
+  } else {
+    localStorage.removeItem('globalGamesDefaults');
+  }
+  showPanel('training-hub');
+  updateExerciseSummaries();
+});
+$('gc-save-button')?.addEventListener('click', () => {
+  const name = $('gc-save-name').value.trim();
+  if (!name) { $('gc-save-feedback').style.color = 'var(--wrong)'; $('gc-save-feedback').textContent = 'Donnez un nom à cette configuration.'; return; }
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
+  saved[name] = {
+    field: readGlobalFieldDefaults(), artists: readGlobalArtistDefaults(), rubrique: readGlobalRubriqueDefaults(),
+    allGames: document.querySelector('input[name="gc-allgames"]:checked')?.value === 'yes',
+    games: [...document.querySelectorAll('.gc-game:checked')].map((el) => el.value),
+  };
+  localStorage.setItem('savedGuidedConfigs', JSON.stringify(saved));
+  $('gc-save-feedback').style.color = 'var(--ok)';
+  $('gc-save-feedback').textContent = `Configuration « ${name} » enregistrée — retrouvez-la dans Mon compte.`;
+});
 document.querySelectorAll('.training-soon').forEach((btn) => {
   btn.addEventListener('click', (event) => event.currentTarget.classList.toggle('show-tooltip'));
 });

@@ -68,12 +68,116 @@
           <p class="intro-banner">Cette application vous propose de jouer avec <a href="#base" target="_blank" rel="noopener">une base de plusieurs milliers d'œuvres d'art</a> — peintures et sculptures en Occident, du 14e au 20e siècle — à travers <a href="#exercices" target="_blank" rel="noopener">des exercices d'entraînement</a> à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. <a href="#" id="intro-account-link">Créez un compte</a> pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
 
           <div class="home-mode-buttons">
+            <button type="button" class="home-mode-button" id="open-guided-config">
+              <span class="label">Accès aux exercices guidé</span>
+              <span style="display:block;font-size:.75em;font-weight:400;margin-top:2px;">Pour débuter</span>
+            </button>
             <button type="button" class="home-mode-button" id="open-training">
-              <span class="label">Accès aux exercices</span>
+              <span class="label">Accès aux exercices par les menus</span>
+              <span style="display:block;font-size:.75em;font-weight:400;margin-top:2px;">Pour joueur confirmé</span>
             </button>
           </div>
 
           <p class="copyright-notice">© 2026 MNEMART, Tours, France — <button type="button" class="link-label copyright-more-link" id="open-mentions-legales">mentions légales</button></p>
+        </section>
+
+        <section id="guided-config-panel" class="welcome-panel hidden">
+          <h2 style="font-family:Georgia,serif;">Configurons votre partie ensemble</h2>
+          <p class="modal-hint" style="margin-top:0;">Répondez aux questions une par une — la suivante apparaît dès que vous avez répondu. Rien coché à une question = pas de restriction sur ce point.</p>
+
+          <div id="gc-step-art" class="gc-step">
+            <p class="config-table-col-title">Aujourd'hui, vous voulez jouer avec quel domaine artistique ?</p>
+            <label class="rubrique-option"><input type="checkbox" class="gc-art" value="peinture" /><span>Peinture</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-art" value="sculpture" /><span>Sculpture</span></label>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-century" style="margin-top:10px;">Continuer →</button>
+          </div>
+
+          <div id="gc-step-century" class="gc-step hidden">
+            <p class="config-table-col-title">Avec quel(s) siècle(s) ?</p>
+            <label class="rubrique-option"><input type="checkbox" class="gc-century" value="14e" /><span>14e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-century" value="15e" /><span>15e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-century" value="16e" /><span>16e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-century" value="17e" /><span>17e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-century" value="18e" /><span>18e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-century" value="19e" /><span>19e siècle</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-century" value="20e" /><span>20e siècle</span></label>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-zone" style="margin-top:10px;">Continuer →</button>
+          </div>
+
+          <div id="gc-step-zone" class="gc-step hidden">
+            <p class="config-table-col-title">Avec quelle zone géographique ?</p>
+            <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="france" /><span>France</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="italie" /><span>Italie</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="espagne" /><span>Espagne</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="royaume_uni" /><span>Royaume-Uni</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="allemagne" /><span>Allemagne</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="europe_centrale_russie" /><span>Europe centrale et Russie</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="europe_nord" /><span>Europe du Nord</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="amerique" /><span>Amérique</span></label>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-level" style="margin-top:10px;">Continuer →</button>
+          </div>
+
+          <div id="gc-step-level" class="gc-step hidden">
+            <p class="config-table-col-title">À quel niveau de célébrité des artistes voulez-vous jouer ?</p>
+            <label class="rubrique-option"><input type="checkbox" class="gc-level" value="1" /><span>Les artistes les plus célèbres (niveau 1)</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-level" value="2" /><span>Les artistes connus (niveau 2)</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-level" value="3" /><span>Les artistes moins connus (niveau 3)</span></label>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-artists" style="margin-top:10px;">Continuer →</button>
+          </div>
+
+          <div id="gc-step-artists" class="gc-step hidden">
+            <p class="config-table-col-title">Voulez-vous restreindre encore la sélection à certains artistes précis ?</p>
+            <p class="modal-hint" style="margin-top:0;">Facultatif — laissez vide pour garder tous les artistes compatibles avec vos choix ci-dessus.</p>
+            <p id="gc-artist-status" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);"></p>
+            <div id="gc-artist-list" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px;margin-bottom:8px;"></div>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-count" style="margin-top:10px;">Continuer →</button>
+          </div>
+
+          <div id="gc-step-count" class="gc-step hidden">
+            <p class="config-table-col-title">À combien de questions par jeu voulez-vous répondre ?</p>
+            <label class="rubrique-option"><input type="radio" name="gc-count" value="5" /><span>5 questions</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-count" value="10" checked /><span>10 questions</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-count" value="20" /><span>20 questions</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-count" value="max" /><span>Maximum disponible pour chaque jeu</span></label>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-rubrique" style="margin-top:10px;">Continuer →</button>
+          </div>
+
+          <div id="gc-step-rubrique" class="gc-step hidden">
+            <p class="config-table-col-title">À quel degré de précision voulez-vous jouer ? (ce qui sera demandé)</p>
+            <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="artist" /><span>Le nom de l'artiste</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="title" /><span>Le titre</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="date" /><span>La date</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="materiaux" /><span>Le matériau</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="dimensions" /><span>Les dimensions</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="location" /><span>Le lieu de conservation</span></label>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-games" style="margin-top:10px;">Continuer →</button>
+          </div>
+
+          <div id="gc-step-games" class="gc-step hidden">
+            <p class="config-table-col-title">Cette sélection est-elle valable pour tous les jeux ?</p>
+            <label class="rubrique-option"><input type="radio" name="gc-allgames" value="yes" checked /><span>Oui, pour les 7 jeux</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-allgames" value="no" /><span>Non, seulement pour certains</span></label>
+            <div id="gc-games-list" class="hidden" style="margin-top:8px;">
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="quiz" checked /><span>Quiz final</span></label>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="impregnation" checked /><span>Imprégnation</span></label>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="chrono" checked /><span>Chronologie</span></label>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="famille" checked /><span>Famille</span></label>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="vf" checked /><span>Vrai/Faux</span></label>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="recon" checked /><span>Reconstitution</span></label>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="intrus" checked /><span>Intrus</span></label>
+            </div>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-summary" style="margin-top:10px;">Continuer →</button>
+          </div>
+
+          <div id="gc-step-summary" class="gc-step hidden">
+            <p class="config-table-col-title">Voilà votre partie du jour :</p>
+            <p id="gc-summary-sentence" style="font-family:Georgia,serif;font-size:1.05rem;line-height:1.5;background:var(--paper);padding:14px;border-radius:8px;border:1px solid var(--border);"></p>
+            <button type="button" id="gc-start-button" style="width:100%;margin-top:14px;padding:16px;border:0;border-radius:6px;background:var(--ok);color:#fff;font-family:Arial,sans-serif;font-size:1.05rem;font-weight:700;cursor:pointer;">Commencer à jouer →</button>
+            <p class="modal-hint" style="margin-top:14px;">Pour retrouver cette configuration plus rapidement la prochaine fois, donnez-lui un nom et enregistrez-la (dans Mon compte, vous pourrez aussi la modifier ou accéder aux réglages techniques et esthétiques) :</p>
+            <input type="text" id="gc-save-name" placeholder="Ex. Mon jeu du dimanche" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;" />
+            <button type="button" id="gc-save-button" class="secondary-button" style="width:100%;">Enregistrer cette configuration</button>
+            <p id="gc-save-feedback" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--ok);margin:6px 0 0;"></p>
+          </div>
         </section>
 
         <section id="training-hub-panel" class="welcome-panel hidden">
@@ -1094,7 +1198,6 @@
             </div>
             <button type="button" class="secondary-button pf-clear-inline-button" style="width:100%;margin-top:8px;">Effacer la sélection</button>
             <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Retour à la page d'accueil de mon compte</button>
-            <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-esthetique" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
           </div>
 
           <div id="profile-section-esthetique" class="hidden">
@@ -1110,7 +1213,6 @@
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="space" /><span>Space Age — orbite et chrome (réf. Guggenheim, New York)</span></label>
             <button type="button" class="secondary-button pf-clear-inline-button" style="width:100%;margin-top:8px;">Effacer la sélection</button>
             <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Retour à la page d'accueil de mon compte</button>
-            <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-rubriques" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
           </div>
 
           <div id="profile-section-fields" class="hidden">
@@ -1145,7 +1247,6 @@
             </div>
             <button type="button" class="secondary-button" id="pf-fields-clear" style="width:100%;margin-top:8px;">Effacer le choix de champ</button>
             <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Retour à la page d'accueil de mon compte</button>
-            <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-artists" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
             <div id="pf-fields-overrides" style="margin-top:14px;"></div>
           </div>
 
@@ -1190,7 +1291,6 @@
             </div>
             <button type="button" class="secondary-button" id="pf-rubriques-clear" style="width:100%;margin-top:8px;">Effacer ce choix</button>
             <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Retour à la page d'accueil de mon compte</button>
-            <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-fields" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
             <div id="pf-rubriques-overrides" style="margin-top:14px;"></div>
           </div>
 
@@ -1214,6 +1314,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=165"></script>
+    <script src="app.js?v=167"></script>
   </body>
 </html>
