@@ -12,7 +12,7 @@ body:not([data-ambiance]).in-exercise {
 }
 body:not([data-ambiance]).in-exercise .app-shell { background:transparent; }
 body:not([data-ambiance]) .primary-button, body:not([data-ambiance]) .home-mode-button {
-  background:#6f4a30; color:#fff; border-color:#4a2f1c;
+  background:#6f4a30 url('assets/renoir-bouton.jpg') center/cover no-repeat; color:#fff; border-color:#4a2f1c;
 }
 
 /* ---- Le Salon Pitti ---- réf. Palazzo Pitti, Florence */
@@ -27,7 +27,7 @@ body[data-ambiance="pitti"].in-exercise .app-shell {
     repeating-linear-gradient(45deg, #ffffff05 0 3px, transparent 3px 9px),
     repeating-linear-gradient(-45deg, #00000012 0 3px, transparent 3px 9px);
 }
-body[data-ambiance="pitti"] .primary-button, body[data-ambiance="pitti"] .home-mode-button {
+body[data-ambiance="pitti"] .primary-button, body[data-ambiance="pitti"] .home-mode-button { background-image:url('assets/pitti-bouton.jpg');
   background:linear-gradient(160deg, #d8b866 0%, #a8842f 35%, #8a6a24 50%, #c9a24a 65%, #8a6a24 100%);
   border-color:#5c4718; color:#3a2c10;
 }
@@ -45,7 +45,7 @@ body[data-ambiance="bauhaus"].in-exercise .app-shell {
 }
 body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn { background:#55555a; color:#f4f1ea; border-color:#77777c; }
 body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn:hover:not(:disabled) { background:#68686e; border-color:#f2c318; }
-body[data-ambiance="bauhaus"] .primary-button, body[data-ambiance="bauhaus"] .home-mode-button {
+body[data-ambiance="bauhaus"] .primary-button, body[data-ambiance="bauhaus"] .home-mode-button { background-image:url('assets/bauhaus-bouton.jpg');
   background:#fff; color:#1a1a18; border-color:#c1272d;
 }
 body[data-ambiance="bauhaus"] .home-mode-button .label { color:#1a1a18; }
@@ -83,7 +83,7 @@ body[data-ambiance="wedgwood"] .bg-mosaic::after { background:#a8c0d4; }
 body[data-ambiance="wedgwood"].in-exercise { --ink:#2c3e4a; --paper:#c3d5e2; --canvas:#a8c0d4; --border:#f2ede0; }
 body[data-ambiance="wedgwood"].in-exercise { background:#a8c0d4; }
 body[data-ambiance="wedgwood"].in-exercise .app-shell { background:#a8c0d4; }
-body[data-ambiance="wedgwood"] .primary-button, body[data-ambiance="wedgwood"] .home-mode-button {
+body[data-ambiance="wedgwood"] .primary-button, body[data-ambiance="wedgwood"] .home-mode-button { background-image:url('assets/wedgwood-bouton.jpg');
   background:linear-gradient(160deg, #faf6ea 0%, #e8e0cf 50%, #d8cdb4 100%);
   border-color:#a8967a; color:#4a3e2c;
 }
@@ -98,11 +98,24 @@ body[data-ambiance="ermitage"].in-exercise .app-shell {
   background:#0a2745;
   background-image:repeating-linear-gradient(90deg, #ffffff06 0 1px, transparent 1px 40px);
 }
-body[data-ambiance="ermitage"] .primary-button, body[data-ambiance="ermitage"] .home-mode-button {
+body[data-ambiance="ermitage"] .primary-button, body[data-ambiance="ermitage"] .home-mode-button { background-image:url('assets/ermitage-bouton.jpg');
   background:linear-gradient(160deg, #f2d98a 0%, #d8b23c 40%, #8a6a1e 55%, #e8c874 70%, #8a6a1e 100%);
   border-color:#5c4712; color:#3a2c10;
 }
 body[data-ambiance="ermitage"] .home-mode-button .label { color:#3a2c10; }
+body[data-ambiance="renaissance"] { --accent:#c17a3c; --accent-dark:#8a5424; --cta:#7a3820; --cta-dark:#5c2916; }
+body[data-ambiance="renaissance"] .bg-mosaic::after { background:#a8552e; }
+body[data-ambiance="renaissance"].in-exercise { --ink:#f2e8d8; --paper:#8a4526; --canvas:#7a3820; --border:#b06a3a; }
+body[data-ambiance="renaissance"].in-exercise { background:#7a3820; }
+body[data-ambiance="renaissance"].in-exercise .app-shell {
+  background:#7a3820;
+  background-image:repeating-linear-gradient(45deg, #ffffff05 0 3px, transparent 3px 9px), repeating-linear-gradient(-45deg, #00000012 0 3px, transparent 3px 9px);
+}
+body[data-ambiance="renaissance"] .primary-button, body[data-ambiance="renaissance"] .home-mode-button { background-image:url('assets/renaissance-bouton.jpg');
+  background:linear-gradient(160deg, #e8c874 0%, #c9a24a 35%, #8a6a24 50%, #d8b25c 65%, #8a6a24 100%);
+  border-color:#5c4718; color:#3a2410;
+}
+body[data-ambiance="renaissance"] .home-mode-button .label { color:#3a2410; }
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
 .bg-mosaic { position:fixed; inset:0; z-index:0; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; }
@@ -586,6 +599,7 @@ body[data-ambiance="space"] .image-lightbox:has(#lightbox-scale-view:not(.hidden
 body[data-ambiance="versailles"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#5c1015; }
 body[data-ambiance="wedgwood"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#a8c0d4; }
 body[data-ambiance="ermitage"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#0a2745; }
+body[data-ambiance="renaissance"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#7a3820; }
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-caption,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-image,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-source-link { display:none; }
@@ -607,6 +621,13 @@ body[data-ambiance="ermitage"] .image-lightbox:has(#lightbox-scale-view:not(.hid
 }
 #scale-overview-thumbs { position:absolute; inset:0; }
 .scale-overview-thumb { position:absolute; box-shadow:0 4px 10px rgba(0,0,0,.35); object-fit:cover; border-radius:2px; }
+/* Sol de la vue d'ensemble : lui aussi en perspective (plus étroit en haut, où il rejoint le mur,
+   plus large en bas, côté spectateur) — un simple rectangle ne donnait aucune impression de
+   profondeur et laissait croire que le personnage se tenait sur le mur plutôt qu'au sol (bug réel
+   repéré). Distinct du sol rectangulaire du mur rapproché (#scale-floor, non affiché ici). */
+#scale-overview-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
+  clip-path:polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
+  background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a); }
 /* La silhouette elle-même guide toute la navigation — on la tire (souris ou doigt) pour se
    déplacer, plus aucun bouton de direction séparé. touch-action:none empêche le geste de faire
    défiler la page au lieu de contrôler la silhouette sur mobile. */
@@ -617,11 +638,23 @@ body[data-ambiance="space"] #scale-overview-trapezoid { background-color:#e07a2e
 body[data-ambiance="versailles"] #scale-overview-trapezoid { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
 body[data-ambiance="wedgwood"] #scale-overview-trapezoid { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
 body[data-ambiance="ermitage"] #scale-overview-trapezoid { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
+body[data-ambiance="renaissance"] #scale-overview-trapezoid { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
 body:not([data-ambiance]) #scale-overview-trapezoid { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
 #scale-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a);
-  box-shadow:0 -3px 8px rgba(0,0,0,.25); }
+  box-shadow:0 -3px 8px rgba(0,0,0,.25); background-size:cover; background-position:center; }
+/* Sol de la salle personnalisable par ambiance (voir salle-<ambiance>-sol.jpg dans assets/) — même
+   principe que le mur : un seul fichier par ambiance, utilisé aux deux plans (vue d'ensemble et
+   mur rapproché). Couleur/texture de repli tant que le fichier n'est pas déposé. */
+body[data-ambiance="pitti"] #scale-floor, body[data-ambiance="pitti"] #scale-overview-floor { background-image:url('assets/salle-pitti-sol.jpg'); }
+body[data-ambiance="bauhaus"] #scale-floor, body[data-ambiance="bauhaus"] #scale-overview-floor { background-image:url('assets/salle-bauhaus-sol.jpg'); }
+body[data-ambiance="space"] #scale-floor, body[data-ambiance="space"] #scale-overview-floor { background-image:url('assets/salle-space-sol.jpg'); }
+body[data-ambiance="versailles"] #scale-floor, body[data-ambiance="versailles"] #scale-overview-floor { background-image:url('assets/salle-versailles-sol.jpg'); }
+body[data-ambiance="wedgwood"] #scale-floor, body[data-ambiance="wedgwood"] #scale-overview-floor { background-image:url('assets/salle-wedgwood-sol.jpg'); }
+body[data-ambiance="ermitage"] #scale-floor, body[data-ambiance="ermitage"] #scale-overview-floor { background-image:url('assets/salle-ermitage-sol.jpg'); }
+body[data-ambiance="renaissance"] #scale-floor, body[data-ambiance="renaissance"] #scale-overview-floor { background-image:url('assets/salle-renaissance-sol.jpg'); }
+body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overview-floor { background-image:url('assets/salle-renoir-sol.jpg'); }
 /* Ligne de plinthe séparant le mur du sol — repère visuel simple demandé pour bien distinguer les
    deux plans, en attendant une vraie salle en 3 dimensions. */
 #scale-wall-line { position:fixed; bottom:16vh; left:0; right:0; height:3px; background:rgba(0,0,0,.35); z-index:1; box-shadow:0 1px 2px rgba(255,255,255,.15); }

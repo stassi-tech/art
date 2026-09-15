@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=132" />
+    <link rel="stylesheet" href="style.css?v=135" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -967,6 +967,7 @@
                  bouton de direction ou de retour séparé. -->
             <div id="scale-overview">
               <div id="scale-overview-trapezoid"><div id="scale-overview-thumbs"></div></div>
+              <div id="scale-overview-floor" aria-hidden="true"></div>
               <svg id="scale-overview-silhouette" viewBox="0 0 100 340" aria-hidden="true">
                 <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
               </svg>
@@ -994,6 +995,7 @@
           <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="versailles" /><span>Château de Versailles</span></label>
           <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="wedgwood" /><span>Wedgwood</span></label>
           <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="ermitage" /><span>Palais de l'Ermitage</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="renaissance" /><span>Galerie Renaissance</span></label>
         </div>
 
         <div id="exhibition-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:16px;width:min(340px, 90vw);">
@@ -1067,6 +1069,7 @@
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="versailles" /><span>Château de Versailles — or et marbre veiné (réf. Galerie des Glaces)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="wedgwood" /><span>Wedgwood — bleu pâle et camée crème</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="ermitage" /><span>Palais de l'Ermitage — bleu impérial et or (réf. Saint-Pétersbourg)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="renaissance" /><span>Galerie Renaissance — terre cuite et or vieilli (réf. palais florentins)</span></label>
           </div>
 
           <div id="profile-section-fields" class="hidden">
@@ -1099,6 +1102,11 @@
                 <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="amerique" /><span>Amérique</span></label>
               </div>
             </div>
+            <p class="config-table-col-title" style="margin-top:16px;">Ou choisir un/des artiste(s) précis (remplace Art/Siècle/Zone ci-dessus)</p>
+            <div id="pf-field-artist-inputs">
+              <input type="text" class="pf-field-artist-input" placeholder="Ex. Jean Fouquet" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;" />
+            </div>
+            <button type="button" class="secondary-button" id="pf-field-artist-add" style="width:100%;margin-bottom:8px;font-size:.85rem;padding:6px;">+ Ajouter un autre artiste</button>
             <button type="button" class="secondary-button" id="pf-fields-clear" style="width:100%;margin-top:8px;">Effacer le choix de champ</button>
             <div id="pf-fields-overrides" style="margin-top:14px;"></div>
           </div>
@@ -1157,6 +1165,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=144"></script>
+    <script src="app.js?v=146"></script>
   </body>
 </html>

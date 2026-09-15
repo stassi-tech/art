@@ -452,6 +452,20 @@ function initProfilePage() {
   document.querySelectorAll('.pf-field-art').forEach((el) => { el.checked = (fieldDefaults.arts || []).includes(el.value); });
   document.querySelectorAll('.pf-field-century').forEach((el) => { el.checked = (fieldDefaults.centuries || []).includes(el.value); });
   document.querySelectorAll('.pf-field-zone').forEach((el) => { el.checked = (fieldDefaults.zones || []).includes(el.value); });
+  if ((fieldDefaults.artists || []).length && $('pf-field-artist-inputs')) {
+    const wrap = $('pf-field-artist-inputs');
+    wrap.innerHTML = '';
+    fieldDefaults.artists.forEach((name) => {
+      const field = document.createElement('input');
+      field.type = 'text';
+      field.className = 'pf-field-artist-input';
+      field.placeholder = 'Ex. Jean Fouquet';
+      field.value = name;
+      field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
+      field.addEventListener('change', handleArtistFieldChange);
+      wrap.appendChild(field);
+    });
+  }
   let rubriqueDefaults = {};
   try { rubriqueDefaults = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) {}
   document.querySelectorAll('.pf-rubrique-field').forEach((el) => { el.checked = (rubriqueDefaults.rubriques || []).includes(el.value); });
@@ -590,19 +604,49 @@ function saveFieldChoiceGeneral() {
   const arts = [...document.querySelectorAll('.pf-field-art:checked')].map((el) => el.value);
   const centuries = [...document.querySelectorAll('.pf-field-century:checked')].map((el) => el.value);
   const zones = [...document.querySelectorAll('.pf-field-zone:checked')].map((el) => el.value);
-  localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember: true }));
+  const artists = [...document.querySelectorAll('.pf-field-artist-input')].map((el) => el.value.trim()).filter(Boolean);
+  localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, artists, remember: true }));
   updateExerciseSummaries();
 }
 // Enregistrement automatique à chaque coche — comme les paramètres techniques juste au-dessus,
 // plutôt que d'exiger un clic sur « Appliquer » qu'on peut oublier. Le bouton reste disponible
 // pour ceux qui préfèrent un geste explicite, mais n'est plus nécessaire.
 document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => {
-  el.addEventListener('change', saveFieldChoiceGeneral);
+  el.addEventListener('change', () => {
+    // Choisir Art/Siècle/Zone efface le choix d'artiste(s) — les deux modes de sélection sont
+    // incompatibles, pas la peine de laisser les deux actifs en même temps.
+    if (el.checked) {
+      document.querySelectorAll('.pf-field-artist-input').forEach((f, i) => { if (i > 0) f.remove(); else f.value = ''; });
+    }
+    saveFieldChoiceGeneral();
+  });
+});
+function handleArtistFieldChange() {
+  const anyArtist = [...document.querySelectorAll('.pf-field-artist-input')].some((f) => f.value.trim());
+  // Réciproquement, choisir un artiste efface Art/Siècle/Zone — pour éviter toute contradiction
+  // entre « ce peintre précis » et « tous les peintres du 17e siècle », par exemple.
+  if (anyArtist) {
+    document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => { el.checked = false; });
+  }
+  saveFieldChoiceGeneral();
+}
+document.querySelectorAll('.pf-field-artist-input').forEach((el) => el.addEventListener('change', handleArtistFieldChange));
+$('pf-field-artist-add')?.addEventListener('click', () => {
+  const wrap = $('pf-field-artist-inputs');
+  const field = document.createElement('input');
+  field.type = 'text';
+  field.className = 'pf-field-artist-input';
+  field.placeholder = 'Ex. Le Bernin';
+  field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
+  field.addEventListener('change', handleArtistFieldChange);
+  wrap.appendChild(field);
+  field.focus();
 });
 $('pf-fields-apply')?.addEventListener('click', saveFieldChoiceGeneral);
 $('pf-fields-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalFieldDefaults');
   document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => { el.checked = false; });
+  document.querySelectorAll('.pf-field-artist-input').forEach((f, i) => { if (i > 0) f.remove(); else f.value = ''; });
   updateExerciseSummaries();
 });
 // --- Choix de rubrique et de niveau : idem, sur ce qui est testé et le niveau. Enregistrement
@@ -2042,13 +2086,13 @@ function enterScaleView() {
   const candidates = (state.currentOtherWorks && state.currentOtherWorks.length ? state.currentOtherWorks : [currentLightboxWork])
     .filter((w) => parseCmValue(w.hauteur));
   // On entre toujours par la vue d'ensemble (1er plan) — le mur rapproché (2e plan, ci-dessous)
-  // ne s'affiche qu'après avoir tiré la silhouette vers l'avant. Le sol reste visible dans les
-  // deux plans (distinction mur/sol demandée) — seule la ligne de plinthe, propre au mur
-  // rapproché, ne s'affiche pas encore ici.
+  // ne s'affiche qu'après avoir tiré la silhouette vers l'avant. Le sol de la vue d'ensemble a sa
+  // propre forme en trapèze (#scale-overview-floor, une perspective différente de celle du mur) —
+  // le sol rectangulaire (#scale-floor) reste réservé au mur rapproché uniquement, pour ne pas
+  // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
-  $('scale-floor').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
   populateOverviewThumbs(candidates);
   state.scaleViewCandidates = candidates;
 }
@@ -2065,9 +2109,8 @@ function enterCloserPlan() {
 }
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
-  $('scale-floor').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
 }
 function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
@@ -4046,6 +4089,14 @@ const EXERCISE_INFO = {
 function readGlobalFieldDefaults() {
   try { return JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) { return {}; }
 }
+// Quand un ou plusieurs artistes précis sont choisis dans « Mes choix de champ » (plutôt qu'un
+// choix d'art/siècle/zone), le réservoir de questions doit se limiter à leurs œuvres — appliqué
+// après la récupération habituelle par art/siècle, qui aura alors tout ramené faute de filtre.
+function filterPoolByGlobalArtists(pool) {
+  const artists = (readGlobalFieldDefaults().artists || []).map((n) => keyName(n)).filter(Boolean);
+  if (!artists.length) return pool;
+  return pool.filter((w) => artists.some((a) => keyName(w.artist).includes(a) || a.includes(keyName(w.artist))));
+}
 function readGlobalRubriqueDefaults() {
   try { return JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) { return {}; }
 }
@@ -4817,6 +4868,9 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     // Filtre par niveau (indépendant) : seules les œuvres des niveaux sélectionnés sont gardées.
     let levelFilteredRows = allRows.filter((r) => levels.includes(String(r.niveau || 1)));
     if (!levelFilteredRows.length) levelFilteredRows = allRows; // filet de sécurité si la colonne Niveau est absente/mal renseignée
+    // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ » (à la place
+    // d'art/siècle/zone, effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
+    levelFilteredRows = filterPoolByGlobalArtists(levelFilteredRows);
     // Filtre par zone géographique (colonne Nationalité) : les œuvres sans nationalité connue
     // restent incluses dans tous les cas, pour ne pas écarter des fichiers pas encore renseignés.
     let filteredRows = levelFilteredRows;
