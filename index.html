@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=145" />
+    <link rel="stylesheet" href="style.css?v=146" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -67,7 +67,7 @@
 
           <p class="intro-banner">Cette application vous propose de jouer avec <a href="#base" target="_blank" rel="noopener">une base de plusieurs milliers d'œuvres d'art</a> — peintures et sculptures en Occident, du 14e au 20e siècle — à travers <a href="#exercices" target="_blank" rel="noopener">des exercices d'entraînement</a> à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. <a href="#" id="intro-account-link">Créez un compte</a> pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
 
-          <div class="home-mode-buttons">
+          <div class="home-mode-buttons account-buttons-row">
             <button type="button" class="home-mode-button" id="open-guided-config">
               <span class="label">Accès aux exercices guidé</span>
               <span style="display:block;font-size:.75em;font-weight:400;margin-top:2px;">Pour débuter</span>
@@ -83,12 +83,12 @@
 
         <section id="guided-config-panel" class="welcome-panel hidden">
           <h2 style="font-family:Georgia,serif;">Configurons votre partie ensemble</h2>
-          <p class="modal-hint" style="margin-top:0;">Répondez aux questions une par une — la suivante apparaît dès que vous avez répondu. Rien coché à une question = pas de restriction sur ce point.</p>
 
           <div id="gc-step-art" class="gc-step">
             <p class="config-table-col-title">Aujourd'hui, vous voulez jouer avec quel domaine artistique ?</p>
             <label class="rubrique-option"><input type="checkbox" class="gc-art" value="peinture" /><span>Peinture</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-art" value="sculpture" /><span>Sculpture</span></label>
+            <p class="gc-note"><em>Rien coché = tous les domaines sont sélectionnés automatiquement.</em></p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-century" style="margin-top:10px;">Continuer →</button>
           </div>
 
@@ -101,6 +101,7 @@
             <label class="rubrique-option"><input type="checkbox" class="gc-century" value="18e" /><span>18e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-century" value="19e" /><span>19e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-century" value="20e" /><span>20e siècle</span></label>
+            <p class="gc-note"><em>Rien coché = tous les siècles sont sélectionnés automatiquement.</em></p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-zone" style="margin-top:10px;">Continuer →</button>
           </div>
 
@@ -114,6 +115,7 @@
             <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="europe_centrale_russie" /><span>Europe centrale et Russie</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="europe_nord" /><span>Europe du Nord</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="amerique" /><span>Amérique</span></label>
+            <p class="gc-note"><em>Rien coché = toutes les zones sont sélectionnées automatiquement.</em></p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-level" style="margin-top:10px;">Continuer →</button>
           </div>
 
@@ -122,14 +124,17 @@
             <label class="rubrique-option"><input type="checkbox" class="gc-level" value="1" /><span>Les artistes les plus célèbres (niveau 1)</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-level" value="2" /><span>Les artistes connus (niveau 2)</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-level" value="3" /><span>Les artistes moins connus (niveau 3)</span></label>
+            <p class="gc-note"><em>Rien coché = tous les niveaux sont sélectionnés automatiquement.</em></p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-artists" style="margin-top:10px;">Continuer →</button>
           </div>
 
           <div id="gc-step-artists" class="gc-step hidden">
             <p class="config-table-col-title">Voulez-vous restreindre encore la sélection à certains artistes précis ?</p>
-            <p class="modal-hint" style="margin-top:0;">Facultatif — laissez vide pour garder tous les artistes compatibles avec vos choix ci-dessus.</p>
+            <label class="rubrique-option"><input type="radio" name="gc-want-artists" value="no" checked /><span>Non</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-want-artists" value="yes" /><span>Oui</span></label>
+            <p id="gc-artist-patience" class="hidden" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);"><em>La liste peut être longue à générer, un peu de patience…</em></p>
             <p id="gc-artist-status" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);"></p>
-            <div id="gc-artist-list" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px;margin-bottom:8px;"></div>
+            <div id="gc-artist-list" class="hidden" style="max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px;margin-bottom:8px;"></div>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-count" style="margin-top:10px;">Continuer →</button>
           </div>
 
@@ -150,21 +155,29 @@
             <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="materiaux" /><span>Le matériau</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="dimensions" /><span>Les dimensions</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="location" /><span>Le lieu de conservation</span></label>
+            <p class="gc-note"><em>Rien coché = tout peut être demandé, sans restriction.</em></p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-games" style="margin-top:10px;">Continuer →</button>
           </div>
 
           <div id="gc-step-games" class="gc-step hidden">
-            <p class="config-table-col-title">Cette sélection est-elle valable pour tous les jeux ?</p>
-            <label class="rubrique-option"><input type="radio" name="gc-allgames" value="yes" checked /><span>Oui, pour les 7 jeux</span></label>
-            <label class="rubrique-option"><input type="radio" name="gc-allgames" value="no" /><span>Non, seulement pour certains</span></label>
-            <div id="gc-games-list" class="hidden" style="margin-top:8px;">
-              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="quiz" checked /><span>Quiz final</span></label>
+            <p class="config-table-col-title">Voulez-vous jouer à tous les jeux ?</p>
+            <label class="rubrique-option"><input type="radio" name="gc-allgames" value="yes" checked /><span>Oui, les 7</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-allgames" value="no" /><span>Non, seulement certains</span></label>
+            <div id="gc-games-list" class="hidden" style="margin-top:10px;">
               <label class="rubrique-option"><input type="checkbox" class="gc-game" value="impregnation" checked /><span>Imprégnation</span></label>
-              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="chrono" checked /><span>Chronologie</span></label>
-              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="famille" checked /><span>Famille</span></label>
-              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="vf" checked /><span>Vrai/Faux</span></label>
-              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="recon" checked /><span>Reconstitution</span></label>
+              <p class="gc-game-hint"><em>Pour se familiariser avec les œuvres, sans encore être noté.</em></p>
               <label class="rubrique-option"><input type="checkbox" class="gc-game" value="intrus" checked /><span>Intrus</span></label>
+              <p class="gc-game-hint"><em>Repérer l'œuvre qui ne va pas avec les autres.</em></p>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="chrono" checked /><span>Chronologie</span></label>
+              <p class="gc-game-hint"><em>Remettre des œuvres dans l'ordre chronologique.</em></p>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="famille" checked /><span>Famille</span></label>
+              <p class="gc-game-hint"><em>Retrouver les œuvres d'un même artiste parmi d'autres.</em></p>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="vf" checked /><span>Vrai/Faux</span></label>
+              <p class="gc-game-hint"><em>Dire si l'attribution proposée est exacte ou non.</em></p>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="recon" checked /><span>Reconstitution</span></label>
+              <p class="gc-game-hint"><em>Retrouver une œuvre à partir d'un détail agrandi.</em></p>
+              <label class="rubrique-option"><input type="checkbox" class="gc-game" value="quiz" checked /><span>Quiz final</span></label>
+              <p class="gc-game-hint"><em>Le vrai test, pour s'autoévaluer une fois entraîné.</em></p>
             </div>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-summary" style="margin-top:10px;">Continuer →</button>
           </div>
@@ -187,6 +200,11 @@
           <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
 
           <p class="intro-banner">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique, sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pouvez le faire depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>), ou avec les boutons de chaque exercice (icône <span aria-hidden="true">✏️</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
+          <p id="training-hub-config-name" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--accent);font-weight:700;margin:-10px 0 14px;"></p>
+          <div id="training-hub-saved-configs" class="hidden" style="margin:-6px 0 16px;">
+            <p class="modal-hint" style="margin:0 0 6px;">Vos configurations enregistrées :</p>
+            <div id="training-hub-saved-configs-list" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+          </div>
 
           <div class="training-exercise-grid">
             <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="exercise-num">Exercice 1</span><span class="label">Imprégnation</span><span class="exercise-summary" id="imp-hub-summary"></span><span class="exercise-summary-edit" id="imp-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
@@ -1314,6 +1332,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=167"></script>
+    <script src="app.js?v=168"></script>
   </body>
 </html>

@@ -4502,6 +4502,54 @@ function updateExerciseSummaries() {
     const el = $(`${prefix}-hub-summary`);
     if (el) el.textContent = buildExerciseSummary(prefix);
   });
+  applyGamesFilterToHub();
+  renderSavedGuidedConfigsList();
+}
+// Configurations enregistrées depuis le parcours guidé : affichées ici, là où le joueur revient
+// naturellement, pour répondre simplement à « où est-ce que je les retrouve ? ».
+function renderSavedGuidedConfigsList() {
+  const wrap = $('training-hub-saved-configs');
+  const list = $('training-hub-saved-configs-list');
+  if (!wrap || !list) return;
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
+  const names = Object.keys(saved);
+  wrap.classList.toggle('hidden', !names.length);
+  list.innerHTML = names.map((name) => `<button type="button" class="secondary-button gc-load-config" data-name="${escapeHtml(name)}" style="padding:6px 12px;font-size:.85rem;">${escapeHtml(name)} →</button>`).join('');
+  list.querySelectorAll('.gc-load-config').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const cfg = saved[btn.dataset.name];
+      if (!cfg) return;
+      localStorage.setItem('globalFieldDefaults', JSON.stringify(cfg.field || {}));
+      localStorage.setItem('globalArtistDefaults', JSON.stringify(cfg.artists || {}));
+      localStorage.setItem('globalRubriqueDefaults', JSON.stringify(cfg.rubrique || {}));
+      if (cfg.allGames) localStorage.removeItem('globalGamesDefaults');
+      else localStorage.setItem('globalGamesDefaults', JSON.stringify({ games: cfg.games || [], remember: true }));
+      loadedGuidedConfigName = btn.dataset.name;
+      updateExerciseSummaries();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+}
+// Si le parcours guidé (ou une configuration enregistrée rechargée) a limité la partie à certains
+// jeux seulement, on ne montre que ceux-là sur la page d'accueil des exercices — pas la peine de
+// laisser deviner que les autres jeux pourraient, eux, avoir une configuration différente : la
+// sélection issue du parcours guidé s'applique globalement, un point c'est tout.
+const GAME_TO_BUTTON_ID = { impregnation: 'open-impregnation-setup', intrus: 'open-intrus-setup', famille: 'open-famille-setup', recon: 'open-reconstitution-setup', vf: 'open-vraifaux-setup', chrono: 'open-chrono-setup', quiz: 'open-quiz-setup' };
+let loadedGuidedConfigName = '';
+function applyGamesFilterToHub() {
+  let gg = {};
+  try { gg = JSON.parse(localStorage.getItem('globalGamesDefaults') || '{}'); } catch (e) {}
+  const games = gg.remember && gg.games?.length ? gg.games : null;
+  Object.entries(GAME_TO_BUTTON_ID).forEach(([key, id]) => {
+    $(id)?.classList.toggle('hidden', !!games && !games.includes(key));
+  });
+  const nameNote = $('training-hub-config-name');
+  if (nameNote) {
+    nameNote.textContent = loadedGuidedConfigName
+      ? `Configuration chargée : ${loadedGuidedConfigName}.`
+      : (games ? `${games.length} jeu${games.length > 1 ? 'x' : ''} sélectionné${games.length > 1 ? 's' : ''} pour cette partie.` : '');
+  }
 }
 // Filet de sécurité : si le démarrage automatique est activé mais que la sélection réellement
 // appliquée est vide (réglage ancien ou incomplet resté en mémoire), on n'insiste pas — on
@@ -4651,6 +4699,10 @@ $('open-training')?.addEventListener('click', () => { showPanel('training-hub');
 function resetGuidedConfig() {
   document.querySelectorAll('.gc-step').forEach((el, i) => el.classList.toggle('hidden', i !== 0));
   document.querySelectorAll('.gc-art, .gc-century, .gc-zone, .gc-level, .gc-rubrique').forEach((el) => { el.checked = false; });
+  document.querySelector('input[name="gc-want-artists"][value="no"]').checked = true;
+  $('gc-artist-list').classList.add('hidden');
+  $('gc-artist-status').textContent = '';
+  $('gc-artist-patience').classList.add('hidden');
   document.querySelector('input[name="gc-count"][value="10"]').checked = true;
   document.querySelector('input[name="gc-allgames"][value="yes"]').checked = true;
   $('gc-games-list').classList.add('hidden');
@@ -4660,6 +4712,7 @@ function resetGuidedConfig() {
 }
 $('open-guided-config')?.addEventListener('click', () => {
   resetGuidedConfig();
+  loadedGuidedConfigName = '';
   showPanel('guided-config');
 });
 function saveGuidedFieldAndRubrique() {
@@ -4687,9 +4740,11 @@ document.querySelectorAll('.gc-continue').forEach((btn) => {
 async function populateGuidedArtistList() {
   const list = $('gc-artist-list');
   const status = $('gc-artist-status');
+  const patience = $('gc-artist-patience');
+  patience.classList.remove('hidden');
   status.textContent = 'Chargement de la liste des artistes…';
   const ok = await loadArtistListIfNeeded();
-  if (!ok) { status.textContent = "La liste des artistes n'a pas pu être chargée (connexion internet ?)."; list.innerHTML = ''; return; }
+  if (!ok) { patience.classList.add('hidden'); status.textContent = "La liste des artistes n'a pas pu être chargée (connexion internet ?)."; list.innerHTML = ''; return; }
   let matchingRows = artistListRows.filter(artistMatchesCurrentField);
   const levels = readGlobalRubriqueDefaults().levels || [];
   if (levels.length && matchingRows.length <= 80) {
@@ -4701,15 +4756,39 @@ async function populateGuidedArtistList() {
     }
     matchingRows = kept;
   }
-  const names = matchingRows.map((r) => [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
+  patience.classList.add('hidden');
+  // Tri alphabétique par nom de famille (ou surnom s'il existe), particules ignorées — le même
+  // critère que la liste complète du menu hamburger, pour rester cohérent dans toute l'appli.
+  matchingRows.sort((a, b) => particleStrippedSortKey(a['Surnom'] || a['Patronyme']).localeCompare(particleStrippedSortKey(b['Surnom'] || b['Patronyme']), 'fr'));
   const selected = readGlobalArtistDefaults().artists || [];
-  list.innerHTML = names.map((name) => {
+  list.classList.remove('hidden');
+  list.innerHTML = matchingRows.map((r) => {
+    const name = [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim();
     const isSel = selected.includes(name);
-    return `<button type="button" class="pf-artist-pick" data-name="${escapeHtml(name)}" style="display:block;width:100%;text-align:left;padding:7px 10px;border:0;cursor:pointer;font:inherit;border-radius:4px;margin-bottom:2px;background:${isSel ? 'var(--accent)' : 'none'};color:${isSel ? '#fff' : 'inherit'};font-weight:${isSel ? '700' : '400'};">${isSel ? '✓ ' : ''}${escapeHtml(name)}</button>`;
+    const flag = artistFlag(r['Nationalité']) || '';
+    return `<label class="rubrique-option" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="gc-artist-pick" value="${escapeHtml(name)}" ${isSel ? 'checked' : ''} /><span>${flag} ${escapeHtml(name)}</span></label>`;
   }).join('');
-  list.querySelectorAll('.pf-artist-pick').forEach((b) => b.addEventListener('click', () => { toggleArtistSelection(b.dataset.name); populateGuidedArtistList(); }));
-  status.textContent = `${names.length} artiste${names.length > 1 ? 's' : ''} compatible${names.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels. Cliquez sur des noms d'artiste si vous voulez réduire le nombre d'artistes dans votre jeu.`;
+  list.querySelectorAll('.gc-artist-pick').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      const current = readGlobalArtistDefaults().artists || [];
+      const next = cb.checked ? [...current, cb.value] : current.filter((n) => n !== cb.value);
+      localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: next, remember: true }));
+    });
+  });
+  status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels. Cochez des noms si vous voulez réduire le nombre d'artistes dans votre jeu.`;
 }
+document.querySelectorAll('input[name="gc-want-artists"]').forEach((el) => {
+  el.addEventListener('change', () => {
+    if (el.value === 'yes' && el.checked) {
+      populateGuidedArtistList();
+    } else if (el.value === 'no' && el.checked) {
+      $('gc-artist-list').classList.add('hidden');
+      $('gc-artist-status').textContent = '';
+      $('gc-artist-patience').classList.add('hidden');
+      localStorage.removeItem('globalArtistDefaults');
+    }
+  });
+});
 document.querySelectorAll('input[name="gc-allgames"]').forEach((el) => {
   el.addEventListener('change', () => { $('gc-games-list').classList.toggle('hidden', el.value !== 'no' || !el.checked); });
 });

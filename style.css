@@ -478,6 +478,8 @@ body.lefty .hamburger-menu { right:auto; left:16px; }
 #modal-fonctionnement p { text-align:justify; }
 .modal-box .primary-button { margin-top:20px; width:100%; position:sticky; bottom:0; background:var(--cta); }
 .modal-hint { font-family:Arial,sans-serif; font-size:.82rem; color:var(--muted); margin:10px 0 14px; line-height:1.4; }
+.gc-note { font-family:Arial,sans-serif; font-size:.78rem; color:var(--muted); margin:8px 0 0; }
+.gc-game-hint { font-family:Arial,sans-serif; font-size:.78rem; color:var(--muted); margin:0 0 8px 28px; }
 
 .quiz-topbar { display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px; }
 .hidden { display:none !important; }.quiz-reference { margin:0; font-family:Arial,sans-serif; font-size:.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }.progress-row { display:none; }.score-summary-highlight { color:#c0392b; font-weight:800; font-size:1rem; white-space:nowrap; }.progress-track { height:7px; overflow:hidden; margin:0 0 20px; background:#ddd7cd; border-radius:10px; }.progress-bar { height:100%; width:0; background:var(--accent); transition:width .25s; }
