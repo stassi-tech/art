@@ -2253,18 +2253,47 @@ makeSilhouetteDraggable($('scale-overview-silhouette'), {
     if (dy < -40) enterCloserPlan();
   },
 });
+// Marche fluide et maîtrisée : on tire la silhouette d'un côté, elle avance à vitesse constante
+// dans cette direction tant qu'on maintient — le mur défile exactement au même rythme, dans la
+// même boucle d'animation, donc les deux restent strictement synchronisés (plus de désynchro
+// possible). Une fois une direction engagée (horizontale ou verticale), elle seule compte pour ce
+// geste — évite les mouvements désordonnés qui produisaient des sorties par erreur.
+let walkAnimationId = null;
+function stopWalking() {
+  if (walkAnimationId) clearTimeout(walkAnimationId);
+  walkAnimationId = null;
+  $('scale-silhouette').classList.remove('walking-left', 'walking-right');
+}
+function startWalking(direction) {
+  stopWalking();
+  const wall = $('scale-wall');
+  const sil = $('scale-silhouette');
+  sil.classList.add(direction > 0 ? 'walking-right' : 'walking-left');
+  const step = () => {
+    wall.scrollLeft += direction * 4;
+    walkAnimationId = setTimeout(step, 16); // ~60 images/seconde, sans dépendre de requestAnimationFrame
+  };
+  walkAnimationId = setTimeout(step, 16);
+}
 makeSilhouetteDraggable($('scale-silhouette'), {
-  onDrag: (dx) => {
-    const wall = $('scale-wall');
-    if (wall.dataset.dragStartScroll === undefined) wall.dataset.dragStartScroll = wall.scrollLeft;
-    wall.scrollLeft = Number(wall.dataset.dragStartScroll) + dx;
+  onDrag: (dx, dy) => {
+    // Une seule direction engagée par geste : la première franchie (horizontale ou verticale, au
+    //-delà d'un petit seuil) « gagne » pour le reste du geste, l'autre est ignorée.
+    const sil = $('scale-silhouette');
+    if (!sil.dataset.dragAxis) {
+      if (Math.abs(dx) > 12) sil.dataset.dragAxis = 'x';
+      else if (Math.abs(dy) > 12) sil.dataset.dragAxis = 'y';
+      else return;
+    }
+    if (sil.dataset.dragAxis === 'x') {
+      startWalking(dx > 0 ? 1 : -1);
+    } else {
+      stopWalking();
+    }
   },
   onDragEnd: (dx, dy, endX, endY) => {
-    // delete (et non une chaîne vide) : sinon la valeur ne redevient jamais "undefined", le test
-    // ci-dessus échoue au glissement suivant, et la position de départ reste figée sur l'ancienne
-    // valeur — bug réel repéré : la silhouette s'inclinait mais le mur ne bougeait plus du tout
-    // après un premier aller-retour.
-    delete $('scale-wall').dataset.dragStartScroll;
+    stopWalking();
+    delete $('scale-silhouette').dataset.dragAxis;
     if (isNearBottomCorner(endX, endY)) { exitScaleViewCompletely(); return; }
     // Seuil plus élevé, et le geste doit être franchement vertical (pas un déplacement latéral
     // avec un peu de tremblement) — trop sensible avant, un retour brutal au plan général pouvait

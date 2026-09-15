@@ -693,7 +693,13 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
 /* Ligne de plinthe séparant le mur du sol — repère visuel simple demandé pour bien distinguer les
    deux plans, en attendant une vraie salle en 3 dimensions. */
 #scale-wall-line { position:fixed; bottom:16vh; left:0; right:0; height:3px; background:rgba(0,0,0,.35); z-index:1; box-shadow:0 1px 2px rgba(255,255,255,.15); }
-#scale-silhouette { position:fixed; bottom:0; left:32px; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); z-index:5; touch-action:none; }
+#scale-silhouette { position:fixed; bottom:0; left:32px; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); z-index:5; touch-action:none; transform-origin:bottom center; }
+/* Léger balancement pendant la marche — seul repère visuel disponible avec une silhouette fixe à
+   l'écran (c'est le mur qui défile en dessous) : sans lui, rien à l'image ne suggère qu'elle
+   avance vraiment, seulement le décor qui glisse tout seul. */
+@keyframes scale-walk-sway { 0%, 100% { transform:rotate(0deg); } 50% { transform:rotate(3deg); } }
+#scale-silhouette.walking-right { animation:scale-walk-sway .4s ease-in-out infinite; }
+#scale-silhouette.walking-left { animation:scale-walk-sway .4s ease-in-out infinite reverse; }
 #scale-silhouette-label { position:fixed; bottom:4px; left:20px; font-family:Arial,sans-serif; font-size:.75rem; color:#4a453c; background:rgba(255,255,255,.75); padding:3px 8px; border-radius:4px; margin:0; z-index:2; }
 #scale-wall { position:fixed; inset:0; overflow-x:auto; overflow-y:hidden; scroll-behavior:smooth; }
 .scale-wall-item { position:absolute; box-shadow:0 10px 28px rgba(0,0,0,.3); cursor:pointer; transition:box-shadow .15s; z-index:2; }
