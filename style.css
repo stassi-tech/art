@@ -589,7 +589,7 @@ body[data-ambiance="ermitage"] .image-lightbox:has(#lightbox-scale-view:not(.hid
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-caption,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-image,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-source-link { display:none; }
-#lightbox-scale-view { position:fixed; inset:0; }
+#lightbox-scale-view { position:fixed; inset:0; user-select:none; }
 /* Sol de la salle, distinct du mur (voir ambiance : le mur garde la couleur/texture choisie par
    le joueur, le sol aura ses propres revêtements au choix plus tard — parquet Versailles, béton
    ciré, etc. En attendant ces choix, un parquet neutre par défaut, clairement différent du mur
@@ -601,7 +601,7 @@ body[data-ambiance="ermitage"] .image-lightbox:has(#lightbox-scale-view:not(.hid
    en attendant, une couleur de repli assure que la forme reste lisible. */
 #scale-overview { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
 #scale-overview-trapezoid {
-  position:relative; width:min(92vw, 1100px); height:62vh; margin-top:auto;
+  position:relative; width:min(92vw, 1100px); height:62vh; margin-top:auto; margin-bottom:16vh;
   clip-path:polygon(18% 0%, 82% 0%, 100% 100%, 0% 100%);
   background:#c9c2b3 center/cover no-repeat;
 }

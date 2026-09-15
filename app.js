@@ -2042,10 +2042,13 @@ function enterScaleView() {
   const candidates = (state.currentOtherWorks && state.currentOtherWorks.length ? state.currentOtherWorks : [currentLightboxWork])
     .filter((w) => parseCmValue(w.hauteur));
   // On entre toujours par la vue d'ensemble (1er plan) — le mur rapproché (2e plan, ci-dessous)
-  // ne s'affiche qu'après avoir tiré la silhouette vers l'avant.
+  // ne s'affiche qu'après avoir tiré la silhouette vers l'avant. Le sol reste visible dans les
+  // deux plans (distinction mur/sol demandée) — seule la ligne de plinthe, propre au mur
+  // rapproché, ne s'affiche pas encore ici.
   $('scale-overview').classList.remove('hidden');
+  $('scale-floor').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
   populateOverviewThumbs(candidates);
   state.scaleViewCandidates = candidates;
 }
@@ -2062,8 +2065,9 @@ function enterCloserPlan() {
 }
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
+  $('scale-floor').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
 }
 function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
@@ -2118,6 +2122,7 @@ function makeSilhouetteDraggable(el, { onDrag, onDragEnd } = {}) {
   let startY = 0;
   el.style.cursor = 'grab';
   el.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
     dragging = true;
     startX = event.clientX;
     startY = event.clientY;
@@ -2132,13 +2137,22 @@ function makeSilhouetteDraggable(el, { onDrag, onDragEnd } = {}) {
     if (!dragging) return;
     dragging = false;
     el.style.cursor = 'grab';
-    onDragEnd?.(event.clientX - startX, event.clientY - startY);
+    onDragEnd?.(event.clientX - startX, event.clientY - startY, event.clientX, event.clientY);
   };
   el.addEventListener('pointerup', stop);
   el.addEventListener('pointercancel', stop);
 }
+// Glisser la silhouette jusque dans un coin inférieur de l'écran fait sortir complètement de la
+// salle (retour à l'image normale), depuis n'importe lequel des deux plans — un geste qui
+// prolonge naturellement le "tirer vers l'arrière/le bas" déjà utilisé pour reculer d'un plan.
+function isNearBottomCorner(clientX, clientY) {
+  const nearBottom = clientY > window.innerHeight - 70;
+  const nearEdge = clientX < 70 || clientX > window.innerWidth - 70;
+  return nearBottom && nearEdge;
+}
 makeSilhouetteDraggable($('scale-overview-silhouette'), {
-  onDragEnd: (dx, dy) => {
+  onDragEnd: (dx, dy, endX, endY) => {
+    if (isNearBottomCorner(endX, endY)) { exitScaleView(); return; }
     // Tirer vers le haut (vers le fond de la salle) fait avancer vers le mur rapproché.
     if (dy < -40) enterCloserPlan();
   },
@@ -2148,9 +2162,14 @@ makeSilhouetteDraggable($('scale-silhouette'), {
     const wall = $('scale-wall');
     if (wall.dataset.dragStartScroll === undefined) wall.dataset.dragStartScroll = wall.scrollLeft;
     wall.scrollLeft = Number(wall.dataset.dragStartScroll) + dx;
+    // Légère inclinaison dans le sens du mouvement — pour que ce soit bien elle qu'on sente
+    // marcher, pas seulement le mur qui défilerait tout seul sous ses pieds.
+    $('scale-silhouette').style.transform = `rotate(${Math.max(-6, Math.min(6, dx / 20))}deg)`;
   },
-  onDragEnd: (dx, dy) => {
+  onDragEnd: (dx, dy, endX, endY) => {
     $('scale-wall').dataset.dragStartScroll = '';
+    $('scale-silhouette').style.transform = '';
+    if (isNearBottomCorner(endX, endY)) { exitScaleView(); return; }
     if (dy > 50) backToOverview();
   },
 });
