@@ -2035,6 +2035,8 @@ function enterScaleView() {
   // ne s'affiche qu'après avoir choisi une direction.
   $('scale-overview').classList.remove('hidden');
   $('scale-back-to-overview').classList.add('hidden');
+  $('scale-walk-nav').classList.add('hidden');
+  $('scale-wall-line').classList.add('hidden');
   ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
   populateOverviewThumbs(candidates);
   state.scaleViewCandidates = candidates;
@@ -2043,7 +2045,16 @@ function enterCloserPlan() {
   const candidates = state.scaleViewCandidates || [];
   $('scale-overview').classList.add('hidden');
   $('scale-back-to-overview').classList.remove('hidden');
+  $('scale-walk-nav').classList.remove('hidden');
+  $('scale-wall-line').classList.remove('hidden');
   ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.remove('hidden'));
+  // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
+  // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
+  // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
+  // tableaux, au ras du sol au lieu de les accrocher à hauteur des yeux.
+  requestAnimationFrame(() => populateCloserPlanWall(candidates));
+}
+function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
   // réelle après affichage pour placer chaque œuvre en conséquence, plutôt que de deviner des
   // chiffres qui se déréglent au moindre changement de mise en page.
@@ -2092,8 +2103,12 @@ $('scale-nav-right')?.addEventListener('click', enterCloserPlan);
 $('scale-back-to-overview')?.addEventListener('click', () => {
   $('scale-overview').classList.remove('hidden');
   $('scale-back-to-overview').classList.add('hidden');
+  $('scale-walk-nav').classList.add('hidden');
+  $('scale-wall-line').classList.add('hidden');
   ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
 });
+$('scale-walk-left')?.addEventListener('click', () => $('scale-wall').scrollBy({ left: -260, behavior: 'smooth' }));
+$('scale-walk-right')?.addEventListener('click', () => $('scale-wall').scrollBy({ left: 260, behavior: 'smooth' }));
 function exitScaleView() {
   $('lightbox-scale-view').classList.add('hidden');
   $('lightbox-scale-back-button').classList.add('hidden');
@@ -2441,10 +2456,27 @@ async function loadArtistListIfNeeded() {
 function findArtistRow(query) {
   const q = keyName(query);
   if (!q) return null;
-  return artistListRows.find((row) => {
+  // Recherche par paliers de confiance décroissante — une correspondance exacte doit toujours
+  // l'emporter sur une correspondance partielle, sinon un nom plus court entièrement contenu
+  // dans la saisie (ex. "Mone" dans "Monet") peut passer avant le bon artiste dans la liste. Bug
+  // réel repéré : chercher "Monet" renvoyait Jean MONE (patronyme "Mone", sous-chaîne de "Monet"),
+  // qui apparaît plus tôt dans le fichier maître que Claude MONET.
+  const exact = artistListRows.find((row) => {
+    const full = keyName(`${row['Prénom'] || ''} ${row['Patronyme'] || ''}`);
+    const patronyme = keyName(row['Patronyme'] || '');
+    const surnom = keyName(row['Surnom'] || '');
+    return full === q || patronyme === q || surnom === q;
+  });
+  if (exact) return exact;
+  const partial = artistListRows.find((row) => {
     const full = keyName(`${row['Prénom'] || ''} ${row['Patronyme'] || ''}`);
     const surnom = keyName(row['Surnom'] || '');
-    return full === q || surnom === q || full.includes(q) || (surnom && surnom.includes(q)) || (q.includes(keyName(row['Patronyme'])) && keyName(row['Patronyme']));
+    return full.includes(q) || (surnom && surnom.includes(q));
+  });
+  if (partial) return partial;
+  return artistListRows.find((row) => {
+    const patronyme = keyName(row['Patronyme'] || '');
+    return patronyme && q.includes(patronyme);
   }) || null;
 }
 async function fetchWorksForArtistRow(row) {

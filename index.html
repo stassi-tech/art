@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=129" />
+    <link rel="stylesheet" href="style.css?v=130" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -981,6 +981,11 @@
             </svg>
             <p id="scale-silhouette-label">Adulte de référence — 1,70 m</p>
             <button type="button" id="scale-back-to-overview" class="home-icon-button hidden" aria-label="Revenir à la vue d'ensemble" title="Revenir à la vue d'ensemble">↩</button>
+            <div id="scale-walk-nav" class="hidden">
+              <button type="button" id="scale-walk-left" aria-label="Se déplacer vers la gauche" title="Se déplacer vers la gauche">⬅</button>
+              <button type="button" id="scale-walk-right" aria-label="Se déplacer vers la droite" title="Se déplacer vers la droite">➡</button>
+            </div>
+            <div id="scale-wall-line" aria-hidden="true"></div>
             <div id="scale-wall"></div>
             <p id="lightbox-scale-caption" class="lightbox-scale-caption"></p>
           </div>
@@ -1161,6 +1166,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=140"></script>
+    <script src="app.js?v=142"></script>
   </body>
 </html>
