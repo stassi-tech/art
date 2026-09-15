@@ -659,7 +659,7 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
 /* La silhouette elle-même guide toute la navigation — on la tire (souris ou doigt) pour se
    déplacer, plus aucun bouton de direction séparé. touch-action:none empêche le geste de faire
    défiler la page au lieu de contrôler la silhouette sur mobile. */
-#scale-overview-silhouette { position:absolute; bottom:16vh; left:6%; height:12vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); touch-action:none; }
+#scale-overview-silhouette { position:absolute; bottom:calc(16vh - 6px); left:6%; height:12vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); touch-action:none; }
 body[data-ambiance="pitti"] #scale-overview-trapezoid { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
 body[data-ambiance="bauhaus"] #scale-overview-trapezoid { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
 body[data-ambiance="space"] #scale-overview-trapezoid { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }

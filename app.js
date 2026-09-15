@@ -902,7 +902,16 @@ function applyDefaultAdvance(checkboxId, delayId, delayRowId) {
 // l'exercice — calculée une fois au démarrage de la session à partir des arts/siècles choisis.
 function buildFieldLabel(arts, centuries) {
   const artLabels = { peinture: 'Peint', sculpture: 'Sculpt' };
-  if (!arts.length || !centuries.length) return '';
+  if (!arts.length || !centuries.length) {
+    // Un ou plusieurs artistes précis choisis (à la place d'art/siècle) : on les affiche par leur
+    // nom dans le bandeau plutôt que de laisser cette zone vide.
+    const artists = readGlobalFieldDefaults().artists || [];
+    if (artists.length) {
+      const shown = artists.slice(0, 2).join(', ');
+      return artists.length > 2 ? `${shown} +${artists.length - 2}` : shown;
+    }
+    return '';
+  }
   const artsPart = arts.map((a) => artLabels[a] || a).join('+');
   const centuriesPart = centuries.length <= 2 ? centuries.join('+') : `${centuries.length} siècles`;
   return `${artsPart}/${centuriesPart}`;
@@ -2252,7 +2261,10 @@ makeSilhouetteDraggable($('scale-silhouette'), {
     // après un premier aller-retour.
     delete $('scale-wall').dataset.dragStartScroll;
     if (isNearBottomCorner(endX, endY)) { exitScaleView(); return; }
-    if (dy > 50) backToOverview();
+    // Seuil plus élevé, et le geste doit être franchement vertical (pas un déplacement latéral
+    // avec un peu de tremblement) — trop sensible avant, un retour brutal au plan général pouvait
+    // se déclencher par erreur en voulant simplement se déplacer le long du mur.
+    if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.5) backToOverview();
   },
 });
 function exitScaleView() {
@@ -2645,7 +2657,30 @@ $('global-exhibition-button')?.addEventListener('click', (event) => {
   event.stopPropagation();
   const picker = $('exhibition-picker');
   picker.classList.toggle('hidden');
-  if (!picker.classList.contains('hidden')) picker.querySelector('.exhibition-artist-field')?.focus();
+  if (!picker.classList.contains('hidden')) {
+    // Les noms de la dernière exposition sont proposés par défaut (uniquement si les champs sont
+    // encore vides) — évite de les retaper à chaque fois qu'on veut revoir la même sélection.
+    const firstField = picker.querySelector('.exhibition-artist-field');
+    const allEmpty = [...picker.querySelectorAll('.exhibition-artist-field')].every((f) => !f.value.trim());
+    if (allEmpty) {
+      let lastArtists = [];
+      try { lastArtists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
+      if (lastArtists.length) {
+        const wrap = $('exhibition-artist-inputs');
+        wrap.innerHTML = '';
+        lastArtists.forEach((name) => {
+          const field = document.createElement('input');
+          field.type = 'text';
+          field.className = 'exhibition-artist-field';
+          field.placeholder = 'Ex. Jean Fouquet';
+          field.value = name;
+          field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
+          wrap.appendChild(field);
+        });
+      }
+    }
+    firstField?.focus();
+  }
 });
 $('exhibition-add-artist-button')?.addEventListener('click', () => {
   const wrap = $('exhibition-artist-inputs');
@@ -2661,6 +2696,7 @@ $('exhibition-launch-button')?.addEventListener('click', async () => {
   const feedback = $('exhibition-feedback');
   const names = [...document.querySelectorAll('.exhibition-artist-field')].map((f) => f.value.trim()).filter(Boolean);
   if (!names.length) { feedback.textContent = 'Indique au moins un nom d’artiste.'; return; }
+  localStorage.setItem('lastExhibitionArtists', JSON.stringify(names));
   feedback.style.color = 'var(--muted)';
   feedback.textContent = 'Recherche en cours…';
   const ok = await loadArtistListIfNeeded();
@@ -4210,9 +4246,17 @@ function buildExerciseSummary(prefix) {
   }
   const gf = readGlobalFieldDefaults();
   const gr = readGlobalRubriqueDefaults();
-  const hasGlobalField = gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length);
+  const hasGlobalField = gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length || gf.artists?.length);
   const hasGlobalRubrique = gr.remember && (gr.rubriques?.length || gr.levels?.length);
   if (hasGlobalField || hasGlobalRubrique) {
+    // Un ou plusieurs artistes précis choisis (à la place d'art/siècle/zone) : on les affiche par
+    // leur nom plutôt que par art/siècle, qui seraient vides dans ce cas — bien plus parlant pour
+    // se rappeler quelle sélection est active sans avoir à rouvrir Mon compte.
+    if (gf.artists?.length) {
+      const shown = gf.artists.slice(0, 2).join(', ');
+      const extra = gf.artists.length > 2 ? ` +${gf.artists.length - 2}` : '';
+      return `🌐 ${shown}${extra}${gr.levels?.length ? ' N' + gr.levels.join('+') : ''}`;
+    }
     const artLabel = (gf.arts || []).map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
     return `🌐 ${artLabel}${(gf.centuries || []).join('+')}${gr.levels?.length ? ' N' + gr.levels.join('+') : ''}`;
   }
