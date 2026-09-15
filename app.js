@@ -2004,16 +2004,46 @@ function setLightboxScaleData(work) {
   $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
   exitScaleView();
 }
+function populateOverviewThumbs(candidates) {
+  const container = $('scale-overview-thumbs');
+  container.innerHTML = '';
+  if (!candidates.length) return;
+  // Vue d'ensemble : simples pastilles miniatures dispersées sur le mur, pour donner une idée du
+  // nombre d'œuvres sans chercher à être proportionnées (ce sera le rôle du plan rapproché).
+  candidates.slice(0, 30).forEach((w, i) => {
+    const thumb = document.createElement('img');
+    thumb.src = imageSourceSized(w.image, 60);
+    thumb.alt = '';
+    thumb.className = 'scale-overview-thumb';
+    const col = i % 8;
+    const row = Math.floor(i / 8);
+    thumb.style.left = `${8 + col * 11}%`;
+    thumb.style.top = `${10 + row * 18}%`;
+    thumb.style.width = '7%';
+    thumb.style.height = '10%';
+    container.appendChild(thumb);
+  });
+}
 function enterScaleView() {
   if (!currentLightboxWork) return;
   $('lightbox-scale-view').classList.remove('hidden');
   $('lightbox-scale-toggle-topbar').classList.add('hidden');
   $('lightbox-scale-back-button').classList.remove('hidden');
-  // Quand on vient de la fiche d'un artiste (« Autres œuvres »), on affiche tout son mur — toutes
-  // ses œuvres dimensionnées à leur taille réelle les unes à côté des autres, pas seulement celle
-  // cliquée. Sinon (contexte sans liste, une seule œuvre connue), on n'affiche qu'elle.
   const candidates = (state.currentOtherWorks && state.currentOtherWorks.length ? state.currentOtherWorks : [currentLightboxWork])
     .filter((w) => parseCmValue(w.hauteur));
+  // On entre toujours par la vue d'ensemble (1er plan) — le mur rapproché (2e plan, ci-dessous)
+  // ne s'affiche qu'après avoir choisi une direction.
+  $('scale-overview').classList.remove('hidden');
+  $('scale-back-to-overview').classList.add('hidden');
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
+  populateOverviewThumbs(candidates);
+  state.scaleViewCandidates = candidates;
+}
+function enterCloserPlan() {
+  const candidates = state.scaleViewCandidates || [];
+  $('scale-overview').classList.add('hidden');
+  $('scale-back-to-overview').classList.remove('hidden');
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.remove('hidden'));
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
   // réelle après affichage pour placer chaque œuvre en conséquence, plutôt que de deviner des
   // chiffres qui se déréglent au moindre changement de mise en page.
@@ -2056,6 +2086,14 @@ function enterScaleView() {
   });
   $('lightbox-scale-caption').textContent = `Hauteur réelle : ${currentHCm} cm${currentNote}`;
 }
+$('scale-nav-left')?.addEventListener('click', enterCloserPlan);
+$('scale-nav-center')?.addEventListener('click', enterCloserPlan);
+$('scale-nav-right')?.addEventListener('click', enterCloserPlan);
+$('scale-back-to-overview')?.addEventListener('click', () => {
+  $('scale-overview').classList.remove('hidden');
+  $('scale-back-to-overview').classList.add('hidden');
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
+});
 function exitScaleView() {
   $('lightbox-scale-view').classList.add('hidden');
   $('lightbox-scale-back-button').classList.add('hidden');

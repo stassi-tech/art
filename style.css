@@ -595,6 +595,31 @@ body[data-ambiance="ermitage"] .image-lightbox:has(#lightbox-scale-view:not(.hid
    ciré, etc. En attendant ces choix, un parquet neutre par défaut, clairement différent du mur
    pour qu'on distingue bien les deux plans). Les sculptures reposent dessus (voir --scale-ratio et
    la classe .scale-sculpture, qui les pose à bottom:0 — juste au-dessus du sol, pas dedans). */
+/* Premier plan de la salle : vue d'ensemble en trapèze (façon Zoffany) — le mur du fond, plus
+   étroit en haut qu'en bas, donne une impression de profondeur simple. Une texture de fond par
+   ambiance (voir salle-<ambiance>-mur.jpg dans assets/) remplira ce trapèze une fois préparée ;
+   en attendant, une couleur de repli assure que la forme reste lisible. */
+#scale-overview { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
+#scale-overview-trapezoid {
+  position:relative; width:min(92vw, 1100px); height:62vh; margin-top:auto;
+  clip-path:polygon(18% 0%, 82% 0%, 100% 100%, 0% 100%);
+  background:#c9c2b3 center/cover no-repeat;
+}
+#scale-overview-thumbs { position:absolute; inset:0; }
+.scale-overview-thumb { position:absolute; box-shadow:0 4px 10px rgba(0,0,0,.35); object-fit:cover; border-radius:2px; }
+#scale-overview-silhouette { position:absolute; bottom:16vh; left:6%; height:12vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
+#scale-overview-nav { display:flex; gap:14px; justify-content:center; padding:18px 0; }
+.scale-nav-button { background:rgba(255,255,255,.92); border:1px solid var(--border); border-radius:8px; padding:10px 18px; font-family:Arial,sans-serif; font-weight:700; font-size:.9rem; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.15); }
+.scale-nav-button:hover { background:#fff; }
+body[data-ambiance="pitti"] #scale-overview-trapezoid { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
+body[data-ambiance="bauhaus"] #scale-overview-trapezoid { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
+body[data-ambiance="space"] #scale-overview-trapezoid { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
+body[data-ambiance="versailles"] #scale-overview-trapezoid { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
+body[data-ambiance="wedgwood"] #scale-overview-trapezoid { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
+body[data-ambiance="ermitage"] #scale-overview-trapezoid { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
+body:not([data-ambiance]) #scale-overview-trapezoid { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
+#scale-back-to-overview { position:fixed; top:66px; left:12px; z-index:9999; width:auto; padding:0 12px; }
+
 #scale-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a);
   box-shadow:0 -3px 8px rgba(0,0,0,.25); }
