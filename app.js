@@ -436,6 +436,8 @@ function initProfilePage() {
   $('pf-enter-validate').checked = prefs.enterValidate;
   $('pf-show-explanations').checked = prefs.showExplanations;
   $('pf-show-rules').checked = prefs.showRules;
+  $('pf-flags-artists').checked = prefs.flagsArtists;
+  $('pf-flags-locations').checked = prefs.flagsLocations;
   $('pf-audio').checked = prefs.audioOn;
   $('pf-handedness').value = document.body.classList.contains('lefty') ? 'left' : 'right';
   const savedAmbiance = localStorage.getItem('ambiance') || '';
@@ -528,6 +530,8 @@ $('pf-show-explanations')?.addEventListener('change', () => {
   applyMonCompteExplanationsVisibility();
 });
 $('pf-show-rules')?.addEventListener('change', () => setGlobalPref('showRules', $('pf-show-rules').checked));
+$('pf-flags-artists')?.addEventListener('change', () => setGlobalPref('flagsArtists', $('pf-flags-artists').checked));
+$('pf-flags-locations')?.addEventListener('change', () => setGlobalPref('flagsLocations', $('pf-flags-locations').checked));
 $('pf-audio')?.addEventListener('change', () => setGlobalPref('audioOn', $('pf-audio').checked));
 $('pf-voice')?.addEventListener('change', () => setGlobalPref('voiceName', $('pf-voice').value));
 $('pf-handedness')?.addEventListener('change', () => {
@@ -666,7 +670,7 @@ const voiceSupported = Boolean(SpeechRecognitionImpl);
 // PARAMÈTRES GLOBAUX (voix, chronomètre, touche Entrée, mémorisation) — communs à tous les
 // exercices d'entraînement, réglables depuis « Mon compte ».
 // ============================================================
-const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '', showExplanations: true, showRules: true, defaultAdvance: 'manual', defaultDelay: 5000 };
+const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '', showExplanations: true, showRules: true, flagsArtists: true, flagsLocations: true, defaultAdvance: 'manual', defaultDelay: 5000 };
 function getGlobalPrefs() {
   try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem('globalExercisePrefs') || '{}') }; }
   catch (e) { return { ...DEFAULT_PREFS }; }
@@ -1455,6 +1459,12 @@ function nationalityFlag(rawValue) {
   }
   return '';
 }
+// Drapeau de nationalité d'un ARTISTE (liste des artistes, fiche « Autres œuvres »...) — distinct
+// du drapeau de LIEU de conservation (voir locationWithFlag) : les deux se règlent indépendamment
+// dans Mon compte, certaines personnes n'aimant pas les drapeaux pour l'un ou l'autre usage.
+function artistFlag(rawValue) {
+  return getGlobalPrefs().flagsArtists ? nationalityFlag(rawValue) : '';
+}
 // Ville de conservation -> pays, pour afficher un petit drapeau à côté du lieu quand la ville
 // est peu connue (ex. « Sibiu » → 🇷🇴) — aide à situer l'œuvre sans avoir à chercher. Couvre les
 // villes les plus fréquentes dans les fichiers ; à compléter au fil des retours.
@@ -1816,8 +1826,9 @@ function formatArtistName(name) {
 // le quiz principal qui l'avaient chacun réimplémenté à leur façon (bug repéré : Famille,
 // Reconstitution et Intrus affichaient le lieu en texte brut, sans jamais appeler cityFlag).
 function locationWithFlag(work) {
-  const flag = work ? cityFlag(work.ville) : '';
   const loc = escapeHtml(work?.location || '');
+  if (!getGlobalPrefs().flagsLocations) return loc;
+  const flag = work ? cityFlag(work.ville) : '';
   return flag ? `${loc} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${flag}</span>` : loc;
 }
 function formatCorrectionValue(key, rawValue, work) {
@@ -1843,7 +1854,7 @@ function formatArtistWithDates(work) {
   // Un petit drapeau (colonne I, optionnelle) s'affiche juste avant les dates si la nationalité est connue.
   const name = formatArtistDisplayName(work);
   const dates = String(work.artistDates || '').trim();
-  const flag = nationalityFlag(work.nationality);
+  const flag = artistFlag(work.nationality);
   if (!dates && !flag) return name;
   const flagPart = flag ? `${flag} ` : '';
   return dates ? `${name} <span class="artist-dates">(${flagPart}${escapeHtml(dates)})</span>` : `${name} <span class="artist-dates">${flagPart}</span>`;
@@ -2092,7 +2103,7 @@ async function openArtistWorksPage(idx) {
   closeModal('modal-artist-list');
   showPanel('other-works');
   $('other-works-artist-name').textContent = displayName;
-  $('other-works-artist-flag').textContent = nationalityFlag(row['Nationalité']);
+  $('other-works-artist-flag').textContent = artistFlag(row['Nationalité']);
   $('other-works-artist-dates').textContent = '';
   const list = $('other-works-panel-list');
   list.innerHTML = '<p class="modal-hint">Chargement des œuvres…</p>';
@@ -2326,7 +2337,7 @@ function renderArtistListTable() {
   });
   html.push('</tr></thead><tbody>');
   sorted.forEach((r, idx) => {
-    html.push(`<tr><td><button type="button" class="artist-name-link" data-idx="${idx}">${formatArtistListName(r)}</button></td><td>${nationalityFlag(r['Nationalité']) || escapeHtml(r['Nationalité'] || '')}</td><td>${artFormIcons(r['Art(s)'])}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
+    html.push(`<tr><td><button type="button" class="artist-name-link" data-idx="${idx}">${formatArtistListName(r)}</button></td><td>${artistFlag(r['Nationalité']) || escapeHtml(r['Nationalité'] || '')}</td><td>${artFormIcons(r['Art(s)'])}</td><td>${escapeHtml(r['Siècle(s)'] || '')}</td></tr>`);
   });
   html.push('</tbody></table>');
   container.innerHTML = html.join('');
@@ -2600,7 +2611,7 @@ CHRONO_ACCORDIONS.forEach((pair) => {
 });
 function chronoSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`chrono-art-${a}`)?.checked); }
 function chronoSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`chrono-century-${c}`)?.checked); }
-function chronoSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`chrono-zone-${z}`)?.checked); }
+function chronoSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`chrono-zone-${z}`)?.checked); }
 function chronoSelectedLevels() { return ['1', '2', '3'].filter((l) => $(`chrono-level-${l}`)?.checked); }
 function showChronoConfig() {
   showPanel('chrono-setup'); speakObjective('chrono'); restoreLastSelection('chrono-setup-panel');
@@ -2910,7 +2921,7 @@ FAM_ACCORDIONS.forEach((pair) => {
 
 function famSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`fam-art-${a}`)?.checked); }
 function famSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`fam-century-${c}`)?.checked); }
-function famSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`fam-zone-${z}`)?.checked); }
+function famSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`fam-zone-${z}`)?.checked); }
 function famSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`fam-level-${lvl}`)?.checked); }
 function famSelectedTypes() {
   const map = { artist: 'fam-type-artist', word: 'fam-type-word', century: 'fam-type-century', museum: 'fam-type-museum' };
@@ -3240,7 +3251,7 @@ function populateVfVoices() {
 
 function vfSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`vf-art-${a}`)?.checked); }
 function vfSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`vf-century-${c}`)?.checked); }
-function vfSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`vf-zone-${z}`)?.checked); }
+function vfSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`vf-zone-${z}`)?.checked); }
 function vfSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`vf-level-${lvl}`)?.checked); }
 
 function vfActiveFields() {
@@ -3546,7 +3557,7 @@ RECON_ACCORDIONS.forEach((pair) => {
 
 function reconSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`recon-art-${a}`)?.checked); }
 function reconSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`recon-century-${c}`)?.checked); }
-function reconSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`recon-zone-${z}`)?.checked); }
+function reconSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`recon-zone-${z}`)?.checked); }
 function reconSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`recon-level-${lvl}`)?.checked); }
 
 let RECON_SESSION = [], reconIndex = 0, reconCorrectCount = 0, reconAnswered = false, reconAudioOn = true, reconSelectedVoice = null, reconAutoAdvance = false, reconAutoAdvanceDelay = 5000, reconExtraFields = [], reconTimers = [], reconFieldLabel = '';
@@ -3866,7 +3877,7 @@ $('load-saved-choice-button')?.addEventListener('click', () => {
   if (!raw) return;
   const cfg = JSON.parse(raw);
   ['art-peinture', 'art-sculpture', 'century-14e', 'century-15e', 'century-16e', 'century-17e', 'century-18e', 'century-19e', 'century-20e',
-   'zone-france', 'zone-europe', 'zone-amerique', 'zone-asie', 'level-1', 'level-2', 'level-3'].forEach((id) => { const el = $(id); if (el) el.checked = false; });
+   'zone-france', 'zone-italie', 'zone-espagne', 'zone-royaume_uni', 'zone-allemagne', 'zone-europe_centrale_russie', 'zone-europe_nord', 'zone-amerique', 'level-1', 'level-2', 'level-3'].forEach((id) => { const el = $(id); if (el) el.checked = false; });
   allFields.forEach((field) => { $(field.checkbox).checked = false; });
   (cfg.arts || []).forEach((a) => { const el = $(`art-${a}`); if (el) el.checked = true; });
   (cfg.centuries || []).forEach((c) => { const el = $(`century-${c}`); if (el) el.checked = true; });
@@ -3970,7 +3981,7 @@ function applyGlobalDefaultsToQuiz() {
   if (gf.remember) {
     ['peinture', 'sculpture'].forEach((a) => { const el = $(`art-${a}`); if (el) el.checked = (gf.arts || []).includes(a); });
     ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`century-${c}`); if (el) el.checked = (gf.centuries || []).includes(c); });
-    ['france', 'europe', 'amerique', 'asie'].forEach((z) => { const el = $(`zone-${z}`); if (el) el.checked = (gf.zones || []).includes(z); });
+    ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].forEach((z) => { const el = $(`zone-${z}`); if (el) el.checked = (gf.zones || []).includes(z); });
   }
   if (gr.remember) {
     ['1', '2', '3'].forEach((lvl) => { const el = $(`level-${lvl}`); if (el) el.checked = (gr.levels || []).includes(lvl); });
@@ -3995,7 +4006,7 @@ function applyGlobalFieldDefaultsTo(prefix) {
   if (gf.remember) {
     ['peinture', 'sculpture'].forEach((a) => { const el = $(`${prefix}-art-${a}`); if (el) el.checked = (gf.arts || []).includes(a); });
     ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`${prefix}-century-${c}`); if (el) el.checked = (gf.centuries || []).includes(c); });
-    ['france', 'europe', 'amerique', 'asie'].forEach((z) => { const el = $(`${prefix}-zone-${z}`); if (el) el.checked = (gf.zones || []).includes(z); });
+    ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].forEach((z) => { const el = $(`${prefix}-zone-${z}`); if (el) el.checked = (gf.zones || []).includes(z); });
   }
   if (gr.remember) {
     ['1', '2', '3'].forEach((lvl) => { const el = $(`${prefix}-level-${lvl}`); if (el) el.checked = (gr.levels || []).includes(lvl); });
@@ -4117,7 +4128,7 @@ function populateImpVoices() {
 
 function impSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`imp-art-${a}`)?.checked); }
 function impSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`imp-century-${c}`)?.checked); }
-function impSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`imp-zone-${z}`)?.checked); }
+function impSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`imp-zone-${z}`)?.checked); }
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
 let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impFieldLabel = '';
@@ -4303,7 +4314,7 @@ INTRUS_ACCORDIONS.forEach((pair) => {
 
 function intrusSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`intrus-art-${a}`)?.checked); }
 function intrusSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`intrus-century-${c}`)?.checked); }
-function intrusSelectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((z) => $(`intrus-zone-${z}`)?.checked); }
+function intrusSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`intrus-zone-${z}`)?.checked); }
 function intrusSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`intrus-level-${lvl}`)?.checked); }
 
 let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false, intrusAudioOn = true, intrusSelectedVoice = null, intrusAutoAdvance = false, intrusAutoAdvanceDelay = 5000, intrusExtraFields = [], intrusTimers = [], intrusFieldLabel = '';
@@ -4554,24 +4565,27 @@ $('century-20e-notice-close')?.addEventListener('click', () => {
 });
 function selectedArts() { return ['peinture', 'sculpture'].filter((art) => $(`art-${art}`).checked); }
 function selectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((century) => $(`century-${century}`).checked); }
-function selectedZones() { return ['france', 'europe', 'amerique', 'asie'].filter((zone) => $(`zone-${zone}`)?.checked); }
-const ZONE_LABELS = { france: 'France', europe: "Autres pays d'Europe", amerique: 'Amérique', asie: 'Asie' };
+function selectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((zone) => $(`zone-${zone}`)?.checked); }
+const ZONE_LABELS = { france: 'France', italie: 'Italie', espagne: 'Espagne', royaume_uni: 'Royaume-Uni', allemagne: 'Allemagne', europe_centrale_russie: 'Europe centrale et Russie', europe_nord: 'Europe du Nord', amerique: 'Amérique' };
 // Zone géographique déduite de la nationalité (colonne I, texte libre) : rattachement par
-// sous-chaîne, dans le même esprit que NATIONALITY_FLAGS. "france" est à part des autres pays
-// européens, comme demandé (un joueur peut vouloir réviser "France" seule vs "reste de l'Europe").
+// sous-chaîne, dans le même esprit que NATIONALITY_FLAGS. Recentrage sur l'art occidental : plus
+// de zone "Asie", et l'Europe est désormais détaillée par grande zone plutôt qu'un seul bloc.
 const ZONE_BY_NATIONALITY_KEYWORD = {
   france: ['francaise', 'francais'],
-  europe: [
-    'italienne', 'italien', 'espagnole', 'espagnol', 'catalane', 'catalan', 'flamande', 'flamand',
-    'belge', 'hollandaise', 'hollandais', 'neerlandaise', 'neerlandais', 'allemande', 'allemand',
-    'autrichienne', 'autrichien', 'suisse', 'anglaise', 'anglais', 'britannique', 'ecossaise',
-    'ecossais', 'irlandaise', 'irlandais', 'russe', 'portugaise', 'portugais', 'danoise', 'danois',
-    'norvegienne', 'norvegien', 'suedoise', 'suedois', 'finlandaise', 'finlandais', 'polonaise',
-    'polonais', 'tcheque', 'boheme', 'hongroise', 'hongrois', 'grecque', 'grec', 'byzantine',
-    'byzantin', 'croate', 'ukrainienne', 'ukrainien', 'bulgare', 'bielorusse', 'maltaise', 'suedoise',
+  italie: ['italienne', 'italien'],
+  espagne: ['espagnole', 'espagnol', 'catalane', 'catalan', 'portugaise', 'portugais'],
+  royaume_uni: ['anglaise', 'anglais', 'britannique', 'ecossaise', 'ecossais', 'irlandaise', 'irlandais'],
+  allemagne: ['allemande', 'allemand'],
+  europe_centrale_russie: [
+    'autrichienne', 'autrichien', 'suisse', 'russe', 'polonaise', 'polonais', 'tcheque', 'boheme',
+    'hongroise', 'hongrois', 'ukrainienne', 'ukrainien', 'bulgare', 'bielorusse', 'croate',
+    'grecque', 'grec', 'byzantine', 'byzantin', 'maltaise',
+  ],
+  europe_nord: [
+    'danoise', 'danois', 'norvegienne', 'norvegien', 'suedoise', 'suedois', 'finlandaise', 'finlandais',
+    'hollandaise', 'hollandais', 'neerlandaise', 'neerlandais', 'flamande', 'flamand', 'belge',
   ],
   amerique: ['americaine', 'americain', 'mexicaine', 'mexicain', 'canadienne', 'canadien', 'bresilienne', 'bresilien', 'argentine'],
-  asie: ['chinoise', 'chinois', 'japonaise', 'japonais', 'coreenne', 'coreen', 'indienne', 'indien', 'persane', 'persan', 'iranienne', 'iranien'],
 };
 function zoneOfNationality(rawValue) {
   const key = keyName(rawValue);

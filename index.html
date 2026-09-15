@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>MNEMART — Révision d'histoire de l'art</title>
+    <title>MNEMART — Peintures et sculptures en Occident, 14e au 20e siècle</title>
     <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=125" />
+    <link rel="stylesheet" href="style.css?v=126" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -57,7 +57,7 @@
           </div>
 
           <p class="app-brand-name">MNEMART</p>
-          <p class="eyebrow home-eyebrow">Peinture &amp; sculpture — 14e au 20e siècle</p>
+          <p class="eyebrow home-eyebrow">Peintures et sculptures en Occident — 14e au 20e siècle</p>
           <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
 
           <figure class="home-illustration">
@@ -65,7 +65,7 @@
             <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
           </figure>
 
-          <p class="intro-banner">Cette application vous propose de jouer avec <a href="#base" target="_blank" rel="noopener">une base de plusieurs milliers d'œuvres d'art</a> — peintures et sculptures, du 14e au 20e siècle — à travers <a href="#exercices" target="_blank" rel="noopener">des exercices d'entraînement</a> à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. <a href="#" id="intro-account-link">Créez un compte</a> pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
+          <p class="intro-banner">Cette application vous propose de jouer avec <a href="#base" target="_blank" rel="noopener">une base de plusieurs milliers d'œuvres d'art</a> — peintures et sculptures en Occident, du 14e au 20e siècle — à travers <a href="#exercices" target="_blank" rel="noopener">des exercices d'entraînement</a> à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. <a href="#" id="intro-account-link">Créez un compte</a> pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
 
           <div class="home-mode-buttons">
             <button type="button" class="home-mode-button" id="open-training">
@@ -79,7 +79,7 @@
         <section id="training-hub-panel" class="welcome-panel hidden">
 
           <p class="app-brand-name">MNEMART</p>
-          <p class="eyebrow home-eyebrow">Peinture &amp; sculpture — 14e au 20e siècle</p>
+          <p class="eyebrow home-eyebrow">Peintures et sculptures en Occident — 14e au 20e siècle</p>
           <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
 
           <p class="intro-banner">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pouvez le faire depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>), ou avec les boutons de chaque exercice (icône <span aria-hidden="true">✏️</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
@@ -126,9 +126,13 @@
             <div>
               <p class="config-table-col-title">Zone géographique</p>
               <label class="rubrique-option"><input type="checkbox" id="imp-zone-france" /><span>France</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="imp-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-zone-italie" /><span>Italie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-zone-espagne" /><span>Espagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-zone-royaume_uni" /><span>Royaume-Uni</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-zone-allemagne" /><span>Allemagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-zone-europe_centrale_russie" /><span>Europe centrale et Russie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-zone-europe_nord" /><span>Europe du Nord</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-zone-amerique" /><span>Amérique</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="imp-zone-asie" /><span>Asie</span></label>
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
@@ -226,9 +230,13 @@
             <div>
               <p class="config-table-col-title">Zone géographique</p>
               <label class="rubrique-option"><input type="checkbox" id="intrus-zone-france" /><span>France</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-italie" /><span>Italie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-espagne" /><span>Espagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-royaume_uni" /><span>Royaume-Uni</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-allemagne" /><span>Allemagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-europe_centrale_russie" /><span>Europe centrale et Russie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-europe_nord" /><span>Europe du Nord</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-zone-amerique" /><span>Amérique</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="intrus-zone-asie" /><span>Asie</span></label>
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
@@ -323,9 +331,13 @@
             <div>
               <p class="config-table-col-title">Zone géographique</p>
               <label class="rubrique-option"><input type="checkbox" id="recon-zone-france" /><span>France</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="recon-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-zone-italie" /><span>Italie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-zone-espagne" /><span>Espagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-zone-royaume_uni" /><span>Royaume-Uni</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-zone-allemagne" /><span>Allemagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-zone-europe_centrale_russie" /><span>Europe centrale et Russie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-zone-europe_nord" /><span>Europe du Nord</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-zone-amerique" /><span>Amérique</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="recon-zone-asie" /><span>Asie</span></label>
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
@@ -418,9 +430,13 @@
             <div>
               <p class="config-table-col-title">Zone géographique</p>
               <label class="rubrique-option"><input type="checkbox" id="vf-zone-france" /><span>France</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="vf-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-zone-italie" /><span>Italie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-zone-espagne" /><span>Espagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-zone-royaume_uni" /><span>Royaume-Uni</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-zone-allemagne" /><span>Allemagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-zone-europe_centrale_russie" /><span>Europe centrale et Russie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-zone-europe_nord" /><span>Europe du Nord</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-zone-amerique" /><span>Amérique</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="vf-zone-asie" /><span>Asie</span></label>
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
@@ -516,9 +532,13 @@
             <div>
               <p class="config-table-col-title">Zone géographique</p>
               <label class="rubrique-option"><input type="checkbox" id="fam-zone-france" /><span>France</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="fam-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-zone-italie" /><span>Italie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-zone-espagne" /><span>Espagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-zone-royaume_uni" /><span>Royaume-Uni</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-zone-allemagne" /><span>Allemagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-zone-europe_centrale_russie" /><span>Europe centrale et Russie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="fam-zone-europe_nord" /><span>Europe du Nord</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-zone-amerique" /><span>Amérique</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="fam-zone-asie" /><span>Asie</span></label>
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
@@ -611,9 +631,13 @@
             <div>
               <p class="config-table-col-title">Zone géographique</p>
               <label class="rubrique-option"><input type="checkbox" id="chrono-zone-france" /><span>France</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-europe" /><span>Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-italie" /><span>Italie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-espagne" /><span>Espagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-royaume_uni" /><span>Royaume-Uni</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-allemagne" /><span>Allemagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-europe_centrale_russie" /><span>Europe centrale et Russie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-europe_nord" /><span>Europe du Nord</span></label>
               <label class="rubrique-option"><input type="checkbox" id="chrono-zone-amerique" /><span>Amérique</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="chrono-zone-asie" /><span>Asie</span></label>
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones. Plusieurs siècles nécessaires pour un vrai classement.</p>
             </div>
           </div>
@@ -702,9 +726,13 @@
             <div>
               <p class="config-table-col-title">Zone géographique</p>
               <label class="rubrique-option"><input type="checkbox" id="zone-france" /><span title="Artistes d'origine française">France</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="zone-europe" /><span title="Artistes d'origine européenne hors France">Autres pays d'Europe</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-italie" /><span title="Artistes d'origine italienne">Italie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-espagne" /><span title="Artistes d'origine espagnole ou portugaise">Espagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-royaume_uni" /><span title="Artistes britanniques ou irlandais">Royaume-Uni</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-allemagne" /><span title="Artistes d'origine allemande">Allemagne</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-europe_centrale_russie" /><span title="Autriche, Suisse, Russie, Pologne, Europe centrale...">Europe centrale et Russie</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="zone-europe_nord" /><span title="Pays-Bas, Belgique, Scandinavie...">Europe du Nord</span></label>
               <label class="rubrique-option"><input type="checkbox" id="zone-amerique" /><span title="Artistes d'origine américaine (Nord et Sud)">Amérique</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="zone-asie" /><span title="Artistes d'origine asiatique">Asie</span></label>
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones. Cocher plusieurs siècles les mélange aléatoirement.</p>
             </div>
           </div>
@@ -996,7 +1024,7 @@
             <button type="button" id="profile-resume-exercise-button" class="primary-button hidden" style="margin-top:10px;">↩ Revenir à l'exercice en cours</button>
           </div>
 
-          <div class="training-exercise-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
+          <div class="training-exercise-grid" id="profile-menu-grid" style="margin-bottom:24px;">
             <button type="button" class="home-mode-button profile-menu-btn" id="profile-menu-tech" data-target="profile-section-tech">Mes paramètres techniques</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-esthetique" data-target="profile-section-esthetique">Esthétique</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-fields" data-target="profile-section-fields">Mes choix de champ</button>
@@ -1010,6 +1038,8 @@
             <label class="rubrique-option"><input type="checkbox" id="pf-enter-validate" /><span>Valider les réponses dans les jeux avec la touche Entrée</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-show-explanations" /><span>Afficher les explications d'exercice dans leur configuration</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-show-rules" checked /><span>Afficher la fenêtre de règles au démarrage d'un exercice</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="pf-flags-artists" checked /><span>Faire apparaître les drapeaux nationaux pour les artistes</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="pf-flags-locations" checked /><span>Faire apparaître les drapeaux pour les lieux de conservation</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-audio" /><span>Lecture audio (voix de synthèse)</span></label>
             <div class="opt-row"><span>Voix utilisée :</span><select id="pf-voice"><option value="">Chargement des voix…</option></select></div>
             <div class="opt-row"><span>Emplacement des boutons :</span>
@@ -1049,9 +1079,13 @@
               <div>
                 <p class="config-table-col-title">Zone géographique</p>
                 <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="france" /><span>France</span></label>
-                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="europe" /><span>Europe (hors France)</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="italie" /><span>Italie</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="espagne" /><span>Espagne</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="royaume_uni" /><span>Royaume-Uni</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="allemagne" /><span>Allemagne</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="europe_centrale_russie" /><span>Europe centrale et Russie</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="europe_nord" /><span>Europe du Nord</span></label>
                 <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="amerique" /><span>Amérique</span></label>
-                <label class="rubrique-option"><input type="checkbox" class="pf-field-zone" value="asie" /><span>Asie</span></label>
               </div>
             </div>
             <button type="button" class="secondary-button" id="pf-fields-clear" style="width:100%;margin-top:8px;">Effacer le choix de champ</button>
@@ -1112,6 +1146,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=136"></script>
+    <script src="app.js?v=138"></script>
   </body>
 </html>

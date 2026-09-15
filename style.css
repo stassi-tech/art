@@ -648,6 +648,12 @@ body.has-other-works .correction-label { font-size:.76rem; }
 @media (max-width:640px) {
   .fam-image-grid { grid-template-columns:repeat(2, 1fr) !important; }
   .training-exercise-grid { grid-template-columns:1fr 1fr; }
+  /* La grille de "Mon compte" (5 boutons) reste à 3 colonnes même sur mobile : avec seulement 2
+     colonnes, "Mes choix de rubrique et de niveau" (texte long) débordait de son bouton, coupé
+     hors champ — 3 colonnes lui donnent plus de largeur ET place ce bouton juste avant "Mes
+     scores" sur la 2e ligne, comme demandé. */
+  #profile-menu-grid { grid-template-columns:repeat(3, 1fr); }
+  #profile-menu-grid .home-mode-button { font-size:.78rem; padding:10px 6px; }
   .accordion-columns { grid-template-columns:1fr; gap:0; }
   .app-shell { flex-direction:column; width:min(100% - 24px, 1120px); padding-top:44px; min-height:auto; }
   #quiz-panel .progress-row { margin-top:10px; }
