@@ -653,7 +653,7 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
    plus large en bas, côté spectateur) — un simple rectangle ne donnait aucune impression de
    profondeur et laissait croire que le personnage se tenait sur le mur plutôt qu'au sol (bug réel
    repéré). Distinct du sol rectangulaire du mur rapproché (#scale-floor, non affiché ici). */
-#scale-overview-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
+#scale-overview-floor { position:absolute; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
   clip-path:polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a); }
 /* La silhouette elle-même guide toute la navigation — on la tire (souris ou doigt) pour se
@@ -676,15 +676,15 @@ body:not([data-ambiance]) #scale-overview-trapezoid { background-color:#c9b896; 
 /* Sol de la salle personnalisable par ambiance (voir salle-<ambiance>-sol.jpg dans assets/) — même
    principe que le mur : un seul fichier par ambiance, utilisé aux deux plans (vue d'ensemble et
    mur rapproché). Couleur/texture de repli tant que le fichier n'est pas déposé. */
-body[data-ambiance="pitti"] #scale-floor, body[data-ambiance="pitti"] #scale-overview-floor { background-image:url('assets/salle-pitti-sol.jpg'); }
-body[data-ambiance="bauhaus"] #scale-floor, body[data-ambiance="bauhaus"] #scale-overview-floor { background-image:url('assets/salle-bauhaus-sol.jpg'); }
-body[data-ambiance="space"] #scale-floor, body[data-ambiance="space"] #scale-overview-floor { background-image:url('assets/salle-space-sol.jpg'); }
-body[data-ambiance="versailles"] #scale-floor, body[data-ambiance="versailles"] #scale-overview-floor { background-image:url('assets/salle-versailles-sol.jpg'); }
-body[data-ambiance="wedgwood"] #scale-floor, body[data-ambiance="wedgwood"] #scale-overview-floor { background-image:url('assets/salle-wedgwood-sol.jpg'); }
-body[data-ambiance="ermitage"] #scale-floor, body[data-ambiance="ermitage"] #scale-overview-floor { background-image:url('assets/salle-ermitage-sol.jpg'); }
-body[data-ambiance="renaissance"] #scale-floor, body[data-ambiance="renaissance"] #scale-overview-floor { background-image:url('assets/salle-renaissance-sol.jpg'); }
-body[data-ambiance="gothique"] #scale-floor, body[data-ambiance="gothique"] #scale-overview-floor { background-image:url('assets/salle-gothique-sol.jpg'); }
-body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overview-floor { background-image:url('assets/salle-renoir-sol.jpg'); }
+body[data-ambiance="pitti"] #scale-floor, body[data-ambiance="pitti"] #scale-overview-floor { background-color:#b8a888; background-image:url('assets/salle-pitti-sol.jpg'); }
+body[data-ambiance="bauhaus"] #scale-floor, body[data-ambiance="bauhaus"] #scale-overview-floor { background-color:#8a8a8c; background-image:url('assets/salle-bauhaus-sol.jpg'); }
+body[data-ambiance="space"] #scale-floor, body[data-ambiance="space"] #scale-overview-floor { background-color:#4a4a52; background-image:url('assets/salle-space-sol.jpg'); }
+body[data-ambiance="versailles"] #scale-floor, body[data-ambiance="versailles"] #scale-overview-floor { background-color:#a8824a; background-image:url('assets/salle-versailles-sol.jpg'); }
+body[data-ambiance="wedgwood"] #scale-floor, body[data-ambiance="wedgwood"] #scale-overview-floor { background-color:#d8ccb0; background-image:url('assets/salle-wedgwood-sol.jpg'); }
+body[data-ambiance="ermitage"] #scale-floor, body[data-ambiance="ermitage"] #scale-overview-floor { background-color:#8a6a3a; background-image:url('assets/salle-ermitage-sol.jpg'); }
+body[data-ambiance="renaissance"] #scale-floor, body[data-ambiance="renaissance"] #scale-overview-floor { background-color:#b89468; background-image:url('assets/salle-renaissance-sol.jpg'); }
+body[data-ambiance="gothique"] #scale-floor, body[data-ambiance="gothique"] #scale-overview-floor { background-color:#8a7a5c; background-image:url('assets/salle-gothique-sol.jpg'); }
+body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overview-floor { background-color:#6f5638; background-image:url('assets/salle-renoir-sol.jpg'); }
 /* Ligne de plinthe séparant le mur du sol — repère visuel simple demandé pour bien distinguer les
    deux plans, en attendant une vraie salle en 3 dimensions. */
 #scale-wall-line { position:fixed; bottom:16vh; left:0; right:0; height:3px; background:rgba(0,0,0,.35); z-index:1; box-shadow:0 1px 2px rgba(255,255,255,.15); }
@@ -705,6 +705,21 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
   #scale-silhouette { height:52vh; left:16px; }
   .lightbox-scale-caption { font-size:.8rem; right:12px; bottom:12px; }
 }
+/* Vue rapprochée d'une œuvre précise, silhouette comprise dans l'image — accessible en touchant
+   une œuvre du mur, sortie en tirant la silhouette hors du cadre (voir JS : enterFocusView /
+   exitFocusView). Tailles posées dynamiquement en JS selon les dimensions réelles de l'œuvre. */
+#scale-focus-view { position:fixed; inset:0; z-index:10; background:#e8e4d8; display:flex; align-items:center; justify-content:center; }
+body[data-ambiance="pitti"] #scale-focus-view { background:#0c3c2f; }
+body[data-ambiance="bauhaus"] #scale-focus-view { background:#3d3d3f; }
+body[data-ambiance="space"] #scale-focus-view { background:#e07a2e; }
+body[data-ambiance="versailles"] #scale-focus-view { background:#5c1015; }
+body[data-ambiance="wedgwood"] #scale-focus-view { background:#a8c0d4; }
+body[data-ambiance="ermitage"] #scale-focus-view { background:#0a2745; }
+body[data-ambiance="renaissance"] #scale-focus-view { background:#7a3820; }
+body[data-ambiance="gothique"] #scale-focus-view { background:#101d70; }
+#scale-focus-img { position:absolute; box-shadow:0 12px 32px rgba(0,0,0,.4); object-fit:contain; background:#fff; }
+#scale-focus-silhouette { position:absolute; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.2)); cursor:grab; touch-action:none; z-index:2; }
+#scale-focus-caption { position:fixed; bottom:20px; right:24px; color:#4a453c; font-family:Arial,sans-serif; font-size:.9rem; margin:0; background:rgba(255,255,255,.85); padding:6px 12px; border-radius:4px; }
 .other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
 .other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }
 .other-works-list { display:flex; flex-wrap:wrap; gap:12px; }

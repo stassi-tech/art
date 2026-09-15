@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=138" />
+    <link rel="stylesheet" href="style.css?v=141" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -980,6 +980,16 @@
             </svg>
             <p id="scale-silhouette-label">Adulte de référence — 1,70 m — tirez-la pour vous déplacer</p>
             <p id="lightbox-scale-caption" class="lightbox-scale-caption"></p>
+            <!-- Vue rapprochée d'une œuvre précise : la silhouette entre dans l'image elle-même pour
+                 montrer l'échelle en grand — on la tire hors du cadre pour revenir au mur, qui garde
+                 sa position (la promenade continue là où elle s'était arrêtée). -->
+            <div id="scale-focus-view" class="hidden">
+              <img id="scale-focus-img" src="" alt="" />
+              <svg id="scale-focus-silhouette" viewBox="0 0 100 340" aria-hidden="true">
+                <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+              </svg>
+              <p id="scale-focus-caption"></p>
+            </div>
           </div>
           <a id="lightbox-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
         </div>
@@ -1167,6 +1177,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=149"></script>
+    <script src="app.js?v=152"></script>
   </body>
 </html>

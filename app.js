@@ -2148,13 +2148,52 @@ function populateCloserPlanWall(candidates) {
     item.style.left = `${cursorLeft}px`;
     item.style.bottom = isSculpture ? '0px' : `${Math.max(eyeLevelFromBottom - artH / 2, 0)}px`;
     item.innerHTML = `<img src="${escapeHtml(imageSourceSized(w.image, artW))}" alt="" />`;
-    item.addEventListener('click', () => { $('lightbox-scale-caption').textContent = `Hauteur réelle : ${hCm} cm${note}`; });
+    item.addEventListener('click', () => {
+      $('lightbox-scale-caption').textContent = `Hauteur réelle : ${hCm} cm${note}`;
+      enterFocusView(w, hCm, note);
+    });
     wall.appendChild(item);
     cursorLeft += Math.max(artW, 4) + 40;
     if (w === currentLightboxWork) { currentNote = note; currentHCm = hCm; }
   });
   $('lightbox-scale-caption').textContent = `Hauteur réelle : ${currentHCm} cm${currentNote}`;
 }
+// Vue rapprochée d'une œuvre précise : elle occupe le plus possible de l'écran, la silhouette se
+// tient juste à côté à sa vraie échelle relative — même principe que le mur, mais en très grand,
+// pour bien ressentir la taille d'une seule œuvre. On sort en tirant la silhouette hors du cadre ;
+// le mur retrouve sa position exacte (la promenade continue là où elle s'était arrêtée).
+function enterFocusView(work, hCm, note) {
+  const lCm = parseCmValue(work.longueur) || hCm;
+  $('scale-focus-view').classList.remove('hidden');
+  const maxArtH = window.innerHeight * 0.82;
+  const maxArtW = window.innerWidth * 0.62;
+  const pxPerCm = Math.min(maxArtH / hCm, maxArtW / lCm);
+  const artH = hCm * pxPerCm;
+  const artW = lCm * pxPerCm;
+  const silhH = 170 * pxPerCm;
+  const img = $('scale-focus-img');
+  img.src = imageSourceSized(work.image, artW);
+  img.style.width = `${artW}px`;
+  img.style.height = `${artH}px`;
+  img.style.left = `calc(50% - ${artW / 2 - 60}px)`;
+  img.style.top = `calc(50% - ${artH / 2}px)`;
+  const sil = $('scale-focus-silhouette');
+  const silW = silhH * (100 / 340); // largeur réelle du SVG (viewBox 100×340), pour ne jamais chevaucher l'œuvre
+  sil.style.height = `${silhH}px`;
+  sil.style.left = `calc(50% - ${artW / 2 - 60}px - ${silW + 14}px)`;
+  sil.style.top = `calc(50% + ${artH / 2}px - ${silhH}px)`;
+  $('scale-focus-caption').textContent = `Hauteur réelle : ${hCm} cm${note}`;
+}
+function exitFocusView() {
+  $('scale-focus-view').classList.add('hidden');
+}
+makeSilhouetteDraggable($('scale-focus-silhouette'), {
+  onDragEnd: (dx, dy) => {
+    // Un geste net suffit à sortir du cadre — pas besoin d'un seuil énorme, l'œuvre occupant déjà
+    // tout l'écran, un petit glissement dans n'importe quelle direction est déjà volontaire.
+    if (Math.abs(dx) > 40 || Math.abs(dy) > 40) exitFocusView();
+  },
+});
 // Navigation entièrement par la silhouette, qu'on « tire » à la souris ou au doigt — plus aucun
 // bouton de direction séparé. Sur la vue d'ensemble : tirer vers le haut (vers l'avant) fait
 // entrer dans le mur rapproché. Sur le mur rapproché : tirer vers le bas (vers l'arrière) repasse
@@ -2205,13 +2244,13 @@ makeSilhouetteDraggable($('scale-silhouette'), {
     const wall = $('scale-wall');
     if (wall.dataset.dragStartScroll === undefined) wall.dataset.dragStartScroll = wall.scrollLeft;
     wall.scrollLeft = Number(wall.dataset.dragStartScroll) + dx;
-    // Légère inclinaison dans le sens du mouvement — pour que ce soit bien elle qu'on sente
-    // marcher, pas seulement le mur qui défilerait tout seul sous ses pieds.
-    $('scale-silhouette').style.transform = `rotate(${Math.max(-6, Math.min(6, dx / 20))}deg)`;
   },
   onDragEnd: (dx, dy, endX, endY) => {
-    $('scale-wall').dataset.dragStartScroll = '';
-    $('scale-silhouette').style.transform = '';
+    // delete (et non une chaîne vide) : sinon la valeur ne redevient jamais "undefined", le test
+    // ci-dessus échoue au glissement suivant, et la position de départ reste figée sur l'ancienne
+    // valeur — bug réel repéré : la silhouette s'inclinait mais le mur ne bougeait plus du tout
+    // après un premier aller-retour.
+    delete $('scale-wall').dataset.dragStartScroll;
     if (isNearBottomCorner(endX, endY)) { exitScaleView(); return; }
     if (dy > 50) backToOverview();
   },
@@ -2219,6 +2258,7 @@ makeSilhouetteDraggable($('scale-silhouette'), {
 function exitScaleView() {
   $('lightbox-scale-view').classList.add('hidden');
   $('lightbox-scale-back-button').classList.add('hidden');
+  $('scale-focus-view').classList.add('hidden');
   $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
 }
 $('lightbox-scale-toggle-topbar')?.addEventListener('click', enterScaleView);
@@ -2842,10 +2882,13 @@ $('chrono-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 4) pool = zoned;
-      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
-      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
-      pool = filterPoolByGlobalArtists(pool);
     }
+    // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+    // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres —
+    // en dehors du bloc ci-dessus, qui ne s'exécute jamais quand les zones sont vides (ce
+    // qui est justement le cas quand des artistes sont choisis : bug réel repéré, le filtre
+    // ne s'appliquait alors jamais).
+    pool = filterPoolByGlobalArtists(pool, allRows);
     // Ne garde que les œuvres dont on peut extraire une année exploitable — indispensable pour
     // établir un ordre chronologique sans ambiguïté.
     const dated = pool.filter((r) => chronoYearOf(r) !== null);
@@ -3241,10 +3284,13 @@ $('fam-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 8) pool = zoned;
-      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
-      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
-      pool = filterPoolByGlobalArtists(pool);
     }
+    // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+    // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres —
+    // en dehors du bloc ci-dessus, qui ne s'exécute jamais quand les zones sont vides (ce
+    // qui est justement le cas quand des artistes sont choisis : bug réel repéré, le filtre
+    // ne s'appliquait alors jamais).
+    pool = filterPoolByGlobalArtists(pool, allRows);
     famAudioOn = getGlobalPrefs().audioOn;
     famSelectedVoiceRef = getGlobalVoice();
     const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
@@ -3524,10 +3570,13 @@ $('vf-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 2) pool = zoned;
-      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
-      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
-      pool = filterPoolByGlobalArtists(pool);
     }
+    // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+    // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres —
+    // en dehors du bloc ci-dessus, qui ne s'exécute jamais quand les zones sont vides (ce
+    // qui est justement le cas quand des artistes sont choisis : bug réel repéré, le filtre
+    // ne s'appliquait alors jamais).
+    pool = filterPoolByGlobalArtists(pool, allRows);
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const countChoice = document.querySelector('input[name="vf-count"]:checked').value;
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
@@ -3806,10 +3855,13 @@ $('recon-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 3) pool = zoned;
-      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
-      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
-      pool = filterPoolByGlobalArtists(pool);
     }
+    // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+    // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres —
+    // en dehors du bloc ci-dessus, qui ne s'exécute jamais quand les zones sont vides (ce
+    // qui est justement le cas quand des artistes sont choisis : bug réel repéré, le filtre
+    // ne s'appliquait alors jamais).
+    pool = filterPoolByGlobalArtists(pool, allRows);
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const countChoice = document.querySelector('input[name="recon-count"]:checked').value;
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
@@ -4124,10 +4176,21 @@ function readGlobalFieldDefaults() {
 // Quand un ou plusieurs artistes précis sont choisis dans « Mes choix de champ » (plutôt qu'un
 // choix d'art/siècle/zone), le réservoir de questions doit se limiter à leurs œuvres — appliqué
 // après la récupération habituelle par art/siècle, qui aura alors tout ramené faute de filtre.
-function filterPoolByGlobalArtists(pool) {
+// Filet de sécurité supplémentaire : si le niveau choisi ailleurs élimine tout pour ces artistes
+// précis (ex. aucune œuvre de niveau 3 chez Monet/Gauguin/Manet réunis), on se rabat sur
+// l'ensemble de leurs œuvres tous niveaux confondus plutôt que de ne rien pouvoir lancer — bug
+// réel repéré : le jeu refusait de démarrer sans que la cause (niveau incompatible) soit claire.
+function filterPoolByGlobalArtists(pool, fallbackPool) {
   const artists = (readGlobalFieldDefaults().artists || []).map((n) => keyName(n)).filter(Boolean);
   if (!artists.length) return pool;
-  return pool.filter((w) => artists.some((a) => keyName(w.artist).includes(a) || a.includes(keyName(w.artist))));
+  const matches = (r) => artists.some((a) => keyName(r.artist).includes(a) || a.includes(keyName(r.artist)));
+  const filtered = pool.filter(matches);
+  if (filtered.length) return filtered;
+  if (fallbackPool) {
+    const widened = fallbackPool.filter(matches);
+    if (widened.length) return widened;
+  }
+  return filtered;
 }
 function readGlobalRubriqueDefaults() {
   try { return JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) { return {}; }
@@ -4391,10 +4454,13 @@ $('imp-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length) pool = zoned;
-      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
-      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
-      pool = filterPoolByGlobalArtists(pool);
     }
+    // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+    // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres —
+    // en dehors du bloc ci-dessus, qui ne s'exécute jamais quand les zones sont vides (ce
+    // qui est justement le cas quand des artistes sont choisis : bug réel repéré, le filtre
+    // ne s'appliquait alors jamais).
+    pool = filterPoolByGlobalArtists(pool, allRows);
     // Mélange, sans limitation de nombre : tout l'échantillon correspondant au choix.
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     IMP_SESSION = pool;
@@ -4613,10 +4679,13 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 3) pool = zoned;
-      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
-      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
-      pool = filterPoolByGlobalArtists(pool);
     }
+    // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+    // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres —
+    // en dehors du bloc ci-dessus, qui ne s'exécute jamais quand les zones sont vides (ce
+    // qui est justement le cas quand des artistes sont choisis : bug réel repéré, le filtre
+    // ne s'appliquait alors jamais).
+    pool = filterPoolByGlobalArtists(pool, allRows);
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const countChoice = document.querySelector('input[name="intrus-count"]:checked').value;
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
@@ -4908,7 +4977,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     if (!levelFilteredRows.length) levelFilteredRows = allRows; // filet de sécurité si la colonne Niveau est absente/mal renseignée
     // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ » (à la place
     // d'art/siècle/zone, effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
-    levelFilteredRows = filterPoolByGlobalArtists(levelFilteredRows);
+    levelFilteredRows = filterPoolByGlobalArtists(levelFilteredRows, allRows);
     // Filtre par zone géographique (colonne Nationalité) : les œuvres sans nationalité connue
     // restent incluses dans tous les cas, pour ne pas écarter des fichiers pas encore renseignés.
     let filteredRows = levelFilteredRows;
