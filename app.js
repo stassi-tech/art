@@ -397,35 +397,56 @@ $('account-page-button')?.addEventListener('click', () => { showPanel('profile')
 $('profile-back-button')?.addEventListener('click', () => showPanel('welcome'));
 // --- Page « Mon compte » à deux niveaux : le tableau de bord (les 6 boutons + le bouton vert,
 // sans aucune case à cocher visible) et une page dédiée par choix (une seule section à la fois,
-// les 5 autres boutons disparaissent, un « ← Retour » permet de revenir au tableau de bord). ---
+// les 5 autres boutons disparaissent). En haut d'une page dédiée : le bouton du choix courant
+// (grisé, comme dans le menu), entouré de flèches pour aller au choix précédent/suivant sans
+// repasser par le tableau de bord. Mes scores n'est pas une page de configuration : elle n'entre
+// pas dans ce parcours (pas de flèche vers elle, on revient au tableau de bord pour valider). ---
+const PROFILE_CONFIG_SEQUENCE = ['profile-menu-tech', 'profile-menu-esthetique', 'profile-menu-rubriques', 'profile-menu-fields', 'profile-menu-artists'];
 function showProfileHub() {
   $('profile-menu-grid').classList.remove('hidden');
   $('pf-validate-button').classList.remove('hidden');
-  $('pf-section-back-button').classList.add('hidden');
+  $('pf-section-nav').classList.add('hidden');
   document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.add('inactive'));
   ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => {
     $(id)?.classList.add('hidden');
   });
 }
+function showProfileSection(btn) {
+  $('profile-menu-grid').classList.add('hidden');
+  $('pf-validate-button').classList.add('hidden');
+  document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
+  ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => {
+    $(id)?.classList.toggle('hidden', id !== btn.dataset.target);
+  });
+  // Navigation par flèches en haut, à la place de la grille : le bouton courant grisé, avec une
+  // flèche de chaque côté si un choix précédent/suivant existe dans le parcours.
+  const idx = PROFILE_CONFIG_SEQUENCE.indexOf(btn.id);
+  if (idx === -1) { $('pf-section-nav').classList.add('hidden'); return; }
+  $('pf-section-nav').classList.remove('hidden');
+  $('pf-section-current-label').innerHTML = btn.innerHTML.replace(/\sid="[^"]*"/g, '');
+  $('pf-section-prev').style.visibility = idx > 0 ? 'visible' : 'hidden';
+  $('pf-section-next').style.visibility = idx < PROFILE_CONFIG_SEQUENCE.length - 1 ? 'visible' : 'hidden';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 document.querySelectorAll('.profile-menu-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     if (btn.id === 'profile-menu-scores') { showPanel('account'); loadAccountPage(); return; }
-    $('profile-menu-grid').classList.add('hidden');
-    $('pf-validate-button').classList.add('hidden');
-    $('pf-section-back-button').classList.remove('hidden');
-    document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
-    ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => {
-      $(id)?.classList.toggle('hidden', id !== btn.dataset.target);
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showProfileSection(btn);
   });
 });
-$('pf-section-back-button')?.addEventListener('click', () => { showProfileHub(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+$('pf-section-prev')?.addEventListener('click', () => {
+  const idx = PROFILE_CONFIG_SEQUENCE.indexOf(document.querySelector('.profile-menu-btn:not(.inactive)')?.id);
+  if (idx > 0) $(PROFILE_CONFIG_SEQUENCE[idx - 1])?.click();
+});
+$('pf-section-next')?.addEventListener('click', () => {
+  const idx = PROFILE_CONFIG_SEQUENCE.indexOf(document.querySelector('.profile-menu-btn:not(.inactive)')?.id);
+  if (idx > -1 && idx < PROFILE_CONFIG_SEQUENCE.length - 1) $(PROFILE_CONFIG_SEQUENCE[idx + 1])?.click();
+});
 document.querySelectorAll('.pf-back-to-menu-button').forEach((btn) => {
   btn.addEventListener('click', () => { showProfileHub(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
 });
 document.querySelectorAll('.pf-next-button').forEach((btn) => {
-  btn.addEventListener('click', () => { $(btn.dataset.next)?.click(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  btn.addEventListener('click', () => { $(btn.dataset.next)?.click(); });
 });
 // « Effacer la sélection » pour Technique et Esthétique (les seules 2 pages sans bouton dédié
 // déjà existant) : remet les réglages à leur valeur par défaut, comme les autres pages le font
@@ -716,7 +737,7 @@ async function populateArtistSuggestions() {
   list.querySelectorAll('.pf-artist-pick').forEach((btn) => {
     btn.addEventListener('click', () => toggleArtistSelection(btn.dataset.name));
   });
-  status.textContent = `${names.length} artiste${names.length > 1 ? 's' : ''} compatible${names.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels.`;
+  status.textContent = `${names.length} artiste${names.length > 1 ? 's' : ''} compatible${names.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels. Cliquez sur des noms d'artiste si vous voulez réduire le nombre d'artistes dans votre jeu.`;
 }
 function toggleArtistSelection(name) {
   const current = readGlobalArtistDefaults().artists || [];

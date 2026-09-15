@@ -1070,7 +1070,14 @@
             Valider mes paramètres et commencer les jeux →
           </button>
 
-          <button type="button" id="pf-section-back-button" class="secondary-button hidden" style="width:100%;margin-bottom:16px;">← Retour à Mon compte</button>
+          <!-- Affiché uniquement sur une page dédiée (à la place de la grille des 6 boutons) : le
+               bouton du choix courant (grisé, comme dans le menu), avec de chaque côté une flèche
+               pour aller au choix dédié précédent/suivant, sans passer par le tableau de bord. -->
+          <div id="pf-section-nav" class="hidden" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px;">
+            <button type="button" id="pf-section-prev" class="secondary-button" style="padding:8px 14px;" aria-label="Choix précédent">←</button>
+            <button type="button" class="home-mode-button inactive" id="pf-section-current-label" style="flex:1 1 auto;max-width:280px;cursor:default;"></button>
+            <button type="button" id="pf-section-next" class="secondary-button" style="padding:8px 14px;" aria-label="Choix suivant">→</button>
+          </div>
 
           <div id="profile-section-tech" class="hidden">
             <p class="modal-hint" id="pf-tech-explanation" style="margin-top:0;">Emplacement des boutons, touche Entrée, chronomètre — réglages purement techniques, sans rapport avec le contenu des exercices.</p>
@@ -1086,7 +1093,7 @@
               <select id="pf-handedness"><option value="right">Droite (droitier)</option><option value="left">Gauche (gaucher)</option></select>
             </div>
             <button type="button" class="secondary-button pf-clear-inline-button" style="width:100%;margin-top:8px;">Effacer la sélection</button>
-            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Revenir à Mon compte</button>
+            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Retour à la page d'accueil de mon compte</button>
             <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-esthetique" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
           </div>
 
@@ -1102,7 +1109,7 @@
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="bauhaus" /><span>Bauhaus — cercle, triangle, carré (réf. MoMA, New York)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="space" /><span>Space Age — orbite et chrome (réf. Guggenheim, New York)</span></label>
             <button type="button" class="secondary-button pf-clear-inline-button" style="width:100%;margin-top:8px;">Effacer la sélection</button>
-            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Revenir à Mon compte</button>
+            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Retour à la page d'accueil de mon compte</button>
             <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-rubriques" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
           </div>
 
@@ -1137,7 +1144,7 @@
               </div>
             </div>
             <button type="button" class="secondary-button" id="pf-fields-clear" style="width:100%;margin-top:8px;">Effacer le choix de champ</button>
-            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Revenir à Mon compte</button>
+            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Retour à la page d'accueil de mon compte</button>
             <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-artists" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
             <div id="pf-fields-overrides" style="margin-top:14px;"></div>
           </div>
@@ -1146,8 +1153,10 @@
             <p id="pf-artist-list-status" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);margin:0 0 8px;"></p>
             <div id="pf-artist-clickable-list" style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px;margin-bottom:8px;"></div>
             <button type="button" class="secondary-button" id="pf-artists-clear" style="width:100%;margin-top:8px;">Effacer le choix d'artiste</button>
-            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Revenir à Mon compte</button>
-            <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-scores" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
+            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Retour à la page d'accueil de mon compte</button>
+            <!-- Dernière étape du parcours de choix : pas de « suivant » (Mes scores n'est pas une
+                 page de configuration) — on revient au tableau de bord pour valider avec le
+                 bouton vert. -->
           </div>
 
           <div id="profile-section-rubriques" class="hidden">
@@ -1180,7 +1189,7 @@
               </div>
             </div>
             <button type="button" class="secondary-button" id="pf-rubriques-clear" style="width:100%;margin-top:8px;">Effacer ce choix</button>
-            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Revenir à Mon compte</button>
+            <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Retour à la page d'accueil de mon compte</button>
             <button type="button" class="secondary-button pf-next-button" data-next="profile-menu-fields" style="width:100%;margin-top:8px;">Aller au choix suivant →</button>
             <div id="pf-rubriques-overrides" style="margin-top:14px;"></div>
           </div>
@@ -1205,6 +1214,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=164"></script>
+    <script src="app.js?v=165"></script>
   </body>
 </html>
