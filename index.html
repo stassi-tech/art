@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=135" />
+    <link rel="stylesheet" href="style.css?v=136" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -82,7 +82,7 @@
           <p class="eyebrow home-eyebrow">Peinture et sculpture en Occident<br>14e au 20e siècle</p>
           <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
 
-          <p class="intro-banner">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pouvez le faire depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>), ou avec les boutons de chaque exercice (icône <span aria-hidden="true">✏️</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
+          <p class="intro-banner">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique, sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pouvez le faire depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>), ou avec les boutons de chaque exercice (icône <span aria-hidden="true">✏️</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
 
           <div class="training-exercise-grid">
             <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="exercise-num">Exercice 1</span><span class="label">Imprégnation</span><span class="exercise-summary" id="imp-hub-summary"></span><span class="exercise-summary-edit" id="imp-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
@@ -988,14 +988,15 @@
 
         <div id="ambiance-quick-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:10px;min-width:220px;">
           <p style="font-family:Arial,sans-serif;font-size:.78rem;font-weight:700;color:var(--muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.03em;">Ambiance</p>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="gothique" /><span>Gothique international</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="renaissance" /><span>Galerie Renaissance</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="versailles" /><span>Château de Versailles</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="ermitage" /><span>Ermitage Rococo</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="wedgwood" /><span>Pure Wedgwood</span></label>
+          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="pitti" /><span>Romantique Pitti</span></label>
           <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="" /><span>Salon Renoir</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="pitti" /><span>Palais Pitti</span></label>
           <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="bauhaus" /><span>Bauhaus</span></label>
           <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="space" /><span>Space Age</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="versailles" /><span>Château de Versailles</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="wedgwood" /><span>Wedgwood</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="ermitage" /><span>Palais de l'Ermitage</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="renaissance" /><span>Galerie Renaissance</span></label>
         </div>
 
         <div id="exhibition-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:16px;width:min(340px, 90vw);">
@@ -1062,14 +1063,15 @@
 
           <div id="profile-section-esthetique" class="hidden">
             <p class="modal-hint" style="margin-top:0;">Change l'apparence de l'application — fond, cadres des œuvres. Rien coché = apparence actuelle, inchangée. Premier essai avec quelques salles ; d'autres suivront.</p>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="gothique" /><span>Gothique international — or et bleu lapis-lazuli (réf. enluminures, 14e siècle)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="renaissance" /><span>Galerie Renaissance — terre cuite et or vieilli (réf. palais florentins)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="versailles" /><span>Château de Versailles — or et marbre veiné (réf. Galerie des Glaces)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="ermitage" /><span>Ermitage Rococo — bleu impérial et or (réf. Saint-Pétersbourg)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="wedgwood" /><span>Pure Wedgwood — bleu pâle et camée crème</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="pitti" /><span>Romantique Pitti — velours et or (réf. Palazzo Pitti, Florence)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="" checked /><span>Salon Renoir — touches impressionnistes, bronze et beige</span></label>
-            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="pitti" /><span>Palais Pitti — velours et or (réf. Palazzo Pitti, Florence)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="bauhaus" /><span>Bauhaus — cercle, triangle, carré (réf. MoMA, New York)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="space" /><span>Space Age — orbite et chrome (réf. Guggenheim, New York)</span></label>
-            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="versailles" /><span>Château de Versailles — or et marbre veiné (réf. Galerie des Glaces)</span></label>
-            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="wedgwood" /><span>Wedgwood — bleu pâle et camée crème</span></label>
-            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="ermitage" /><span>Palais de l'Ermitage — bleu impérial et or (réf. Saint-Pétersbourg)</span></label>
-            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="renaissance" /><span>Galerie Renaissance — terre cuite et or vieilli (réf. palais florentins)</span></label>
           </div>
 
           <div id="profile-section-fields" class="hidden">
@@ -1165,6 +1167,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=146"></script>
+    <script src="app.js?v=147"></script>
   </body>
 </html>

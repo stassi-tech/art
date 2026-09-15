@@ -16,9 +16,14 @@ body:not([data-ambiance]) .primary-button, body:not([data-ambiance]) .home-mode-
 }
 
 /* ---- Le Salon Pitti ---- réf. Palazzo Pitti, Florence */
-body[data-ambiance] .bg-mosaic::after { content:''; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; opacity:.55; }
+body[data-ambiance] .bg-tile::before { content:''; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; opacity:.55; z-index:1; }
+/* Salon Renoir (ambiance par défaut, sans attribut data-ambiance) — même principe de damier. */
+body:not([data-ambiance]) .bg-tile::before { content:''; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply; opacity:.55; z-index:1; }
+body:not([data-ambiance]) .bg-tile:nth-child(odd)::before { background:#f0e6d2; }
+body:not([data-ambiance]) .bg-tile:nth-child(even)::before { background:#e8d078; }
 body[data-ambiance="pitti"] { --accent:#c9a24a; --accent-dark:#8a6a24; --cta:#8a1c2c; --cta-dark:#6b1420; }
-body[data-ambiance="pitti"] .bg-mosaic::after { background:#0d3324; }
+body[data-ambiance="pitti"] .bg-tile:nth-child(odd)::before { background:#6b7f3a; }
+body[data-ambiance="pitti"] .bg-tile:nth-child(even)::before { background:#9b111e; }
 body[data-ambiance="pitti"].in-exercise { --ink:#f2ecd8; --paper:#0f4d3c; --canvas:#0c3c2f; --border:#1f6b52; }
 body[data-ambiance="pitti"].in-exercise { background:#0c3c2f; }
 body[data-ambiance="pitti"].in-exercise .app-shell {
@@ -35,7 +40,8 @@ body[data-ambiance="pitti"] .home-mode-button .label { color:#3a2c10; }
 
 /* ---- Bauhaus ---- réf. MoMA, New York */
 body[data-ambiance="bauhaus"] { --accent:#1c4fa0; --accent-dark:#14356e; --cta:#2b2b28; --cta-dark:#1a1a18; }
-body[data-ambiance="bauhaus"] .bg-mosaic::after { background:#1c4fa0; }
+body[data-ambiance="bauhaus"] .bg-tile:nth-child(odd)::before { background:#3d3d3f; }
+body[data-ambiance="bauhaus"] .bg-tile:nth-child(even)::before { background:#c8c8c8; }
 body[data-ambiance="bauhaus"].in-exercise { --ink:#f4f1ea; --paper:#3d3d3f; --canvas:#333335; --border:#5a5a5c; }
 body[data-ambiance="bauhaus"].in-exercise { background:#333335; }
 body[data-ambiance="bauhaus"].in-exercise .app-shell {
@@ -52,7 +58,8 @@ body[data-ambiance="bauhaus"] .home-mode-button .label { color:#1a1a18; }
 
 /* ---- Space Age ---- réf. Guggenheim, New York */
 body[data-ambiance="space"] { --accent:#5a9e2a; --accent-dark:#3d7018; --cta:#6a2fb5; --cta-dark:#4d1f8a; }
-body[data-ambiance="space"] .bg-mosaic::after { background:#e8843c; }
+body[data-ambiance="space"] .bg-tile:nth-child(odd)::before { background:#e8843c; }
+body[data-ambiance="space"] .bg-tile:nth-child(even)::before { background:#7c3aed; }
 body[data-ambiance="space"].in-exercise { --ink:#3a1f0a; --paper:#fff3e0; }
 body[data-ambiance="space"].in-exercise { background:#e07a2e; }
 body[data-ambiance="space"].in-exercise .app-shell {
@@ -67,7 +74,8 @@ body[data-ambiance="space"] .primary-button, body[data-ambiance="space"] .home-m
 
 /* ---- Versailles ---- réf. Galerie des Glaces */
 body[data-ambiance="versailles"] { --accent:#d8b25c; --accent-dark:#8a6a24; --cta:#7a1418; --cta-dark:#560e10; }
-body[data-ambiance="versailles"] .bg-mosaic::after { background:#7a1418; }
+body[data-ambiance="versailles"] .bg-tile:nth-child(odd)::before { background:#960018; }
+body[data-ambiance="versailles"] .bg-tile:nth-child(even)::before { background:#d4af37; }
 body[data-ambiance="versailles"].in-exercise { --ink:#f2ece0; --paper:#5c1015; }
 body[data-ambiance="versailles"].in-exercise { background:#5c1015 url('assets/versailles-fond.jpg') center/cover no-repeat; }
 body[data-ambiance="versailles"].in-exercise .app-shell { background:transparent; }
@@ -79,7 +87,8 @@ body[data-ambiance="versailles"] .home-mode-button .label { color:#3a2c10; }
 
 /* ---- Wedgwood ---- camée bleu pâle */
 body[data-ambiance="wedgwood"] { --accent:#7396b8; --accent-dark:#4a6d8f; --cta:#e8e0cf; --cta-dark:#cfc4a8; }
-body[data-ambiance="wedgwood"] .bg-mosaic::after { background:#a8c0d4; }
+body[data-ambiance="wedgwood"] .bg-tile:nth-child(odd)::before { background:#a8c0d4; }
+body[data-ambiance="wedgwood"] .bg-tile:nth-child(even)::before { background:#f0e6d2; }
 body[data-ambiance="wedgwood"].in-exercise { --ink:#2c3e4a; --paper:#c3d5e2; --canvas:#a8c0d4; --border:#f2ede0; }
 body[data-ambiance="wedgwood"].in-exercise { background:#a8c0d4; }
 body[data-ambiance="wedgwood"].in-exercise .app-shell { background:#a8c0d4; }
@@ -91,7 +100,8 @@ body[data-ambiance="wedgwood"] .home-mode-button .label { color:#4a3e2c; }
 
 /* ---- Palais de l'Ermitage ---- réf. Saint-Pétersbourg */
 body[data-ambiance="ermitage"] { --accent:#d8b23c; --accent-dark:#8a6a1e; --cta:#0c2a4a; --cta-dark:#081c33; }
-body[data-ambiance="ermitage"] .bg-mosaic::after { background:#0c2a4a; }
+body[data-ambiance="ermitage"] .bg-tile:nth-child(odd)::before { background:#00a86b; }
+body[data-ambiance="ermitage"] .bg-tile:nth-child(even)::before { background:#d4af37; }
 body[data-ambiance="ermitage"].in-exercise { --ink:#eef2ea; --paper:#0e335a; --canvas:#0a2745; --border:#2a4f78; }
 body[data-ambiance="ermitage"].in-exercise { background:#0a2745; }
 body[data-ambiance="ermitage"].in-exercise .app-shell {
@@ -104,7 +114,8 @@ body[data-ambiance="ermitage"] .primary-button, body[data-ambiance="ermitage"] .
 }
 body[data-ambiance="ermitage"] .home-mode-button .label { color:#3a2c10; }
 body[data-ambiance="renaissance"] { --accent:#c17a3c; --accent-dark:#8a5424; --cta:#7a3820; --cta-dark:#5c2916; }
-body[data-ambiance="renaissance"] .bg-mosaic::after { background:#a8552e; }
+body[data-ambiance="renaissance"] .bg-tile:nth-child(odd)::before { background:#f0e6d2; }
+body[data-ambiance="renaissance"] .bg-tile:nth-child(even)::before { background:#4a5560; }
 body[data-ambiance="renaissance"].in-exercise { --ink:#f2e8d8; --paper:#8a4526; --canvas:#7a3820; --border:#b06a3a; }
 body[data-ambiance="renaissance"].in-exercise { background:#7a3820; }
 body[data-ambiance="renaissance"].in-exercise .app-shell {
@@ -116,6 +127,22 @@ body[data-ambiance="renaissance"] .primary-button, body[data-ambiance="renaissan
   border-color:#5c4718; color:#3a2410;
 }
 body[data-ambiance="renaissance"] .home-mode-button .label { color:#3a2410; }
+/* Gothique international — or et bleu lapis-lazuli, dans l'esprit des enluminures et retables du
+   14e siècle (fond très outremer, rehauts d'or). */
+body[data-ambiance="gothique"] { --accent:#d4af37; --accent-dark:#8a6a1e; --cta:#1a2f5c; --cta-dark:#101d3c; }
+body[data-ambiance="gothique"] .bg-tile:nth-child(odd)::before { background:#d4af37; }
+body[data-ambiance="gothique"] .bg-tile:nth-child(even)::before { background:#1a2f5c; }
+body[data-ambiance="gothique"].in-exercise { --ink:#f2ecd8; --paper:#152850; --canvas:#101d3c; --border:#2c4578; }
+body[data-ambiance="gothique"].in-exercise { background:#101d3c; }
+body[data-ambiance="gothique"].in-exercise .app-shell {
+  background:#101d3c;
+  background-image:repeating-linear-gradient(60deg, #ffffff06 0 2px, transparent 2px 34px), repeating-linear-gradient(-60deg, #ffd70008 0 1px, transparent 1px 50px);
+}
+body[data-ambiance="gothique"] .primary-button, body[data-ambiance="gothique"] .home-mode-button { background-image:url('assets/gothique-bouton.jpg');
+  background:linear-gradient(160deg, #f2d98a 0%, #d4af37 35%, #8a6a1e 50%, #e8c874 65%, #8a6a1e 100%);
+  border-color:#5c4712; color:#2c1f0a;
+}
+body[data-ambiance="gothique"] .home-mode-button .label { color:#2c1f0a; }
 * { box-sizing:border-box; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at top right,#e7d4bd 0,transparent 32rem),var(--canvas); font-family:Georgia, "Times New Roman", serif; }
 .bg-mosaic { position:fixed; inset:0; z-index:0; display:grid; grid-template-columns:repeat(5, 1fr); grid-template-rows:repeat(3, 1fr); gap:2px; overflow:hidden; }
@@ -600,6 +627,7 @@ body[data-ambiance="versailles"] .image-lightbox:has(#lightbox-scale-view:not(.h
 body[data-ambiance="wedgwood"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#a8c0d4; }
 body[data-ambiance="ermitage"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#0a2745; }
 body[data-ambiance="renaissance"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#7a3820; }
+body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#101d3c; }
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-caption,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-image,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-source-link { display:none; }
@@ -639,6 +667,7 @@ body[data-ambiance="versailles"] #scale-overview-trapezoid { background-color:#5
 body[data-ambiance="wedgwood"] #scale-overview-trapezoid { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
 body[data-ambiance="ermitage"] #scale-overview-trapezoid { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
 body[data-ambiance="renaissance"] #scale-overview-trapezoid { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
+body[data-ambiance="gothique"] #scale-overview-trapezoid { background-color:#101d3c; background-image:url('assets/salle-gothique-mur.jpg'); }
 body:not([data-ambiance]) #scale-overview-trapezoid { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
 #scale-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
@@ -654,6 +683,7 @@ body[data-ambiance="versailles"] #scale-floor, body[data-ambiance="versailles"] 
 body[data-ambiance="wedgwood"] #scale-floor, body[data-ambiance="wedgwood"] #scale-overview-floor { background-image:url('assets/salle-wedgwood-sol.jpg'); }
 body[data-ambiance="ermitage"] #scale-floor, body[data-ambiance="ermitage"] #scale-overview-floor { background-image:url('assets/salle-ermitage-sol.jpg'); }
 body[data-ambiance="renaissance"] #scale-floor, body[data-ambiance="renaissance"] #scale-overview-floor { background-image:url('assets/salle-renaissance-sol.jpg'); }
+body[data-ambiance="gothique"] #scale-floor, body[data-ambiance="gothique"] #scale-overview-floor { background-image:url('assets/salle-gothique-sol.jpg'); }
 body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overview-floor { background-image:url('assets/salle-renoir-sol.jpg'); }
 /* Ligne de plinthe séparant le mur du sol — repère visuel simple demandé pour bien distinguer les
    deux plans, en attendant une vraie salle en 3 dimensions. */
