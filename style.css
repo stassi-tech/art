@@ -630,7 +630,8 @@ body[data-ambiance="renaissance"] .image-lightbox:has(#lightbox-scale-view:not(.
 body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hidden)) { background:#101d70; }
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-caption,
 .image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-image,
-.image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-source-link { display:none; }
+.image-lightbox:has(#lightbox-scale-view:not(.hidden)) #lightbox-source-link,
+.image-lightbox:has(#lightbox-scale-view:not(.hidden)) .quiz-topbar { display:none; }
 #lightbox-scale-view { position:fixed; inset:0; user-select:none; }
 /* Sol de la salle, distinct du mur (voir ambiance : le mur garde la couleur/texture choisie par
    le joueur, le sol aura ses propres revêtements au choix plus tard — parquet Versailles, béton

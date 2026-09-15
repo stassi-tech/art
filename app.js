@@ -901,17 +901,17 @@ function applyDefaultAdvance(checkboxId, delayId, delayRowId) {
 // Étiquette de champ courte (ex. « Peint/15e ») affichée dans le bandeau, à côté du nom de
 // l'exercice — calculée une fois au démarrage de la session à partir des arts/siècles choisis.
 function buildFieldLabel(arts, centuries) {
-  const artLabels = { peinture: 'Peint', sculpture: 'Sculpt' };
-  if (!arts.length || !centuries.length) {
-    // Un ou plusieurs artistes précis choisis (à la place d'art/siècle) : on les affiche par leur
-    // nom dans le bandeau plutôt que de laisser cette zone vide.
-    const artists = readGlobalFieldDefaults().artists || [];
-    if (artists.length) {
-      const shown = artists.slice(0, 2).join(', ');
-      return artists.length > 2 ? `${shown} +${artists.length - 2}` : shown;
-    }
-    return '';
+  // Priorité aux artistes précis choisis dans « Mes choix de champ » : chaque appelant remplace
+  // déjà un art/siècle vide par la liste complète par défaut AVANT d'appeler cette fonction (pour
+  // que le jeu porte sur toute la base), donc vérifier "arts vide" ici ne peut jamais suffire —
+  // bug réel repéré : le bandeau affichait "Peint/15e" au lieu des noms d'artistes choisis.
+  const artists = readGlobalFieldDefaults().artists || [];
+  if (artists.length) {
+    const shown = artists.slice(0, 2).join(', ');
+    return artists.length > 2 ? `${shown} +${artists.length - 2}` : shown;
   }
+  const artLabels = { peinture: 'Peint', sculpture: 'Sculpt' };
+  if (!arts.length || !centuries.length) return '';
   const artsPart = arts.map((a) => artLabels[a] || a).join('+');
   const centuriesPart = centuries.length <= 2 ? centuries.join('+') : `${centuries.length} siècles`;
   return `${artsPart}/${centuriesPart}`;
@@ -1290,6 +1290,7 @@ const PRONUNCIATION_FIXES = {
   'alyscamps': 'Aliscan',
   'poisson': 'Pouasson',
   'vœu': 'veu',
+  'bernin': 'Bérnini',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2088,6 +2089,10 @@ function populateOverviewThumbs(candidates) {
   });
 }
 function enterScaleView() {
+  // Filet de sécurité pour « Revoir l'exposition » : si on est repassé par l'accueil entre-temps,
+  // currentLightboxWork peut avoir été perdu alors que la sélection d'œuvres, elle, est toujours
+  // là — on reprend simplement la première œuvre disponible dans ce cas.
+  if (!currentLightboxWork && state.currentOtherWorks?.length) currentLightboxWork = state.currentOtherWorks[0];
   if (!currentLightboxWork) return;
   $('lightbox-scale-view').classList.remove('hidden');
   $('lightbox-scale-toggle-topbar').classList.add('hidden');
@@ -2640,7 +2645,9 @@ function findArtistRow(query) {
 }
 async function fetchWorksForArtistRow(row) {
   const artistName = [row['Prénom'], row['Patronyme']].filter(Boolean).join(' ').trim();
-  const arts = String(row['Art(s)'] || '').split(',').map((s) => s.trim().toLocaleLowerCase('fr-FR')).filter(Boolean);
+  // La salle se limite pour l'instant à la peinture (les sculptures y reviendront une fois le
+  // détourage et le rail travaillés) — même si l'artiste pratique aussi la sculpture.
+  const arts = String(row['Art(s)'] || '').split(',').map((s) => s.trim().toLocaleLowerCase('fr-FR')).filter((a) => a === 'peinture');
   const centuries = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   const works = [];
   for (const art of arts) {
@@ -2656,31 +2663,38 @@ async function fetchWorksForArtistRow(row) {
 $('global-exhibition-button')?.addEventListener('click', (event) => {
   event.stopPropagation();
   const picker = $('exhibition-picker');
+  const wasHidden = picker.classList.contains('hidden');
   picker.classList.toggle('hidden');
-  if (!picker.classList.contains('hidden')) {
-    // Les noms de la dernière exposition sont proposés par défaut (uniquement si les champs sont
-    // encore vides) — évite de les retaper à chaque fois qu'on veut revoir la même sélection.
-    const firstField = picker.querySelector('.exhibition-artist-field');
-    const allEmpty = [...picker.querySelectorAll('.exhibition-artist-field')].every((f) => !f.value.trim());
-    if (allEmpty) {
-      let lastArtists = [];
-      try { lastArtists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
-      if (lastArtists.length) {
-        const wrap = $('exhibition-artist-inputs');
-        wrap.innerHTML = '';
-        lastArtists.forEach((name) => {
-          const field = document.createElement('input');
-          field.type = 'text';
-          field.className = 'exhibition-artist-field';
-          field.placeholder = 'Ex. Jean Fouquet';
-          field.value = name;
-          field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
-          wrap.appendChild(field);
-        });
-      }
+  if (!wasHidden) return; // on referme simplement si elle était déjà ouverte
+  // Si une exposition est déjà en cours dans cette session (le joueur est déjà entré une fois
+  // dans la salle), on propose d'abord de la revoir directement, plutôt que de retaper les noms —
+  // « Changer l'exposition » ramène au formulaire habituel.
+  const hasCurrentExhibition = state.scaleViewCandidates && state.scaleViewCandidates.length > 0;
+  $('exhibition-resume-choice').classList.toggle('hidden', !hasCurrentExhibition);
+  $('exhibition-picker-form').classList.toggle('hidden', hasCurrentExhibition);
+  if (hasCurrentExhibition) return;
+  // Les noms de la dernière exposition sont proposés par défaut (uniquement si les champs sont
+  // encore vides) — évite de les retaper à chaque fois qu'on veut revoir la même sélection.
+  const firstField = picker.querySelector('.exhibition-artist-field');
+  const allEmpty = [...picker.querySelectorAll('.exhibition-artist-field')].every((f) => !f.value.trim());
+  if (allEmpty) {
+    let lastArtists = [];
+    try { lastArtists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
+    if (lastArtists.length) {
+      const wrap = $('exhibition-artist-inputs');
+      wrap.innerHTML = '';
+      lastArtists.forEach((name) => {
+        const field = document.createElement('input');
+        field.type = 'text';
+        field.className = 'exhibition-artist-field';
+        field.placeholder = 'Ex. Jean Fouquet';
+        field.value = name;
+        field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
+        wrap.appendChild(field);
+      });
     }
-    firstField?.focus();
   }
+  firstField?.focus();
 });
 $('exhibition-add-artist-button')?.addEventListener('click', () => {
   const wrap = $('exhibition-artist-inputs');
@@ -2691,6 +2705,15 @@ $('exhibition-add-artist-button')?.addEventListener('click', () => {
   field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
   wrap.appendChild(field);
   field.focus();
+});
+$('exhibition-resume-button')?.addEventListener('click', () => {
+  $('exhibition-picker').classList.add('hidden');
+  enterScaleView();
+});
+$('exhibition-change-button')?.addEventListener('click', () => {
+  $('exhibition-resume-choice').classList.add('hidden');
+  $('exhibition-picker-form').classList.remove('hidden');
+  $('exhibition-picker').querySelector('.exhibition-artist-field')?.focus();
 });
 $('exhibition-launch-button')?.addEventListener('click', async () => {
   const feedback = $('exhibition-feedback');
@@ -3331,7 +3354,13 @@ $('fam-start-button')?.addEventListener('click', async () => {
     famSelectedVoiceRef = getGlobalVoice();
     const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
     const count = countChoice === 'max' ? 40 : Number(countChoice);
-    const imgCountChoice = Number(document.querySelector('input[name="fam-images"]:checked').value);
+    let imgCountChoice = Number(document.querySelector('input[name="fam-images"]:checked').value);
+    // Avec exactement 2 artistes choisis, le partage famille/intrus est toujours moitié-moitié
+    // (la moitié des images vient forcément de l'autre artiste, faute d'un 3e) — sur une grille de
+    // 4 images, ça donne 2 paires très reconnaissables d'un coup d'œil. On passe alors à 6 images
+    // pour que ce soit un peu moins immédiat, même si le partage reste 50/50 dans ce cas précis.
+    const globalArtistsCount = (readGlobalFieldDefaults().artists || []).length;
+    if (globalArtistsCount === 2 && imgCountChoice < 6) imgCountChoice = 6;
     // La moitié des images ont le point commun (règle simple, quel que soit le nombre choisi).
     const familySize = imgCountChoice / 2;
     const distractorCount = imgCountChoice - familySize;

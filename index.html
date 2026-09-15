@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=142" />
+    <link rel="stylesheet" href="style.css?v=143" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1010,13 +1010,22 @@
         </div>
 
         <div id="exhibition-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:16px;width:min(340px, 90vw);">
-          <p style="font-family:Georgia,serif;font-size:1rem;margin:0 0 10px;">Quel(s) artiste(s) veux-tu exposer dans la salle aujourd'hui ?</p>
-          <div id="exhibition-artist-inputs">
-            <input type="text" class="exhibition-artist-field" placeholder="Ex. Jean Fouquet" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;" />
+          <!-- Proposé seulement quand une exposition est déjà en cours dans cette session : choix
+               entre y retourner directement ou repartir sur une nouvelle sélection d'artistes. -->
+          <div id="exhibition-resume-choice" class="hidden">
+            <p style="font-family:Georgia,serif;font-size:1rem;margin:0 0 10px;">Revoir l'exposition en cours, ou en choisir une autre ?</p>
+            <button type="button" class="primary-button" id="exhibition-resume-button" style="width:100%;margin-bottom:8px;">Revoir l'exposition →</button>
+            <button type="button" class="secondary-button" id="exhibition-change-button" style="width:100%;">Changer l'exposition</button>
           </div>
-          <button type="button" id="exhibition-add-artist-button" class="secondary-button" style="width:100%;margin-bottom:8px;font-size:.85rem;padding:6px;">+ Ajouter un autre artiste</button>
-          <p id="exhibition-feedback" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--wrong);margin:0 0 8px;"></p>
-          <button type="button" class="primary-button" id="exhibition-launch-button" style="width:100%;">Entrer dans la salle →</button>
+          <div id="exhibition-picker-form">
+            <p style="font-family:Georgia,serif;font-size:1rem;margin:0 0 10px;">Quel(s) artiste(s) veux-tu exposer dans la salle aujourd'hui ?</p>
+            <div id="exhibition-artist-inputs">
+              <input type="text" class="exhibition-artist-field" placeholder="Ex. Jean Fouquet" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;" />
+            </div>
+            <button type="button" id="exhibition-add-artist-button" class="secondary-button" style="width:100%;margin-bottom:8px;font-size:.85rem;padding:6px;">+ Ajouter un autre artiste</button>
+            <p id="exhibition-feedback" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--wrong);margin:0 0 8px;"></p>
+            <button type="button" class="primary-button" id="exhibition-launch-button" style="width:100%;">Entrer dans la salle →</button>
+          </div>
         </div>
 
         <section id="results-panel" class="results-panel hidden">
@@ -1177,6 +1186,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=153"></script>
+    <script src="app.js?v=155"></script>
   </body>
 </html>
