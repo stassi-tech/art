@@ -1130,7 +1130,7 @@
           </div>
 
           <div id="profile-section-artists" class="hidden">
-            <p class="modal-hint" id="pf-artists-explanation" style="margin-top:0;">Pour restreindre encore votre sélection à un ou plusieurs artistes précis. Rien coché ici = tous les artistes compatibles avec vos choix précédents (niveau, champ) restent possibles. La liste proposée ne montre que les artistes déjà compatibles avec votre niveau et votre champ — impossible donc de choisir ici un artiste qui les contredirait.</p>
+            <p class="modal-hint" id="pf-artists-explanation" style="margin-top:0;">Pour restreindre encore votre sélection à un ou plusieurs artistes précis. Rien coché ici = tous les artistes compatibles avec vos choix précédents (niveau, champ) restent possibles. La liste ci-dessous ne montre que les artistes déjà compatibles avec votre niveau et votre champ — cliquez un nom pour l'ajouter, impossible donc de choisir ici un artiste qui les contredirait.</p>
             <div id="pf-artist-inputs">
               <input type="text" class="pf-artist-input" placeholder="Ex. Jean Fouquet" autocapitalize="words" list="pf-artist-suggestions" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;" />
             </div>
@@ -1138,6 +1138,9 @@
             <button type="button" class="secondary-button" id="pf-artist-add" style="width:100%;margin-bottom:8px;font-size:.85rem;padding:6px;">+ Ajouter un autre artiste</button>
             <p id="pf-artists-feedback" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--wrong);margin:0 0 8px;"></p>
             <button type="button" class="secondary-button" id="pf-artists-clear" style="width:100%;margin-top:8px;">Effacer le choix d'artiste</button>
+            <p class="config-table-col-title" style="margin-top:16px;">Ou cliquez directement un nom dans la liste compatible :</p>
+            <p id="pf-artist-list-status" style="font-family:Arial,sans-serif;font-size:.8rem;color:var(--muted);margin:0 0 8px;"></p>
+            <div id="pf-artist-clickable-list" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px;"></div>
           </div>
 
           <div id="profile-section-rubriques" class="hidden">
@@ -1193,6 +1196,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=159"></script>
+    <script src="app.js?v=160"></script>
   </body>
 </html>

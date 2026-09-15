@@ -652,14 +652,52 @@ function artistMatchesCurrentField(row) {
 }
 async function populateArtistSuggestions() {
   const datalist = $('pf-artist-suggestions');
-  if (!datalist) return;
+  const list = $('pf-artist-clickable-list');
+  const status = $('pf-artist-list-status');
+  if (!datalist && !list) return;
+  if (status) status.textContent = 'Chargement de la liste des artistes…';
   const ok = await loadArtistListIfNeeded();
-  if (!ok) return;
-  const matching = artistListRows.filter(artistMatchesCurrentField);
-  datalist.innerHTML = matching.slice(0, 300).map((r) => {
-    const name = [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim();
-    return `<option value="${escapeHtml(name)}"></option>`;
-  }).join('');
+  if (!ok) {
+    if (status) status.textContent = "La liste des artistes n'a pas pu être chargée (connexion internet ?).";
+    if (list) list.innerHTML = '';
+    return;
+  }
+  const matching = artistListRows.filter(artistMatchesCurrentField)
+    .map((r) => [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+  if (datalist) datalist.innerHTML = matching.slice(0, 300).map((name) => `<option value="${escapeHtml(name)}"></option>`).join('');
+  if (list) {
+    list.innerHTML = matching.map((name) => `<button type="button" class="pf-artist-pick" style="display:block;width:100%;text-align:left;padding:6px 8px;border:0;background:none;cursor:pointer;font:inherit;border-radius:4px;">${escapeHtml(name)}</button>`).join('');
+    list.querySelectorAll('.pf-artist-pick').forEach((btn) => {
+      btn.addEventListener('mouseenter', () => { btn.style.background = '#f0ece0'; });
+      btn.addEventListener('mouseleave', () => { btn.style.background = 'none'; });
+      btn.addEventListener('click', () => addArtistToChoice(btn.textContent));
+    });
+  }
+  if (status) status.textContent = `${matching.length} artiste${matching.length > 1 ? 's' : ''} compatible${matching.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels.`;
+}
+// Ajoute un nom cliqué dans la liste : dans le premier champ vide s'il y en a un, sinon dans un
+// nouveau champ — pour que cliquer dans la liste fonctionne aussi simplement que taper à la main.
+function addArtistToChoice(name) {
+  const wrap = $('pf-artist-inputs');
+  const emptyField = [...wrap.querySelectorAll('.pf-artist-input')].find((f) => !f.value.trim());
+  if (emptyField) {
+    emptyField.value = name;
+  } else {
+    const field = document.createElement('input');
+    field.type = 'text';
+    field.className = 'pf-artist-input';
+    field.placeholder = 'Ex. Le Bernin';
+    field.autocapitalize = 'words';
+    field.setAttribute('list', 'pf-artist-suggestions');
+    field.value = name;
+    field.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;';
+    field.addEventListener('change', handleArtistFieldChange);
+    wrap.appendChild(field);
+  }
+  saveArtistChoiceGeneral();
+  revalidateArtistChoice();
 }
 async function saveArtistChoiceGeneral() {
   const names = currentArtistNames();
