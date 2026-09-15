@@ -2009,18 +2009,28 @@ function populateOverviewThumbs(candidates) {
   container.innerHTML = '';
   if (!candidates.length) return;
   // Vue d'ensemble : simples pastilles miniatures dispersées sur le mur, pour donner une idée du
-  // nombre d'œuvres sans chercher à être proportionnées (ce sera le rôle du plan rapproché).
-  candidates.slice(0, 30).forEach((w, i) => {
+  // nombre d'œuvres sans chercher à être proportionnées (ce sera le rôle du plan rapproché). Le
+  // trapèze est plus étroit en haut (voir clip-path en CSS, 18%-82% à 0% de hauteur, 0%-100% à
+  // 100%) — sans en tenir compte, les vignettes des rangées du haut tombaient hors de la forme
+  // visible et semblaient toutes s'accumuler tout en bas (bug réel repéré : "les tableaux sont sur
+  // le sol"). On calcule donc la largeur réellement visible à chaque rangée.
+  const perRow = 6;
+  candidates.slice(0, 24).forEach((w, i) => {
     const thumb = document.createElement('img');
     thumb.src = imageSourceSized(w.image, 60);
     thumb.alt = '';
     thumb.className = 'scale-overview-thumb';
-    const col = i % 8;
-    const row = Math.floor(i / 8);
-    thumb.style.left = `${8 + col * 11}%`;
-    thumb.style.top = `${10 + row * 18}%`;
-    thumb.style.width = '7%';
-    thumb.style.height = '10%';
+    const col = i % perRow;
+    const row = Math.floor(i / perRow);
+    const topPct = 14 + row * 20;
+    const narrow = 18 * (1 - topPct / 100); // marge perdue de chaque côté à cette hauteur
+    const visibleLeft = narrow + 4;
+    const visibleRight = 100 - narrow - 4;
+    const step = (visibleRight - visibleLeft) / perRow;
+    thumb.style.left = `${visibleLeft + col * step}%`;
+    thumb.style.top = `${topPct}%`;
+    thumb.style.width = `${Math.max(step - 1.5, 3)}%`;
+    thumb.style.height = '11%';
     container.appendChild(thumb);
   });
 }
@@ -2032,10 +2042,8 @@ function enterScaleView() {
   const candidates = (state.currentOtherWorks && state.currentOtherWorks.length ? state.currentOtherWorks : [currentLightboxWork])
     .filter((w) => parseCmValue(w.hauteur));
   // On entre toujours par la vue d'ensemble (1er plan) — le mur rapproché (2e plan, ci-dessous)
-  // ne s'affiche qu'après avoir choisi une direction.
+  // ne s'affiche qu'après avoir tiré la silhouette vers l'avant.
   $('scale-overview').classList.remove('hidden');
-  $('scale-back-to-overview').classList.add('hidden');
-  $('scale-walk-nav').classList.add('hidden');
   $('scale-wall-line').classList.add('hidden');
   ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
   populateOverviewThumbs(candidates);
@@ -2044,8 +2052,6 @@ function enterScaleView() {
 function enterCloserPlan() {
   const candidates = state.scaleViewCandidates || [];
   $('scale-overview').classList.add('hidden');
-  $('scale-back-to-overview').classList.remove('hidden');
-  $('scale-walk-nav').classList.remove('hidden');
   $('scale-wall-line').classList.remove('hidden');
   ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
@@ -2053,6 +2059,11 @@ function enterCloserPlan() {
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
   // tableaux, au ras du sol au lieu de les accrocher à hauteur des yeux.
   requestAnimationFrame(() => populateCloserPlanWall(candidates));
+}
+function backToOverview() {
+  $('scale-overview').classList.remove('hidden');
+  $('scale-wall-line').classList.add('hidden');
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
 }
 function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
@@ -2097,18 +2108,52 @@ function populateCloserPlanWall(candidates) {
   });
   $('lightbox-scale-caption').textContent = `Hauteur réelle : ${currentHCm} cm${currentNote}`;
 }
-$('scale-nav-left')?.addEventListener('click', enterCloserPlan);
-$('scale-nav-center')?.addEventListener('click', enterCloserPlan);
-$('scale-nav-right')?.addEventListener('click', enterCloserPlan);
-$('scale-back-to-overview')?.addEventListener('click', () => {
-  $('scale-overview').classList.remove('hidden');
-  $('scale-back-to-overview').classList.add('hidden');
-  $('scale-walk-nav').classList.add('hidden');
-  $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
+// Navigation entièrement par la silhouette, qu'on « tire » à la souris ou au doigt — plus aucun
+// bouton de direction séparé. Sur la vue d'ensemble : tirer vers le haut (vers l'avant) fait
+// entrer dans le mur rapproché. Sur le mur rapproché : tirer vers le bas (vers l'arrière) repasse
+// à la vue d'ensemble ; tirer à gauche/droite fait défiler le mur d'autant, en direct.
+function makeSilhouetteDraggable(el, { onDrag, onDragEnd } = {}) {
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  el.style.cursor = 'grab';
+  el.addEventListener('pointerdown', (event) => {
+    dragging = true;
+    startX = event.clientX;
+    startY = event.clientY;
+    el.style.cursor = 'grabbing';
+    el.setPointerCapture?.(event.pointerId);
+  });
+  el.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    onDrag?.(event.clientX - startX, event.clientY - startY);
+  });
+  const stop = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    el.style.cursor = 'grab';
+    onDragEnd?.(event.clientX - startX, event.clientY - startY);
+  };
+  el.addEventListener('pointerup', stop);
+  el.addEventListener('pointercancel', stop);
+}
+makeSilhouetteDraggable($('scale-overview-silhouette'), {
+  onDragEnd: (dx, dy) => {
+    // Tirer vers le haut (vers le fond de la salle) fait avancer vers le mur rapproché.
+    if (dy < -40) enterCloserPlan();
+  },
 });
-$('scale-walk-left')?.addEventListener('click', () => $('scale-wall').scrollBy({ left: -260, behavior: 'smooth' }));
-$('scale-walk-right')?.addEventListener('click', () => $('scale-wall').scrollBy({ left: 260, behavior: 'smooth' }));
+makeSilhouetteDraggable($('scale-silhouette'), {
+  onDrag: (dx) => {
+    const wall = $('scale-wall');
+    if (wall.dataset.dragStartScroll === undefined) wall.dataset.dragStartScroll = wall.scrollLeft;
+    wall.scrollLeft = Number(wall.dataset.dragStartScroll) + dx;
+  },
+  onDragEnd: (dx, dy) => {
+    $('scale-wall').dataset.dragStartScroll = '';
+    if (dy > 50) backToOverview();
+  },
+});
 function exitScaleView() {
   $('lightbox-scale-view').classList.add('hidden');
   $('lightbox-scale-back-button').classList.add('hidden');

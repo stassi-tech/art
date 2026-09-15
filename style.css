@@ -607,16 +607,10 @@ body[data-ambiance="ermitage"] .image-lightbox:has(#lightbox-scale-view:not(.hid
 }
 #scale-overview-thumbs { position:absolute; inset:0; }
 .scale-overview-thumb { position:absolute; box-shadow:0 4px 10px rgba(0,0,0,.35); object-fit:cover; border-radius:2px; }
-#scale-overview-silhouette { position:absolute; bottom:16vh; left:6%; height:12vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
-/* Les 3 flèches directionnelles posées juste au-dessus de la tête de la silhouette, comme un
-   petit chapeau — plus intuitif qu'une rangée de boutons détachée en bas de l'écran : c'est elle
-   qui avance, la commande reste visuellement à côté d'elle. */
-#scale-overview-nav { position:absolute; bottom:calc(16vh + 12vh + 6px); left:6%; transform:translateX(-38%); display:flex; gap:6px; justify-content:center; padding:0; z-index:2; }
-.scale-nav-button { background:rgba(255,255,255,.92); border:1px solid var(--border); border-radius:6px; width:34px; height:30px; font-size:1rem; cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,.2); display:flex; align-items:center; justify-content:center; }
-.scale-nav-button:hover { background:#fff; }
-@media (max-width:640px) {
-  .scale-nav-button { width:28px; height:26px; font-size:.85rem; }
-}
+/* La silhouette elle-même guide toute la navigation — on la tire (souris ou doigt) pour se
+   déplacer, plus aucun bouton de direction séparé. touch-action:none empêche le geste de faire
+   défiler la page au lieu de contrôler la silhouette sur mobile. */
+#scale-overview-silhouette { position:absolute; bottom:16vh; left:6%; height:12vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); touch-action:none; }
 body[data-ambiance="pitti"] #scale-overview-trapezoid { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
 body[data-ambiance="bauhaus"] #scale-overview-trapezoid { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
 body[data-ambiance="space"] #scale-overview-trapezoid { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
@@ -624,13 +618,6 @@ body[data-ambiance="versailles"] #scale-overview-trapezoid { background-color:#5
 body[data-ambiance="wedgwood"] #scale-overview-trapezoid { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
 body[data-ambiance="ermitage"] #scale-overview-trapezoid { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
 body:not([data-ambiance]) #scale-overview-trapezoid { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
-/* Flèche retour posée au-dessus de la tête de la silhouette du mur rapproché, comme un chapeau —
-   même principe que les 3 flèches directionnelles de la vue d'ensemble, plutôt qu'un bouton
-   détaché dans le bandeau. */
-#scale-back-to-overview { position:fixed; bottom:calc(70vh + 6px); left:32px; z-index:2; width:34px; height:30px; padding:0; border-radius:6px; background:rgba(255,255,255,.92); border:1px solid var(--border); box-shadow:0 3px 8px rgba(0,0,0,.2); font-size:1rem; display:flex; align-items:center; justify-content:center; }
-@media (max-width:640px) {
-  #scale-back-to-overview { width:28px; height:26px; font-size:.85rem; }
-}
 
 #scale-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a);
@@ -638,13 +625,8 @@ body:not([data-ambiance]) #scale-overview-trapezoid { background-color:#c9b896; 
 /* Ligne de plinthe séparant le mur du sol — repère visuel simple demandé pour bien distinguer les
    deux plans, en attendant une vraie salle en 3 dimensions. */
 #scale-wall-line { position:fixed; bottom:16vh; left:0; right:0; height:3px; background:rgba(0,0,0,.35); z-index:1; box-shadow:0 1px 2px rgba(255,255,255,.15); }
-#scale-silhouette { position:fixed; bottom:0; left:32px; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); z-index:5; }
+#scale-silhouette { position:fixed; bottom:0; left:32px; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); z-index:5; touch-action:none; }
 #scale-silhouette-label { position:fixed; bottom:4px; left:20px; font-family:Arial,sans-serif; font-size:.75rem; color:#4a453c; background:rgba(255,255,255,.75); padding:3px 8px; border-radius:4px; margin:0; z-index:2; }
-/* Boutons de déplacement du personnage : plus fiables qu'un défilement tactile ou à la molette
-   (pas toujours découvrable, en particulier sur ordinateur) — un clic avance d'un pas net. */
-#scale-walk-nav { position:fixed; top:50%; left:0; right:0; transform:translateY(-50%); display:flex; justify-content:space-between; padding:0 10px; z-index:6; pointer-events:none; }
-#scale-walk-nav button { pointer-events:auto; width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,.85); border:1px solid var(--border); font-size:1.3rem; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,.25); }
-#scale-walk-nav button:hover { background:#fff; }
 #scale-wall { position:fixed; inset:0; overflow-x:auto; overflow-y:hidden; scroll-behavior:smooth; }
 .scale-wall-item { position:absolute; box-shadow:0 10px 28px rgba(0,0,0,.3); cursor:pointer; transition:box-shadow .15s; z-index:2; }
 .scale-wall-item.current { box-shadow:0 0 0 3px var(--accent), 0 10px 28px rgba(0,0,0,.3); }

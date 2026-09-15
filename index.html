@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=130" />
+    <link rel="stylesheet" href="style.css?v=131" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -961,32 +961,23 @@
           <img id="lightbox-image" alt="" />
           <p id="lightbox-caption" class="lightbox-caption"></p>
           <div id="lightbox-scale-view" class="hidden">
-            <!-- Premier plan : vue d'ensemble en trapèze (façon Zoffany), toute la salle vue de loin.
-                 Cliquer sur une des 3 directions rapproche vers ce mur (2e plan, voir #scale-wall
-                 plus bas — le rapprochement supplémentaire vers un groupe limité viendra ensuite). -->
+            <!-- Navigation entièrement par la silhouette : on la tire (souris ou doigt) vers l'avant
+                 pour passer de la vue d'ensemble au mur rapproché, vers l'arrière pour repasser à la
+                 vue d'ensemble, vers la gauche/droite pour se déplacer le long du mur. Plus aucun
+                 bouton de direction ou de retour séparé. -->
             <div id="scale-overview">
               <div id="scale-overview-trapezoid"><div id="scale-overview-thumbs"></div></div>
               <svg id="scale-overview-silhouette" viewBox="0 0 100 340" aria-hidden="true">
                 <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
               </svg>
-              <div id="scale-overview-nav">
-                <button type="button" class="scale-nav-button" id="scale-nav-left" aria-label="Avancer vers la gauche" title="Avancer vers la gauche">⬅</button>
-                <button type="button" class="scale-nav-button" id="scale-nav-center" aria-label="Avancer vers le fond" title="Avancer vers le fond">↑</button>
-                <button type="button" class="scale-nav-button" id="scale-nav-right" aria-label="Avancer vers la droite" title="Avancer vers la droite">➡</button>
-              </div>
             </div>
             <div id="scale-floor" aria-hidden="true"></div>
+            <div id="scale-wall-line" aria-hidden="true"></div>
+            <div id="scale-wall"></div>
             <svg id="scale-silhouette" viewBox="0 0 100 340" aria-hidden="true">
               <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
             </svg>
-            <p id="scale-silhouette-label">Adulte de référence — 1,70 m</p>
-            <button type="button" id="scale-back-to-overview" class="home-icon-button hidden" aria-label="Revenir à la vue d'ensemble" title="Revenir à la vue d'ensemble">↩</button>
-            <div id="scale-walk-nav" class="hidden">
-              <button type="button" id="scale-walk-left" aria-label="Se déplacer vers la gauche" title="Se déplacer vers la gauche">⬅</button>
-              <button type="button" id="scale-walk-right" aria-label="Se déplacer vers la droite" title="Se déplacer vers la droite">➡</button>
-            </div>
-            <div id="scale-wall-line" aria-hidden="true"></div>
-            <div id="scale-wall"></div>
+            <p id="scale-silhouette-label">Adulte de référence — 1,70 m — tirez-la pour vous déplacer</p>
             <p id="lightbox-scale-caption" class="lightbox-scale-caption"></p>
           </div>
           <a id="lightbox-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
@@ -1166,6 +1157,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=142"></script>
+    <script src="app.js?v=143"></script>
   </body>
 </html>
