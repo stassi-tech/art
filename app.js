@@ -2842,6 +2842,9 @@ $('chrono-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 4) pool = zoned;
+      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
+      pool = filterPoolByGlobalArtists(pool);
     }
     // Ne garde que les œuvres dont on peut extraire une année exploitable — indispensable pour
     // établir un ordre chronologique sans ambiguïté.
@@ -3205,6 +3208,14 @@ function famSpeak(text, onEnd) {
 $('fam-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('fam', 'famille-setup-panel');
   saveLastSelection('famille-setup-panel');
+  // Famille a besoin d'œuvres « intruses » d'autres artistes pour que le jeu ait un sens —
+  // impossible à construire avec un seul artiste choisi (tout serait alors « famille »).
+  const globalArtistsFam = (readGlobalFieldDefaults().artists || []);
+  if (globalArtistsFam.length === 1) {
+    $('fam-setup-feedback').classList.remove('hidden');
+    $('fam-setup-feedback').textContent = "Famille a besoin d'au moins 2 artistes choisis (pour proposer des œuvres intruses d'un autre artiste) — ajoute-en un second dans Mes choix de champ, ou choisis un art/siècle/zone à la place.";
+    return;
+  }
   let arts = famSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = famSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
   famFieldLabel = buildFieldLabel(arts, centuries);
@@ -3230,6 +3241,9 @@ $('fam-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 8) pool = zoned;
+      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
+      pool = filterPoolByGlobalArtists(pool);
     }
     famAudioOn = getGlobalPrefs().audioOn;
     famSelectedVoiceRef = getGlobalVoice();
@@ -3478,6 +3492,14 @@ function vfSpeak(text, onEnd) {
 $('vf-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('vf', 'vraifaux-setup-panel');
   saveLastSelection('vraifaux-setup-panel');
+  // Vrai/Faux a besoin de proposer une fausse attribution crédible — impossible à construire
+  // avec un seul artiste choisi (il n'y aurait personne d'autre à qui l'attribuer par erreur).
+  const globalArtists = (readGlobalFieldDefaults().artists || []);
+  if (globalArtists.length === 1) {
+    $('vf-setup-feedback').classList.remove('hidden');
+    $('vf-setup-feedback').textContent = "Vrai/Faux a besoin d'au moins 2 artistes choisis (pour proposer une fausse attribution) — ajoute-en un second dans Mes choix de champ, ou choisis un art/siècle/zone à la place.";
+    return;
+  }
   let arts = vfSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
   let centuries = vfSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
   let levels = vfSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
@@ -3502,6 +3524,9 @@ $('vf-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 2) pool = zoned;
+      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
+      pool = filterPoolByGlobalArtists(pool);
     }
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const countChoice = document.querySelector('input[name="vf-count"]:checked').value;
@@ -3781,6 +3806,9 @@ $('recon-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 3) pool = zoned;
+      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
+      pool = filterPoolByGlobalArtists(pool);
     }
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const countChoice = document.querySelector('input[name="recon-count"]:checked').value;
@@ -3948,7 +3976,6 @@ function closeModal(id) { $(id).classList.add('hidden'); }
 // Fond décoratif de la page d'accueil : 15 œuvres célèbres, floutées et assourdies par défaut,
 // nettes et agrandies au survol. Purement décoratif (aria-hidden), tolère les échecs de chargement.
 const BG_MOSAIC_FILES = [
-  'Great Wave off Kanagawa2.jpg',
   'The Fighting Temeraire, JMW Turner, National Gallery.jpg',
   'Aivazovsky, Ivan - The Ninth Wave.jpg',
   'Winslow Homer - The Gulf Stream.jpg',
@@ -4359,6 +4386,9 @@ $('imp-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length) pool = zoned;
+      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
+      pool = filterPoolByGlobalArtists(pool);
     }
     // Mélange, sans limitation de nombre : tout l'échantillon correspondant au choix.
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
@@ -4578,6 +4608,9 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     if (zones.length) {
       const zoned = pool.filter((r) => { const z = zoneOfNationality(r.nationality); return !z || zones.includes(z); });
       if (zoned.length >= 3) pool = zoned;
+      // Si un ou plusieurs artistes précis ont été choisis dans « Mes choix de champ »
+      // (Art/Siècle/Zone effacés automatiquement dans ce cas), on ne garde que leurs œuvres.
+      pool = filterPoolByGlobalArtists(pool);
     }
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const countChoice = document.querySelector('input[name="intrus-count"]:checked').value;

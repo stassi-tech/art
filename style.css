@@ -87,8 +87,8 @@ body[data-ambiance="versailles"] .home-mode-button .label { color:#3a2c10; }
 
 /* ---- Wedgwood ---- camée bleu pâle */
 body[data-ambiance="wedgwood"] { --accent:#7396b8; --accent-dark:#4a6d8f; --cta:#e8e0cf; --cta-dark:#cfc4a8; }
-body[data-ambiance="wedgwood"] .bg-tile:nth-child(odd)::before { background:#a8c0d4; }
-body[data-ambiance="wedgwood"] .bg-tile:nth-child(even)::before { background:#f0e6d2; }
+body[data-ambiance="wedgwood"] .bg-tile:nth-child(odd)::before { background:#6f8ba8; }
+body[data-ambiance="wedgwood"] .bg-tile:nth-child(even)::before { background:#f8f0e0; }
 body[data-ambiance="wedgwood"].in-exercise { --ink:#2c3e4a; --paper:#c3d5e2; --canvas:#a8c0d4; --border:#f2ede0; }
 body[data-ambiance="wedgwood"].in-exercise { background:#a8c0d4; }
 body[data-ambiance="wedgwood"].in-exercise .app-shell { background:#a8c0d4; }
@@ -114,7 +114,7 @@ body[data-ambiance="ermitage"] .primary-button, body[data-ambiance="ermitage"] .
 }
 body[data-ambiance="ermitage"] .home-mode-button .label { color:#3a2c10; }
 body[data-ambiance="renaissance"] { --accent:#c17a3c; --accent-dark:#8a5424; --cta:#7a3820; --cta-dark:#5c2916; }
-body[data-ambiance="renaissance"] .bg-tile:nth-child(odd)::before { background:#f0e6d2; }
+body[data-ambiance="renaissance"] .bg-tile:nth-child(odd)::before { background:#faf5ea; }
 body[data-ambiance="renaissance"] .bg-tile:nth-child(even)::before { background:#4a5560; }
 body[data-ambiance="renaissance"].in-exercise { --ink:#f2e8d8; --paper:#8a4526; --canvas:#7a3820; --border:#b06a3a; }
 body[data-ambiance="renaissance"].in-exercise { background:#7a3820; }
@@ -131,7 +131,7 @@ body[data-ambiance="renaissance"] .home-mode-button .label { color:#3a2410; }
    14e siècle (fond très outremer, rehauts d'or). */
 body[data-ambiance="gothique"] { --accent:#d4af37; --accent-dark:#8a6a1e; --cta:#1a2f5c; --cta-dark:#101d3c; }
 body[data-ambiance="gothique"] .bg-tile:nth-child(odd)::before { background:#d4af37; }
-body[data-ambiance="gothique"] .bg-tile:nth-child(even)::before { background:#1a2f5c; }
+body[data-ambiance="gothique"] .bg-tile:nth-child(even)::before { background:#1c3f9e; }
 body[data-ambiance="gothique"].in-exercise { --ink:#f2ecd8; --paper:#152850; --canvas:#101d3c; --border:#2c4578; }
 body[data-ambiance="gothique"].in-exercise { background:#101d3c; }
 body[data-ambiance="gothique"].in-exercise .app-shell {
