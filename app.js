@@ -2058,6 +2058,16 @@ function imageSource(reference) {
 // Commons (paramètre "width" supporté nativement) — évite de télécharger une image en pleine
 // résolution pour l'afficher en 150px, ce qui accélère le chargement (utile sur le mur de la vue
 // à l'échelle, où plusieurs images se chargent en même temps).
+// Précharge discrètement une image en arrière-plan (sans l'afficher) — utilisé pour l'œuvre
+// SUIVANTE pendant que le joueur répond encore à la question en cours : par le temps qu'il passe
+// à celle-ci, l'image d'après a déjà eu le temps de charger depuis Wikimedia, et s'affiche alors
+// instantanément au lieu de démarrer son chargement à ce moment-là (c'est ce qui donnait
+// l'impression d'un « rideau » qui se déroule lentement à l'écran).
+function preloadImage(reference, widthPx) {
+  if (!reference) return;
+  const img = new Image();
+  img.src = imageSourceSized(reference, widthPx);
+}
 function imageSourceSized(reference, widthPx) {
   const url = imageSource(reference);
   if (!/commons\.wikimedia\.org\/wiki\/Special:FilePath\//i.test(url)) return url;
@@ -2202,6 +2212,7 @@ function renderQuestion() {
   $('score-summary').textContent = `${totalCorrect()} / ${possible} point${totalCorrect() > 1 ? 's' : ''}`;
   updateTopBannerScore(`${totalCorrect()}/${possible} pt${totalCorrect() > 1 ? 's' : ''}`);
   displayArtworkImage(question, `Œuvre ${state.index + 1}`, answer.checked);
+  preloadImage(state.questions[state.index + 1]?.image, 900);
   document.body.classList.toggle('four-fields', state.selectedFieldKeys.length >= 4);
   allFields.forEach(({ key, input }) => {
     const wrapper = $(input).closest('.field-row');
@@ -2509,7 +2520,7 @@ function enterCloserPlan() {
   // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
   // tableaux, au ras du sol au lieu de les accrocher à hauteur des yeux.
-  requestAnimationFrame(() => populateCloserPlanWall(candidates));
+  requestAnimationFrame(() => { populateCloserPlanWall(candidates); positionSilhouetteMic(); });
 }
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
@@ -2636,6 +2647,64 @@ function isNearBottomCorner(clientX, clientY) {
   const nearEdge = clientX < 70 || clientX > window.innerWidth - 70;
   return nearBottom && nearEdge;
 }
+// Mains cliquables sur la silhouette (mur rapproché) : trois gestes distincts sur chaque main.
+// - Glisser la main : avance tant qu'on la tire (s'arrête au relâchement).
+// - Un simple tap (sans glisser) : part seule dans cette direction, sans qu'on ait à la tenir.
+// - Un double-tap : s'arrête, où qu'on soit.
+// stopPropagation empêche ce geste d'être aussi intercepté par le glisser du corps entier
+// (même élément SVG, sinon les deux mécanismes se déclencheraient en même temps).
+function attachHandGesture(handEl, direction) {
+  if (!handEl) return;
+  const DRAG_THRESHOLD = 10;
+  const DOUBLE_TAP_MS = 320;
+  let downX = 0, downY = 0, dragging = false, pendingSingleTap = null, lastTapTime = 0;
+  handEl.addEventListener('pointerdown', (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    downX = event.clientX; downY = event.clientY;
+    dragging = false;
+    handEl.setPointerCapture?.(event.pointerId);
+  });
+  handEl.addEventListener('pointermove', (event) => {
+    event.stopPropagation();
+    if (Math.hypot(event.clientX - downX, event.clientY - downY) > DRAG_THRESHOLD) {
+      if (!dragging) { dragging = true; if (pendingSingleTap) { clearTimeout(pendingSingleTap); pendingSingleTap = null; } }
+      startWalking(direction);
+    }
+  });
+  const onUp = (event) => {
+    event.stopPropagation();
+    if (dragging) { stopWalking(); dragging = false; return; }
+    // Pas de glissement : c'est un tap. On attend un court instant pour voir s'il est suivi d'un
+    // second tap (double-tap = arrêt) avant de le traiter comme un simple tap (départ seul).
+    const now = Date.now();
+    if (now - lastTapTime < DOUBLE_TAP_MS) {
+      if (pendingSingleTap) { clearTimeout(pendingSingleTap); pendingSingleTap = null; }
+      stopWalking();
+      lastTapTime = 0;
+      return;
+    }
+    lastTapTime = now;
+    pendingSingleTap = setTimeout(() => { startWalking(direction); pendingSingleTap = null; }, DOUBLE_TAP_MS);
+  };
+  handEl.addEventListener('pointerup', onUp);
+  handEl.addEventListener('pointercancel', onUp);
+}
+attachHandGesture($('scale-hand-left'), -1);
+attachHandGesture($('scale-hand-right'), 1);
+// Repositionne le micro façon audioguide, contre l'oreille de la silhouette — recalculé à chaque
+// entrée dans le mur rapproché, puisque la taille de la silhouette change avec l'échelle choisie.
+function positionSilhouetteMic() {
+  const sil = $('scale-silhouette');
+  const mic = $('scale-voice-control-button');
+  if (!sil || !mic || sil.classList.contains('hidden')) return;
+  const rect = sil.getBoundingClientRect();
+  if (!rect.height) return;
+  // L'oreille se situe vers le tiers droit de la tête, elle-même les ~6 % du haut du corps.
+  mic.style.left = `${rect.left + rect.width * 0.62 - 13}px`;
+  mic.style.top = `${rect.top + rect.height * 0.045 - 13}px`;
+}
+window.addEventListener('resize', positionSilhouetteMic);
 makeSilhouetteDraggable($('scale-overview-silhouette'), {
   onDragEnd: (dx, dy, endX, endY) => {
     if (isNearBottomCorner(endX, endY)) { exitScaleViewCompletely(); return; }
@@ -3899,6 +3968,8 @@ function famShowQuestion() {
   famTimers.push(setTimeout(() => { famStep = 0; }, 400));
   famPickedLabel = null;
   const q = FAM_SESSION[famIndex];
+  // Précharge les 6-8 images de la question suivante, pendant que le joueur répond encore.
+  FAM_SESSION[famIndex + 1]?.images?.forEach((w) => preloadImage(w.image, 250));
   $('fam-progress-label').textContent = `Question ${famIndex + 1} / ${FAM_SESSION.length}`;
   $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
   updateTopBanner('Famille', `Question ${famIndex + 1}/${FAM_SESSION.length}`, famFieldLabel);
@@ -4205,6 +4276,7 @@ function vfShowQuestion() {
   $('vf-validate-button').classList.remove('hidden');
   $('vf-validate-button').disabled = false;
   $('vf-stage-img').src = imageSourceSized(q.correct.image, 700);
+  preloadImage(VF_SESSION[vfIndex + 1]?.correct?.image, 700);
 
   // Chaque rubrique a son propre bouton Vrai/Faux, réglé sur Vrai par défaut.
   $('vf-field-rows').innerHTML = q.activeFields.map((f) => {
@@ -4485,6 +4557,7 @@ function reconShowQuestion() {
   reconAnswered = true;
   reconTimers.push(setTimeout(() => { reconAnswered = false; }, 400));
   const q = RECON_SESSION[reconIndex];
+  preloadImage(RECON_SESSION[reconIndex + 1]?.correct?.image, 500);
   $('recon-progress-label').textContent = `Question ${reconIndex + 1} / ${RECON_SESSION.length}`;
   updateTopBanner('Reconstitution', `Question ${reconIndex + 1}/${RECON_SESSION.length}`, reconFieldLabel);
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
@@ -5492,6 +5565,7 @@ function impShowCurrent() {
   updateTopBanner('Imprégnation', `Œuvre ${impIndex + 1}/${IMP_SESSION.length}`, impFieldLabel);
   $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
   $('imp-stage-img').src = imageSourceSized(work.image, 900);
+  preloadImage(IMP_SESSION[impIndex + 1]?.image, 900);
 
   const dims = formatDimensionsDisplay(work);
   const anyFieldChecked = ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].some((k) => $(`imp-field-${k}`)?.checked);
@@ -5750,6 +5824,9 @@ function intrusShowQuestion() {
   intrusAnswered = true;
   intrusTimers.push(setTimeout(() => { intrusAnswered = false; }, 400));
   const q = INTRUS_SESSION[intrusIndex];
+  // Précharge les 3 images de la question suivante (toutes affichées en même temps ici, pas une
+  // seule comme ailleurs) pendant que le joueur répond encore à celle-ci.
+  INTRUS_SESSION[intrusIndex + 1]?.choices?.forEach((c) => preloadImage(c.image, 300));
   $('intrus-progress-label').textContent = `Question ${intrusIndex + 1} / ${INTRUS_SESSION.length}`;
   updateTopBanner('Intrus', `Question ${intrusIndex + 1}/${INTRUS_SESSION.length}`, intrusFieldLabel);
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;

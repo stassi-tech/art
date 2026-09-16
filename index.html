@@ -1137,9 +1137,16 @@
             <div id="scale-wall"></div>
             <svg id="scale-silhouette" viewBox="0 0 100 340" aria-hidden="true">
               <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+              <!-- Mains cliquables : glisser fait avancer tant qu'on la tire, un simple tap la
+                   fait partir seule, un double-tap l'arrête. Cercle invisible plus large que le
+                   rond dessiné, pour rester facile à toucher sur mobile. -->
+              <circle id="scale-hand-left" class="scale-hand" cx="14" cy="98" r="14" fill="transparent" style="cursor:pointer;" />
+              <circle cx="14" cy="98" r="7" fill="currentColor" />
+              <circle id="scale-hand-right" class="scale-hand" cx="86" cy="98" r="14" fill="transparent" style="cursor:pointer;" />
+              <circle cx="86" cy="98" r="7" fill="currentColor" />
             </svg>
-            <p id="scale-silhouette-label">Adulte de référence — 1,70 m — tirez-la pour vous déplacer</p>
-            <button type="button" id="scale-voice-control-button" class="hidden" aria-label="Piloter le personnage à la voix" title="Piloter le personnage à la voix (dites : gauche, droite, plus vite, moins vite, arrête)" style="position:absolute;bottom:14px;right:14px;width:44px;height:44px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.55);color:#fff;font-size:1.2rem;cursor:pointer;">🎤</button>
+            <p id="scale-silhouette-label">Adulte de référence — 1,70 m — tirez la silhouette, ou ses mains, pour vous déplacer</p>
+            <button type="button" id="scale-voice-control-button" class="hidden" aria-label="Piloter le personnage à la voix" title="Piloter le personnage à la voix (dites : gauche, droite, plus vite, moins vite, arrête)" style="position:absolute;width:26px;height:26px;border-radius:50%;border:1.5px solid #fff;background:rgba(0,0,0,.6);color:#fff;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">🎤</button>
             <p id="lightbox-scale-caption" class="lightbox-scale-caption"></p>
             <!-- Vue rapprochée d'une œuvre précise : la silhouette entre dans l'image elle-même pour
                  montrer l'échelle en grand — on la tire hors du cadre pour revenir au mur, qui garde
@@ -1389,6 +1396,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=196"></script>
+    <script src="app.js?v=198"></script>
   </body>
 </html>
