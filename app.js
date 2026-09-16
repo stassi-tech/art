@@ -418,6 +418,7 @@ function showProfileHub() {
   $('profile-menu-grid').classList.remove('hidden');
   $('profile-menu-grid-2').classList.remove('hidden');
   $('pf-validate-button').classList.remove('hidden');
+  $('profile-hub-secondary-buttons').classList.remove('hidden');
   $('pf-section-nav').classList.add('hidden');
   document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.add('inactive'));
   ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques', 'profile-section-configs'].forEach((id) => {
@@ -428,6 +429,10 @@ function showProfileSection(btn) {
   $('profile-menu-grid').classList.add('hidden');
   $('profile-menu-grid-2').classList.add('hidden');
   $('pf-validate-button').classList.add('hidden');
+  // Sur une page dédiée (ex. Mes paramètres techniques), on ne montre plus « Mes configurations
+  // enregistrées » ni « Mes scores » : le joueur doit comprendre que cette page ne concerne QUE
+  // le réglage affiché — il les retrouve sur le tableau de bord général de Mon compte.
+  $('profile-hub-secondary-buttons').classList.add('hidden');
   $('profile-section-configs')?.classList.add('hidden');
   document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
   ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => {
@@ -452,6 +457,9 @@ $('profile-menu-saved-configs')?.addEventListener('click', () => {
   $('profile-menu-grid-2').classList.add('hidden');
   $('pf-validate-button').classList.add('hidden');
   $('pf-section-nav').classList.add('hidden');
+  // Page dédiée elle aussi : ni les 3 boutons de choix ni « Mes scores » ne doivent traîner ici,
+  // pour que le joueur comprenne que cette page ne concerne que ses configurations enregistrées.
+  $('profile-hub-secondary-buttons').classList.add('hidden');
   document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.add('inactive'));
   ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => $(id)?.classList.add('hidden'));
   $('profile-section-configs').classList.remove('hidden');
@@ -1008,6 +1016,17 @@ $('exercise-results-close')?.addEventListener('click', () => {
   closeModal('modal-exercise-results');
   showPanel(exerciseResultsCloseTarget);
 });
+// Sonorise le parcours guidé (texte d'intro et question de chaque étape) — respecte le réglage
+// audio global, comme partout ailleurs dans l'appli.
+function guidedSpeak(text) {
+  if (!getGlobalPrefs().audioOn || !window.speechSynthesis || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
+  u.lang = 'fr-FR'; u.rate = 0.85;
+  const voice = getGlobalVoice();
+  if (voice) u.voice = voice;
+  speechSynthesis.speak(u);
+}
 function speakObjective(elementId) {
   const el = $(`${elementId}-objective`);
   const showExplanations = getGlobalPrefs().showExplanations;
@@ -1927,20 +1946,9 @@ function showPanel(name) {
       try { history.pushState({ panel: name }, '', `#${name}`); } catch (e) { /* ignoré si l'historique est indisponible */ }
     }
   }
-  // Bouton « Voir/Arrêter la correction complète » : visible seulement dans les 4 exercices
-  // concernés par un choix de rubrique, avec un intitulé qui reflète toujours l'état réel.
-  $('global-full-correction-button')?.classList.toggle('hidden', !(name in FULL_CORRECTION_PANELS));
-  if ($('global-full-correction-button')) {
-    $('global-full-correction-button').textContent = showFullCorrection ? 'Arrêter la correction complète' : 'Voir la correction complète';
-  }
-  // L'icône accueil du bandeau redevient explicitement « Retour au menu des exercices » une fois
-  // en plein jeu, plutôt que le générique « Retour à l'accueil » qui prêtait à confusion.
-  if ($('global-home-button')) {
-    const inAnyGame = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'].includes(name);
-    const label = inAnyGame ? 'Retour au menu des exercices' : "Retour à l'accueil";
-    $('global-home-button').title = label;
-    $('global-home-button').setAttribute('aria-label', label);
-  }
+  // Bouton « Voir/Arrêter la correction complète » : un par exercice concerné (à côté de son
+  // propre 🏠 « Retour au menu des exercices »), toujours à jour avec l'état réel.
+  updateFullCorrectionButtonsText();
   impTimers = []; vfTimers = []; famTimers = []; reconTimers = []; intrusTimers = []; chronoTimers = [];
 
   // name: 'welcome' | 'training-hub' | 'impregnation-setup' | 'impregnation' | 'intrus-setup' |
@@ -3061,11 +3069,7 @@ $('menu-item-ambiance')?.addEventListener('click', (event) => { event.stopPropag
 $('menu-item-exhibition')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-exhibition-button')?.click(); });
 $('menu-item-account')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-account-button')?.click(); });
 $('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
-$('global-home-button')?.addEventListener('click', () => {
-  const inAnyGame = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'].includes(currentPanelName);
-  showPanel(inAnyGame ? 'training-hub' : 'welcome');
-  if (inAnyGame) updateExerciseSummaries();
-});
+$('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
 // Bouton « page précédente » — utile seulement quand l'appli est installée comme application
 // (barre d'adresse du navigateur, avec son propre bouton retour, non visible dans ce mode) : on
 // s'appuie sur l'historique interne déjà tenu à jour par showPanel() à chaque navigation.
@@ -3742,7 +3746,10 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
     const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
     const titleList = chronological.map((w, i) => `${ordinals[i]}, ${w.title}`).join('. ');
     currentSpeechNationality = chronological[0]?.nationality || '';
-    famSpeak(`Ces ${famNumberWord(chronological.length)} œuvres sont bien de ${q.artist}. ${titleList}.`);
+    // La voix dit le surnom quand il existe (ex. « El Greco »), pas le nom complet parfois moins
+    // reconnaissable (« Domenikos Theotokopoulos ») — cohérent avec ce qui est écrit à l'écran.
+    const spokenArtistName = chronological[0]?.surnomFr || q.artist;
+    famSpeak(`Ces ${famNumberWord(chronological.length)} œuvres sont bien de ${spokenArtistName}. ${titleList}.`);
   } else {
     $('fam-image-grid').className = 'fam-result-rows';
     $('fam-image-grid').innerHTML = `
@@ -3758,14 +3765,15 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
       if (!wrongSelected.length) { next(); return; }
       $('fam-result-bottom').innerHTML = wrongSelected.map((w) => cellHtml(w, true)).join('');
       const intro = wrongSelected.length > 1 ? `Tu as fait ${famNumberWord(wrongSelected.length)} erreurs.` : 'Tu as fait une erreur.';
-      const details = wrongSelected.map((w) => `Ce tableau était de ${w.artist}, intitulé ${w.title}.`).join(' ');
+      const details = wrongSelected.map((w) => `Ce tableau était de ${w.surnomFr || w.artist}, intitulé ${w.title}.`).join(' ');
       currentSpeechNationality = wrongSelected[0]?.nationality || '';
       famSpeak(`${intro} ${details}`, next);
     }
     function announceFound(next) {
       if (!foundFamily.length) { next(); return; }
       foundFamily.forEach(revealTop);
-      famSpeak(`Tu avais bien repéré ${famNumberWord(foundFamily.length)} œuvre${foundFamily.length > 1 ? 's' : ''} de ${q.artist}.`, next);
+      const spokenArtistName = foundFamily[0]?.surnomFr || q.artist;
+      famSpeak(`Tu avais bien repéré ${famNumberWord(foundFamily.length)} œuvre${foundFamily.length > 1 ? 's' : ''} de ${spokenArtistName}.`, next);
     }
     function announceMissed() {
       if (!missedFamily.length) return;
@@ -4870,11 +4878,31 @@ $('open-guided-config')?.addEventListener('click', () => {
   resetGuidedConfig();
   loadedGuidedConfigName = '';
   showPanel('guided-config');
+  guidedSpeak($('gc-step-intro')?.querySelector('p')?.textContent || '');
 });
 $('gc-intro-find-config')?.addEventListener('click', () => {
   showPanel('profile');
   initProfilePage();
   $('profile-menu-saved-configs')?.click();
+});
+// « Configurer une nouvelle formule » : la toute première fois, on montre d'abord un aperçu des
+// réglages techniques et esthétiques (Mon compte) — occasion naturelle de les découvrir pour un
+// nouveau joueur. Les fois suivantes, on saute directement à la première question.
+$('gc-intro-new-config')?.addEventListener('click', () => {
+  $('gc-step-intro').classList.add('hidden');
+  const seen = localStorage.getItem('hasSeenGuidedPersonalize') === 'true';
+  const next = $(seen ? 'gc-step-art' : 'gc-step-personalize');
+  next.classList.remove('hidden');
+  window.scrollTo({ top: next.offsetTop - 80, behavior: 'smooth' });
+  const mainText = next.querySelector('p.config-table-col-title, p:not(.gc-note):not(.modal-hint)');
+  guidedSpeak(mainText?.textContent || '');
+});
+$('gc-personalize-continue')?.addEventListener('click', () => {
+  localStorage.setItem('hasSeenGuidedPersonalize', 'true');
+  setGlobalPref('audioOn', $('gc-personalize-audio').checked);
+  const ambiance = document.querySelector('input[name="gc-personalize-ambiance"]:checked')?.value || '';
+  localStorage.setItem('ambiance', ambiance);
+  applyAmbiance(ambiance);
 });
 function saveGuidedFieldAndRubrique() {
   const arts = [...document.querySelectorAll('.gc-art:checked')].map((el) => el.value);
@@ -4896,6 +4924,10 @@ document.querySelectorAll('.gc-continue').forEach((btn) => {
     if (next.id === 'gc-step-artists') populateGuidedArtistList();
     if (next.id === 'gc-step-summary') buildGuidedSummary();
     window.scrollTo({ top: next.offsetTop - 80, behavior: 'smooth' });
+    // Lit à voix haute la question de la nouvelle étape (premier texte principal, hors indice
+    // discret « rien coché = … ») — sonorise tout le parcours guidé, pas seulement les jeux.
+    const mainText = next.querySelector('p.config-table-col-title, p:not(.gc-note):not(.modal-hint)');
+    guidedSpeak(mainText?.textContent || '');
   });
 });
 async function populateGuidedArtistList() {
@@ -4954,27 +4986,32 @@ document.querySelectorAll('input[name="gc-allgames"]').forEach((el) => {
   el.addEventListener('change', () => { $('gc-games-list').classList.toggle('hidden', el.value !== 'no' || !el.checked); });
 });
 // Phrase affichée en haut du tableau des exercices quand on y arrive via « Valider » (parcours
-// guidé ou Mon compte) — reprend le même principe que la phrase de fin de parcours guidé, avec un
-// préfixe différent selon qu'il s'agit d'une configuration enregistrée retrouvée ou d'un choix du
-// jour fait sur le moment.
-function buildConfigMiddlePart() {
+// guidé ou Mon compte) — texte détaillé demandé, avec un préfixe différent selon qu'il s'agit
+// d'une configuration enregistrée retrouvée ou d'un choix du jour fait sur le moment.
+function buildTrainingHubConfigSentence() {
   const gf = readGlobalFieldDefaults();
   const gr = readGlobalRubriqueDefaults();
   const ga = readGlobalArtistDefaults();
   const artLabel = { peinture: 'la peinture', sculpture: 'la sculpture' };
   const artsPart = (gf.arts || []).map((a) => artLabel[a] || a).join(' et ') || 'la peinture et la sculpture';
   const centPart = gf.centuries?.length ? ` du ${gf.centuries.join(', du ')} siècle` : '';
-  const zonePart = gf.zones?.length ? ` en zone ${gf.zones.join(', ')}` : '';
-  const levelLabels = { '1': 'très célèbres', '2': 'connus', '3': 'moins connus' };
-  const levelPart = gr.levels?.length ? `, avec des artistes ${gr.levels.map((l) => levelLabels[l]).join('/')}` : '';
+  const zoneLabels = { france: 'France', italie: 'Italie', espagne: 'Espagne', royaume_uni: 'Royaume-Uni', allemagne: 'Allemagne', europe_centrale_russie: 'Europe centrale et Russie', europe_nord: 'Europe du Nord', amerique: 'Amérique' };
+  const zonePart = gf.zones?.length ? ` en ${gf.zones.map((z) => zoneLabels[z] || z).join(', ')}` : '';
+  const rubriqueLabels = { artist: "les noms d'artistes", title: 'les titres', date: 'les dates', materiaux: 'les matériaux', dimensions: 'les dimensions', location: 'les lieux de conservation' };
+  const rubriquePart = gr.rubriques?.length
+    ? `, en donnant pour chaque image ${gr.rubriques.map((r) => rubriqueLabels[r] || r).join(', ')}`
+    : '';
+  const levelLabels = { '1': 'les plus célèbres', '2': 'connus', '3': 'moins connus' };
+  const levelPart = gr.levels?.length
+    ? ` de niveau ${gr.levels.join('/')} (artistes ${gr.levels.map((l) => levelLabels[l]).join('/')})`
+    : '';
   const artistsPart = ga.artists?.length ? `, en particulier ${ga.artists.join(', ')}` : '';
-  return `${artsPart}${centPart}${zonePart}${levelPart}${artistsPart}`;
-}
-function buildTrainingHubConfigSentence() {
-  const middle = buildConfigMiddlePart();
-  return loadedGuidedConfigName
-    ? `Vous avez choisi de retrouver votre configuration ${loadedGuidedConfigName} : ${middle}.`
-    : `Vous avez choisi de jouer avec ${middle}.`;
+  const countPart = gr.count ? ` et en répondant à des questionnaires de ${gr.count === 'max' ? 'un maximum de' : gr.count} questions` : '';
+  const middle = `vous exercer sur ${artsPart}${centPart}${zonePart}${rubriquePart}${levelPart}${artistsPart}${countPart}`;
+  if (loadedGuidedConfigName) {
+    return `Pour cette session vous avez repris votre configuration ${loadedGuidedConfigName} : ${middle}.`;
+  }
+  return `Pour cette session vous avez choisi de ${middle}. Vous pouvez enregistrer cette configuration et la retrouver à des sessions ultérieures.`;
 }
 function buildGuidedSummary() {
   const gf = readGlobalFieldDefaults();
@@ -5187,13 +5224,18 @@ function impShowCurrent() {
 }
 
 // Bouton texte partagé (bandeau du haut, à côté de « Retour au menu des exercices ») plutôt que
-// des icônes 🔎 séparées sur chaque jeu — plus clair, mieux placé, et un seul endroit à câbler.
-// Visible uniquement dans les 4 exercices concernés (voir showPanel), son texte lui-même indique
-// l'état : « Voir » quand elle est éteinte, « Arrêter » une fois activée.
-$('global-full-correction-button')?.addEventListener('click', () => {
-  toggleFullCorrection(FULL_CORRECTION_PANELS[currentPanelName]);
-  $('global-full-correction-button').textContent = showFullCorrection ? 'Arrêter la correction complète' : 'Voir la correction complète';
-});
+// des icônes 🔎 séparées — plus clair et directement à côté du bouton retour propre à chaque jeu.
+// Le texte lui-même indique l'état : « Voir » quand elle est éteinte, « Arrêter » une fois activée.
+function updateFullCorrectionButtonsText() {
+  ['imp', 'vf', 'intrus', 'recon'].forEach((p) => {
+    const btn = $(`${p}-full-correction-button`);
+    if (btn) btn.textContent = showFullCorrection ? 'Arrêter la correction complète' : 'Voir la correction complète';
+  });
+}
+$('imp-full-correction-button')?.addEventListener('click', () => { toggleFullCorrection(FULL_CORRECTION_PANELS.impregnation); updateFullCorrectionButtonsText(); });
+$('vf-full-correction-button')?.addEventListener('click', () => { toggleFullCorrection(FULL_CORRECTION_PANELS.vraifaux); updateFullCorrectionButtonsText(); });
+$('intrus-full-correction-button')?.addEventListener('click', () => { toggleFullCorrection(FULL_CORRECTION_PANELS.intrus); updateFullCorrectionButtonsText(); });
+$('recon-full-correction-button')?.addEventListener('click', () => { toggleFullCorrection(FULL_CORRECTION_PANELS.reconstitution); updateFullCorrectionButtonsText(); });
 $('imp-pause-button')?.addEventListener('click', () => {
   impPaused = !impPaused;
   $('imp-pause-button').textContent = impPaused ? '▶' : '⏸';

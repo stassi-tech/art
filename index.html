@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=147" />
+    <link rel="stylesheet" href="style.css?v=148" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -27,7 +27,6 @@
         <span id="topbar-timer"></span>
         <button type="button" id="global-back-button" class="global-topbar-button hidden" aria-label="Page précédente" title="Page précédente">←</button>
         <button type="button" id="global-home-button" class="global-topbar-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
-        <button type="button" id="global-full-correction-button" class="secondary-button hidden" style="padding:4px 10px;font-size:.78rem;">Voir la correction complète</button>
         <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
         <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
         <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
@@ -90,8 +89,27 @@
             <p style="line-height:1.5;">Dans ce parcours guidé vous allez choisir vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrerez vous-même par champs (art, siècle, zone géographique, et éventuellement sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pourrez le faire quand vous aurez plus d'expérience depuis votre compte (icône 👤). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer. Mais vous pouvez choisir vos exercices indépendamment les uns des autres et adopter la formule qui vous convient le mieux. Si vous voulez retrouver plus tard une configuration d'exercices, vous pouvez l'enregistrer dans votre compte.</p>
             <div class="home-mode-buttons account-buttons-row" style="margin-top:14px;">
               <button type="button" class="home-mode-button" id="gc-intro-find-config">Retrouver une configuration d'exercices déjà enregistrée</button>
-              <button type="button" class="home-mode-button gc-continue" data-next="gc-step-art" id="gc-intro-new-config">Configurer une nouvelle formule d'exercices</button>
+              <button type="button" class="home-mode-button" id="gc-intro-new-config">Configurer une nouvelle formule d'exercices</button>
             </div>
+          </div>
+
+          <div id="gc-step-personalize" class="gc-step hidden">
+            <p style="line-height:1.5;">Avant de commencer, deux réglages généraux — ils s'appliqueront à tout moment, pas seulement à cette partie :</p>
+            <p class="config-table-col-title">Paramètres techniques</p>
+            <p class="modal-hint" style="margin-top:0;">Emplacement des boutons, touche Entrée, chronomètre, drapeaux, voix — réglages sans rapport avec le contenu des exercices. Vous pourrez tout ajuster depuis Mon compte ; pour commencer, activez au moins l'audio si vous voulez que la voix vous accompagne :</p>
+            <label class="rubrique-option"><input type="checkbox" id="gc-personalize-audio" /><span>Lecture audio (voix de synthèse) — y compris pour ce parcours guidé</span></label>
+            <p class="config-table-col-title" style="margin-top:18px;">Personnalisation de l'interface</p>
+            <p class="modal-hint" style="margin-top:0;">Change l'apparence de l'application — fond, cadres des œuvres. Un premier essai, à changer quand vous voulez depuis Mon compte :</p>
+            <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="gothique" /><span>Gothique international — or et bleu lapis-lazuli</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="renaissance" /><span>Galerie Renaissance — terre cuite et or vieilli</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="versailles" /><span>Château de Versailles — or et marbre veiné</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="ermitage" /><span>Ermitage Rococo — bleu impérial et or</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="wedgwood" /><span>Pure Wedgwood — bleu pâle et camée crème</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="pitti" /><span>Romantique Pitti — velours et or</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="" checked /><span>Salon Renoir — touches impressionnistes, bronze et beige</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="bauhaus" /><span>Bauhaus — cercle, triangle, carré</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="space" /><span>Space Age — orbite et chrome</span></label>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-art" id="gc-personalize-continue" style="margin-top:14px;">Continuer →</button>
           </div>
 
           <div id="gc-step-art" class="gc-step hidden">
@@ -207,10 +225,9 @@
 
           <p class="app-brand-name">MNEMART</p>
           <p class="eyebrow home-eyebrow">Peinture et sculpture en Occident<br>14e au 20e siècle</p>
-          <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
 
           <p class="intro-banner" id="training-hub-intro-text">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique, sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez, depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
-          <p id="training-hub-config-name" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--accent);font-weight:700;margin:-10px 0 14px;"></p>
+          <p id="training-hub-config-name" style="font-family:Arial,sans-serif;font-size:.9rem;color:var(--ink);line-height:1.5;margin:0 0 16px;"></p>
 
           <div class="training-exercise-grid">
             <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="exercise-num">Exercice 1</span><span class="label">Imprégnation</span><span class="exercise-summary" id="imp-hub-summary"></span></button>
@@ -317,7 +334,8 @@
                 <button type="button" id="imp-next-button" class="nav-arrow-button" aria-label="Suivant">→</button>
               </div>
               <div style="text-align:center;margin-top:14px;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="imp-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
+                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="imp-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
+                <button type="button" class="secondary-button imp-full-correction-button" id="imp-full-correction-button" style="padding:4px 10px;font-size:.72rem;">Voir la correction complète</button>
               </div>
             </section>
           </div>
@@ -423,7 +441,8 @@
                 <button type="button" class="primary-button" id="intrus-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="intrus-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
+                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="intrus-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
+                <button type="button" class="secondary-button intrus-full-correction-button" id="intrus-full-correction-button" style="padding:4px 10px;font-size:.72rem;">Voir la correction complète</button>
               </div>
             </section>
           </div>
@@ -522,7 +541,8 @@
                 <button type="button" class="primary-button" id="recon-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="recon-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
+                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="recon-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
+                <button type="button" class="secondary-button recon-full-correction-button" id="recon-full-correction-button" style="padding:4px 10px;font-size:.72rem;">Voir la correction complète</button>
               </div>
             </section>
           </div>
@@ -624,7 +644,8 @@
                 <button type="button" class="primary-button" id="vf-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="vf-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
+                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="vf-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
+                <button type="button" class="secondary-button vf-full-correction-button" id="vf-full-correction-button" style="padding:4px 10px;font-size:.72rem;">Voir la correction complète</button>
               </div>
             </section>
           </div>
@@ -723,7 +744,7 @@
                 <button type="button" class="primary-button" id="fam-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="fam-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
+                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="fam-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
               </div>
             </section>
           </div>
@@ -818,7 +839,7 @@
                 <button type="button" class="primary-button" id="chrono-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="chrono-hub-link" aria-label="Retour aux exercices d'entraînement" title="Retour aux exercices d'entraînement">🏠</button>
+                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="chrono-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
               </div>
             </section>
           </div>
@@ -1198,7 +1219,7 @@
             <span id="pf-validate-summary" style="display:block;font-size:.8rem;font-weight:400;margin-bottom:4px;"></span>
             Valider mes paramètres et commencer les jeux →
           </button>
-          <div class="home-mode-buttons account-buttons-row" style="margin-bottom:24px;">
+          <div class="home-mode-buttons account-buttons-row" id="profile-hub-secondary-buttons" style="margin-bottom:24px;">
             <button type="button" class="home-mode-button" id="profile-menu-saved-configs">Mes configurations enregistrées</button>
             <button type="button" class="home-mode-button" id="profile-menu-scores">Mes scores</button>
           </div>
@@ -1354,6 +1375,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=178"></script>
+    <script src="app.js?v=181"></script>
   </body>
 </html>
