@@ -21,15 +21,17 @@ const FIREBASE_CONFIG = {
   appId: "1:489975323244:web:d7070100f3a0e63cec9649",
 };
 let auth = null;
-// Icône « voir la correction complète » (🔎), présente sur chaque exercice — court-circuite la
-// restriction de rubrique choisie, sans modifier ce choix lui-même. Reste active d'une page à
-// l'autre au sein d'une même session, jusqu'à ce que le joueur la désactive.
+// Bouton texte « Voir/Arrêter la correction complète » (bandeau du haut) — court-circuite la
+// restriction de rubrique choisie, sans modifier ce choix lui-même. Reste actif d'une page à
+// l'autre au sein d'une même session, jusqu'à ce que le joueur le désactive.
 let showFullCorrection = false;
 function toggleFullCorrection(rerenderFn) {
   showFullCorrection = !showFullCorrection;
-  document.querySelectorAll('.full-correction-toggle').forEach((btn) => btn.classList.toggle('active', showFullCorrection));
   rerenderFn?.();
 }
+// Panneaux où ce bouton doit apparaître (les 4 exercices ayant un choix de rubrique), avec la
+// fonction de réaffichage sûre à appeler quand elle existe (voir showPanel plus bas pour l'usage).
+const FULL_CORRECTION_PANELS = { impregnation: () => { if (IMP_SESSION.length) impShowCurrent(); }, vraifaux: null, intrus: null, reconstitution: null };
 let db = null;
 let currentUser = null;
 let accountMode = 'login'; // 'login' | 'register'
@@ -1925,6 +1927,20 @@ function showPanel(name) {
       try { history.pushState({ panel: name }, '', `#${name}`); } catch (e) { /* ignoré si l'historique est indisponible */ }
     }
   }
+  // Bouton « Voir/Arrêter la correction complète » : visible seulement dans les 4 exercices
+  // concernés par un choix de rubrique, avec un intitulé qui reflète toujours l'état réel.
+  $('global-full-correction-button')?.classList.toggle('hidden', !(name in FULL_CORRECTION_PANELS));
+  if ($('global-full-correction-button')) {
+    $('global-full-correction-button').textContent = showFullCorrection ? 'Arrêter la correction complète' : 'Voir la correction complète';
+  }
+  // L'icône accueil du bandeau redevient explicitement « Retour au menu des exercices » une fois
+  // en plein jeu, plutôt que le générique « Retour à l'accueil » qui prêtait à confusion.
+  if ($('global-home-button')) {
+    const inAnyGame = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'].includes(name);
+    const label = inAnyGame ? 'Retour au menu des exercices' : "Retour à l'accueil";
+    $('global-home-button').title = label;
+    $('global-home-button').setAttribute('aria-label', label);
+  }
   impTimers = []; vfTimers = []; famTimers = []; reconTimers = []; intrusTimers = []; chronoTimers = [];
 
   // name: 'welcome' | 'training-hub' | 'impregnation-setup' | 'impregnation' | 'intrus-setup' |
@@ -3045,7 +3061,11 @@ $('menu-item-ambiance')?.addEventListener('click', (event) => { event.stopPropag
 $('menu-item-exhibition')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-exhibition-button')?.click(); });
 $('menu-item-account')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-account-button')?.click(); });
 $('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
-$('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
+$('global-home-button')?.addEventListener('click', () => {
+  const inAnyGame = ['impregnation', 'intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'].includes(currentPanelName);
+  showPanel(inAnyGame ? 'training-hub' : 'welcome');
+  if (inAnyGame) updateExerciseSummaries();
+});
 // Bouton « page précédente » — utile seulement quand l'appli est installée comme application
 // (barre d'adresse du navigateur, avec son propre bouton retour, non visible dans ce mode) : on
 // s'appuie sur l'historique interne déjà tenu à jour par showPanel() à chaque navigation.
@@ -5166,15 +5186,14 @@ function impShowCurrent() {
 
 }
 
-$('imp-full-correction-toggle')?.addEventListener('click', () => toggleFullCorrection(impShowCurrent));
-// Vrai/Faux fige les rubriques testées dès la génération de chaque question (le joueur juge Vrai
-// ou Faux sur des affirmations précises) — pas de réaffichage immédiat possible sans perturber une
-// réponse en cours ; la bascule s'applique donc à partir de la question suivante.
-$('vf-full-correction-toggle')?.addEventListener('click', () => toggleFullCorrection());
-// Intrus : même prudence — l'affichage de la correction est imbriqué dans la logique de réponse
-// (score, son, animation), pas question de la relancer juste pour rafraîchir l'affichage.
-$('intrus-full-correction-toggle')?.addEventListener('click', () => toggleFullCorrection());
-$('recon-full-correction-toggle')?.addEventListener('click', () => toggleFullCorrection());
+// Bouton texte partagé (bandeau du haut, à côté de « Retour au menu des exercices ») plutôt que
+// des icônes 🔎 séparées sur chaque jeu — plus clair, mieux placé, et un seul endroit à câbler.
+// Visible uniquement dans les 4 exercices concernés (voir showPanel), son texte lui-même indique
+// l'état : « Voir » quand elle est éteinte, « Arrêter » une fois activée.
+$('global-full-correction-button')?.addEventListener('click', () => {
+  toggleFullCorrection(FULL_CORRECTION_PANELS[currentPanelName]);
+  $('global-full-correction-button').textContent = showFullCorrection ? 'Arrêter la correction complète' : 'Voir la correction complète';
+});
 $('imp-pause-button')?.addEventListener('click', () => {
   impPaused = !impPaused;
   $('imp-pause-button').textContent = impPaused ? '▶' : '⏸';

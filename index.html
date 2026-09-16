@@ -27,6 +27,7 @@
         <span id="topbar-timer"></span>
         <button type="button" id="global-back-button" class="global-topbar-button hidden" aria-label="Page précédente" title="Page précédente">←</button>
         <button type="button" id="global-home-button" class="global-topbar-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
+        <button type="button" id="global-full-correction-button" class="secondary-button hidden" style="padding:4px 10px;font-size:.78rem;">Voir la correction complète</button>
         <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
         <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
         <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
@@ -293,7 +294,6 @@
         <section id="impregnation-panel" class="quiz-panel hidden">
           <div class="progress-row" id="imp-progress-row">
             <span id="imp-progress-label">Œuvre 1 / 10</span>
-            <button type="button" class="full-correction-toggle" id="imp-full-correction-toggle" title="Voir la correction complète avec toutes les rubriques" aria-label="Voir la correction complète avec toutes les rubriques">🔎</button>
           </div>
           <div class="progress-track"><div class="progress-bar" id="imp-progress-bar"></div></div>
           <div id="imp-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
@@ -399,7 +399,6 @@
         <section id="intrus-panel" class="quiz-panel hidden">
           <div class="progress-row" id="intrus-progress-row">
             <span><span id="intrus-title-label" class="quiz-reference"></span> — <span id="intrus-progress-label">Question 1 / 10</span></span>
-            <button type="button" class="full-correction-toggle" id="intrus-full-correction-toggle" title="Voir la correction complète avec toutes les rubriques" aria-label="Voir la correction complète avec toutes les rubriques">🔎</button>
             <span id="intrus-score-label" class="score-summary-highlight">0 / 0 réponse correcte</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="intrus-progress-bar"></div></div>
@@ -501,7 +500,6 @@
         <section id="reconstitution-panel" class="quiz-panel hidden">
           <div class="progress-row" id="recon-progress-row">
             <span><span class="quiz-reference">Reconstitution</span> — <span id="recon-progress-label">Question 1 / 10</span></span>
-            <button type="button" class="full-correction-toggle" id="recon-full-correction-toggle" title="Voir la correction complète avec toutes les rubriques" aria-label="Voir la correction complète avec toutes les rubriques">🔎</button>
             <span id="recon-score-label" class="score-summary-highlight">0 / 0 réponse correcte</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="recon-progress-bar"></div></div>
@@ -602,7 +600,6 @@
         <section id="vraifaux-panel" class="quiz-panel hidden">
           <div class="progress-row" id="vf-progress-row">
             <span><span class="quiz-reference">Vrai/Faux</span> — <span id="vf-progress-label">Question 1 / 10</span></span>
-            <button type="button" class="full-correction-toggle" id="vf-full-correction-toggle" title="Voir la correction complète avec toutes les rubriques" aria-label="Voir la correction complète avec toutes les rubriques">🔎</button>
             <span id="vf-score-label" class="score-summary-highlight">0 point</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="vf-progress-bar"></div></div>
@@ -1357,6 +1354,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=177"></script>
+    <script src="app.js?v=178"></script>
   </body>
 </html>
