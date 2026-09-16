@@ -4553,7 +4553,7 @@ function initBackgroundMosaic() {
     // vide plutôt que de planter — on bascule alors sur une image de repli déjà éprouvée, pour
     // ne jamais laisser une case neutre dans les 15.
     const fallback = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent('Michelangelos David.jpg')}?width=400`;
-    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" draggable="false" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='${fallback}';}" /></div>`;
+    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" fetchpriority="low" draggable="false" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='${fallback}';}" /></div>`;
   }).join('');
   wireBgMosaicTiles();
 }
@@ -4568,8 +4568,12 @@ function populateSessionMosaic(images) {
   // Complète toujours les 15 cases (5x3) même si la session a moins d'œuvres — on répète les
   // images disponibles en boucle plutôt que de laisser des cases vides.
   const filled = Array.from({ length: 15 }, (_, i) => unique[i % unique.length]);
+  // fetchpriority="low" : ces vignettes viennent du même service externe (Wikimedia Commons) que
+  // l'image principale de l'œuvre à afficher — sans cette priorité basse, 15 requêtes simultanées
+  // se disputaient la connexion avec l'image qui compte vraiment, ralentissant tout l'écran
+  // d'attente (bouttons lents et capricieux repérés en jeu).
   container.innerHTML = filled.map((img) =>
-    `<div class="bg-tile"><img src="${escapeHtml(imageSourceSized(img, 200))}" alt="" loading="lazy" draggable="false" /></div>`
+    `<div class="bg-tile"><img src="${escapeHtml(imageSourceSized(img, 200))}" alt="" loading="lazy" fetchpriority="low" draggable="false" /></div>`
   ).join('');
   wireBgMosaicTiles();
 }
