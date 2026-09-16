@@ -3081,11 +3081,7 @@ function showReconConfig() {
   showPanel('reconstitution-setup'); populateReconVoices(); speakObjective('recon'); restoreLastSelection('reconstitution-setup-panel'); applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
 }
 $('open-reconstitution-setup')?.addEventListener('click', () => {
-  if (hasPerExerciseFieldOverride('reconstitution-setup-panel') || hasPerExerciseRubriqueOverride('reconstitution-setup-panel')) {
-    restoreLastSelection('reconstitution-setup-panel');
-  } else {
-    applyGlobalFieldDefaultsTo('recon');
-  }
+  applyGlobalFieldDefaultsTo('recon');
   suppressSaveLastSelection = true;
   applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
   showExerciseRules('recon', () => { speakObjective('recon'); $('recon-start-button')?.click(); });
@@ -3103,11 +3099,7 @@ function showVfConfig() {
   showPanel('vraifaux-setup'); populateVfVoices(); speakObjective('vf'); restoreLastSelection('vraifaux-setup-panel');
 }
 $('open-vraifaux-setup')?.addEventListener('click', () => {
-  if (hasPerExerciseFieldOverride('vraifaux-setup-panel') || hasPerExerciseRubriqueOverride('vraifaux-setup-panel')) {
-    restoreLastSelection('vraifaux-setup-panel');
-  } else {
-    applyGlobalFieldDefaultsTo('vf');
-  }
+  applyGlobalFieldDefaultsTo('vf');
   suppressSaveLastSelection = true;
   showExerciseRules('vf', () => { speakObjective('vf'); $('vf-start-button')?.click(); });
 });
@@ -3123,11 +3115,7 @@ function showFamConfig() {
   showPanel('famille-setup'); populateFamVoices(); speakObjective('fam'); restoreLastSelection('famille-setup-panel');
 }
 $('open-famille-setup')?.addEventListener('click', () => {
-  if (hasPerExerciseFieldOverride('famille-setup-panel') || hasPerExerciseRubriqueOverride('famille-setup-panel')) {
-    restoreLastSelection('famille-setup-panel');
-  } else {
-    applyGlobalFieldDefaultsTo('fam');
-  }
+  applyGlobalFieldDefaultsTo('fam');
   suppressSaveLastSelection = true;
   showExerciseRules('fam', () => { speakObjective('fam'); $('fam-start-button')?.click(); });
 });
@@ -3153,11 +3141,7 @@ function showChronoConfig() {
   showPanel('chrono-setup'); speakObjective('chrono'); restoreLastSelection('chrono-setup-panel');
 }
 $('open-chrono-setup')?.addEventListener('click', () => {
-  if (hasPerExerciseFieldOverride('chrono-setup-panel') || hasPerExerciseRubriqueOverride('chrono-setup-panel')) {
-    restoreLastSelection('chrono-setup-panel');
-  } else {
-    applyGlobalFieldDefaultsTo('chrono');
-  }
+  applyGlobalFieldDefaultsTo('chrono');
   suppressSaveLastSelection = true;
   showExerciseRules('chrono', () => { speakObjective('chrono'); $('chrono-start-button')?.click(); });
 });
@@ -4451,11 +4435,7 @@ function refreshSavedChoiceButton() {
 }
 refreshSavedChoiceButton();
 $('open-quiz-setup')?.addEventListener('click', () => {
-  if (hasPerExerciseFieldOverride('quiz-setup-panel') || hasPerExerciseRubriqueOverride('quiz-setup-panel')) {
-    restoreLastSelection('quiz-setup-panel');
-  } else {
-    applyGlobalDefaultsToQuiz();
-  }
+  applyGlobalDefaultsToQuiz();
   suppressSaveLastSelection = true;
   showExerciseRules('quiz', () => { speakObjective('quiz'); $('launch-quiz-button')?.click(); });
 });
@@ -4714,10 +4694,16 @@ function applyGlobalDefaultsToQuiz() {
     ['1', '2', '3'].forEach((lvl) => { const el = $(`level-${lvl}`); if (el) el.checked = (gr.levels || []).includes(lvl); });
     // Applique aussi la rubrique choisie dans Mon compte (le quiz ne gère que 4 des 6 rubriques
     // possibles — matériau et dimensions n'existent pas ici, elles sont simplement ignorées).
-    ['artist', 'title', 'date', 'location'].forEach((key) => {
-      const el = $(`rubrique-${key}`);
-      if (el) el.checked = (gr.rubriques || []).includes(key);
-    });
+    // GROS BUG corrigé : si rien n'était choisi (gr.rubriques vide = « aucune restriction »),
+    // cette boucle décochait les 4 cases d'un coup — le quiz démarrait alors sans aucune rubrique
+    // active, un tableau de correction vide et une saisie qui ne servait plus à rien. On ne
+    // touche donc les cases que si une restriction précise a bien été choisie.
+    if (gr.rubriques?.length) {
+      ['artist', 'title', 'date', 'location'].forEach((key) => {
+        const el = $(`rubrique-${key}`);
+        if (el) el.checked = gr.rubriques.includes(key);
+      });
+    }
     if (gr.count) {
       const radios = [...document.querySelectorAll('input[name="nb-questions"]')];
       const exact = radios.find((r) => r.value === gr.count);
@@ -4746,10 +4732,16 @@ function applyGlobalFieldDefaultsTo(prefix) {
     // Applique aussi la rubrique choisie dans Mon compte aux propres cases de l'exercice, quand il
     // en a (artist/title/date/materiaux/dimensions/location) — bug réel repéré : ce choix global
     // n'avait jusqu'ici aucun effet, chaque exercice gardait sa propre sélection non liée.
-    ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].forEach((key) => {
-      const el = $(`${prefix}-field-${key}`);
-      if (el) el.checked = (gr.rubriques || []).includes(key);
-    });
+    // Même correction critique que pour le quiz : ne toucher les cases que si une restriction
+    // précise existe réellement, sinon on les décochait toutes d'un coup (sans restriction voulue,
+    // ce qui revient au même visuellement... sauf que ça écrasait aussi une éventuelle sélection
+    // locale légitime restée en place).
+    if (gr.rubriques?.length) {
+      ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].forEach((key) => {
+        const el = $(`${prefix}-field-${key}`);
+        if (el) el.checked = gr.rubriques.includes(key);
+      });
+    }
     if (gr.count) {
       const radios = [...document.querySelectorAll(`input[name="${prefix}-count"]`)];
       const exact = radios.find((r) => r.value === gr.count);
@@ -5024,11 +5016,7 @@ function showImpConfig() {
   showPanel('impregnation-setup'); populateImpVoices(); speakObjective('imp'); restoreLastSelection('impregnation-setup-panel');
 }
 $('open-impregnation-setup')?.addEventListener('click', () => {
-  if (hasPerExerciseFieldOverride('impregnation-setup-panel') || hasPerExerciseRubriqueOverride('impregnation-setup-panel')) {
-    restoreLastSelection('impregnation-setup-panel');
-  } else {
-    applyGlobalFieldDefaultsTo('imp');
-  }
+  applyGlobalFieldDefaultsTo('imp');
   suppressSaveLastSelection = true;
   showExerciseRules('imp', () => { speakObjective('imp'); $('imp-start-button')?.click(); });
 });
@@ -5214,11 +5202,7 @@ function showIntrusConfig() {
   showPanel('intrus-setup'); populateIntrusVoices(); speakObjective('intrus'); restoreLastSelection('intrus-setup-panel'); applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
 }
 $('open-intrus-setup')?.addEventListener('click', () => {
-  if (hasPerExerciseFieldOverride('intrus-setup-panel') || hasPerExerciseRubriqueOverride('intrus-setup-panel')) {
-    restoreLastSelection('intrus-setup-panel');
-  } else {
-    applyGlobalFieldDefaultsTo('intrus');
-  }
+  applyGlobalFieldDefaultsTo('intrus');
   suppressSaveLastSelection = true;
   applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
   showExerciseRules('intrus', () => { speakObjective('intrus'); $('intrus-start-button')?.click(); });
