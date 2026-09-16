@@ -760,7 +760,7 @@ async function populateArtistSuggestions() {
   list.querySelectorAll('.pf-artist-pick').forEach((btn) => {
     btn.addEventListener('click', () => toggleArtistSelection(btn.dataset.name));
   });
-  status.textContent = `${names.length} artiste${names.length > 1 ? 's' : ''} compatible${names.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels. Cliquez sur des noms d'artiste si vous voulez réduire le nombre d'artistes dans votre jeu.`;
+  status.textContent = `${names.length} artiste${names.length > 1 ? 's' : ''} compatible${names.length > 1 ? 's' : ''} avec vos choix de niveau et de champ actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
 }
 function toggleArtistSelection(name) {
   sessionStorage.setItem('hasConfiguredThisSession', 'true');
@@ -3051,7 +3051,26 @@ $('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
 // s'appuie sur l'historique interne déjà tenu à jour par showPanel() à chaque navigation.
 const isStandaloneApp = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
 if (isStandaloneApp) $('global-back-button')?.classList.remove('hidden');
-$('global-back-button')?.addEventListener('click', () => history.back());
+$('global-back-button')?.addEventListener('click', () => {
+  // Sur une page de configuration (Mon compte ou parcours guidé), la flèche doit ramener à
+  // l'étape de configuration précédente plutôt qu'à l'accueil — bug réel repéré : ces pages ne
+  // posent pas leur propre halte dans l'historique du navigateur, donc history.back() sautait
+  // par-dessus tout droit jusqu'à l'accueil.
+  const activeProfileBtn = document.querySelector('.profile-menu-btn:not(.inactive)');
+  if (activeProfileBtn && !$('profile-panel')?.classList.contains('hidden')) {
+    const idx = PROFILE_CONFIG_SEQUENCE.indexOf(activeProfileBtn.id);
+    if (idx > 0) { $(PROFILE_CONFIG_SEQUENCE[idx - 1])?.click(); return; }
+    showProfileHub();
+    return;
+  }
+  const activeGuidedStep = [...document.querySelectorAll('.gc-step')].find((el) => !el.classList.contains('hidden'));
+  if (activeGuidedStep && !$('guided-config-panel')?.classList.contains('hidden')) {
+    const steps = [...document.querySelectorAll('.gc-step')];
+    const idx = steps.indexOf(activeGuidedStep);
+    if (idx > 0) { steps.forEach((s, i) => s.classList.toggle('hidden', i !== idx - 1)); return; }
+  }
+  history.back();
+});
 
 // ============================================================
 // MODULE RECONSTITUTION — un détail très resserré (< 10 % de la surface) sert d'indice ; 3
@@ -4905,7 +4924,7 @@ async function populateGuidedArtistList() {
       localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: next, remember: true }));
     });
   });
-  status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels. Cochez des noms si vous voulez réduire le nombre d'artistes dans votre jeu.`;
+  status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec vos choix de niveau et de champ actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
 }
 document.querySelectorAll('input[name="gc-want-artists"]').forEach((el) => {
   el.addEventListener('change', () => {
