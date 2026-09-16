@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=146" />
+    <link rel="stylesheet" href="style.css?v=147" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -87,11 +87,10 @@
 
           <div id="gc-step-intro" class="gc-step">
             <p style="line-height:1.5;">Dans ce parcours guidé vous allez choisir vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrerez vous-même par champs (art, siècle, zone géographique, et éventuellement sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pourrez le faire quand vous aurez plus d'expérience depuis votre compte (icône 👤). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer. Mais vous pouvez choisir vos exercices indépendamment les uns des autres et adopter la formule qui vous convient le mieux. Si vous voulez retrouver plus tard une configuration d'exercices, vous pouvez l'enregistrer dans votre compte.</p>
-            <div id="gc-intro-saved-configs" class="hidden" style="margin:12px 0;">
-              <p style="font-family:Arial,sans-serif;font-size:.9rem;">Si vous avez déjà enregistré une configuration, appuyez sur ce bouton pour la relancer :</p>
-              <div id="gc-intro-saved-configs-list" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+            <div class="home-mode-buttons account-buttons-row" style="margin-top:14px;">
+              <button type="button" class="home-mode-button" id="gc-intro-find-config">Retrouver une configuration d'exercices déjà enregistrée</button>
+              <button type="button" class="home-mode-button gc-continue" data-next="gc-step-art" id="gc-intro-new-config">Configurer une nouvelle formule d'exercices</button>
             </div>
-            <button type="button" class="primary-button gc-continue" data-next="gc-step-art" style="margin-top:14px;">Commencer le parcours →</button>
           </div>
 
           <div id="gc-step-art" class="gc-step hidden">
@@ -294,6 +293,7 @@
         <section id="impregnation-panel" class="quiz-panel hidden">
           <div class="progress-row" id="imp-progress-row">
             <span id="imp-progress-label">Œuvre 1 / 10</span>
+            <button type="button" class="full-correction-toggle" id="imp-full-correction-toggle" title="Voir la correction complète avec toutes les rubriques" aria-label="Voir la correction complète avec toutes les rubriques">🔎</button>
           </div>
           <div class="progress-track"><div class="progress-bar" id="imp-progress-bar"></div></div>
           <div id="imp-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
@@ -397,8 +397,9 @@
         </section>
 
         <section id="intrus-panel" class="quiz-panel hidden">
-          <div class="progress-row">
+          <div class="progress-row" id="intrus-progress-row">
             <span><span id="intrus-title-label" class="quiz-reference"></span> — <span id="intrus-progress-label">Question 1 / 10</span></span>
+            <button type="button" class="full-correction-toggle" id="intrus-full-correction-toggle" title="Voir la correction complète avec toutes les rubriques" aria-label="Voir la correction complète avec toutes les rubriques">🔎</button>
             <span id="intrus-score-label" class="score-summary-highlight">0 / 0 réponse correcte</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="intrus-progress-bar"></div></div>
@@ -498,8 +499,9 @@
         </section>
 
         <section id="reconstitution-panel" class="quiz-panel hidden">
-          <div class="progress-row">
+          <div class="progress-row" id="recon-progress-row">
             <span><span class="quiz-reference">Reconstitution</span> — <span id="recon-progress-label">Question 1 / 10</span></span>
+            <button type="button" class="full-correction-toggle" id="recon-full-correction-toggle" title="Voir la correction complète avec toutes les rubriques" aria-label="Voir la correction complète avec toutes les rubriques">🔎</button>
             <span id="recon-score-label" class="score-summary-highlight">0 / 0 réponse correcte</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="recon-progress-bar"></div></div>
@@ -598,8 +600,9 @@
         </section>
 
         <section id="vraifaux-panel" class="quiz-panel hidden">
-          <div class="progress-row">
+          <div class="progress-row" id="vf-progress-row">
             <span><span class="quiz-reference">Vrai/Faux</span> — <span id="vf-progress-label">Question 1 / 10</span></span>
+            <button type="button" class="full-correction-toggle" id="vf-full-correction-toggle" title="Voir la correction complète avec toutes les rubriques" aria-label="Voir la correction complète avec toutes les rubriques">🔎</button>
             <span id="vf-score-label" class="score-summary-highlight">0 point</span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="vf-progress-bar"></div></div>
@@ -1188,9 +1191,11 @@
           <div class="training-exercise-grid" id="profile-menu-grid" style="margin-bottom:24px;">
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-tech" data-target="profile-section-tech">Mes paramètres techniques</button>
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-esthetique" data-target="profile-section-esthetique">Personnalisation de l'interface</button>
-            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-rubriques" data-target="profile-section-rubriques">Mes choix de rubrique et de niveau<br><span id="profile-menu-rubriques-badge" style="font-size:.75em;font-weight:400;"></span></button>
-            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-fields" data-target="profile-section-fields">Mes choix de champ<br><span id="profile-menu-fields-badge" style="font-size:.75em;font-weight:400;"></span></button>
-            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-artists" data-target="profile-section-artists">Mes choix d'artiste<br><span id="profile-menu-artists-badge" style="font-size:.75em;font-weight:400;"></span></button>
+          </div>
+          <div class="training-exercise-grid" id="profile-menu-grid-2" style="margin-bottom:24px;">
+            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-rubriques" data-target="profile-section-rubriques">Mes choix de rubrique et de niveau</button>
+            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-fields" data-target="profile-section-fields">Mes choix de champ</button>
+            <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-artists" data-target="profile-section-artists">Mes choix d'artiste</button>
           </div>
           <button type="button" id="pf-validate-button" style="width:100%;margin-bottom:16px;padding:16px;border:0;border-radius:6px;background:var(--ok);color:#fff;font-family:Arial,sans-serif;font-size:1.05rem;font-weight:700;cursor:pointer;">
             <span id="pf-validate-summary" style="display:block;font-size:.8rem;font-weight:400;margin-bottom:4px;"></span>
@@ -1199,6 +1204,12 @@
           <div class="home-mode-buttons account-buttons-row" style="margin-bottom:24px;">
             <button type="button" class="home-mode-button" id="profile-menu-saved-configs">Mes configurations enregistrées</button>
             <button type="button" class="home-mode-button" id="profile-menu-scores">Mes scores</button>
+          </div>
+
+          <div id="profile-section-configs" class="hidden">
+            <p class="config-table-col-title">Mes configurations enregistrées</p>
+            <p id="profile-configs-empty" class="hidden" style="font-family:Arial,sans-serif;font-size:.9rem;color:var(--muted);">Vous n'avez encore enregistré aucune configuration — le parcours guidé ou vos choix ci-dessus vous proposent de le faire à la fin.</p>
+            <div id="profile-configs-table" style="display:grid;grid-template-columns:1fr auto;gap:10px 16px;align-items:center;"></div>
           </div>
 
           <!-- Affiché uniquement sur une page dédiée (à la place de la grille des 6 boutons) : le
@@ -1346,6 +1357,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=173"></script>
+    <script src="app.js?v=175"></script>
   </body>
 </html>

@@ -21,6 +21,15 @@ const FIREBASE_CONFIG = {
   appId: "1:489975323244:web:d7070100f3a0e63cec9649",
 };
 let auth = null;
+// Icône « voir la correction complète » (🔎), présente sur chaque exercice — court-circuite la
+// restriction de rubrique choisie, sans modifier ce choix lui-même. Reste active d'une page à
+// l'autre au sein d'une même session, jusqu'à ce que le joueur la désactive.
+let showFullCorrection = false;
+function toggleFullCorrection(rerenderFn) {
+  showFullCorrection = !showFullCorrection;
+  document.querySelectorAll('.full-correction-toggle').forEach((btn) => btn.classList.toggle('active', showFullCorrection));
+  rerenderFn?.();
+}
 let db = null;
 let currentUser = null;
 let accountMode = 'login'; // 'login' | 'register'
@@ -405,16 +414,19 @@ $('profile-back-button')?.addEventListener('click', () => showPanel('welcome'));
 const PROFILE_CONFIG_SEQUENCE = ['profile-menu-tech', 'profile-menu-esthetique', 'profile-menu-rubriques', 'profile-menu-fields', 'profile-menu-artists'];
 function showProfileHub() {
   $('profile-menu-grid').classList.remove('hidden');
+  $('profile-menu-grid-2').classList.remove('hidden');
   $('pf-validate-button').classList.remove('hidden');
   $('pf-section-nav').classList.add('hidden');
   document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.add('inactive'));
-  ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => {
+  ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques', 'profile-section-configs'].forEach((id) => {
     $(id)?.classList.add('hidden');
   });
 }
 function showProfileSection(btn) {
   $('profile-menu-grid').classList.add('hidden');
+  $('profile-menu-grid-2').classList.add('hidden');
   $('pf-validate-button').classList.add('hidden');
+  $('profile-section-configs')?.classList.add('hidden');
   document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.toggle('inactive', b !== btn));
   ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => {
     $(id)?.classList.toggle('hidden', id !== btn.dataset.target);
@@ -434,8 +446,15 @@ document.querySelectorAll('.profile-menu-btn').forEach((btn) => {
 });
 $('profile-menu-scores')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
 $('profile-menu-saved-configs')?.addEventListener('click', () => {
-  showPanel('account'); loadAccountPage();
-  setTimeout(() => $('account-saved-configs-section')?.scrollIntoView({ behavior: 'smooth' }), 50);
+  $('profile-menu-grid').classList.add('hidden');
+  $('profile-menu-grid-2').classList.add('hidden');
+  $('pf-validate-button').classList.add('hidden');
+  $('pf-section-nav').classList.add('hidden');
+  document.querySelectorAll('.profile-menu-btn').forEach((b) => b.classList.add('inactive'));
+  ['profile-section-tech', 'profile-section-esthetique', 'profile-section-fields', 'profile-section-artists', 'profile-section-rubriques'].forEach((id) => $(id)?.classList.add('hidden'));
+  $('profile-section-configs').classList.remove('hidden');
+  renderProfileConfigsTable();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 $('pf-section-prev')?.addEventListener('click', () => {
   const idx = PROFILE_CONFIG_SEQUENCE.indexOf(document.querySelector('.profile-menu-btn:not(.inactive)')?.id);
@@ -661,6 +680,7 @@ document.addEventListener('click', (event) => {
 // --- Choix de champ (art/siècle/zone) : si mémorisé, chaque bouton d'exercice démarre
 // directement dessus, sans repasser par sa page de configuration. ---
 function saveFieldChoiceGeneral() {
+  sessionStorage.setItem('hasConfiguredThisSession', 'true');
   const arts = [...document.querySelectorAll('.pf-field-art:checked')].map((el) => el.value);
   const centuries = [...document.querySelectorAll('.pf-field-century:checked')].map((el) => el.value);
   const zones = [...document.querySelectorAll('.pf-field-zone:checked')].map((el) => el.value);
@@ -743,6 +763,7 @@ async function populateArtistSuggestions() {
   status.textContent = `${names.length} artiste${names.length > 1 ? 's' : ''} compatible${names.length > 1 ? 's' : ''} avec votre niveau et votre champ actuels. Cliquez sur des noms d'artiste si vous voulez réduire le nombre d'artistes dans votre jeu.`;
 }
 function toggleArtistSelection(name) {
+  sessionStorage.setItem('hasConfiguredThisSession', 'true');
   const current = readGlobalArtistDefaults().artists || [];
   const next = current.includes(name) ? current.filter((n) => n !== name) : [...current, name];
   localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: next, remember: true }));
@@ -768,26 +789,26 @@ document.querySelectorAll('.pf-next-button').forEach((btn) => {
 // Résumés en temps réel sur les boutons de menu et le bouton vert — pour voir d'un coup d'œil,
 // en progressant, ce qui a déjà été choisi. Rien coché nulle part = rien n'apparaît (pas de
 // placeholder trompeur laissant croire à un choix qui n'existe pas).
+// Le bouton vert ne doit rien montrer tant que le joueur n'a rien choisi DURANT CETTE SESSION —
+// sinon, en revenant un autre jour, il afficherait encore les choix d'une session précédente,
+// qu'on ne veut pas voir resurgir silencieusement. On marque donc la session dès qu'un choix
+// change (voir saveFieldChoiceGeneral / saveRubriqueChoiceGeneral / saveArtistChoiceGeneral).
 function updateProfileMenuBadges() {
-  const gr = readGlobalRubriqueDefaults();
-  const gf = readGlobalFieldDefaults();
-  const ga = readGlobalArtistDefaults();
-  const rubriqueParts = [];
-  if (gr.levels?.length) rubriqueParts.push('N' + gr.levels.join('+'));
-  if (gr.rubriques?.length) rubriqueParts.push(gr.rubriques.join('+'));
-  if ($('profile-menu-rubriques-badge')) $('profile-menu-rubriques-badge').textContent = rubriqueParts.join(' · ');
-  const fieldParts = [];
-  if (gf.arts?.length) fieldParts.push(gf.arts.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+'));
-  if (gf.centuries?.length) fieldParts.push(gf.centuries.join('+'));
-  if (gf.zones?.length) fieldParts.push(gf.zones.length + ' zone(s)');
-  if ($('profile-menu-fields-badge')) $('profile-menu-fields-badge').textContent = fieldParts.join(' · ');
-  if ($('profile-menu-artists-badge')) {
-    const artists = ga.artists || [];
-    $('profile-menu-artists-badge').textContent = artists.length
-      ? artists.slice(0, 2).join(', ') + (artists.length > 2 ? ` +${artists.length - 2}` : '')
-      : '';
-  }
   if ($('pf-validate-summary')) {
+    if (sessionStorage.getItem('hasConfiguredThisSession') !== 'true') {
+      $('pf-validate-summary').textContent = '';
+      return;
+    }
+    const gr = readGlobalRubriqueDefaults();
+    const gf = readGlobalFieldDefaults();
+    const ga = readGlobalArtistDefaults();
+    const rubriqueParts = [];
+    if (gr.levels?.length) rubriqueParts.push('N' + gr.levels.join('+'));
+    if (gr.rubriques?.length) rubriqueParts.push(gr.rubriques.join('+'));
+    const fieldParts = [];
+    if (gf.arts?.length) fieldParts.push(gf.arts.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+'));
+    if (gf.centuries?.length) fieldParts.push(gf.centuries.join('+'));
+    if (gf.zones?.length) fieldParts.push(gf.zones.length + ' zone(s)');
     const all = [...rubriqueParts, ...fieldParts];
     if (ga.artists?.length) all.push(ga.artists.slice(0, 3).join(', ') + (ga.artists.length > 3 ? '…' : ''));
     $('pf-validate-summary').textContent = all.length ? all.join(' · ') : 'Aucun choix particulier — champs les plus étendus';
@@ -795,6 +816,7 @@ function updateProfileMenuBadges() {
 }
 updateProfileMenuBadges();
 function saveRubriqueChoiceGeneral() {
+  sessionStorage.setItem('hasConfiguredThisSession', 'true');
   const rubriques = [...document.querySelectorAll('.pf-rubrique-field:checked')].map((el) => el.value);
   const levels = [...document.querySelectorAll('.pf-rubrique-level:checked')].map((el) => el.value);
   let count = document.querySelector('input[name="pf-count"]:checked')?.value || '';
@@ -825,6 +847,10 @@ $('pf-rubriques-clear')?.addEventListener('click', () => {
 // d'amener directement au menu des exercices.
 $('pf-validate-button')?.addEventListener('click', () => {
   $('pf-validate-button').classList.add('intro-highlight');
+  // Valider depuis Mon compte (accès « par les menus ») active aussi le mode simplifié du tableau
+  // des exercices : plus de texte de présentation, juste la phrase de configuration en haut.
+  guidedModeActive = true;
+  localStorage.setItem('guidedModeActive', 'true');
   setTimeout(() => { showPanel('training-hub'); updateExerciseSummaries(); }, 500);
 });
 $('account-scores-quiz-button')?.addEventListener('click', () => {
@@ -2848,6 +2874,7 @@ async function fetchWorksForArtistRow(row) {
 }
 $('global-exhibition-button')?.addEventListener('click', (event) => {
   event.stopPropagation();
+  updateExhibitionButtonLabel();
   const picker = $('exhibition-picker');
   const wasHidden = picker.classList.contains('hidden');
   picker.classList.toggle('hidden');
@@ -2915,7 +2942,9 @@ function updateExhibitionButtonLabel() {
   const shown = artists.slice(0, 2).join('/');
   label.textContent = artists.length > 2 ? `${shown} +${artists.length - 2}` : shown;
 }
-updateExhibitionButtonLabel();
+// Pas d'appel au chargement de la page : le nom de l'exposition ne doit apparaître qu'en appuyant
+// sur le bouton salle lui-même — laissé visible en permanence dans le bandeau, il donnait
+// l'impression à tort d'être un champ appliqué aux exercices.
 $('exhibition-launch-button')?.addEventListener('click', async () => {
   const feedback = $('exhibition-feedback');
   const names = [...document.querySelectorAll('.exhibition-artist-field')].map((f) => f.value.trim()).filter(Boolean);
@@ -3777,6 +3806,7 @@ function vfActiveFields() {
     { key: 'dimensions', label: 'Dimensions' },
     { key: 'location', label: 'Lieu' },
   ];
+  if (showFullCorrection) return all;
   const checkboxMap = { artist: 'vf-field-artist', title: 'vf-field-title', date: 'vf-field-date', materials: 'vf-field-materiaux', dimensions: 'vf-field-dimensions', location: 'vf-field-location' };
   const filtered = all.filter((f) => $(checkboxMap[f.key])?.checked);
   return filtered.length ? filtered : all;
@@ -4221,10 +4251,10 @@ function reconAnswer(chosenIndex) {
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
-  if (reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if (reconExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
-  if (reconExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
-  if (reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
+  if (showFullCorrection || reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
+  if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
+  if ((showFullCorrection || reconExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
+  if (showFullCorrection || reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   $('recon-correction-details').innerHTML = detailsParts.join('');
   $('recon-correction').classList.remove('hidden');
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex + 1} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
@@ -4548,6 +4578,24 @@ function summarizeSavedConfig(cfg) {
   parts.push(cfg.allGames ? 'tous les jeux' : `${(cfg.games || []).length} jeu(x)`);
   return parts.join(' · ') || 'Aucun champ particulier';
 }
+// Page dédiée « Mes configurations enregistrées » (Mon compte) : deux colonnes, la description à
+// gauche, le bouton portant le nom choisi par le joueur à droite — plus simple à parcourir qu'un
+// bouton qui porterait lui-même tout le résumé.
+function renderProfileConfigsTable() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
+  const names = Object.keys(saved);
+  $('profile-configs-empty')?.classList.toggle('hidden', !!names.length);
+  const table = $('profile-configs-table');
+  if (!table) return;
+  table.innerHTML = names.map((name) => `
+    <p style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);margin:0;">${escapeHtml(summarizeSavedConfig(saved[name]))}</p>
+    <button type="button" class="secondary-button gc-load-config" data-name="${escapeHtml(name)}" style="padding:8px 14px;font-weight:700;white-space:nowrap;">${escapeHtml(name)} →</button>
+  `).join('');
+  table.querySelectorAll('.gc-load-config').forEach((btn) => {
+    btn.addEventListener('click', () => loadSavedGuidedConfig(btn.dataset.name, saved));
+  });
+}
 function renderSavedConfigsInto(wrapId, listId, saved) {
   const wrap = $(wrapId);
   const list = $(listId);
@@ -4590,9 +4638,7 @@ function applyGamesFilterToHub() {
   });
   const nameNote = $('training-hub-config-name');
   if (nameNote) {
-    nameNote.textContent = loadedGuidedConfigName
-      ? `Configuration chargée : ${loadedGuidedConfigName}.`
-      : (games ? `${games.length} jeu${games.length > 1 ? 'x' : ''} sélectionné${games.length > 1 ? 's' : ''} pour cette partie.` : '');
+    nameNote.textContent = guidedModeActive ? buildTrainingHubConfigSentence() : '';
   }
   // Le long texte explicatif ne sert plus à rien une fois qu'on arrive ici avec une sélection
   // déjà faite par le parcours guidé — il ne fait alors que répéter ce qui vient d'être choisi.
@@ -4647,6 +4693,12 @@ function applyGlobalDefaultsToQuiz() {
   }
   if (gr.remember) {
     ['1', '2', '3'].forEach((lvl) => { const el = $(`level-${lvl}`); if (el) el.checked = (gr.levels || []).includes(lvl); });
+    // Applique aussi la rubrique choisie dans Mon compte (le quiz ne gère que 4 des 6 rubriques
+    // possibles — matériau et dimensions n'existent pas ici, elles sont simplement ignorées).
+    ['artist', 'title', 'date', 'location'].forEach((key) => {
+      const el = $(`rubrique-${key}`);
+      if (el) el.checked = (gr.rubriques || []).includes(key);
+    });
     if (gr.count) {
       const radios = [...document.querySelectorAll('input[name="nb-questions"]')];
       const exact = radios.find((r) => r.value === gr.count);
@@ -4672,6 +4724,13 @@ function applyGlobalFieldDefaultsTo(prefix) {
   }
   if (gr.remember) {
     ['1', '2', '3'].forEach((lvl) => { const el = $(`${prefix}-level-${lvl}`); if (el) el.checked = (gr.levels || []).includes(lvl); });
+    // Applique aussi la rubrique choisie dans Mon compte aux propres cases de l'exercice, quand il
+    // en a (artist/title/date/materiaux/dimensions/location) — bug réel repéré : ce choix global
+    // n'avait jusqu'ici aucun effet, chaque exercice gardait sa propre sélection non liée.
+    ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].forEach((key) => {
+      const el = $(`${prefix}-field-${key}`);
+      if (el) el.checked = (gr.rubriques || []).includes(key);
+    });
     if (gr.count) {
       const radios = [...document.querySelectorAll(`input[name="${prefix}-count"]`)];
       const exact = radios.find((r) => r.value === gr.count);
@@ -4740,14 +4799,14 @@ Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
 });
 $('open-training')?.addEventListener('click', () => {
   // Accès explicite « par les menus » (joueur confirmé) : on sort du mode simplifié du parcours
-  // guidé — le texte explicatif revient, et le filtrage par jeux (s'il en restait un) est levé,
-  // pour retrouver les 7 jeux normalement.
+  // guidé, et on amène d'abord à Mon compte plutôt que directement au tableau des exercices — le
+  // joueur y règle ses choix (technique, esthétique, champ, rubrique, artiste) avant de valider.
   guidedModeActive = false;
   localStorage.removeItem('guidedModeActive');
   localStorage.removeItem('globalGamesDefaults');
   loadedGuidedConfigName = '';
-  showPanel('training-hub');
-  updateExerciseSummaries();
+  showPanel('profile');
+  initProfilePage();
 });
 // --- Parcours guidé de configuration (page d'accueil → « pour débuter ») : une question à la
 // fois, la suivante apparaît dès qu'on répond — écrit dans les mêmes réglages globaux que Mon
@@ -4779,18 +4838,12 @@ function resetGuidedConfig() {
 $('open-guided-config')?.addEventListener('click', () => {
   resetGuidedConfig();
   loadedGuidedConfigName = '';
-  let saved = {};
-  try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
-  const names = Object.keys(saved);
-  $('gc-intro-saved-configs').classList.toggle('hidden', !names.length);
-  $('gc-intro-saved-configs-list').innerHTML = names.map((name) => `<button type="button" class="secondary-button gc-load-config" data-name="${escapeHtml(name)}" style="padding:6px 12px;font-size:.85rem;">${escapeHtml(name)} →</button>`).join('');
-  $('gc-intro-saved-configs-list').querySelectorAll('.gc-load-config').forEach((btn) => {
-    // Relancer directement une configuration déjà enregistrée : pas la peine de refaire tout le
-    // parcours question par question, on retrouve directement le tableau des exercices, sans
-    // texte ni icônes (comme depuis Mon compte).
-    btn.addEventListener('click', () => loadSavedGuidedConfig(btn.dataset.name, saved));
-  });
   showPanel('guided-config');
+});
+$('gc-intro-find-config')?.addEventListener('click', () => {
+  showPanel('profile');
+  initProfilePage();
+  $('profile-menu-saved-configs')?.click();
 });
 function saveGuidedFieldAndRubrique() {
   const arts = [...document.querySelectorAll('.gc-art:checked')].map((el) => el.value);
@@ -4869,6 +4922,29 @@ document.querySelectorAll('input[name="gc-want-artists"]').forEach((el) => {
 document.querySelectorAll('input[name="gc-allgames"]').forEach((el) => {
   el.addEventListener('change', () => { $('gc-games-list').classList.toggle('hidden', el.value !== 'no' || !el.checked); });
 });
+// Phrase affichée en haut du tableau des exercices quand on y arrive via « Valider » (parcours
+// guidé ou Mon compte) — reprend le même principe que la phrase de fin de parcours guidé, avec un
+// préfixe différent selon qu'il s'agit d'une configuration enregistrée retrouvée ou d'un choix du
+// jour fait sur le moment.
+function buildConfigMiddlePart() {
+  const gf = readGlobalFieldDefaults();
+  const gr = readGlobalRubriqueDefaults();
+  const ga = readGlobalArtistDefaults();
+  const artLabel = { peinture: 'la peinture', sculpture: 'la sculpture' };
+  const artsPart = (gf.arts || []).map((a) => artLabel[a] || a).join(' et ') || 'la peinture et la sculpture';
+  const centPart = gf.centuries?.length ? ` du ${gf.centuries.join(', du ')} siècle` : '';
+  const zonePart = gf.zones?.length ? ` en zone ${gf.zones.join(', ')}` : '';
+  const levelLabels = { '1': 'très célèbres', '2': 'connus', '3': 'moins connus' };
+  const levelPart = gr.levels?.length ? `, avec des artistes ${gr.levels.map((l) => levelLabels[l]).join('/')}` : '';
+  const artistsPart = ga.artists?.length ? `, en particulier ${ga.artists.join(', ')}` : '';
+  return `${artsPart}${centPart}${zonePart}${levelPart}${artistsPart}`;
+}
+function buildTrainingHubConfigSentence() {
+  const middle = buildConfigMiddlePart();
+  return loadedGuidedConfigName
+    ? `Vous avez choisi de retrouver votre configuration ${loadedGuidedConfigName} : ${middle}.`
+    : `Vous avez choisi de jouer avec ${middle}.`;
+}
 function buildGuidedSummary() {
   const gf = readGlobalFieldDefaults();
   const gr = readGlobalRubriqueDefaults();
@@ -5050,13 +5126,16 @@ function impShowCurrent() {
 
   const dims = formatDimensionsDisplay(work);
   const anyFieldChecked = ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].some((k) => $(`imp-field-${k}`)?.checked);
+  // showFullCorrection (icône 🔎) court-circuite la restriction de rubrique choisie — tout
+  // s'affiche, sans avoir à revenir modifier la configuration de l'exercice pour le voir.
+  const fieldOn = (key) => showFullCorrection || (anyFieldChecked ? $(`imp-field-${key}`).checked : true);
   const fields = [
-    { key: 'artist', label: 'Auteur', value: formatArtistDisplayName(work), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: anyFieldChecked ? $('imp-field-artist').checked : true },
-    { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>« ${escapeHtml(work.title)} »</em>`, spoken: `« ${work.title} »`, on: anyFieldChecked ? $('imp-field-title').checked : true },
-    { key: 'date', label: 'Date', value: work.date, on: anyFieldChecked ? $('imp-field-date').checked : true },
-    { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: (anyFieldChecked ? $('imp-field-materiaux').checked : true) && work.materials },
-    { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: (anyFieldChecked ? $('imp-field-dimensions').checked : true) && dims },
-    { key: 'location', label: 'Lieu', value: cityFlag(work.ville) ? `${escapeHtml(work.location)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${cityFlag(work.ville)}</span>` : escapeHtml(work.location), spoken: work.location, on: anyFieldChecked ? $('imp-field-location').checked : true },
+    { key: 'artist', label: 'Auteur', value: formatArtistDisplayName(work), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
+    { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>« ${escapeHtml(work.title)} »</em>`, spoken: `« ${work.title} »`, on: fieldOn('title') },
+    { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
+    { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
+    { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },
+    { key: 'location', label: 'Lieu', value: cityFlag(work.ville) ? `${escapeHtml(work.location)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${cityFlag(work.ville)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
   ].filter((f) => f.on);
 
   $('imp-correction-details').innerHTML = fields.map((f) =>
@@ -5080,6 +5159,15 @@ function impShowCurrent() {
 
 }
 
+$('imp-full-correction-toggle')?.addEventListener('click', () => toggleFullCorrection(impShowCurrent));
+// Vrai/Faux fige les rubriques testées dès la génération de chaque question (le joueur juge Vrai
+// ou Faux sur des affirmations précises) — pas de réaffichage immédiat possible sans perturber une
+// réponse en cours ; la bascule s'applique donc à partir de la question suivante.
+$('vf-full-correction-toggle')?.addEventListener('click', () => toggleFullCorrection());
+// Intrus : même prudence — l'affichage de la correction est imbriqué dans la logique de réponse
+// (score, son, animation), pas question de la relancer juste pour rafraîchir l'affichage.
+$('intrus-full-correction-toggle')?.addEventListener('click', () => toggleFullCorrection());
+$('recon-full-correction-toggle')?.addEventListener('click', () => toggleFullCorrection());
 $('imp-pause-button')?.addEventListener('click', () => {
   impPaused = !impPaused;
   $('imp-pause-button').textContent = impPaused ? '▶' : '⏸';
@@ -5353,10 +5441,10 @@ function intrusAnswer(chosenIndex) {
   const detailsParts = [];
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
-  if (intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if (intrusExtraFields.includes('materiaux') && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
-  if (intrusExtraFields.includes('dimensions') && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
-  if (intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
+  if (showFullCorrection || intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
+  if ((showFullCorrection || intrusExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
+  if ((showFullCorrection || intrusExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
+  if (showFullCorrection || intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
   $('intrus-correction').classList.remove('hidden');
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;

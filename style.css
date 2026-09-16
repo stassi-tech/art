@@ -513,6 +513,16 @@ body.lefty .field-row { flex-direction:row-reverse; }
 .nav-arrow-button { flex:0 0 auto; width:38px; height:38px; border-radius:50%; border:1px solid var(--accent); background:var(--accent); color:#fff; font-size:1rem; font-weight:700; cursor:pointer; transition:background .15s; }
 .nav-arrow-button:hover:not(:disabled) { background:var(--accent-dark); }
 .nav-arrow-button:disabled { opacity:.35; cursor:not-allowed; }
+/* Icône « voir la correction complète » : discrète tant qu'elle n'est pas activée, nettement
+   marquée une fois enclenchée — pour qu'on se souvienne qu'elle reste active d'une page à
+   l'autre tant qu'on ne la désactive pas soi-même. */
+.full-correction-toggle { margin-left:auto; width:30px; height:30px; border-radius:50%; border:1px solid var(--border); background:var(--paper); font-size:.95rem; cursor:pointer; opacity:.6; }
+.full-correction-toggle:hover { opacity:1; }
+.full-correction-toggle.active { background:var(--accent); border-color:var(--accent); opacity:1; box-shadow:0 0 0 3px rgba(0,0,0,.08); }
+#imp-progress-row { display:flex; align-items:center; }
+#vf-progress-row { display:flex; align-items:center; gap:10px; }
+#intrus-progress-row { display:flex; align-items:center; gap:10px; }
+#recon-progress-row { display:flex; align-items:center; gap:10px; }
 .mic-icon-button { flex-shrink:0; width:44px; height:44px; border-radius:50%; border:1px solid #cfc8bc; background:var(--paper); color:var(--ink); cursor:pointer; font-size:1.1rem; transition:background .15s, border-color .15s; }
 .mic-icon-button:hover:not(:disabled) { background:#f7f2ea; border-color:var(--accent); }
 .mic-icon-button:disabled { cursor:not-allowed; opacity:.4; }
