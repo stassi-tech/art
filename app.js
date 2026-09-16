@@ -869,12 +869,17 @@ $('pf-rubriques-clear')?.addEventListener('click', () => {
 // enregistrer techniquement — son rôle est de donner un geste de confirmation clair, puis
 // d'amener directement au menu des exercices.
 $('pf-validate-button')?.addEventListener('click', () => {
-  $('pf-validate-button').classList.add('intro-highlight');
+  // L'animation « intro-highlight » dure 3 secondes (3 pulsations), mais la page change au bout
+  // de seulement 500ms — elle était donc interrompue brutalement en plein milieu d'une pulsation,
+  // ce qui donnait un effet de clignotement disgracieux plutôt qu'une confirmation nette. Retirée :
+  // le changement de page lui-même sert déjà de confirmation visuelle suffisante.
   // Valider depuis Mon compte (accès « par les menus ») active aussi le mode simplifié du tableau
   // des exercices : plus de texte de présentation, juste la phrase de configuration en haut.
   guidedModeActive = true;
   localStorage.setItem('guidedModeActive', 'true');
-  setTimeout(() => { showPanel('training-hub'); updateExerciseSummaries(); applyFieldLinkedAmbiance(); }, 500);
+  showPanel('training-hub');
+  updateExerciseSummaries();
+  applyFieldLinkedAmbiance();
 });
 $('account-scores-quiz-button')?.addEventListener('click', () => {
   accountScoreFilter = 'quiz';
