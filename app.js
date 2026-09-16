@@ -2370,24 +2370,24 @@ function parseCmValue(raw) {
   const m = String(raw || '').replace(',', '.').match(/[\d.]+/);
   return m ? parseFloat(m[0]) : null;
 }
-// Échelle relative compressée pour les jeux de comparaison d'images (Intrus, Famille) : reflète
-// les vraies différences de taille entre œuvres sans les rendre injouables — une racine carrée de
-// la hauteur, ramenée entre une taille minimale et maximale à l'écran, plutôt qu'une proportion
-// exacte (qui rendrait par exemple un médaillon de Fouquet invisible à côté d'un Courbet
-// monumental). Retourne un tableau de tailles en pixels, dans le même ordre que "works".
-function relativeImageSizes(works, minPx = 90, maxPx = 260, defaultPx = 170) {
+// Échelle relative « vraie » pour les jeux de comparaison d'images (Intrus, Famille) : la plus
+// grande œuvre du lot reçoit la taille maximale disponible à l'écran, les autres suivent en
+// PROPORTION RÉELLE (pas compressée) — avec un plancher minimal pour qu'une toute petite œuvre
+// (un médaillon d'émail à côté d'un Courbet monumental) reste tout de même visible et cliquable.
+// Chaque image reste de toute façon bornée par sa propre case dans la grille (CSS width:100% +
+// max-width) : si la case est plus étroite que la taille calculée ici, l'image se réduit
+// naturellement à la largeur de sa case — inutile de recalculer un facteur de réduction à part.
+function relativeImageSizes(works, maxPx = 560, minPx = 70, defaultPx = 320) {
   const heights = works.map((w) => parseCmValue(w?.hauteur));
   const validHeights = heights.filter((h) => h && h > 0);
-  // Moins de 2 hauteurs connues : rien à comparer, on garde toutes les cases à la même taille
-  // plutôt que d'afficher une différence arbitraire basée sur une seule donnée isolée.
+  // Moins de 2 hauteurs connues : rien à comparer, on garde toutes les cases à une taille
+  // généreuse par défaut plutôt que d'afficher une différence arbitraire basée sur une seule
+  // donnée isolée.
   if (validHeights.length < 2) return works.map(() => defaultPx);
-  const minRoot = Math.sqrt(Math.min(...validHeights));
-  const maxRoot = Math.sqrt(Math.max(...validHeights));
-  if (maxRoot === minRoot) return works.map(() => defaultPx); // toutes de la même hauteur
+  const maxH = Math.max(...validHeights);
   return heights.map((h) => {
     if (!h || h <= 0) return defaultPx; // hauteur manquante pour cette œuvre précise : taille par défaut
-    const t = (Math.sqrt(h) - minRoot) / (maxRoot - minRoot);
-    return Math.round(minPx + t * (maxPx - minPx));
+    return Math.max(minPx, Math.round((h / maxH) * maxPx));
   });
 }
 function setLightboxScaleData(work) {
