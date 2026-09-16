@@ -2513,6 +2513,26 @@ function populateCloserPlanWall(candidates) {
 // tient juste à côté à sa vraie échelle relative — même principe que le mur, mais en très grand,
 // pour bien ressentir la taille d'une seule œuvre. On sort en tirant la silhouette hors du cadre ;
 // le mur retrouve sa position exacte (la promenade continue là où elle s'était arrêtée).
+// Silhouette de référence à côté de l'œuvre à la correction (Intrus) — même principe que la
+// salle d'exposition (une personne de 1,70 m à côté de l'œuvre à sa vraie échelle relative), mais
+// en version légère intégrée directement à la carte de correction, sans passer par toute la
+// visionneuse de la salle. Calcule ensemble la taille de l'œuvre ET celle de la silhouette, pour
+// qu'elles restent cohérentes l'une avec l'autre. Renvoie null si la hauteur réelle est inconnue
+// (on garde alors l'affichage normal, sans silhouette).
+function buildScaleReveal(hCm, availablePx) {
+  if (!hCm || hCm <= 0) return null;
+  const refH = Math.max(hCm, 170); // l'un des deux (œuvre ou silhouette) remplit l'espace disponible
+  const pxPerCm = availablePx / refH;
+  const artH = Math.round(hCm * pxPerCm);
+  const silhH = Math.round(170 * pxPerCm);
+  const silhW = Math.round(silhH * (100 / 340)); // proportions du SVG (viewBox 100×340)
+  const silhouetteHtml = `<div style="display:flex;align-items:flex-end;flex:0 0 auto;" title="Silhouette de référence — 1,70 m">
+    <svg viewBox="0 0 100 340" style="height:${silhH}px;width:${silhW}px;color:#8a8a8a;" aria-hidden="true">
+      <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+    </svg>
+  </div>`;
+  return { artH, silhouetteHtml };
+}
 function enterFocusView(work, hCm, note) {
   const lCm = parseCmValue(work.longueur) || hCm;
   $('scale-focus-view').classList.remove('hidden');
@@ -5774,7 +5794,20 @@ function intrusAnswer(chosenIndex) {
   });
   if (intrusMode === 'image') {
     const kept = $('intrus-prompt-card').querySelector('.intrus-image-choice');
-    if (kept) kept.classList.add('intrus-image-choice-solo');
+    if (kept) {
+      kept.classList.add('intrus-image-choice-solo');
+      // Silhouette de référence à côté de l'œuvre, à sa vraie échelle relative — seulement quand
+      // la hauteur réelle est connue dans le fichier ; sinon on garde l'affichage habituel.
+      const hCm = parseCmValue(q.correct.hauteur);
+      const availablePx = Math.min(760, window.innerHeight * 0.78);
+      const reveal = buildScaleReveal(hCm, availablePx);
+      if (reveal) {
+        const img = kept.querySelector('img');
+        if (img) { img.style.height = `${reveal.artH}px`; img.style.maxHeight = 'none'; img.style.width = 'auto'; }
+        kept.insertAdjacentHTML('afterend', reveal.silhouetteHtml);
+        $('intrus-prompt-card').querySelector('.intrus-image-choices').style.cssText = 'display:flex;align-items:flex-end;justify-content:center;gap:16px;';
+      }
+    }
     // On ne garde plus la référence initiale (Auteur/Titre) affichée à droite : juste le verdict.
     $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
   }
