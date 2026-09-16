@@ -31,7 +31,7 @@ function toggleFullCorrection(rerenderFn) {
 }
 // Panneaux où ce bouton doit apparaître (les 4 exercices ayant un choix de rubrique), avec la
 // fonction de réaffichage sûre à appeler quand elle existe (voir showPanel plus bas pour l'usage).
-const FULL_CORRECTION_PANELS = { impregnation: () => { if (IMP_SESSION.length) impShowCurrent(); }, vraifaux: null, intrus: null, reconstitution: null };
+const FULL_CORRECTION_PANELS = { impregnation: () => { if (IMP_SESSION.length) impShowCurrent(); }, vraifaux: null, intrus: () => intrusRefreshCorrectionDetails(), reconstitution: () => reconRefreshCorrectionDetails() };
 let db = null;
 let currentUser = null;
 let accountMode = 'login'; // 'login' | 'register'
@@ -544,7 +544,9 @@ function initProfilePage() {
   const savedAmbiance = localStorage.getItem('ambiance') || '';
   const ambianceRadio = document.querySelector(`input[name="pf-ambiance"][value="${savedAmbiance}"]`);
   if (ambianceRadio) ambianceRadio.checked = true;
-  if ($('pf-link-ambiance-field')) $('pf-link-ambiance-field').checked = localStorage.getItem('linkAmbianceToField') === 'true';
+  // Activé par défaut (case à DÉCOCHER pour s'en passer) — sur demande, la logique de valeur par
+  // défaut s'inverse : « true » sauf si le joueur l'a explicitement désactivé une fois.
+  if ($('pf-link-ambiance-field')) $('pf-link-ambiance-field').checked = localStorage.getItem('linkAmbianceToField') !== 'false';
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   $('pf-voice').innerHTML = voices.length
     ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
@@ -1092,7 +1094,8 @@ function ambianceAskText(decision) {
 async function applyFieldLinkedAmbiance() {
   $('ambiance-auto-message')?.classList.add('hidden');
   $('ambiance-ask-box')?.classList.add('hidden');
-  if (localStorage.getItem('linkAmbianceToField') !== 'true') return;
+  // Activé par défaut — désactivé seulement si le joueur a explicitement décoché la case.
+  if (localStorage.getItem('linkAmbianceToField') === 'false') return;
   const decision = await computeFieldAmbiance();
   if (decision.type === 'auto') {
     localStorage.setItem('ambiance', decision.ambiance);
@@ -4301,7 +4304,11 @@ $('recon-start-button')?.addEventListener('click', async () => {
     reconAutoAdvance = $('recon-opt-autoadvance')?.checked || false;
     reconAutoAdvanceDelay = Number($('recon-opt-delay')?.value || 5000);
     reconExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`recon-field-${k}`)?.checked);
-    if (!reconExtraFields.length) reconExtraFields = ['date', 'materiaux', 'dimensions', 'location'];
+    // Même correction qu'Intrus : un choix global d'artiste (sans case ici) ne doit pas être
+    // traité comme « rien choisi », sinon on retombe à tort sur toutes les rubriques.
+    if (!reconExtraFields.length && !readGlobalRubriqueDefaults().rubriques?.length) {
+      reconExtraFields = ['date', 'materiaux', 'dimensions', 'location'];
+    }
     RECON_SESSION = pool.slice(0, count).map((correct) => {
       const distractors = pickIntrusDistractors(correct, pool);
       const choices = [correct, ...distractors];
@@ -4356,6 +4363,21 @@ function reconShowQuestion() {
   });
 }
 
+// Même principe que pour Intrus : fonction isolée, sans effet de bord, pour rafraîchir la
+// correction affichée dès qu'on active/désactive la correction complète.
+function reconRefreshCorrectionDetails() {
+  const q = RECON_SESSION[reconIndex];
+  if (!q) return;
+  const dims = formatDimensionsDisplay(q.correct);
+  const detailsParts = [];
+  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
+  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>«\u00a0${escapeHtml(q.correct.title)}\u00a0»</em></span>`);
+  if (showFullCorrection || reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
+  if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
+  if ((showFullCorrection || reconExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
+  if (showFullCorrection || reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
+  $('recon-correction-details').innerHTML = detailsParts.join('');
+}
 function reconAnswer(chosenIndex) {
   if (reconAnswered) return;
   reconAnswered = true;
@@ -4374,16 +4396,8 @@ function reconAnswer(chosenIndex) {
   // L'image entière est révélée, avec la référence complète.
   $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSourceSized(q.correct.image, 700))}" alt="" />`;
 
-  const dims = formatDimensionsDisplay(q.correct);
   reconSpeak(spokenFullReference(q.correct));
-  const detailsParts = [];
-  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
-  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
-  if (showFullCorrection || reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
-  if ((showFullCorrection || reconExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
-  if (showFullCorrection || reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
-  $('recon-correction-details').innerHTML = detailsParts.join('');
+  reconRefreshCorrectionDetails();
   $('recon-correction').classList.remove('hidden');
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex + 1} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
   updateTopBannerScore(`${reconCorrectCount}/${reconIndex + 1}`);
@@ -4765,6 +4779,10 @@ function applyGamesFilterToHub() {
   if (nameNote) {
     nameNote.textContent = guidedModeActive ? buildTrainingHubConfigSentence() : '';
   }
+  // Bouton d'enregistrement direct : utile si le joueur n'a pas déjà enregistré sa configuration
+  // à l'étape précédente — inutile en revanche s'il vient de recharger une config déjà nommée.
+  $('training-hub-save-box')?.classList.toggle('hidden', !guidedModeActive || !!loadedGuidedConfigName);
+  if ($('training-hub-save-feedback')) $('training-hub-save-feedback').textContent = '';
   // Le long texte explicatif ne sert plus à rien une fois qu'on arrive ici avec une sélection
   // déjà faite par le parcours guidé — il ne fait alors que répéter ce qui vient d'être choisi.
   // Les icônes ✏️ de modification par exercice disparaissent aussi dans ce mode : elles
@@ -4983,17 +5001,22 @@ $('gc-intro-find-config')?.addEventListener('click', () => {
   initProfilePage();
   $('profile-menu-saved-configs')?.click();
 });
-// « Configurer une nouvelle formule » : la toute première fois, on montre d'abord un aperçu des
-// réglages techniques et esthétiques (Mon compte) — occasion naturelle de les découvrir pour un
-// nouveau joueur. Les fois suivantes, on saute directement à la première question.
+// Lit à voix haute le texte principal d'une étape du parcours guidé, et le petit texte d'aide
+// juste en dessous s'il y en a un (ex. « rien coché = tout demandé ») — pour que la voix
+// n'oublie pas cette précision utile.
+function speakGuidedStep(stepEl) {
+  const mainText = stepEl?.querySelector('p.config-table-col-title, p:not(.gc-note):not(.modal-hint)');
+  const hintText = stepEl?.querySelector('.gc-note');
+  const parts = [mainText?.textContent, hintText?.textContent].filter(Boolean);
+  guidedSpeak(parts.join(' '));
+}
 $('gc-intro-new-config')?.addEventListener('click', () => {
   $('gc-step-intro').classList.add('hidden');
   const seen = localStorage.getItem('hasSeenGuidedPersonalize') === 'true';
   const next = $(seen ? 'gc-step-art' : 'gc-step-personalize');
   next.classList.remove('hidden');
   window.scrollTo({ top: next.offsetTop - 80, behavior: 'smooth' });
-  const mainText = next.querySelector('p.config-table-col-title, p:not(.gc-note):not(.modal-hint)');
-  guidedSpeak(mainText?.textContent || '');
+  speakGuidedStep(next);
 });
 $('gc-personalize-continue')?.addEventListener('click', () => {
   localStorage.setItem('hasSeenGuidedPersonalize', 'true');
@@ -5022,10 +5045,10 @@ document.querySelectorAll('.gc-continue').forEach((btn) => {
     if (next.id === 'gc-step-artists') populateGuidedArtistList();
     if (next.id === 'gc-step-summary') buildGuidedSummary();
     window.scrollTo({ top: next.offsetTop - 80, behavior: 'smooth' });
-    // Lit à voix haute la question de la nouvelle étape (premier texte principal, hors indice
-    // discret « rien coché = … ») — sonorise tout le parcours guidé, pas seulement les jeux.
-    const mainText = next.querySelector('p.config-table-col-title, p:not(.gc-note):not(.modal-hint)');
-    guidedSpeak(mainText?.textContent || '');
+    // Lit à voix haute la question de la nouvelle étape, et son petit texte d'aide s'il y en a un.
+    // Exception : « gc-step-artists » se sonorise lui-même une fois sa liste chargée (le texte
+    // utile — le nombre d'artistes compatibles — n'existe pas encore à cet instant précis).
+    if (next.id !== 'gc-step-artists') speakGuidedStep(next);
   });
 });
 async function populateGuidedArtistList() {
@@ -5067,6 +5090,8 @@ async function populateGuidedArtistList() {
     });
   });
   status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec vos choix de niveau et de champ actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
+  // Sonorise la question de l'étape ET ce texte, seulement disponible une fois la liste chargée.
+  guidedSpeak(`Voulez-vous restreindre encore la sélection à certains artistes précis\u00a0? ${status.textContent}`);
 }
 document.querySelectorAll('input[name="gc-want-artists"]').forEach((el) => {
   el.addEventListener('change', () => {
@@ -5109,7 +5134,7 @@ function buildTrainingHubConfigSentence() {
   if (loadedGuidedConfigName) {
     return `Pour cette session vous avez repris votre configuration ${loadedGuidedConfigName} : ${middle}.`;
   }
-  return `Pour cette session vous avez choisi de ${middle}. Vous pouvez enregistrer cette configuration et la retrouver à des sessions ultérieures.`;
+  return `Pour cette session vous avez choisi de ${middle}. Si vous ne l'avez pas fait à la page précédente, vous pouvez encore l'enregistrer ci-dessous pour la retrouver à des sessions ultérieures.`;
 }
 function buildGuidedSummary() {
   const gf = readGlobalFieldDefaults();
@@ -5158,6 +5183,24 @@ $('gc-save-button')?.addEventListener('click', () => {
   localStorage.setItem('savedGuidedConfigs', JSON.stringify(saved));
   $('gc-save-feedback').style.color = 'var(--ok)';
   $('gc-save-feedback').textContent = `Configuration « ${name} » enregistrée — retrouvez-la dans Mon compte.`;
+});
+$('training-hub-save-button')?.addEventListener('click', () => {
+  const name = $('training-hub-save-name').value.trim();
+  if (!name) { $('training-hub-save-feedback').style.color = 'var(--wrong)'; $('training-hub-save-feedback').textContent = 'Donnez un nom à cette configuration.'; return; }
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
+  let gg = {};
+  try { gg = JSON.parse(localStorage.getItem('globalGamesDefaults') || '{}'); } catch (e) {}
+  saved[name] = {
+    field: readGlobalFieldDefaults(), artists: readGlobalArtistDefaults(), rubrique: readGlobalRubriqueDefaults(),
+    allGames: !gg.remember || !gg.games?.length,
+    games: gg.games || [],
+  };
+  localStorage.setItem('savedGuidedConfigs', JSON.stringify(saved));
+  loadedGuidedConfigName = name;
+  $('training-hub-save-feedback').style.color = 'var(--ok)';
+  $('training-hub-save-feedback').textContent = `Configuration « ${name} » enregistrée — retrouvez-la dans Mon compte.`;
+  $('training-hub-save-box').classList.add('hidden');
 });
 document.querySelectorAll('.training-soon').forEach((btn) => {
   btn.addEventListener('click', (event) => event.currentTarget.classList.toggle('show-tooltip'));
@@ -5496,7 +5539,13 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     intrusAutoAdvance = $('intrus-opt-autoadvance')?.checked || false;
     intrusAutoAdvanceDelay = Number($('intrus-opt-delay')?.value || 5000);
     intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'].filter((k) => $(`intrus-field-${k}`)?.checked);
-    if (!intrusExtraFields.length) intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'];
+    // Vrai bug corrigé : si la rubrique globale choisie est « artiste » (qui n'a pas de case chez
+    // Intrus, artiste/titre étant toujours montrés ici) aucune des 4 cases n'est cochée — ce n'est
+    // PAS « rien choisi », c'est un choix réel qui exclut justement ces 4 rubriques. Le repli sur
+    // tout n'a de sens que si AUCUNE restriction globale n'existe du tout.
+    if (!intrusExtraFields.length && !readGlobalRubriqueDefaults().rubriques?.length) {
+      intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'];
+    }
     INTRUS_SESSION = pool.slice(0, count).map((correct) => {
       // En mode « Références intruses », on ne montre le plus souvent que le nom de l'artiste (le
       // cas le plus fréquent et le plus exigeant), et parfois artiste + titre pour varier. Sans
@@ -5571,6 +5620,22 @@ function intrusShowQuestion() {
   }
 }
 
+// Reconstruit la correction affichée à partir de l'état courant (rubriques choisies + bascule
+// « correction complète ») — fonction isolée, sans effet de bord sur le score ou la voix, pour
+// pouvoir la rappeler en toute sécurité dès qu'on active/désactive la correction complète.
+function intrusRefreshCorrectionDetails() {
+  const q = INTRUS_SESSION[intrusIndex];
+  if (!q) return;
+  const dims = formatDimensionsDisplay(q.correct);
+  const detailsParts = [];
+  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
+  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>«\u00a0${escapeHtml(q.correct.title)}\u00a0»</em></span>`);
+  if (showFullCorrection || intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
+  if ((showFullCorrection || intrusExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
+  if ((showFullCorrection || intrusExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
+  if (showFullCorrection || intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
+  $('intrus-correction-details').innerHTML = detailsParts.join('');
+}
 function intrusAnswer(chosenIndex) {
   if (intrusAnswered) return;
   intrusAnswered = true;
@@ -5599,16 +5664,8 @@ function intrusAnswer(chosenIndex) {
     $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
   }
 
-  const dims = formatDimensionsDisplay(q.correct);
   intrusSpeak(spokenFullReference(q.correct));
-  const detailsParts = [];
-  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
-  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>`);
-  if (showFullCorrection || intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if ((showFullCorrection || intrusExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
-  if ((showFullCorrection || intrusExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
-  if (showFullCorrection || intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
-  $('intrus-correction-details').innerHTML = detailsParts.join('');
+  intrusRefreshCorrectionDetails();
   $('intrus-correction').classList.remove('hidden');
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
   updateTopBannerScore(`${intrusCorrectCount}/${intrusIndex + 1}`);
