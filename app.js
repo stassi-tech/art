@@ -1494,6 +1494,7 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  'chassériau': 'Chasériau',
   'malevitch': 'Malévitch',
   'poyer': 'Poyé',
   'marmion': 'Marmiyon',
@@ -2269,13 +2270,19 @@ function spokenDimensionsPhrase(work) {
 // Phrase de référence complète, dans l'ordre demandé : « Artiste, «Titre», Date. Nature en
 // matériau de H cm de hauteur, L de longueur et P de profondeur. Lieu. » — chaque partie
 // manquante est simplement omise plutôt que de laisser un blanc ou une ponctuation orpheline.
-function spokenFullReference(work) {
-  const dimsPhrase = spokenDimensionsPhrase(work);
-  const matDims = [work.materialsPhrase || work.materials, dimsPhrase].filter(Boolean).join(' ');
+// Bug réel corrigé : cette fonction parlait toujours de tout (date, matériau, dimensions, lieu)
+// sans jamais tenir compte de la rubrique choisie ni de la correction complète — la voix
+// « trichait » et révélait des informations que l'affichage, lui, cachait bien comme prévu.
+// extraFields (optionnel) restreint ce qui est dit ; omis ou null = tout dire (comportement par
+// défaut, utilisé quand la correction complète est active).
+function spokenFullReference(work, extraFields = null) {
+  const on = (key) => !extraFields || extraFields.includes(key);
+  const dimsPhrase = on('dimensions') ? spokenDimensionsPhrase(work) : '';
+  const matDims = [on('materiaux') ? (work.materialsPhrase || work.materials) : '', dimsPhrase].filter(Boolean).join(' ');
   const parts = [
-    `${work.artist}, « ${work.title} », ${work.date}.`,
+    `${work.artist}, « ${work.title} »${on('date') ? `, ${work.date}` : ''}.`,
     matDims ? `${matDims}.` : '',
-    work.location ? `${work.location}.` : '',
+    (on('location') && work.location) ? `${work.location}.` : '',
   ].filter(Boolean);
   return parts.join(' ');
 }
@@ -3006,7 +3013,12 @@ $('global-exhibition-button')?.addEventListener('click', (event) => {
   // Si une exposition est déjà en cours dans cette session (le joueur est déjà entré une fois
   // dans la salle), on propose d'abord de la revoir directement, plutôt que de retaper les noms —
   // « Changer l'exposition » ramène au formulaire habituel.
-  const hasCurrentExhibition = state.scaleViewCandidates && state.scaleViewCandidates.length > 0;
+  // Le double choix (revoir / changer) doit apparaître dès qu'une exposition existe déjà — pas
+  // seulement si le joueur est déjà entré dans la salle CETTE session : une exposition choisie
+  // lors d'une session précédente (mémorisée) compte tout autant comme « en cours ».
+  let lastArtistsCheck = [];
+  try { lastArtistsCheck = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
+  const hasCurrentExhibition = (state.scaleViewCandidates && state.scaleViewCandidates.length > 0) || lastArtistsCheck.length > 0;
   $('exhibition-resume-choice').classList.toggle('hidden', !hasCurrentExhibition);
   $('exhibition-picker-form').classList.toggle('hidden', hasCurrentExhibition);
   if (hasCurrentExhibition) return;
@@ -3043,12 +3055,42 @@ $('exhibition-add-artist-button')?.addEventListener('click', () => {
   wrap.appendChild(field);
   field.focus();
 });
-$('exhibition-resume-button')?.addEventListener('click', () => {
-  $('exhibition-picker').classList.add('hidden');
-  // La visionneuse elle-même doit être rouverte : si on avait quitté la salle par le coin, elle
-  // avait été entièrement refermée (voir exitScaleViewCompletely), sinon rien ne s'affichait.
+// Logique commune de chargement des œuvres d'une exposition (à partir de noms d'artistes) et
+// d'entrée dans la vue à l'échelle — utilisée à la fois par la création d'une nouvelle exposition
+// et par « Revoir l'exposition » quand les œuvres ne sont plus en mémoire (nouvelle session).
+async function loadAndEnterExhibition(names, feedback) {
+  if (feedback) { feedback.style.color = 'var(--muted)'; feedback.textContent = 'Recherche en cours…'; }
+  const ok = await loadArtistListIfNeeded();
+  if (!ok) { if (feedback) { feedback.style.color = 'var(--wrong)'; feedback.textContent = "La liste des artistes n'est pas disponible pour le moment."; } return false; }
+  const matchedRows = [];
+  names.forEach((name) => { const row = findArtistRow(name); if (row) matchedRows.push(row); });
+  if (!matchedRows.length) { if (feedback) { feedback.style.color = 'var(--wrong)'; feedback.textContent = 'Aucun artiste trouvé.'; } return false; }
+  let allWorks = [];
+  for (const row of matchedRows) allWorks = allWorks.concat(await fetchWorksForArtistRow(row));
+  if (!allWorks.length) { if (feedback) { feedback.style.color = 'var(--wrong)'; feedback.textContent = 'Aucune œuvre trouvée pour cette sélection.'; } return false; }
+  allWorks.sort((a, b) => (a.artCategory === b.artCategory ? 0 : a.artCategory === 'sculpture' ? 1 : -1));
+  state.currentOtherWorks = allWorks;
+  const firstWithHeight = allWorks.find((w) => parseCmValue(w.hauteur)) || allWorks[0];
+  const titleValue = formatCorrectionValue('title', firstWithHeight.title);
+  $('lightbox-image').src = imageSourceSized(firstWithHeight.image, 1000);
+  $('lightbox-caption').innerHTML = `<strong>${titleValue}</strong><br>${escapeHtml(firstWithHeight.date)} — ${escapeHtml(firstWithHeight.location)}`;
+  setLightboxScaleData(firstWithHeight);
   $('image-lightbox').classList.remove('hidden');
   enterScaleView();
+  return true;
+}
+$('exhibition-resume-button')?.addEventListener('click', async () => {
+  $('exhibition-picker').classList.add('hidden');
+  // Si les œuvres sont déjà en mémoire (le joueur est déjà entré cette session), on rouvre
+  // directement — sinon (exposition mémorisée d'une session précédente), il faut les recharger.
+  if (state.currentOtherWorks && state.currentOtherWorks.length) {
+    $('image-lightbox').classList.remove('hidden');
+    enterScaleView();
+    return;
+  }
+  let lastArtists = [];
+  try { lastArtists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
+  if (lastArtists.length) await loadAndEnterExhibition(lastArtists, null);
 });
 $('exhibition-change-button')?.addEventListener('click', () => {
   $('exhibition-resume-choice').classList.add('hidden');
@@ -4396,7 +4438,7 @@ function reconAnswer(chosenIndex) {
   // L'image entière est révélée, avec la référence complète.
   $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSourceSized(q.correct.image, 700))}" alt="" />`;
 
-  reconSpeak(spokenFullReference(q.correct));
+  reconSpeak(spokenFullReference(q.correct, showFullCorrection ? null : reconExtraFields));
   reconRefreshCorrectionDetails();
   $('recon-correction').classList.remove('hidden');
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex + 1} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
@@ -4730,9 +4772,20 @@ function renderProfileConfigsTable() {
   table.innerHTML = names.map((name) => `
     <p style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);margin:0;">${escapeHtml(summarizeSavedConfig(saved[name]))}</p>
     <button type="button" class="secondary-button gc-load-config" data-name="${escapeHtml(name)}" style="padding:8px 14px;font-weight:700;white-space:nowrap;">${escapeHtml(name)} →</button>
+    <button type="button" class="gc-delete-config" data-name="${escapeHtml(name)}" title="Supprimer cette configuration" aria-label="Supprimer cette configuration" style="border:none;background:none;color:var(--wrong);font-size:1.1rem;cursor:pointer;padding:4px 8px;">🗑</button>
   `).join('');
   table.querySelectorAll('.gc-load-config').forEach((btn) => {
     btn.addEventListener('click', () => loadSavedGuidedConfig(btn.dataset.name, saved));
+  });
+  table.querySelectorAll('.gc-delete-config').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!confirm(`Supprimer la configuration « ${btn.dataset.name} » ? Cette action est définitive.`)) return;
+      let current = {};
+      try { current = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
+      delete current[btn.dataset.name];
+      localStorage.setItem('savedGuidedConfigs', JSON.stringify(current));
+      renderProfileConfigsTable();
+    });
   });
 }
 function renderSavedConfigsInto(wrapId, listId, saved) {
@@ -4968,6 +5021,7 @@ $('open-training')?.addEventListener('click', () => {
 // compte (Mes choix de champ / d'artiste / de rubrique et de niveau), donc tout le reste de
 // l'application (jeux, résumés) s'appuie dessus exactement pareil, sans code séparé à maintenir.
 function resetGuidedConfig() {
+  hasSpokenRienCoche = false;
   // Efface tout, y compris ce qui est déjà enregistré (pas seulement l'état visible des cases) —
   // bug réel repéré : refaire le parcours une 2e fois sans choisir d'artiste laissait l'ancien
   // choix (ex. Poussin) bien réel en mémoire, puisque « Non » démarre déjà coché et ne déclenche
@@ -5002,13 +5056,16 @@ $('gc-intro-find-config')?.addEventListener('click', () => {
   $('profile-menu-saved-configs')?.click();
 });
 // Lit à voix haute le texte principal d'une étape du parcours guidé, et le petit texte d'aide
-// juste en dessous s'il y en a un (ex. « rien coché = tout demandé ») — pour que la voix
-// n'oublie pas cette précision utile.
+// juste en dessous s'il y en a un (ex. « rien coché = tout demandé ») — mais seulement la toute
+// première fois qu'un tel rappel apparaît dans le parcours : l'entendre à chaque étape suivante
+// (5 fois de suite) devenait lassant, le joueur a compris le principe dès la première fois.
+let hasSpokenRienCoche = false;
 function speakGuidedStep(stepEl) {
   const mainText = stepEl?.querySelector('p.config-table-col-title, p:not(.gc-note):not(.modal-hint)');
   const hintText = stepEl?.querySelector('.gc-note');
-  const parts = [mainText?.textContent, hintText?.textContent].filter(Boolean);
-  guidedSpeak(parts.join(' '));
+  const parts = [mainText?.textContent];
+  if (hintText && !hasSpokenRienCoche) { parts.push(hintText.textContent); hasSpokenRienCoche = true; }
+  guidedSpeak(parts.filter(Boolean).join(' '));
 }
 $('gc-intro-new-config')?.addEventListener('click', () => {
   $('gc-step-intro').classList.add('hidden');
@@ -5091,7 +5148,11 @@ async function populateGuidedArtistList() {
   });
   status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec vos choix de niveau et de champ actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
   // Sonorise la question de l'étape ET ce texte, seulement disponible une fois la liste chargée.
-  guidedSpeak(`Voulez-vous restreindre encore la sélection à certains artistes précis\u00a0? ${status.textContent}`);
+  // Ce texte n'arrive qu'après un chargement réseau : si le joueur a déjà avancé plus loin dans
+  // le parcours pendant ce temps, on ne parle plus par-dessus l'étape où il se trouve vraiment.
+  if (!$('gc-step-artists').classList.contains('hidden')) {
+    guidedSpeak(`Voulez-vous restreindre encore la sélection à certains artistes précis\u00a0? ${status.textContent}`);
+  }
 }
 document.querySelectorAll('input[name="gc-want-artists"]').forEach((el) => {
   el.addEventListener('change', () => {
@@ -5664,7 +5725,7 @@ function intrusAnswer(chosenIndex) {
     $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
   }
 
-  intrusSpeak(spokenFullReference(q.correct));
+  intrusSpeak(spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields));
   intrusRefreshCorrectionDetails();
   $('intrus-correction').classList.remove('hidden');
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
