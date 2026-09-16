@@ -40,6 +40,13 @@ if (firebaseReady) {
   firebase.initializeApp(FIREBASE_CONFIG);
   auth = firebase.auth();
   db = firebase.firestore();
+  // Bug réel repéré (boutons du tableau d'accueil lents et capricieux sur PC) : la prévention de
+  // suivi de certains navigateurs (Edge notamment) bloque l'accès au stockage nécessaire au canal
+  // de connexion habituel de Firestore (WebChannel) — la connexion échoue alors en boucle (erreurs
+  // 400 répétées dans la console), ce qui accapare le réseau et l'appareil en arrière-plan. Forcer
+  // le repli sur le "long polling" (une méthode de connexion plus simple, moins dépendante du
+  // stockage du navigateur) évite cette boucle d'échecs.
+  try { db.settings({ experimentalAutoDetectLongPolling: true }); } catch (e) { /* ignoré si déjà configuré */ }
 }
 
 // La mémorisation (des choix comme des scores) est un service lié au compte : sans connexion,
@@ -3802,9 +3809,12 @@ function famNumberWord(n) {
 function famShowQuestion() {
   speechSynthesis.cancel();
   famTimers.forEach(clearTimeout); famTimers = [];
-  famAnswered = false;
   famSelectedImages = [];
-  famStep = 0;
+  // Bref délai de sécurité avant que la sélection ne devienne possible (famStep !== 0 bloque les
+  // clics) : même correction que pour Intrus et Reconstitution, contre un tap trop rapide juste
+  // après le tour précédent qui pouvait atterrir par accident sur une image du tour suivant.
+  famStep = 1;
+  famTimers.push(setTimeout(() => { famStep = 0; }, 400));
   famPickedLabel = null;
   const q = FAM_SESSION[famIndex];
   $('fam-progress-label').textContent = `Question ${famIndex + 1} / ${FAM_SESSION.length}`;
@@ -4385,7 +4395,10 @@ $('recon-launch-first-button')?.addEventListener('click', () => {
 function reconShowQuestion() {
   speechSynthesis.cancel();
   reconTimers.forEach(clearTimeout); reconTimers = [];
-  reconAnswered = false;
+  // Même correction que pour Intrus : bref délai de sécurité avant que les choix deviennent
+  // cliquables, pour éviter qu'un tap trop rapide juste après « Suivant » ne réponde par accident.
+  reconAnswered = true;
+  reconTimers.push(setTimeout(() => { reconAnswered = false; }, 400));
   const q = RECON_SESSION[reconIndex];
   $('recon-progress-label').textContent = `Question ${reconIndex + 1} / ${RECON_SESSION.length}`;
   updateTopBanner('Reconstitution', `Question ${reconIndex + 1}/${RECON_SESSION.length}`, reconFieldLabel);
@@ -5641,7 +5654,12 @@ $('intrus-launch-first-button')?.addEventListener('click', () => {
 function intrusShowQuestion() {
   speechSynthesis.cancel();
   intrusTimers.forEach(clearTimeout); intrusTimers = [];
-  intrusAnswered = false;
+  // Bref délai de sécurité avant que les images ne deviennent cliquables : sur un tap rapide
+  // (bouton « Suivant » puis nouvelle image au même endroit à l'écran), le second tap pouvait
+  // atterrir par accident sur la nouvelle question et y répondre sans le vouloir. Le temps que
+  // les images apparaissent visuellement mais restent inactives coupe court à ce faux départ.
+  intrusAnswered = true;
+  intrusTimers.push(setTimeout(() => { intrusAnswered = false; }, 400));
   const q = INTRUS_SESSION[intrusIndex];
   $('intrus-progress-label').textContent = `Question ${intrusIndex + 1} / ${INTRUS_SESSION.length}`;
   updateTopBanner('Intrus', `Question ${intrusIndex + 1}/${INTRUS_SESSION.length}`, intrusFieldLabel);
