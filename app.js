@@ -1348,6 +1348,59 @@ function restoreLastSelection(panelId) {
   });
 }
 
+// Pilotage du personnage à la voix dans le plan rapproché de la salle d'exposition : « gauche »,
+// « droite », « plus vite », « moins vite »/« ralentis », « stop »/« arrête ». Même schéma
+// d'écoute continue avec redémarrage automatique que le micro du quiz, mais on « renforce » la
+// fiabilité en examinant TOUTES les hypothèses de reconnaissance (maxAlternatives) plutôt que la
+// seule première — une commande courte est plus vite noyée dans une reconnaissance imparfaite
+// qu'une phrase entière dictée.
+function attachExhibitionVoiceControl(button) {
+  if (!voiceSupported || !button) { button?.classList.add('hidden'); return; }
+  button.classList.remove('hidden');
+  let recognition = null, listening = false, manualStop = false;
+  const commandMatches = (transcript, words) => words.some((w) => transcript.includes(w));
+  const handleTranscript = (transcript) => {
+    const t = transcript.toLowerCase();
+    if (commandMatches(t, ['arrête', 'stop', 'arrete'])) { stopWalking(); return; }
+    if (commandMatches(t, ['plus vite', 'accélère', 'accelere', 'plus rapide'])) {
+      walkSpeed = Math.min(12, walkSpeed + 2);
+      if (walkDirection !== 0) startWalking(walkDirection);
+      return;
+    }
+    if (commandMatches(t, ['moins vite', 'ralentis', 'ralenti', 'plus lentement'])) {
+      walkSpeed = Math.max(2, walkSpeed - 2);
+      if (walkDirection !== 0) startWalking(walkDirection);
+      return;
+    }
+    if (commandMatches(t, ['gauche'])) { startWalking(-1); return; }
+    if (commandMatches(t, ['droite'])) { startWalking(1); return; }
+  };
+  button.addEventListener('click', () => {
+    if (listening) { manualStop = true; try { recognition.abort(); } catch (e) {} button.classList.remove('listening'); listening = false; return; }
+    manualStop = false;
+    try { recognition = new SpeechRecognitionImpl(); } catch (e) { return; }
+    recognition.lang = 'fr-FR'; recognition.continuous = true; recognition.interimResults = false; recognition.maxAlternatives = 3;
+    button.classList.add('listening'); listening = true;
+    const thisRecognition = recognition;
+    recognition.addEventListener('result', (event) => {
+      const last = event.results[event.results.length - 1];
+      // On examine chaque hypothèse renvoyée par le moteur, pas seulement la plus probable — une
+      // commande d'un ou deux mots se glisse plus facilement dans une hypothèse secondaire.
+      for (let i = 0; i < last.length; i += 1) handleTranscript(last[i].transcript);
+    });
+    recognition.addEventListener('end', () => {
+      if (manualStop || recognition !== thisRecognition) { button.classList.remove('listening'); listening = false; return; }
+      try { thisRecognition.start(); } catch (e) { button.classList.remove('listening'); listening = false; recognition = null; }
+    });
+    recognition.addEventListener('error', (event) => {
+      if (event.error === 'aborted' || event.error === 'no-speech') return; // redémarrage géré par 'end'
+      manualStop = true;
+      button.classList.remove('listening'); listening = false; recognition = null;
+    });
+    try { recognition.start(); } catch (e) { button.classList.remove('listening'); listening = false; }
+  });
+}
+attachExhibitionVoiceControl($('scale-voice-control-button'));
 function attachSimpleMic(button, input) {
   if (!voiceSupported || !button || !input) { button?.classList.add('hidden'); return; }
   button.classList.remove('hidden');
@@ -2513,43 +2566,6 @@ function populateCloserPlanWall(candidates) {
 // tient juste à côté à sa vraie échelle relative — même principe que le mur, mais en très grand,
 // pour bien ressentir la taille d'une seule œuvre. On sort en tirant la silhouette hors du cadre ;
 // le mur retrouve sa position exacte (la promenade continue là où elle s'était arrêtée).
-// Silhouette de référence à côté de l'œuvre à la correction (Intrus) — même principe que la
-// salle d'exposition (une personne de 1,70 m à côté de l'œuvre à sa vraie échelle relative), mais
-// en version légère intégrée directement à la carte de correction, sans passer par toute la
-// visionneuse de la salle. Contraint largeur ET hauteur (une œuvre très large ne doit pas
-// déborder du cadre et chevaucher les informations à côté) et positionne l'œuvre à hauteur des
-// yeux de la silhouette plutôt qu'au sol — on regarde un tableau accroché à hauteur du regard,
-// pas posé par terre. Renvoie null si la hauteur réelle est inconnue (affichage normal alors).
-function buildScaleReveal(work, availW, availH) {
-  const hCm = parseCmValue(work?.hauteur);
-  if (!hCm || hCm <= 0) return null;
-  const lCm = parseCmValue(work?.longueur) || hCm;
-  const refH = Math.max(hCm, 170); // l'un des deux (œuvre ou silhouette) fixe l'échelle en hauteur
-  let pxPerCm = availH / refH;
-  // Contrainte de largeur : la silhouette (environ 50 cm d'épaules) plus l'œuvre doivent tenir
-  // côte à côte dans la largeur disponible — sinon on réduit encore l'échelle en conséquence.
-  const silhCmWidth = 50;
-  pxPerCm = Math.min(pxPerCm, availW / (lCm + silhCmWidth + 20));
-  const artH = Math.round(hCm * pxPerCm);
-  const artW = Math.round(lCm * pxPerCm);
-  const silhH = Math.round(170 * pxPerCm);
-  const silhW = Math.round(silhH * (100 / 340)); // proportions du SVG (viewBox 100×340)
-  // Les yeux de la silhouette se situent vers 22/340e de sa hauteur totale depuis le sommet du
-  // crâne (le cercle de tête du tracé SVG) — on y centre verticalement l'œuvre.
-  const eyeFromBottomPx = silhH * (1 - 22 / 340);
-  const artBottomPx = Math.max(0, eyeFromBottomPx - artH / 2);
-  const html = `<div style="position:relative;display:flex;align-items:flex-end;justify-content:center;gap:16px;width:100%;height:${availH}px;">
-    <div style="position:relative;width:${artW}px;height:${availH}px;flex:0 0 auto;">
-      <img src="${escapeHtml(imageSourceSized(work.image, artW))}" alt="" style="position:absolute;left:0;bottom:${artBottomPx}px;width:${artW}px;height:${artH}px;object-fit:contain;" />
-    </div>
-    <div style="flex:0 0 auto;" title="Silhouette de référence — 1,70 m">
-      <svg viewBox="0 0 100 340" style="height:${silhH}px;width:${silhW}px;color:#8a8a8a;" aria-hidden="true">
-        <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
-      </svg>
-    </div>
-  </div>`;
-  return { html, artW };
-}
 function enterFocusView(work, hCm, note) {
   const lCm = parseCmValue(work.longueur) || hCm;
   $('scale-focus-view').classList.remove('hidden');
@@ -2633,18 +2649,22 @@ makeSilhouetteDraggable($('scale-overview-silhouette'), {
 // possible). Une fois une direction engagée (horizontale ou verticale), elle seule compte pour ce
 // geste — évite les mouvements désordonnés qui produisaient des sorties par erreur.
 let walkAnimationId = null;
+let walkSpeed = 4; // pixels par image (~60 im/s) — ajustable à la voix ("plus vite"/"moins vite")
+let walkDirection = 0; // -1 gauche, 0 arrêté, 1 droite — mémorisé pour "plus vite" sans redonner le sens
 function stopWalking() {
   if (walkAnimationId) clearTimeout(walkAnimationId);
   walkAnimationId = null;
+  walkDirection = 0;
   $('scale-silhouette').classList.remove('walking-left', 'walking-right');
 }
 function startWalking(direction) {
   stopWalking();
+  walkDirection = direction;
   const wall = $('scale-wall');
   const sil = $('scale-silhouette');
   sil.classList.add(direction > 0 ? 'walking-right' : 'walking-left');
   const step = () => {
-    wall.scrollLeft += direction * 4;
+    wall.scrollLeft += walkDirection * walkSpeed;
     walkAnimationId = setTimeout(step, 16); // ~60 images/seconde, sans dépendre de requestAnimationFrame
   };
   walkAnimationId = setTimeout(step, 16);
@@ -5811,15 +5831,7 @@ function intrusAnswer(chosenIndex) {
   });
   if (intrusMode === 'image') {
     const kept = $('intrus-prompt-card').querySelector('.intrus-image-choice');
-    if (kept) {
-      kept.classList.add('intrus-image-choice-solo');
-      // Silhouette de référence à côté de l'œuvre, à sa vraie échelle relative, positionnée à
-      // hauteur des yeux — seulement quand la hauteur réelle est connue ; sinon affichage habituel.
-      const availH = Math.min(760, window.innerHeight * 0.78);
-      const availW = Math.max(280, ($('intrus-prompt-card')?.clientWidth || 700) - 40);
-      const reveal = buildScaleReveal(q.correct, availW, availH);
-      if (reveal) kept.innerHTML = reveal.html;
-    }
+    if (kept) kept.classList.add('intrus-image-choice-solo');
     // On ne garde plus la référence initiale (Auteur/Titre) affichée à droite : juste le verdict.
     $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
   }
