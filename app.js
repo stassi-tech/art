@@ -2507,7 +2507,7 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons'].forEach((id) => $(id).classList.add('hidden'));
   populateOverviewThumbs(candidates);
   state.scaleViewCandidates = candidates;
 }
@@ -2515,7 +2515,7 @@ function enterCloserPlan() {
   const candidates = state.scaleViewCandidates || [];
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button'].forEach((id) => $(id).classList.remove('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
   // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
@@ -2525,7 +2525,7 @@ function enterCloserPlan() {
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons'].forEach((id) => $(id).classList.add('hidden'));
 }
 function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
@@ -2692,6 +2692,21 @@ function attachHandGesture(handEl, direction) {
 }
 attachHandGesture($('scale-hand-left'), -1);
 attachHandGesture($('scale-hand-right'), 1);
+// Deuxième façon d'essayer, en comparaison des mains : deux boutons classiques, appui maintenu =
+// avance tant qu'on garde le doigt/la souris dessus, relâchement = arrêt immédiat. Plus simple à
+// comprendre que le triple geste des mains (tap / glisser / double-tap), à voir lequel des deux
+// convient le mieux à l'usage.
+function attachMoveButton(btn, direction) {
+  if (!btn) return;
+  const start = (event) => { event.preventDefault(); startWalking(direction); };
+  const stop = () => stopWalking();
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', stop);
+  btn.addEventListener('pointercancel', stop);
+  btn.addEventListener('pointerleave', stop); // relâché hors du bouton (doigt qui glisse) = arrêt aussi
+}
+attachMoveButton($('scale-move-left'), -1);
+attachMoveButton($('scale-move-right'), 1);
 // Repositionne le micro façon audioguide, contre l'oreille de la silhouette — recalculé à chaque
 // entrée dans le mur rapproché, puisque la taille de la silhouette change avec l'échelle choisie.
 function positionSilhouetteMic() {
@@ -5886,7 +5901,15 @@ function intrusAnswer(chosenIndex) {
   });
   if (intrusMode === 'image') {
     const kept = $('intrus-prompt-card').querySelector('.intrus-image-choice');
-    if (kept) kept.classList.add('intrus-image-choice-solo');
+    if (kept) {
+      kept.classList.add('intrus-image-choice-solo');
+      // Bug réel repéré : la taille relative (max-width/max-height posée en direct sur l'image
+      // pendant la comparaison) restait accrochée à l'image une fois la correction affichée,
+      // empêchant la règle CSS "-solo" (plein écran) de reprendre la main — l'inline gagne
+      // toujours sur la classe pour une même propriété. On l'efface explicitement ici.
+      const img = kept.querySelector('img');
+      if (img) { img.style.maxWidth = ''; img.style.maxHeight = ''; }
+    }
     // On ne garde plus la référence initiale (Auteur/Titre) affichée à droite : juste le verdict.
     $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
   }

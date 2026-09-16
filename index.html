@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=150" />
+    <link rel="stylesheet" href="style.css?v=151" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1146,6 +1146,10 @@
               <circle cx="86" cy="98" r="7" fill="currentColor" />
             </svg>
             <p id="scale-silhouette-label">Adulte de référence — 1,70 m — tirez la silhouette, ou ses mains, pour vous déplacer</p>
+            <div id="scale-move-buttons" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:14px;z-index:6;">
+              <button type="button" id="scale-move-left" class="nav-arrow-button" aria-label="Se déplacer vers la gauche" title="Se déplacer vers la gauche" style="width:52px;height:52px;font-size:1.3rem;">◄</button>
+              <button type="button" id="scale-move-right" class="nav-arrow-button" aria-label="Se déplacer vers la droite" title="Se déplacer vers la droite" style="width:52px;height:52px;font-size:1.3rem;">►</button>
+            </div>
             <button type="button" id="scale-voice-control-button" class="hidden" aria-label="Piloter le personnage à la voix" title="Piloter le personnage à la voix (dites : gauche, droite, plus vite, moins vite, arrête)" style="position:absolute;width:26px;height:26px;border-radius:50%;border:1.5px solid #fff;background:rgba(0,0,0,.6);color:#fff;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">🎤</button>
             <p id="lightbox-scale-caption" class="lightbox-scale-caption"></p>
             <!-- Vue rapprochée d'une œuvre précise : la silhouette entre dans l'image elle-même pour
@@ -1396,6 +1400,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=199"></script>
+    <script src="app.js?v=200"></script>
   </body>
 </html>
