@@ -5853,16 +5853,37 @@ refreshAccordionLabels();
 
 const LEVEL_QUESTION_COUNTS = { '1': 30, '2': 60, '3': 120 };
 
+// Cache des fichiers déjà téléchargés (clé = URL), avec déduplication des requêtes en vol : un
+// fichier n'est jamais téléchargé deux fois, et si plusieurs appels arrivent PENDANT qu'un
+// téléchargement est encore en cours (ex. le joueur clique plusieurs fois sur « Lancer » de suite
+// avant que le premier chargement ait fini), ils partagent tous la même requête au lieu d'en
+// déclencher chacun une nouvelle en parallèle — c'est ce qui rendait les boutons lents et
+// capricieux : plusieurs téléchargements complets du même gros fichier se disputaient la bande
+// passante en même temps.
+const quizRowsCache = new Map();
 async function fetchQuizRows(art, century) {
   // Un seul fichier par (art, siècle) désormais : le filtrage par niveau se fait côté appli via
   // la colonne "Niveau" de chaque ligne (voir plus bas), plus de suffixe "-niveauX" dans l'URL.
   const url = `quizzes/${art}-${century}.xlsx`;
-  const response = await fetch(url);
-  if (!response.ok) throw new Error('fichier introuvable');
-  const buffer = await response.arrayBuffer();
-  const book = XLSX.read(buffer, { type: 'array' });
-  const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
-  return normaliseRows(rows).map((q) => ({ ...q, art }));
+  if (quizRowsCache.has(url)) return quizRowsCache.get(url);
+  const promise = (async () => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('fichier introuvable');
+    const buffer = await response.arrayBuffer();
+    const book = XLSX.read(buffer, { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
+    return normaliseRows(rows).map((q) => ({ ...q, art }));
+  })();
+  quizRowsCache.set(url, promise);
+  try {
+    const cached = await promise;
+    return [...cached]; // copie superficielle : chaque appelant peut trier/modifier son propre
+    // tableau (ex. mélanger l'ordre des questions) sans jamais altérer le cache partagé par les
+    // autres appels — seul le contenu (déjà téléchargé et lu) est réutilisé, pas la structure.
+  } catch (error) {
+    quizRowsCache.delete(url); // un échec ne doit pas rester en cache : on retentera la prochaine fois
+    throw error;
+  }
 }
 
 let quizFieldLabel = '';
