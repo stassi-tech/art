@@ -544,6 +544,7 @@ function initProfilePage() {
   const savedAmbiance = localStorage.getItem('ambiance') || '';
   const ambianceRadio = document.querySelector(`input[name="pf-ambiance"][value="${savedAmbiance}"]`);
   if (ambianceRadio) ambianceRadio.checked = true;
+  if ($('pf-link-ambiance-field')) $('pf-link-ambiance-field').checked = localStorage.getItem('linkAmbianceToField') === 'true';
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   $('pf-voice').innerHTML = voices.length
     ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
@@ -656,6 +657,9 @@ document.querySelectorAll('input[name="pf-ambiance"]').forEach((radio) => {
     localStorage.setItem('ambiance', radio.value);
     applyAmbiance(radio.value);
   });
+});
+$('pf-link-ambiance-field')?.addEventListener('change', (e) => {
+  localStorage.setItem('linkAmbianceToField', e.target.checked ? 'true' : 'false');
 });
 // Bouton d'accès rapide dans le bandeau (icône 🎨) : change l'ambiance à la volée, y compris en
 // plein exercice, sans avoir à quitter pour passer par Mon compte.
@@ -861,7 +865,7 @@ $('pf-validate-button')?.addEventListener('click', () => {
   // des exercices : plus de texte de présentation, juste la phrase de configuration en haut.
   guidedModeActive = true;
   localStorage.setItem('guidedModeActive', 'true');
-  setTimeout(() => { showPanel('training-hub'); updateExerciseSummaries(); }, 500);
+  setTimeout(() => { showPanel('training-hub'); updateExerciseSummaries(); applyFieldLinkedAmbiance(); }, 500);
 });
 $('account-scores-quiz-button')?.addEventListener('click', () => {
   accountScoreFilter = 'quiz';
@@ -1018,6 +1022,99 @@ $('exercise-results-close')?.addEventListener('click', () => {
 });
 // Sonorise le parcours guidé (texte d'intro et question de chaque étape) — respecte le réglage
 // audio global, comme partout ailleurs dans l'appli.
+// --- Ambiance liée au champ étudié (option « Lier les ambiances au choix de champ », décochée
+// par défaut) : le décor change avec le siècle/artiste étudié — la mémoire s'imprègne aussi du
+// style d'une époque. Priorité : artiste précis (colonne du fichier maître) > siècle si un seul
+// style possible > on demande au joueur si plusieurs styles cohabitent.
+// Siècles à style unique (pas de choix à poser) ; 14e/15e passent en Renaissance si la zone
+// choisie est UNIQUEMENT l'Italie (le Quattrocento y a démarré plus tôt qu'ailleurs en Europe).
+const CENTURY_SINGLE_AMBIANCE = { '14e': 'gothique', '15e': 'gothique', '16e': 'renaissance', '17e': 'versailles' };
+// Siècles à styles multiples : plusieurs décors plausibles selon les courants de l'époque —
+// impossible de trancher seul, on pose la question au joueur.
+const CENTURY_MULTI_AMBIANCE = { '18e': ['ermitage', 'wedgwood'], '19e': ['pitti', ''], '20e': ['bauhaus', 'space'] };
+const AMBIANCE_NAMES = { gothique: 'Gothique international', renaissance: 'Galerie Renaissance', versailles: 'Château de Versailles', ermitage: 'Ermitage Rococo', wedgwood: 'Pure Wedgwood', pitti: 'Romantique Pitti', '': 'Salon Renoir', bauhaus: 'Bauhaus', space: 'Space Age' };
+// Lit la colonne de style d'un artiste dans le fichier maître (vide = rien de spécial prévu pour
+// lui, ex. Giotto : on retombe alors sur la règle du siècle). Le fichier n'est chargé qu'à la
+// demande ; si indisponible, on considère prudemment qu'aucun artiste n'a de style renseigné.
+function getArtistStyleAmbiance(artistName) {
+  if (!artistListLoaded) return '';
+  const row = findArtistRow(artistName);
+  const raw = String(row?.['Ambiance'] || row?.['Style'] || '').trim().toLowerCase();
+  return raw in AMBIANCE_NAMES ? raw : '';
+}
+function centuryAmbianceOptions(century, zones) {
+  if ((century === '14e' || century === '15e') && zones?.length === 1 && zones[0] === 'italie') return ['renaissance'];
+  if (CENTURY_SINGLE_AMBIANCE[century]) return [CENTURY_SINGLE_AMBIANCE[century]];
+  if (CENTURY_MULTI_AMBIANCE[century]) return CENTURY_MULTI_AMBIANCE[century];
+  return [];
+}
+// Détermine ce qu'il faut faire pour la session en cours : { type: 'auto', ambiance, reason } —
+// changement silencieux, { type: 'ask', options, reason } — on pose la question au joueur, ou
+// { type: 'none' } — rien de particulier ne se dégage (pas de champ précis, ou styles cohérents
+// avec l'ambiance déjà en place sans qu'il y ait lieu d'insister).
+async function computeFieldAmbiance() {
+  const ga = readGlobalArtistDefaults();
+  const gf = readGlobalFieldDefaults();
+  if (ga.artists?.length) {
+    await loadArtistListIfNeeded();
+    const styles = [...new Set(ga.artists.map(getArtistStyleAmbiance).filter(Boolean))];
+    if (styles.length === 1) return { type: 'auto', ambiance: styles[0], reason: 'artist' };
+    if (styles.length > 1) return { type: 'ask', options: styles, reason: 'artist' };
+    // Aucun artiste sélectionné n'a de style renseigné : on retombe sur la règle du siècle.
+  }
+  const centuries = gf.centuries?.length ? gf.centuries : [];
+  if (!centuries.length) return { type: 'none' };
+  const allOptions = [...new Set(centuries.flatMap((c) => centuryAmbianceOptions(c, gf.zones)))];
+  if (allOptions.length === 1) return { type: 'auto', ambiance: allOptions[0], reason: 'century' };
+  if (allOptions.length > 1) return { type: 'ask', options: allOptions, reason: 'century' };
+  return { type: 'none' };
+}
+// Textes pédagogiques accompagnant le changement (ou la question posée) — brefs, dans l'esprit
+// « la mémoire s'imprègne aussi du style d'une époque ».
+const AMBIANCE_AUTO_TEXTS = {
+  gothique: "Aux 14e et 15e siècles, l'art occidental restait marqué par le style gothique international — or et bleus profonds des enluminures. Vous voilà plongé dans cette ambiance.",
+  renaissance: "La Renaissance a débuté au Quattrocento en Italie. Vous voilà dans un environnement Renaissance.",
+  versailles: "Le 17e siècle en France, c'est le siècle du Roi-Soleil et de Versailles. Vous voilà dans cette ambiance.",
+};
+const AMBIANCE_ASK_TEXTS = {
+  '18e': "Le 18e siècle a vu cohabiter la légèreté du rococo et l'épure naissante du classicisme. Quelle ambiance choisissez-vous pour cette session ?",
+  '19e': "Au 19e siècle cohabitaient plusieurs styles — un peintre impressionniste pouvait très bien vivre dans un appartement décoré à la mode romantique. Quelle ambiance choisissez-vous pour cette session ?",
+  '20e': "Le 20e siècle a vu s'affronter la rigueur du Bauhaus et l'élan de la conquête spatiale. Quelle ambiance choisissez-vous pour cette session ?",
+  default: "Plusieurs styles cohabitent dans votre sélection. Quelle ambiance choisissez-vous pour cette session ?",
+  artist: "Les artistes choisis n'appartiennent pas au même courant. Quelle ambiance choisissez-vous pour cette session ?",
+};
+function ambianceAskText(decision) {
+  if (decision.reason === 'artist') return AMBIANCE_ASK_TEXTS.artist;
+  const gf = readGlobalFieldDefaults();
+  const singleCentury = gf.centuries?.length === 1 ? gf.centuries[0] : null;
+  return AMBIANCE_ASK_TEXTS[singleCentury] || AMBIANCE_ASK_TEXTS.default;
+}
+async function applyFieldLinkedAmbiance() {
+  $('ambiance-auto-message')?.classList.add('hidden');
+  $('ambiance-ask-box')?.classList.add('hidden');
+  if (localStorage.getItem('linkAmbianceToField') !== 'true') return;
+  const decision = await computeFieldAmbiance();
+  if (decision.type === 'auto') {
+    localStorage.setItem('ambiance', decision.ambiance);
+    applyAmbiance(decision.ambiance);
+    const msg = $('ambiance-auto-message');
+    if (msg) {
+      msg.textContent = `L'ambiance a changé. ${AMBIANCE_AUTO_TEXTS[decision.ambiance] || `Vous voilà dans l'ambiance ${AMBIANCE_NAMES[decision.ambiance]}.`}`;
+      msg.classList.remove('hidden');
+    }
+  } else if (decision.type === 'ask') {
+    $('ambiance-ask-text').textContent = ambianceAskText(decision);
+    $('ambiance-ask-buttons').innerHTML = decision.options.map((amb) => `<button type="button" class="secondary-button ambiance-ask-choice" data-ambiance="${escapeHtml(amb)}" style="padding:8px 16px;">${escapeHtml(AMBIANCE_NAMES[amb])}</button>`).join('');
+    $('ambiance-ask-buttons').querySelectorAll('.ambiance-ask-choice').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        localStorage.setItem('ambiance', btn.dataset.ambiance);
+        applyAmbiance(btn.dataset.ambiance);
+        $('ambiance-ask-box').classList.add('hidden');
+      });
+    });
+    $('ambiance-ask-box')?.classList.remove('hidden');
+  }
+}
 function guidedSpeak(text) {
   if (!getGlobalPrefs().audioOn || !window.speechSynthesis || !text) return;
   speechSynthesis.cancel();
@@ -4586,6 +4683,7 @@ function loadSavedGuidedConfig(name, savedConfigs) {
   localStorage.setItem('guidedModeActive', 'true');
   showPanel('training-hub');
   updateExerciseSummaries();
+  applyFieldLinkedAmbiance();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 // Petit résumé texte d'une configuration enregistrée, affiché sous son bouton — pour se rappeler
@@ -5045,6 +5143,7 @@ $('gc-start-button')?.addEventListener('click', () => {
   localStorage.setItem('guidedModeActive', 'true');
   showPanel('training-hub');
   updateExerciseSummaries();
+  applyFieldLinkedAmbiance();
 });
 $('gc-save-button')?.addEventListener('click', () => {
   const name = $('gc-save-name').value.trim();

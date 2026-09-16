@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=148" />
+    <link rel="stylesheet" href="style.css?v=149" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -109,6 +109,7 @@
             <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="" checked /><span>Salon Renoir — touches impressionnistes, bronze et beige</span></label>
             <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="bauhaus" /><span>Bauhaus — cercle, triangle, carré</span></label>
             <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="space" /><span>Space Age — orbite et chrome</span></label>
+            <p class="modal-hint" style="margin:14px 0 0;">Autre possibilité : laisser le décor changer tout seul selon l'époque étudiée — la mémoire s'imprègne aussi du style d'un siècle. Vous pourrez activer ça quand vous voulez depuis Mon compte.</p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-art" id="gc-personalize-continue" style="margin-top:14px;">Continuer →</button>
           </div>
 
@@ -228,6 +229,11 @@
 
           <p class="intro-banner" id="training-hub-intro-text">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique, sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez, depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
           <p id="training-hub-config-name" style="font-family:Arial,sans-serif;font-size:.9rem;color:var(--ink);line-height:1.5;margin:0 0 16px;"></p>
+          <p id="ambiance-auto-message" class="hidden" style="font-family:Georgia,serif;font-style:italic;font-size:.92rem;line-height:1.5;background:#f3e6c9;padding:12px 16px;border-radius:6px;margin:0 0 16px;"></p>
+          <div id="ambiance-ask-box" class="hidden" style="background:#f3e6c9;padding:14px 16px;border-radius:6px;margin:0 0 16px;">
+            <p id="ambiance-ask-text" style="font-family:Georgia,serif;font-style:italic;font-size:.92rem;line-height:1.5;margin:0 0 10px;"></p>
+            <div id="ambiance-ask-buttons" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+          </div>
 
           <div class="training-exercise-grid">
             <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="exercise-num">Exercice 1</span><span class="label">Imprégnation</span><span class="exercise-summary" id="imp-hub-summary"></span></button>
@@ -1267,6 +1273,8 @@
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="" checked /><span>Salon Renoir — touches impressionnistes, bronze et beige</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="bauhaus" /><span>Bauhaus — cercle, triangle, carré (réf. MoMA, New York)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="space" /><span>Space Age — orbite et chrome (réf. Guggenheim, New York)</span></label>
+            <p class="modal-hint" style="margin:16px 0 0;">La mémoire s'imprègne aussi du style d'une époque : cette option change le décor automatiquement selon le siècle ou l'artiste étudié (ou vous pose la question quand plusieurs styles cohabitent). Elle prend alors le pas sur le choix ci-dessus, tant qu'elle est cochée.</p>
+            <label class="rubrique-option"><input type="checkbox" id="pf-link-ambiance-field" /><span>Lier les ambiances au choix de champ</span></label>
             <button type="button" class="secondary-button pf-clear-inline-button" style="width:100%;margin-top:8px;">Effacer la sélection</button>
             <button type="button" class="secondary-button pf-back-to-menu-button" style="width:100%;margin-top:8px;">Retour à la page d'accueil de mon compte</button>
           </div>
@@ -1375,6 +1383,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=181"></script>
+    <script src="app.js?v=182"></script>
   </body>
 </html>
