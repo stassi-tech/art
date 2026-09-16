@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=151" />
+    <link rel="stylesheet" href="style.css?v=152" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1137,21 +1137,22 @@
             <div id="scale-wall"></div>
             <svg id="scale-silhouette" viewBox="0 0 100 340" aria-hidden="true">
               <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
-              <!-- Mains cliquables : glisser fait avancer tant qu'on la tire, un simple tap la
-                   fait partir seule, un double-tap l'arrête. Cercle invisible plus large que le
-                   rond dessiné, pour rester facile à toucher sur mobile. -->
-              <circle id="scale-hand-left" class="scale-hand" cx="14" cy="98" r="14" fill="transparent" style="cursor:pointer;" />
-              <circle cx="14" cy="98" r="7" fill="currentColor" />
-              <circle id="scale-hand-right" class="scale-hand" cx="86" cy="98" r="14" fill="transparent" style="cursor:pointer;" />
-              <circle cx="86" cy="98" r="7" fill="currentColor" />
             </svg>
-            <p id="scale-silhouette-label">Adulte de référence — 1,70 m — tirez la silhouette, ou ses mains, pour vous déplacer</p>
+            <!-- Les mains cliquables (tap/glisser/double-tap) ont été essayées puis retirées : les
+                 deux flèches ◄ ► ci-dessous se sont avérées plus claires à l'usage. -->
+            <p id="scale-silhouette-label">Adulte de référence — 1,70 m — tirez la silhouette pour vous déplacer, ou utilisez les flèches</p>
             <div id="scale-move-buttons" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:14px;z-index:6;">
               <button type="button" id="scale-move-left" class="nav-arrow-button" aria-label="Se déplacer vers la gauche" title="Se déplacer vers la gauche" style="width:52px;height:52px;font-size:1.3rem;">◄</button>
               <button type="button" id="scale-move-right" class="nav-arrow-button" aria-label="Se déplacer vers la droite" title="Se déplacer vers la droite" style="width:52px;height:52px;font-size:1.3rem;">►</button>
             </div>
             <button type="button" id="scale-voice-control-button" class="hidden" aria-label="Piloter le personnage à la voix" title="Piloter le personnage à la voix (dites : gauche, droite, plus vite, moins vite, arrête)" style="position:absolute;width:26px;height:26px;border-radius:50%;border:1.5px solid #fff;background:rgba(0,0,0,.6);color:#fff;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">🎤</button>
             <p id="lightbox-scale-caption" class="lightbox-scale-caption"></p>
+            <!-- Mini-carte vue de dessus (façon écran de contrôle) : le rectangle représente la
+                 salle, ses 4 côtés les 4 murs, le point rouge la position du joueur. On le glisse
+                 vers un côté pour aller voir ce mur — le PR se met à jour en conséquence. -->
+            <div id="scale-minimap" class="hidden" style="position:fixed;top:70px;right:16px;width:90px;height:64px;background:rgba(20,20,20,.65);border:2px solid rgba(255,255,255,.5);border-radius:4px;z-index:7;">
+              <div id="scale-minimap-dot" style="position:absolute;width:12px;height:12px;border-radius:50%;background:#e2453c;box-shadow:0 0 4px rgba(0,0,0,.6);cursor:grab;left:50%;top:88%;transform:translate(-50%,-50%);"></div>
+            </div>
             <!-- Vue rapprochée d'une œuvre précise : la silhouette entre dans l'image elle-même pour
                  montrer l'échelle en grand — on la tire hors du cadre pour revenir au mur, qui garde
                  sa position (la promenade continue là où elle s'était arrêtée). -->
@@ -1400,6 +1401,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=200"></script>
+    <script src="app.js?v=202"></script>
   </body>
 </html>

@@ -1559,6 +1559,7 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  'sœurs': 'seurs',
   'chassériau': 'Chasériau',
   'malevitch': 'Malévitch',
   'poyer': 'Poyé',
@@ -2507,25 +2508,52 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.add('hidden'));
   populateOverviewThumbs(candidates);
   state.scaleViewCandidates = candidates;
 }
+// Les œuvres de la session sont réparties sur 4 murs (façon vraie salle rectangulaire) plutôt que
+// sur un seul long mur — state.roomWalls garde les 4 groupes, currentWallIndex celui affiché.
+let currentWallIndex = 0;
+function splitIntoFourWalls(candidates) {
+  const walls = [[], [], [], []];
+  candidates.forEach((w, i) => walls[i % 4].push(w));
+  return walls;
+}
+function positionMinimapDot() {
+  const dot = $('scale-minimap-dot');
+  if (!dot) return;
+  // 0=mur du haut (fond), 1=mur de droite, 2=mur du bas (entrée), 3=mur de gauche.
+  const positions = [
+    { left: '50%', top: '12%' },
+    { left: '88%', top: '50%' },
+    { left: '50%', top: '88%' },
+    { left: '12%', top: '50%' },
+  ];
+  const p = positions[currentWallIndex] || positions[0];
+  dot.style.left = p.left; dot.style.top = p.top;
+}
+function goToWall(index) {
+  currentWallIndex = ((index % 4) + 4) % 4;
+  positionMinimapDot();
+  populateCloserPlanWall((state.roomWalls || [[]])[currentWallIndex] || []);
+}
 function enterCloserPlan() {
   const candidates = state.scaleViewCandidates || [];
+  state.roomWalls = splitIntoFourWalls(candidates);
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons'].forEach((id) => $(id).classList.remove('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
   // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
   // tableaux, au ras du sol au lieu de les accrocher à hauteur des yeux.
-  requestAnimationFrame(() => { populateCloserPlanWall(candidates); positionSilhouetteMic(); });
+  requestAnimationFrame(() => { goToWall(currentWallIndex); positionSilhouetteMic(); });
 }
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.add('hidden'));
 }
 function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
@@ -2647,55 +2675,9 @@ function isNearBottomCorner(clientX, clientY) {
   const nearEdge = clientX < 70 || clientX > window.innerWidth - 70;
   return nearBottom && nearEdge;
 }
-// Mains cliquables sur la silhouette (mur rapproché) : trois gestes distincts sur chaque main.
-// - Glisser la main : avance tant qu'on la tire (s'arrête au relâchement).
-// - Un simple tap (sans glisser) : part seule dans cette direction, sans qu'on ait à la tenir.
-// - Un double-tap : s'arrête, où qu'on soit.
-// stopPropagation empêche ce geste d'être aussi intercepté par le glisser du corps entier
-// (même élément SVG, sinon les deux mécanismes se déclencheraient en même temps).
-function attachHandGesture(handEl, direction) {
-  if (!handEl) return;
-  const DRAG_THRESHOLD = 10;
-  const DOUBLE_TAP_MS = 320;
-  let downX = 0, downY = 0, dragging = false, pendingSingleTap = null, lastTapTime = 0;
-  handEl.addEventListener('pointerdown', (event) => {
-    event.stopPropagation();
-    event.preventDefault();
-    downX = event.clientX; downY = event.clientY;
-    dragging = false;
-    handEl.setPointerCapture?.(event.pointerId);
-  });
-  handEl.addEventListener('pointermove', (event) => {
-    event.stopPropagation();
-    if (Math.hypot(event.clientX - downX, event.clientY - downY) > DRAG_THRESHOLD) {
-      if (!dragging) { dragging = true; if (pendingSingleTap) { clearTimeout(pendingSingleTap); pendingSingleTap = null; } }
-      startWalking(direction);
-    }
-  });
-  const onUp = (event) => {
-    event.stopPropagation();
-    if (dragging) { stopWalking(); dragging = false; return; }
-    // Pas de glissement : c'est un tap. On attend un court instant pour voir s'il est suivi d'un
-    // second tap (double-tap = arrêt) avant de le traiter comme un simple tap (départ seul).
-    const now = Date.now();
-    if (now - lastTapTime < DOUBLE_TAP_MS) {
-      if (pendingSingleTap) { clearTimeout(pendingSingleTap); pendingSingleTap = null; }
-      stopWalking();
-      lastTapTime = 0;
-      return;
-    }
-    lastTapTime = now;
-    pendingSingleTap = setTimeout(() => { startWalking(direction); pendingSingleTap = null; }, DOUBLE_TAP_MS);
-  };
-  handEl.addEventListener('pointerup', onUp);
-  handEl.addEventListener('pointercancel', onUp);
-}
-attachHandGesture($('scale-hand-left'), -1);
-attachHandGesture($('scale-hand-right'), 1);
-// Deuxième façon d'essayer, en comparaison des mains : deux boutons classiques, appui maintenu =
-// avance tant qu'on garde le doigt/la souris dessus, relâchement = arrêt immédiat. Plus simple à
-// comprendre que le triple geste des mains (tap / glisser / double-tap), à voir lequel des deux
-// convient le mieux à l'usage.
+// Les mains cliquables (tap/glisser/double-tap) ont été essayées puis retirées : les deux flèches
+// ◄ ► ci-dessous se sont avérées plus simples et plus claires à l'usage.
+// Appui maintenu = avance tant qu'on garde le doigt/la souris dessus, relâchement = arrêt immédiat.
 function attachMoveButton(btn, direction) {
   if (!btn) return;
   const start = (event) => { event.preventDefault(); startWalking(direction); };
@@ -2707,6 +2689,30 @@ function attachMoveButton(btn, direction) {
 }
 attachMoveButton($('scale-move-left'), -1);
 attachMoveButton($('scale-move-right'), 1);
+// Glisser le point rouge de la mini-carte vers un des 4 côtés du rectangle fait passer sur ce mur
+// — on détermine le côté le plus proche au relâchement (pas besoin de viser pile un coin).
+(function attachMinimapDrag() {
+  const minimap = $('scale-minimap');
+  const dot = $('scale-minimap-dot');
+  if (!minimap || !dot) return;
+  let dragging = false;
+  const moveTo = (clientX, clientY) => {
+    const rect = minimap.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const y = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+    dot.style.left = `${x * 100}%`; dot.style.top = `${y * 100}%`;
+    // Distance au centre de chaque côté (haut/droite/bas/gauche), en coordonnées 0..1.
+    const distances = [y, 1 - x, 1 - y, x];
+    const nearest = distances.indexOf(Math.min(...distances));
+    if (nearest !== currentWallIndex) goToWall(nearest);
+  };
+  dot.addEventListener('pointerdown', (event) => { event.preventDefault(); dragging = true; dot.setPointerCapture?.(event.pointerId); dot.style.cursor = 'grabbing'; });
+  dot.addEventListener('pointermove', (event) => { if (dragging) moveTo(event.clientX, event.clientY); });
+  const stop = () => { dragging = false; dot.style.cursor = 'grab'; positionMinimapDot(); };
+  dot.addEventListener('pointerup', stop);
+  dot.addEventListener('pointercancel', stop);
+})();
 // Repositionne le micro façon audioguide, contre l'oreille de la silhouette — recalculé à chaque
 // entrée dans le mur rapproché, puisque la taille de la silhouette change avec l'échelle choisie.
 function positionSilhouetteMic() {
