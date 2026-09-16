@@ -916,7 +916,7 @@ const voiceSupported = Boolean(SpeechRecognitionImpl);
 // PARAMÈTRES GLOBAUX (voix, chronomètre, touche Entrée, mémorisation) — communs à tous les
 // exercices d'entraînement, réglables depuis « Mon compte ».
 // ============================================================
-const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '', showExplanations: true, showRules: true, flagsArtists: true, flagsLocations: true, defaultAdvance: 'manual', defaultDelay: 5000 };
+const DEFAULT_PREFS = { showTimer: true, enterValidate: true, rememberSelection: true, audioOn: true, voiceName: '', showExplanations: true, showRules: true, flagsArtists: true, flagsLocations: true, defaultAdvance: 'manual', defaultDelay: 5000, speechVolume: 1 };
 function getGlobalPrefs() {
   try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem('globalExercisePrefs') || '{}') }; }
   catch (e) { return { ...DEFAULT_PREFS }; }
@@ -926,6 +926,21 @@ function setGlobalPref(key, value) {
   prefs[key] = value;
   localStorage.setItem('globalExercisePrefs', JSON.stringify(prefs));
 }
+// Barres de volume du bandeau : 5 niveaux (0.2 à 1), appliqués à toutes les voix de l'appli via
+// getGlobalPrefs().speechVolume, lu par chaque fonction "Speak" au moment de parler.
+function renderVolumeBars() {
+  const level = Math.round((getGlobalPrefs().speechVolume ?? 1) * 5);
+  document.querySelectorAll('.volume-bar').forEach((bar) => {
+    bar.style.background = Number(bar.dataset.level) <= level ? 'var(--accent)' : '#ccc';
+  });
+}
+document.querySelectorAll('.volume-bar').forEach((bar) => {
+  bar.addEventListener('click', () => {
+    setGlobalPref('speechVolume', Number(bar.dataset.level) / 5);
+    renderVolumeBars();
+  });
+});
+renderVolumeBars();
 function getGlobalVoice() {
   if (!window.speechSynthesis) return null;
   const prefs = getGlobalPrefs();
@@ -1134,7 +1149,7 @@ function guidedSpeak(text) {
   if (!getGlobalPrefs().audioOn || !window.speechSynthesis || !text) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
-  u.lang = 'fr-FR'; u.rate = 0.85;
+  u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
   const voice = getGlobalVoice();
   if (voice) u.voice = voice;
   speechSynthesis.speak(u);
@@ -1158,7 +1173,7 @@ function speakObjective(elementId) {
   if (!el) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(el.textContent));
-  u.lang = 'fr-FR'; u.rate = 0.85;
+  u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
   speechSynthesis.speak(u);
 }
 
@@ -1792,7 +1807,11 @@ function normaliseRows(rows) {
     // --- Dimensions : nouvelle structure Hauteur/Longueur/Profondeur si présente, sinon ancienne
     // colonne unique « dimensions » (repliée dans hauteur/longueur via une expression régulière).
     const hauteurKey = findColumn(row, ['hauteur']);
-    const longueurKey = findColumn(row, ['longueur']);
+    // Bug réel repéré : le fichier utilise « Largeur » (le terme courant pour un tableau), mais le
+    // code ne cherchait que « Longueur » — la colonne n'était donc jamais trouvée, malgré une
+    // donnée bien présente et correcte dans le fichier. D'où le repli systématique sur un format
+    // carré, créant de grosses marges pour toute œuvre au format paysage (ex. Les Alyscamps).
+    const longueurKey = findColumn(row, ['largeur', 'longueur']);
     const profondeurKey = findColumn(row, ['profondeur']);
     let hauteur = '', longueur = '', profondeur = '';
     if (hauteurKey || longueurKey || profondeurKey) {
@@ -2407,7 +2426,7 @@ function quizSpeak(text) {
   if (!getGlobalPrefs().audioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
-  u.lang = 'fr-FR'; u.rate = 0.85;
+  u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
   const voice = getGlobalVoice();
   if (voice) u.voice = voice;
   speechSynthesis.speak(u);
@@ -2569,8 +2588,15 @@ function populateCloserPlanWall(candidates) {
   let currentNote = '';
   let currentHCm = 0;
   candidates.forEach((w) => {
-    const hCm = parseCmValue(w.hauteur);
-    const lCm = parseCmValue(w.longueur) || hCm;
+    // Repli si la hauteur réelle manque ou est invalide pour cette œuvre précise (donnée absente
+    // ou mal renseignée dans le fichier) : une taille de tableau courante plutôt qu'un calcul qui
+    // partait en vrille (taille nulle ou NaN, œuvre réduite à rien sur le mur).
+    let hCm = parseCmValue(w.hauteur);
+    if (!hCm || hCm <= 0 || !isFinite(hCm)) hCm = 60;
+    // À défaut de largeur connue, une proportion de tableau courante (un peu plus large que
+    // haut) plutôt qu'un carré parfait, qui créait de grosses marges pour les œuvres au format
+    // paysage (ex. Les Alyscamps de Gauguin) une fois affichées à leurs vraies proportions.
+    const lCm = parseCmValue(w.longueur) || hCm * 1.3;
     let artH = hCm * pxPerCm;
     let artW = lCm * pxPerCm;
     let note = '';
@@ -2599,6 +2625,16 @@ function populateCloserPlanWall(candidates) {
     cursorLeft += Math.max(artW, 4) + 40;
     if (w === currentLightboxWork) { currentNote = note; currentHCm = hCm; }
   });
+  // Bug réel repéré : en répartissant les œuvres sur 4 murs, chacun n'en a plus que quelques-unes
+  // — pas assez de largeur pour dépasser l'écran, donc rien à faire défiler : le personnage
+  // semblait bloqué et les flèches n'avaient plus aucun effet visible. On garantit ici une largeur
+  // minimale de marche (2,5 fois l'écran), avec un repère invisible en bout de mur.
+  const minWidth = window.innerWidth * 2.5;
+  if (cursorLeft < minWidth) {
+    const spacer = document.createElement('div');
+    spacer.style.cssText = `position:absolute;left:${minWidth}px;width:1px;height:1px;`;
+    wall.appendChild(spacer);
+  }
   $('lightbox-scale-caption').textContent = `Hauteur réelle : ${currentHCm} cm${currentNote}`;
 }
 // Vue rapprochée d'une œuvre précise : elle occupe le plus possible de l'écran, la silhouette se
@@ -2606,7 +2642,13 @@ function populateCloserPlanWall(candidates) {
 // pour bien ressentir la taille d'une seule œuvre. On sort en tirant la silhouette hors du cadre ;
 // le mur retrouve sa position exacte (la promenade continue là où elle s'était arrêtée).
 function enterFocusView(work, hCm, note) {
-  const lCm = parseCmValue(work.longueur) || hCm;
+  // Garde-fou : sans hauteur réelle connue (donnée manquante ou invalide pour cette œuvre
+  // précise), tous les calculs qui suivent partent en vrille (division par une valeur nulle,
+  // tailles NaN) — l'œuvre se retrouvait réduite à rien, à hauteur des pieds de la silhouette.
+  // Sans donnée fiable, mieux vaut ne pas entrer dans cette vue plutôt que d'afficher n'importe
+  // quoi : le clic n'a alors simplement aucun effet.
+  if (!hCm || hCm <= 0 || !isFinite(hCm)) return;
+  const lCm = parseCmValue(work.longueur) || hCm * 1.3;
   $('scale-focus-view').classList.remove('hidden');
   const maxArtH = window.innerHeight * 0.82;
   const maxArtW = window.innerWidth * 0.62;
@@ -2747,6 +2789,21 @@ function stopWalking() {
   walkDirection = 0;
   $('scale-silhouette').classList.remove('walking-left', 'walking-right');
 }
+function updateDotAlongWall() {
+  const wall = $('scale-wall');
+  const dot = $('scale-minimap-dot');
+  if (!wall || !dot) return;
+  const maxScroll = Math.max(1, wall.scrollWidth - wall.clientWidth);
+  const progress = Math.min(1, Math.max(0, wall.scrollLeft / maxScroll)); // 0..1 le long du mur
+  // Murs du haut/bas (0 et 2) : la progression avance le point horizontalement, de gauche à
+  // droite (18 % à 82 % pour rester bien à l'intérieur du rectangle). Murs latéraux (1 et 3) :
+  // verticalement, de la même façon.
+  if (currentWallIndex === 0 || currentWallIndex === 2) {
+    dot.style.left = `${18 + progress * 64}%`;
+  } else {
+    dot.style.top = `${18 + progress * 64}%`;
+  }
+}
 function startWalking(direction) {
   stopWalking();
   walkDirection = direction;
@@ -2755,6 +2812,7 @@ function startWalking(direction) {
   sil.classList.add(direction > 0 ? 'walking-right' : 'walking-left');
   const step = () => {
     wall.scrollLeft += walkDirection * walkSpeed;
+    updateDotAlongWall();
     walkAnimationId = setTimeout(step, 16); // ~60 images/seconde, sans dépendre de requestAnimationFrame
   };
   walkAnimationId = setTimeout(step, 16);
@@ -3184,6 +3242,10 @@ async function fetchWorksForArtistRow(row) {
 }
 $('global-exhibition-button')?.addEventListener('click', (event) => {
   event.stopPropagation();
+  // Bug réel repéré : quitter un exercice en cours (ex. Intrus) pour la salle d'exposition
+  // laissait son score accroché au bandeau — la salle s'ouvre en superposition, sans passer par
+  // showPanel(), qui est le seul endroit qui nettoyait normalement le bandeau jusqu'ici.
+  clearTopBanner();
   updateExhibitionButtonLabel();
   const picker = $('exhibition-picker');
   const wasHidden = picker.classList.contains('hidden');
@@ -3657,7 +3719,7 @@ function famSpeak2(text, onEnd) {
   if (!chronoAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
-  u.lang = 'fr-FR'; u.rate = 0.85;
+  u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (chronoSelectedVoiceRef) u.voice = chronoSelectedVoiceRef;
   if (onEnd) {
     let done = false;
@@ -3880,7 +3942,7 @@ function famSpeak(text, onEnd) {
   if (!famAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
-  u.lang = 'fr-FR'; u.rate = 0.85;
+  u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (famSelectedVoiceRef) u.voice = famSelectedVoiceRef;
   if (onEnd) {
     let done = false;
@@ -4183,7 +4245,7 @@ function vfSpeak(text, onEnd) {
   if (!vfAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
-  u.lang = 'fr-FR'; u.rate = 0.85;
+  u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (vfSelectedVoiceRef) u.voice = vfSelectedVoiceRef;
   if (onEnd) {
     // Filet de sécurité : certains navigateurs ne déclenchent pas toujours onend de façon
@@ -4486,7 +4548,7 @@ function reconSpeak(text) {
   if (!reconAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
-  u.lang = 'fr-FR'; u.rate = 0.85;
+  u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (reconSelectedVoice) u.voice = reconSelectedVoice;
   speechSynthesis.speak(u);
 }
@@ -5491,7 +5553,7 @@ function impSpeak(text) {
   if (!impAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
-  u.lang = 'fr-FR'; u.rate = 0.72;
+  u.lang = 'fr-FR'; u.rate = 0.72; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (impSelectedVoice) u.voice = impSelectedVoice;
   speechSynthesis.speak(u);
 }
@@ -5695,7 +5757,7 @@ function intrusSpeak(text) {
   if (!intrusAudioOn || !window.speechSynthesis) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
-  u.lang = 'fr-FR'; u.rate = 0.85;
+  u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (intrusSelectedVoice) u.voice = intrusSelectedVoice;
   speechSynthesis.speak(u);
 }

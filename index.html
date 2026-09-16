@@ -27,6 +27,15 @@
         <span id="topbar-timer"></span>
         <button type="button" id="global-back-button" class="global-topbar-button hidden" aria-label="Page précédente" title="Page précédente">←</button>
         <button type="button" id="global-home-button" class="global-topbar-button" aria-label="Retour à l'accueil" title="Retour à l'accueil">🏠</button>
+        <!-- Barres de volume de la voix de synthèse — 5 niveaux, la barre cliquée fixe le niveau
+             (toutes les barres jusqu'à elle se remplissent), pas seulement marche/arrêt. -->
+        <div id="global-volume-bars" role="group" aria-label="Volume de la voix" title="Volume de la voix" style="display:flex;align-items:flex-end;gap:2px;height:22px;cursor:pointer;margin:0 4px;">
+          <button type="button" class="volume-bar" data-level="1" style="width:4px;height:8px;border:none;padding:0;background:#ccc;"></button>
+          <button type="button" class="volume-bar" data-level="2" style="width:4px;height:12px;border:none;padding:0;background:#ccc;"></button>
+          <button type="button" class="volume-bar" data-level="3" style="width:4px;height:16px;border:none;padding:0;background:#ccc;"></button>
+          <button type="button" class="volume-bar" data-level="4" style="width:4px;height:19px;border:none;padding:0;background:#ccc;"></button>
+          <button type="button" class="volume-bar" data-level="5" style="width:4px;height:22px;border:none;padding:0;background:#ccc;"></button>
+        </div>
         <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
         <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
         <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
@@ -1401,6 +1410,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=202"></script>
+    <script src="app.js?v=206"></script>
   </body>
 </html>
