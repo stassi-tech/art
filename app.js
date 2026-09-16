@@ -2370,6 +2370,26 @@ function parseCmValue(raw) {
   const m = String(raw || '').replace(',', '.').match(/[\d.]+/);
   return m ? parseFloat(m[0]) : null;
 }
+// Échelle relative compressée pour les jeux de comparaison d'images (Intrus, Famille) : reflète
+// les vraies différences de taille entre œuvres sans les rendre injouables — une racine carrée de
+// la hauteur, ramenée entre une taille minimale et maximale à l'écran, plutôt qu'une proportion
+// exacte (qui rendrait par exemple un médaillon de Fouquet invisible à côté d'un Courbet
+// monumental). Retourne un tableau de tailles en pixels, dans le même ordre que "works".
+function relativeImageSizes(works, minPx = 90, maxPx = 260, defaultPx = 170) {
+  const heights = works.map((w) => parseCmValue(w?.hauteur));
+  const validHeights = heights.filter((h) => h && h > 0);
+  // Moins de 2 hauteurs connues : rien à comparer, on garde toutes les cases à la même taille
+  // plutôt que d'afficher une différence arbitraire basée sur une seule donnée isolée.
+  if (validHeights.length < 2) return works.map(() => defaultPx);
+  const minRoot = Math.sqrt(Math.min(...validHeights));
+  const maxRoot = Math.sqrt(Math.max(...validHeights));
+  if (maxRoot === minRoot) return works.map(() => defaultPx); // toutes de la même hauteur
+  return heights.map((h) => {
+    if (!h || h <= 0) return defaultPx; // hauteur manquante pour cette œuvre précise : taille par défaut
+    const t = (Math.sqrt(h) - minRoot) / (maxRoot - minRoot);
+    return Math.round(minPx + t * (maxPx - minPx));
+  });
+}
 function setLightboxScaleData(work) {
   currentLightboxWork = work && parseCmValue(work.hauteur) ? work : null;
   $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
@@ -3832,8 +3852,11 @@ function famShowQuestion() {
   $('fam-validate-selection-button').disabled = false;
 
   $('fam-image-grid').className = `fam-image-grid${q.imgCount === 6 ? ' fam-count-6' : ''}`;
+  // Même échelle relative compressée que pour Intrus : les tailles à l'écran reflètent un peu les
+  // vraies différences de taille entre les œuvres, sans rendre les plus petites illisibles.
+  const famSizes = relativeImageSizes(q.images);
   $('fam-image-grid').innerHTML = q.images.map((work, i) =>
-    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" /></button>`
+    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" style="max-width:${famSizes[i]}px;max-height:${famSizes[i]}px;" /></button>`
   ).join('');
   $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -5682,8 +5705,12 @@ function intrusShowQuestion() {
   if (intrusMode === 'image') {
     // Les 3 images (choix) occupent la grande zone de gauche, en plus grand ; la référence à
     // retrouver s'affiche à droite, avec le même espacement de rubrique que la correction.
+    // Tailles relatives (racine carrée de la hauteur réelle, compressée entre un minimum et un
+    // maximum) plutôt que 3 vignettes uniformes — on retrouve un peu le sens des proportions
+    // réelles entre les œuvres comparées, sans rendre la plus petite illisible.
+    const sizes = relativeImageSizes(q.choices);
     promptCard.innerHTML = `<div class="intrus-image-choices">${q.choices.map((c, i) =>
-      `<button type="button" class="intrus-image-choice" data-index="${i}"><img src="${escapeHtml(imageSourceSized(c.image, 300))}" alt="" /></button>`
+      `<button type="button" class="intrus-image-choice" data-index="${i}"><img src="${escapeHtml(imageSourceSized(c.image, 300))}" alt="" style="max-width:${sizes[i]}px;max-height:${sizes[i]}px;" /></button>`
     ).join('')}</div>`;
     promptCard.querySelectorAll('.intrus-image-choice').forEach((btn) => {
       btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
