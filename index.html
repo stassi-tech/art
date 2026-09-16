@@ -85,7 +85,16 @@
         <section id="guided-config-panel" class="welcome-panel hidden">
           <h2 style="font-family:Georgia,serif;">Configurons votre partie ensemble</h2>
 
-          <div id="gc-step-art" class="gc-step">
+          <div id="gc-step-intro" class="gc-step">
+            <p style="line-height:1.5;">Dans ce parcours guidé vous allez choisir vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrerez vous-même par champs (art, siècle, zone géographique, et éventuellement sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pourrez le faire quand vous aurez plus d'expérience depuis votre compte (icône 👤). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer. Mais vous pouvez choisir vos exercices indépendamment les uns des autres et adopter la formule qui vous convient le mieux. Si vous voulez retrouver plus tard une configuration d'exercices, vous pouvez l'enregistrer dans votre compte.</p>
+            <div id="gc-intro-saved-configs" class="hidden" style="margin:12px 0;">
+              <p style="font-family:Arial,sans-serif;font-size:.9rem;">Si vous avez déjà enregistré une configuration, appuyez sur ce bouton pour la relancer :</p>
+              <div id="gc-intro-saved-configs-list" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+            </div>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-art" style="margin-top:14px;">Commencer le parcours →</button>
+          </div>
+
+          <div id="gc-step-art" class="gc-step hidden">
             <p class="config-table-col-title">Aujourd'hui, vous voulez jouer avec quel domaine artistique ?</p>
             <label class="rubrique-option"><input type="checkbox" class="gc-art" value="peinture" /><span>Peinture</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-art" value="sculpture" /><span>Sculpture</span></label>
@@ -200,23 +209,19 @@
           <p class="eyebrow home-eyebrow">Peinture et sculpture en Occident<br>14e au 20e siècle</p>
           <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
 
-          <p class="intro-banner" id="training-hub-intro-text">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique, sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pouvez le faire depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>), ou avec les boutons de chaque exercice (icône <span aria-hidden="true">✏️</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
+          <p class="intro-banner" id="training-hub-intro-text">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique, sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez, depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
           <p id="training-hub-config-name" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--accent);font-weight:700;margin:-10px 0 14px;"></p>
-          <div id="training-hub-saved-configs" class="hidden" style="margin:-6px 0 16px;">
-            <p class="modal-hint" style="margin:0 0 6px;">Vos configurations enregistrées :</p>
-            <div id="training-hub-saved-configs-list" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-          </div>
 
           <div class="training-exercise-grid">
-            <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="exercise-num">Exercice 1</span><span class="label">Imprégnation</span><span class="exercise-summary" id="imp-hub-summary"></span><span class="exercise-summary-edit" id="imp-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="exercise-num">Exercice 2</span><span class="label">Intrus</span><span class="exercise-summary" id="intrus-hub-summary"></span><span class="exercise-summary-edit" id="intrus-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button" id="open-famille-setup"><span class="exercise-num">Exercice 3</span><span class="label">Famille</span><span class="exercise-summary" id="fam-hub-summary"></span><span class="exercise-summary-edit" id="fam-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="exercise-num">Exercice 4</span><span class="label">Reconstitution</span><span class="exercise-summary" id="recon-hub-summary"></span><span class="exercise-summary-edit" id="recon-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="exercise-num">Exercice 5</span><span class="label">Vrai/Faux</span><span class="exercise-summary" id="vf-hub-summary"></span><span class="exercise-summary-edit" id="vf-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
-            <button type="button" class="home-mode-button" id="open-chrono-setup"><span class="exercise-num">Exercice 6</span><span class="label">Chronologie</span><span class="exercise-summary" id="chrono-hub-summary"></span><span class="exercise-summary-edit" id="chrono-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+            <button type="button" class="home-mode-button" id="open-impregnation-setup"><span class="exercise-num">Exercice 1</span><span class="label">Imprégnation</span><span class="exercise-summary" id="imp-hub-summary"></span></button>
+            <button type="button" class="home-mode-button" id="open-intrus-setup"><span class="exercise-num">Exercice 2</span><span class="label">Intrus</span><span class="exercise-summary" id="intrus-hub-summary"></span></button>
+            <button type="button" class="home-mode-button" id="open-famille-setup"><span class="exercise-num">Exercice 3</span><span class="label">Famille</span><span class="exercise-summary" id="fam-hub-summary"></span></button>
+            <button type="button" class="home-mode-button" id="open-reconstitution-setup"><span class="exercise-num">Exercice 4</span><span class="label">Reconstitution</span><span class="exercise-summary" id="recon-hub-summary"></span></button>
+            <button type="button" class="home-mode-button" id="open-vraifaux-setup"><span class="exercise-num">Exercice 5</span><span class="label">Vrai/Faux</span><span class="exercise-summary" id="vf-hub-summary"></span></button>
+            <button type="button" class="home-mode-button" id="open-chrono-setup"><span class="exercise-num">Exercice 6</span><span class="label">Chronologie</span><span class="exercise-summary" id="chrono-hub-summary"></span></button>
           </div>
 
-          <button type="button" class="home-mode-button quiz-final-button" id="open-quiz-setup"><span class="exercise-num">Autoévaluation</span><span class="label">Quiz final</span><span class="exercise-summary" id="quiz-hub-summary"></span><span class="exercise-summary-edit" id="quiz-hub-edit" title="Changer la sélection mémorisée">✏️</span></button>
+          <button type="button" class="home-mode-button quiz-final-button" id="open-quiz-setup"><span class="exercise-num">Autoévaluation</span><span class="label">Quiz final</span><span class="exercise-summary" id="quiz-hub-summary"></span></button>
         </section>
 
         <section id="impregnation-setup-panel" class="welcome-panel hidden">
@@ -919,7 +924,7 @@
           <div class="modal-box">
             <h3>Comment fonctionne l’application</h3>
             <p>Deux façons de progresser : les <strong>6 exercices d’entraînement</strong> (Imprégnation, Intrus, Famille, Reconstitution, Vrai/Faux, Chronologie), classés par ordre croissant de difficulté, puis le <strong>quiz final</strong> pour vous autoévaluer sur le même échantillon d’œuvres. Mais vous pouvez faire le quiz sans avoir pratiqué d’entraînement.</p>
-            <p>Chaque exercice et le quiz se filtrent par <strong>champs</strong> (art, siècle, zone géographique) et par <strong>rubriques, niveaux, nombre de questions</strong>. Si vous ne cochez rien aucune restriction de champ ni de difficulté ne s’appliquera. Réglez ces choix une fois pour toutes depuis <strong>Mon compte</strong> (icône 👤) : ils s’appliquent alors automatiquement à tous les exercices et au quiz. Pour un choix différent sur un exercice ou le quiz en particulier, ouvrez sa fenêtre de configuration avec l’icône ✏️ sur son bouton.</p>
+            <p>Chaque exercice et le quiz se filtrent par <strong>champs</strong> (art, siècle, zone géographique) et par <strong>rubriques, niveaux, nombre de questions</strong>. Si vous ne cochez rien aucune restriction de champ ni de difficulté ne s’appliquera. Réglez ces choix depuis <strong>Mon compte</strong> (icône 👤) : ils s’appliquent alors automatiquement à tous les exercices et au quiz.</p>
             <p>Le niveau reflète en général la notoriété de l’<strong>artiste</strong> dans son ensemble, pas celle de chaque œuvre individuellement. Mais il arrive qu’une œuvre isolée soit bien plus (ou moins) célèbre que le reste de la production du même artiste : dans ces cas, elle est reclassée à son propre niveau, indépendamment de celui de l’artiste. C’est une estimation, pas une science exacte — si un classement vous semble discutable, il s’agit plutôt d’assurer une progression dans l’apprentissage plutôt qu’un jugement de valeur.</p>
             <p>Dans le quiz, pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les informations disponibles, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d’orthographe, surnoms, titres en langue d’origine) sont tolérées dans une certaine mesure.</p>
             <p>Un bouton micro (🎤) permet de dicter votre réponse : si vous avez sélectionné plusieurs rubriques, appuyez d’abord sur le bouton de la rubrique concernée pour la sélectionner, puis sur le micro juste avant de parler. Pour l’artiste, dictez le prénom complet plutôt que le seul nom de famille : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » seul, souvent retranscrit en « monnaie ». Vous pouvez corriger avec le clavier mais le micro alors se désactive. Il suffit de le réactiver pour continuer en dictée orale.</p>
@@ -1341,6 +1346,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=170"></script>
+    <script src="app.js?v=173"></script>
   </body>
 </html>

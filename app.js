@@ -825,7 +825,7 @@ $('pf-rubriques-clear')?.addEventListener('click', () => {
 // d'amener directement au menu des exercices.
 $('pf-validate-button')?.addEventListener('click', () => {
   $('pf-validate-button').classList.add('intro-highlight');
-  setTimeout(() => showPanel('training-hub'), 500);
+  setTimeout(() => { showPanel('training-hub'); updateExerciseSummaries(); }, 500);
 });
 $('account-scores-quiz-button')?.addEventListener('click', () => {
   accountScoreFilter = 'quiz';
@@ -4525,9 +4525,28 @@ function loadSavedGuidedConfig(name, savedConfigs) {
   if (cfg.allGames) localStorage.removeItem('globalGamesDefaults');
   else localStorage.setItem('globalGamesDefaults', JSON.stringify({ games: cfg.games || [], remember: true }));
   loadedGuidedConfigName = name;
+  guidedModeActive = true;
+  localStorage.setItem('guidedModeActive', 'true');
   showPanel('training-hub');
   updateExerciseSummaries();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+// Petit résumé texte d'une configuration enregistrée, affiché sous son bouton — pour se rappeler
+// ce qu'elle contient sans avoir à la relancer pour le savoir.
+function summarizeSavedConfig(cfg) {
+  const gf = cfg.field || {};
+  const ga = cfg.artists || {};
+  const gr = cfg.rubrique || {};
+  const artLabel = { peinture: 'Peinture', sculpture: 'Sculpture' };
+  const parts = [];
+  if (gf.arts?.length) parts.push(gf.arts.map((a) => artLabel[a] || a).join('+'));
+  if (gf.centuries?.length) parts.push(gf.centuries.join('+'));
+  if (gf.zones?.length) parts.push(`${gf.zones.length} zone(s)`);
+  if (ga.artists?.length) parts.push(ga.artists.slice(0, 2).join(', ') + (ga.artists.length > 2 ? ` +${ga.artists.length - 2}` : ''));
+  if (gr.levels?.length) parts.push('N' + gr.levels.join('+'));
+  if (gr.count) parts.push(`${gr.count} questions`);
+  parts.push(cfg.allGames ? 'tous les jeux' : `${(cfg.games || []).length} jeu(x)`);
+  return parts.join(' · ') || 'Aucun champ particulier';
 }
 function renderSavedConfigsInto(wrapId, listId, saved) {
   const wrap = $(wrapId);
@@ -4535,7 +4554,11 @@ function renderSavedConfigsInto(wrapId, listId, saved) {
   if (!wrap || !list) return;
   const names = Object.keys(saved);
   wrap.classList.toggle('hidden', !names.length);
-  list.innerHTML = names.map((name) => `<button type="button" class="secondary-button gc-load-config" data-name="${escapeHtml(name)}" style="padding:6px 12px;font-size:.85rem;">${escapeHtml(name)} →</button>`).join('');
+  list.innerHTML = names.map((name) => `
+    <div style="min-width:180px;">
+      <button type="button" class="secondary-button gc-load-config" data-name="${escapeHtml(name)}" style="width:100%;padding:8px 12px;font-size:.9rem;font-weight:700;">${escapeHtml(name)} →</button>
+      <p style="font-family:Arial,sans-serif;font-size:.72rem;color:var(--muted);margin:4px 0 0;">${escapeHtml(summarizeSavedConfig(saved[name]))}</p>
+    </div>`).join('');
   list.querySelectorAll('.gc-load-config').forEach((btn) => {
     btn.addEventListener('click', () => loadSavedGuidedConfig(btn.dataset.name, saved));
   });
@@ -4543,7 +4566,8 @@ function renderSavedConfigsInto(wrapId, listId, saved) {
 function renderSavedGuidedConfigsList() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
-  renderSavedConfigsInto('training-hub-saved-configs', 'training-hub-saved-configs-list', saved);
+  // Les configurations enregistrées ne se retrouvent plus que dans Mon compte — plus sur les
+  // pages de menus elles-mêmes, pour ne garder qu'un seul endroit où les chercher.
   renderSavedConfigsInto('account-saved-configs-section', 'account-saved-configs-list', saved);
 }
 // Si le parcours guidé (ou une configuration enregistrée rechargée) a limité la partie à certains
@@ -4552,6 +4576,11 @@ function renderSavedGuidedConfigsList() {
 // sélection issue du parcours guidé s'applique globalement, un point c'est tout.
 const GAME_TO_BUTTON_ID = { impregnation: 'open-impregnation-setup', intrus: 'open-intrus-setup', famille: 'open-famille-setup', recon: 'open-reconstitution-setup', vf: 'open-vraifaux-setup', chrono: 'open-chrono-setup', quiz: 'open-quiz-setup' };
 let loadedGuidedConfigName = '';
+// Vrai dès qu'on est passé par le parcours guidé (ou qu'on a chargé une configuration
+// enregistrée) — reste vrai même après un jeu terminé (le tableau simplifié doit réapparaître à
+// l'identique), jusqu'à ce que le joueur sorte vraiment vers le menu par les icônes (accès
+// confirmé). Mémorisé pour survivre à un rechargement de page en cours de partie.
+let guidedModeActive = localStorage.getItem('guidedModeActive') === 'true';
 function applyGamesFilterToHub() {
   let gg = {};
   try { gg = JSON.parse(localStorage.getItem('globalGamesDefaults') || '{}'); } catch (e) {}
@@ -4567,7 +4596,11 @@ function applyGamesFilterToHub() {
   }
   // Le long texte explicatif ne sert plus à rien une fois qu'on arrive ici avec une sélection
   // déjà faite par le parcours guidé — il ne fait alors que répéter ce qui vient d'être choisi.
-  $('training-hub-intro-text')?.classList.toggle('hidden', !!games);
+  // Les icônes ✏️ de modification par exercice disparaissent aussi dans ce mode : elles
+  // compliquent inutilement un parcours pensé pour rester simple pour un débutant.
+  $('training-hub-intro-text')?.classList.toggle('hidden', !!games || guidedModeActive);
+  // Les icônes ✏️ par exercice ont été retirées (elles créaient des configurations divergentes
+  // difficiles à repérer) — tout passe maintenant par Mon compte, un seul endroit à vérifier.
 }
 // Filet de sécurité : si le démarrage automatique est activé mais que la sélection réellement
 // appliquée est vide (réglage ancien ou incomplet resté en mémoire), on n'insiste pas — on
@@ -4693,13 +4726,9 @@ function closeConfigPopup(prefix) {
   if (panel?.dataset.originalParent) { $('training-hub-panel')?.insertAdjacentElement('beforebegin', panel); delete panel.dataset.originalParent; }
   updateExerciseSummaries();
 }
-document.querySelectorAll('.exercise-summary-edit').forEach((icon) => {
-  icon.addEventListener('click', (event) => {
-    event.stopPropagation();
-    const prefix = icon.id.replace('-hub-edit', '');
-    openConfigAsPopup(prefix);
-  });
-});
+// Les icônes ✏️ qui ouvraient cette fenêtre superposée par exercice ont été retirées du tableau
+// des exercices (source de configurations divergentes difficiles à repérer) — openConfigAsPopup
+// reste disponible si besoin, mais n'est plus déclenché depuis nulle part pour l'instant.
 // Les boutons « ✕ Fermer » referment la fenêtre superposée si elle est ouverte ainsi ; sinon
 // (accès direct improbable) ils gardent leur comportement de repli vers le menu des exercices.
 Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
@@ -4709,7 +4738,17 @@ Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
     else { showPanel('training-hub'); updateExerciseSummaries(); }
   });
 });
-$('open-training')?.addEventListener('click', () => { showPanel('training-hub'); updateExerciseSummaries(); });
+$('open-training')?.addEventListener('click', () => {
+  // Accès explicite « par les menus » (joueur confirmé) : on sort du mode simplifié du parcours
+  // guidé — le texte explicatif revient, et le filtrage par jeux (s'il en restait un) est levé,
+  // pour retrouver les 7 jeux normalement.
+  guidedModeActive = false;
+  localStorage.removeItem('guidedModeActive');
+  localStorage.removeItem('globalGamesDefaults');
+  loadedGuidedConfigName = '';
+  showPanel('training-hub');
+  updateExerciseSummaries();
+});
 // --- Parcours guidé de configuration (page d'accueil → « pour débuter ») : une question à la
 // fois, la suivante apparaît dès qu'on répond — écrit dans les mêmes réglages globaux que Mon
 // compte (Mes choix de champ / d'artiste / de rubrique et de niveau), donc tout le reste de
@@ -4740,6 +4779,17 @@ function resetGuidedConfig() {
 $('open-guided-config')?.addEventListener('click', () => {
   resetGuidedConfig();
   loadedGuidedConfigName = '';
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
+  const names = Object.keys(saved);
+  $('gc-intro-saved-configs').classList.toggle('hidden', !names.length);
+  $('gc-intro-saved-configs-list').innerHTML = names.map((name) => `<button type="button" class="secondary-button gc-load-config" data-name="${escapeHtml(name)}" style="padding:6px 12px;font-size:.85rem;">${escapeHtml(name)} →</button>`).join('');
+  $('gc-intro-saved-configs-list').querySelectorAll('.gc-load-config').forEach((btn) => {
+    // Relancer directement une configuration déjà enregistrée : pas la peine de refaire tout le
+    // parcours question par question, on retrouve directement le tableau des exercices, sans
+    // texte ni icônes (comme depuis Mon compte).
+    btn.addEventListener('click', () => loadSavedGuidedConfig(btn.dataset.name, saved));
+  });
   showPanel('guided-config');
 });
 function saveGuidedFieldAndRubrique() {
@@ -4838,25 +4888,19 @@ function buildGuidedSummary() {
   $('gc-summary-sentence').textContent = `Aujourd'hui nous allons jouer avec ${artsPart}${centPart}${zonePart}${levelPart}${artistsPart}, à travers des questionnaires de ${countLabel} questions chacun portant sur ${rubriquePart}, pour ${gamesPart}.`;
 }
 $('gc-start-button')?.addEventListener('click', () => {
-  let games;
   if (document.querySelector('input[name="gc-allgames"]:checked')?.value === 'no') {
-    games = [...document.querySelectorAll('.gc-game:checked')].map((el) => el.value);
+    const games = [...document.querySelectorAll('.gc-game:checked')].map((el) => el.value);
     localStorage.setItem('globalGamesDefaults', JSON.stringify({ games, remember: true }));
   } else {
     localStorage.removeItem('globalGamesDefaults');
-    games = [...document.querySelectorAll('#gc-step-games .gc-game')].map((el) => el.value); // ordre d'affichage
   }
+  // On revient au tableau des exercices (filtré à la sélection faite), sans les icônes ✏️ de
+  // modification — trop de choses à la fois pour un parcours pensé pour débuter simplement. Le
+  // joueur choisit lui-même, dans ce tableau réduit, par lequel commencer.
+  guidedModeActive = true;
+  localStorage.setItem('guidedModeActive', 'true');
+  showPanel('training-hub');
   updateExerciseSummaries();
-  // On ne repasse pas par la page d'accueil des exercices : on entre directement dans le premier
-  // jeu choisi (dans l'ordre où ils sont proposés), comme si le joueur venait de cliquer dessus.
-  const firstGame = games[0];
-  const openButtonId = GAME_TO_BUTTON_ID[firstGame];
-  if (openButtonId && $(openButtonId)) {
-    showPanel('training-hub'); // nécessaire pour que le clic simulé se comporte normalement
-    $(openButtonId).click();
-  } else {
-    showPanel('training-hub');
-  }
 });
 $('gc-save-button')?.addEventListener('click', () => {
   const name = $('gc-save-name').value.trim();
