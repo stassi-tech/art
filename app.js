@@ -2496,7 +2496,7 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button'].forEach((id) => $(id).classList.add('hidden'));
   populateOverviewThumbs(candidates);
   state.scaleViewCandidates = candidates;
 }
@@ -2504,7 +2504,7 @@ function enterCloserPlan() {
   const candidates = state.scaleViewCandidates || [];
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.remove('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
   // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
@@ -2514,7 +2514,7 @@ function enterCloserPlan() {
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button'].forEach((id) => $(id).classList.add('hidden'));
 }
 function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
