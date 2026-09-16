@@ -4685,55 +4685,33 @@ function openModal(id) { $(id).classList.remove('hidden'); }
 function closeModal(id) { $(id).classList.add('hidden'); }
 // Fond décoratif de la page d'accueil : 15 œuvres célèbres, floutées et assourdies par défaut,
 // nettes et agrandies au survol. Purement décoratif (aria-hidden), tolère les échecs de chargement.
+// Images fixes de la mosaïque décorative (page d'accueil ET salle d'attente de chaque exercice —
+// toujours la même mosaïque, hébergée localement plutôt que sur Wikimedia). Chargement immédiat,
+// sans dépendre d'un service externe ni de la vitesse de connexion à cet instant précis — c'est ce
+// qui causait le « rideau qui se déroule lentement » et la lenteur des boutons du tableau
+// d'accueil sur smartphone.
 const BG_MOSAIC_FILES = [
-  'The Fighting Temeraire, JMW Turner, National Gallery.jpg',
-  'Aivazovsky, Ivan - The Ninth Wave.jpg',
-  'Winslow Homer - The Gulf Stream.jpg',
-  'Ferdinand Hodler - Die Nacht (1889-90).jpg',
-  'Albert Bierstadt - The Rocky Mountains, Lander\'s Peak.jpg',
-  'Alma-Tadema - The Roses of Heliogabalus.jpg',
-  'Alfons Mucha - 1894 - Gismonda.jpg',
-  'Le Ballon Valloton Orsay.jpg',
-  'Jean-Baptiste Greuze - A Girl with a Dead Canary - Google Art Project.jpg',
-  'Jean-Honoré Fragonard - Denis Diderot (Fanciful Figure) - WGA8064.jpg',
-  'William Hogarth - The Shrimp Girl - WGA11467.jpg',
-  'Aubrey Beardsley - The Climax.jpg',
-  'Michelangelos David.jpg',
-  'Venus de Milo Louvre.jpg',
-  'Sandro Botticelli - La nascita di Venere - Google Art Project.jpg',
+  'temeraire.jpg', 'neuvieme-vague.jpg', 'gulf-stream.jpg', 'la-nuit.jpg', 'rocky-mountains.jpg',
+  'roses-heliogabale.jpg', 'gismonda.jpg', 'le-ballon.jpg', 'canari-mort.jpg', 'diderot.jpg',
+  'marchande-crevettes.jpg', 'le-climax.jpg', 'david.jpg', 'venus-milo.jpg', 'naissance-venus.jpg',
 ];
 function initBackgroundMosaic() {
   const container = $('bg-mosaic');
   if (!container) return;
   container.innerHTML = BG_MOSAIC_FILES.map((filename) => {
-    const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
-    // Filet de sécurité : si un nom de fichier s'avère incorrect côté Wikimedia, la case reste
-    // vide plutôt que de planter — on bascule alors sur une image de repli déjà éprouvée, pour
-    // ne jamais laisser une case neutre dans les 15.
-    const fallback = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent('Michelangelos David.jpg')}?width=400`;
-    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" fetchpriority="low" draggable="false" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='${fallback}';}" /></div>`;
+    const url = `assets/mosaique/${filename}`;
+    // Filet de sécurité minimal : si un fichier venait à manquer, la case bascule sur le David
+    // (toujours présent) plutôt que de rester vide.
+    const fallback = 'assets/mosaique/david.jpg';
+    return `<div class="bg-tile"><img src="${url}" alt="" loading="lazy" draggable="false" onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='${fallback}';}" /></div>`;
   }).join('');
   wireBgMosaicTiles();
 }
-// Réutilise le même mécanisme de mosaïque (fond des pages d'accueil) pour la « salle d'attente »
-// de chaque exercice, mais avec les œuvres réellement tirées pour CETTE session — le joueur voit
-// un aperçu de ce qui l'attend pendant qu'il patiente avant de cliquer sur « Démarrer le jeu ».
-function populateSessionMosaic(images) {
-  const container = $('bg-mosaic');
-  if (!container) return;
-  const unique = [...new Set(images.filter(Boolean))];
-  if (!unique.length) return;
-  // Complète toujours les 15 cases (5x3) même si la session a moins d'œuvres — on répète les
-  // images disponibles en boucle plutôt que de laisser des cases vides.
-  const filled = Array.from({ length: 15 }, (_, i) => unique[i % unique.length]);
-  // fetchpriority="low" : ces vignettes viennent du même service externe (Wikimedia Commons) que
-  // l'image principale de l'œuvre à afficher — sans cette priorité basse, 15 requêtes simultanées
-  // se disputaient la connexion avec l'image qui compte vraiment, ralentissant tout l'écran
-  // d'attente (bouttons lents et capricieux repérés en jeu).
-  container.innerHTML = filled.map((img) =>
-    `<div class="bg-tile"><img src="${escapeHtml(imageSourceSized(img, 200))}" alt="" loading="lazy" fetchpriority="low" draggable="false" /></div>`
-  ).join('');
-  wireBgMosaicTiles();
+// La « salle d'attente » de chaque exercice utilise maintenant exactement la même mosaïque fixe
+// que la page d'accueil (plus rapide, sans dépendre de Wikimedia) plutôt que les œuvres réelles de
+// la session — purement décorative, elle n'a jamais eu besoin de montrer le contenu exact à venir.
+function populateSessionMosaic() {
+  initBackgroundMosaic();
 }
 function wireBgMosaicTiles() {
   const container = $('bg-mosaic');
