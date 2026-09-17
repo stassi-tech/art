@@ -2662,13 +2662,36 @@ const CHECKPOINT_GAP_CM = 25;
 // propres œuvres correctement déformées s'est révélé trop fragile (murs qui semblaient penchés,
 // œuvres qui se chevauchaient ou perdaient leurs proportions) pour le peu que ça apportait, puisque
 // le joueur les voit de toute façon correctement une fois entré, sur le plan rapproché.
+// Choisit les œuvres du mur du fond pour cet aperçu : l'œuvre la plus large de toute l'exposition
+// (le « clou » — Courbet, ici) au centre, encadrée de 2 petites œuvres de chaque côté. On pioche
+// dans state.scaleViewCandidates (toute l'exposition), PAS dans state.roomWalls[0] : ce dernier ne
+// contient que ce que splitIntoFourWalls a mis sur le mur du fond pour la VRAIE visite (plan
+// rapproché), un tirage qui peut très bien ne laisser qu'une seule œuvre là-bas. Cet aperçu depuis
+// l'entrée est une simple mise en scène (comme un rideau de théâtre qui s'ouvre sur l'œuvre
+// vedette) : il peut donc très bien montrer d'autres œuvres que celles qu'on croisera vraiment sur
+// ce mur une fois entré, sans que ça pose problème.
+function checkpointBackWallWorks() {
+  const all = state.scaleViewCandidates && state.scaleViewCandidates.length
+    ? state.scaleViewCandidates
+    : (state.roomWalls || []).flat();
+  if (!all.length) return [];
+  const byWidthDesc = all.map((w) => ({ w, width: estimateWorkWidthCm(w) })).sort((a, b) => b.width - a.width);
+  const headliner = byWidthDesc[0].w;
+  // Les 4 plus petites œuvres restantes (hors vedette), 2 de chaque côté — la plus petite tout à
+  // l'extérieur, la deuxième plus petite juste à côté du Courbet, pour une composition qui
+  // s'équilibre visuellement vers le centre.
+  const smallest = byWidthDesc.slice(1).sort((a, b) => a.width - b.width).slice(0, 4).map((x) => x.w);
+  const left = [smallest[2], smallest[0]].filter(Boolean);
+  const right = [smallest[1], smallest[3]].filter(Boolean);
+  return [...left, headliner, ...right];
+}
 function layoutCheckpointRoom() {
   const room = $('scale-checkpoint-room');
   const backWorks = $('scale-checkpoint-wall-works');
   if (!room || !backWorks) return;
   const rect = room.getBoundingClientRect();
   if (!rect.width || !rect.height) return; // salle pas encore mise en page (voir requestAnimationFrame à l'appel)
-  const works = (state.roomWalls || [[]])[0] || [];
+  const works = checkpointBackWallWorks();
   const innerX = checkpointRoomVarPercent('--room-inner-x');
   const horizonY = checkpointRoomVarPercent('--room-horizon-y');
   const innerXPx = (innerX / 100) * rect.width;
