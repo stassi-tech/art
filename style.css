@@ -220,7 +220,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 @media (max-width:640px) {
   .fam-result-grid { grid-template-columns:repeat(2, 1fr); }
 }
-.fam-image-cell { position:relative; border:3px solid transparent; border-radius:6px; padding:2px; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s; }
+.fam-image-cell { position:relative; border:3px solid transparent; border-radius:6px; padding:2px; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s; min-width:0; min-height:0; }
 .chrono-target-slot { min-height:100%; border:2px dashed #555; border-radius:6px; background:#242526; display:flex; align-items:center; justify-content:center; color:#777; font-family:Arial,sans-serif; font-size:.78rem; cursor:pointer; position:relative; }
 .chrono-target-slot.filled { border-style:solid; border-color:var(--accent); cursor:grab; }
 .chrono-target-slot img { width:100%; height:100%; object-fit:contain; border-radius:4px; }
@@ -661,32 +661,29 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
    en attendant, une couleur de repli assure que la forme reste lisible. */
 #scale-overview { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
 /* Mur extérieur du musée, avec une porte centrale — remplace l'ancien trapèze de vignettes, qui
-   ne correspondait à rien de réel. Le personnage se tient devant, et aperçoit à travers la porte
-   l'œuvre qui l'attend au centre du mur du fond, une fois entré. */
+   ne correspondait à rien de réel. Le personnage se tient à côté, mis à l'échelle d'une porte de
+   3 m plutôt qu'à sa taille habituelle de 1,70 m, pour donner une vraie impression de hauteur. */
 #scale-facade {
   position:relative; width:min(92vw, 1100px); height:62vh; margin-top:auto; margin-bottom:16vh;
   background:#c9c2b3 center/cover no-repeat;
-  display:flex; align-items:flex-end; justify-content:center;
+  display:flex; align-items:flex-end; justify-content:center; gap:4%;
 }
 #scale-door {
-  position:relative; width:22%; height:78%; border:none; padding:0; cursor:pointer;
-  background:#1a1712; border-radius:6px 6px 0 0;
-  box-shadow:inset 0 0 24px rgba(0,0,0,.7), 0 0 0 4px rgba(0,0,0,.25);
-  display:flex; align-items:center; justify-content:center; overflow:hidden;
+  position:relative; width:22%; height:78%; border-radius:6px 6px 0 0;
+  background:#1a1712; box-shadow:inset 0 0 24px rgba(0,0,0,.7), 0 0 0 4px rgba(0,0,0,.25);
+  display:flex; align-items:center; justify-content:center;
 }
-#scale-door-peek { width:72%; height:60%; display:flex; align-items:center; justify-content:center; }
-#scale-door-peek img { max-width:100%; max-height:100%; object-fit:contain; opacity:.92; }
-/* Sol de la vue d'ensemble : lui aussi en perspective (plus étroit en haut, où il rejoint le mur,
-   plus large en bas, côté spectateur) — un simple rectangle ne donnait aucune impression de
-   profondeur et laissait croire que le personnage se tenait sur le mur plutôt qu'au sol (bug réel
-   repéré). Distinct du sol rectangulaire du mur rapproché (#scale-floor, non affiché ici). */
+#scale-enter-button {
+  font-family:Arial,sans-serif; font-weight:700; font-size:1rem; letter-spacing:.04em;
+  color:#fff; background:var(--accent,#9c7a4a); border:2px solid rgba(255,255,255,.7);
+  border-radius:6px; padding:10px 18px; cursor:pointer; text-transform:uppercase;
+}
+/* Silhouette à l'échelle de la porte (3 m) plutôt que sa taille habituelle (1,70 m) — 78% * 62vh
+   (hauteur de la porte) divisé par le rapport 300/170 donne sa hauteur ici. */
+#scale-facade #scale-overview-silhouette { position:relative; height:calc(0.78 * 62vh / 1.765); color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
 #scale-overview-floor { position:absolute; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
   clip-path:polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a); }
-/* La silhouette elle-même guide toute la navigation — on la tire (souris ou doigt) pour se
-   déplacer, plus aucun bouton de direction séparé. touch-action:none empêche le geste de faire
-   défiler la page au lieu de contrôler la silhouette sur mobile. */
-#scale-overview-silhouette { position:absolute; bottom:calc(16vh - 22px); left:6%; height:12vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); touch-action:none; }
 body[data-ambiance="pitti"] #scale-facade { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
 body[data-ambiance="bauhaus"] #scale-facade { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
 body[data-ambiance="space"] #scale-facade { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
@@ -697,6 +694,21 @@ body[data-ambiance="renaissance"] #scale-facade { background-color:#7a3820; back
 body[data-ambiance="gothique"] #scale-facade { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
 body:not([data-ambiance]) #scale-facade { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
+/* Étape 2 : le contrôle des billets, entre la façade et le plan rapproché — on découvre tout le
+   mur du fond depuis l'entrée, avant de franchir une barrière type cordon rouge pour continuer.
+   Silhouette à sa taille normale ici (1,70 m), contrairement à la façade. */
+#scale-checkpoint { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5vh; background:#e8e4d8; padding:20px; }
+#scale-checkpoint-wall { display:flex; align-items:flex-end; justify-content:center; gap:24px; max-width:92vw; flex-wrap:wrap; min-height:40vh; }
+.scale-checkpoint-work { max-height:42vh; max-width:26vw; object-fit:contain; box-shadow:0 10px 28px rgba(0,0,0,.3); }
+#scale-barrier {
+  font-family:Arial,sans-serif; font-weight:700; font-size:1.05rem; letter-spacing:.03em;
+  color:#fff; background:#b5252c; border:3px solid #f0d020; border-radius:8px; padding:14px 26px;
+  cursor:pointer; box-shadow:0 6px 16px rgba(0,0,0,.35);
+}
+/* Voile de transition floue entre chaque étape — évite, pour l'instant, d'avoir à animer un vrai
+   déplacement progressif du personnage à travers l'espace. */
+#scale-blur-veil { position:fixed; inset:0; z-index:15; background:rgba(20,18,14,0); backdrop-filter:blur(0px); pointer-events:none; transition:background .5s, backdrop-filter .5s; }
+#scale-blur-veil.active { background:rgba(20,18,14,.55); backdrop-filter:blur(14px); }
 #scale-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a);
   box-shadow:0 -3px 8px rgba(0,0,0,.25); background-size:cover; background-position:center; }

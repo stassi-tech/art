@@ -2533,14 +2533,47 @@ function enterScaleView() {
   $('scale-wall-line').classList.add('hidden');
   ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
   state.scaleViewCandidates = candidates;
-  // Calculé dès l'entrée (pas seulement en poussant la porte) pour connaître l'œuvre du mur du
-  // fond à montrer en aperçu à travers la porte.
+  // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer à l'étape du contrôle
+  // des billets (voir goThroughDoor).
   state.roomWalls = splitIntoFourWalls(candidates);
-  const backWallWorks = state.roomWalls[0] || [];
-  const centerWork = backWallWorks[Math.floor(backWallWorks.length / 2)];
-  const peekImg = $('scale-door-peek-img');
-  if (peekImg) peekImg.src = centerWork ? imageSourceSized(centerWork.image, 300) : '';
 }
+// Voile de transition floue entre chaque étape (façade → contrôle des billets → plan rapproché) —
+// évite, pour l'instant, d'avoir à animer un vrai déplacement progressif du personnage à travers
+// l'espace : le voile masque le changement de décor pendant sa courte durée.
+function blurTransition(swap) {
+  const veil = $('scale-blur-veil');
+  if (!veil) { swap(); return; }
+  veil.classList.remove('hidden');
+  requestAnimationFrame(() => veil.classList.add('active'));
+  setTimeout(() => {
+    swap();
+    requestAnimationFrame(() => {
+      veil.classList.remove('active');
+      setTimeout(() => veil.classList.add('hidden'), 500);
+    });
+  }, 500);
+}
+// Étape 2 : pousser la porte — transition floue vers le contrôle des billets, qui montre tout le
+// mur du fond depuis l'entrée avant de le franchir.
+function goThroughDoor() {
+  blurTransition(() => {
+    $('scale-overview').classList.add('hidden');
+    $('scale-checkpoint').classList.remove('hidden');
+    const backWallWorks = (state.roomWalls || [[]])[0] || [];
+    $('scale-checkpoint-wall').innerHTML = backWallWorks.slice(0, 6).map((w) =>
+      `<img class="scale-checkpoint-work" src="${escapeHtml(imageSourceSized(w.image, 400))}" alt="" />`
+    ).join('');
+  });
+}
+$('scale-enter-button')?.addEventListener('click', goThroughDoor);
+// Étape 3 : franchir la barrière (donner son ticket) — transition floue vers le plan rapproché,
+// toujours au mur du fond (celui qu'on vient d'apercevoir depuis le contrôle des billets).
+$('scale-barrier')?.addEventListener('click', () => {
+  blurTransition(() => {
+    $('scale-checkpoint').classList.add('hidden');
+    enterCloserPlan();
+  });
+});
 // Les œuvres de la session sont réparties sur 4 murs (façon vraie salle rectangulaire) plutôt que
 // sur un seul long mur — state.roomWalls garde les 4 groupes, currentWallIndex celui affiché.
 let currentWallIndex = 0;
@@ -2599,7 +2632,8 @@ function enterCloserPlan() {
   // tableaux, au ras du sol au lieu de les accrocher à hauteur des yeux.
   requestAnimationFrame(() => { goToWall(currentWallIndex); });
 }
-$('scale-door')?.addEventListener('click', enterCloserPlan);
+// (l'entrée se fait maintenant via #scale-enter-button → goThroughDoor → #scale-barrier, voir
+// plus haut — plus une entrée directe au clic sur la porte elle-même)
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');

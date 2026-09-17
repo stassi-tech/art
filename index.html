@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=154" />
+    <link rel="stylesheet" href="style.css?v=156" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1138,20 +1138,31 @@
                  vue d'ensemble, vers la gauche/droite pour se déplacer le long du mur. Plus aucun
                  bouton de direction ou de retour séparé. -->
             <div id="scale-overview">
-              <!-- Mur extérieur du musée : coloré selon l'ambiance active (mêmes variables CSS
-                   --accent/--accent-dark que le reste de l'appli), avec une porte centrale. Le
-                   personnage s'y tient, et on aperçoit à travers la porte l'œuvre qui sera au
-                   centre du mur du fond une fois entré. -->
+              <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
+                   porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
+                   porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
+                   impression de hauteur avant d'entrer. -->
               <div id="scale-facade">
-                <button type="button" id="scale-door" aria-label="Entrer dans la salle">
-                  <div id="scale-door-peek"><img id="scale-door-peek-img" src="" alt="" /></div>
-                </button>
+                <div id="scale-door">
+                  <button type="button" id="scale-enter-button">Entrée</button>
+                </div>
+                <svg id="scale-overview-silhouette" viewBox="0 0 100 340" aria-hidden="true">
+                  <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+                </svg>
               </div>
               <div id="scale-overview-floor" aria-hidden="true"></div>
-              <svg id="scale-overview-silhouette" viewBox="0 0 100 340" aria-hidden="true">
-                <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
-              </svg>
             </div>
+            <!-- Étape 2 : le contrôle des billets — après avoir poussé la porte (transition
+                 floue), on découvre tout le mur du fond depuis l'entrée, avec une barrière type
+                 cordon rouge à franchir pour continuer (nouvelle transition floue vers le plan
+                 rapproché). Ces transitions floues évitent, pour l'instant, d'avoir à animer un
+                 vrai déplacement progressif du personnage à travers l'espace. -->
+            <div id="scale-checkpoint" class="hidden">
+              <div id="scale-checkpoint-wall"></div>
+              <button type="button" id="scale-barrier" aria-label="Franchir la barrière, donner son ticket">🎫 Donner son ticket</button>
+            </div>
+            <!-- Voile de transition floue entre les étapes. -->
+            <div id="scale-blur-veil" class="hidden"></div>
             <div id="scale-floor" aria-hidden="true"></div>
             <div id="scale-wall-line" aria-hidden="true"></div>
             <div id="scale-wall"></div>
@@ -1429,6 +1440,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=224"></script>
+    <script src="app.js?v=225"></script>
   </body>
 </html>
