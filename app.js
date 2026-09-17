@@ -2758,9 +2758,9 @@ function updateDotAlongWall() {
     dot.style.top = `${18 + progress * 64}%`;
   }
 }
-// Repère de distance : le numéro du mètre en cours (1 à 15, longueur réelle du mur) apparaît puis
-// s'efface au fil de la marche — donne une vraie idée de la distance parcourue, pas seulement
-// « on avance », plutôt qu'un chiffre qui resterait affiché en continu.
+// Repère de distance : le numéro du mètre en cours (1 à 15, longueur réelle du mur), affiché près
+// du point rouge de la mini-carte, en haut. Il reste figé sur la valeur courante en permanence —
+// tant qu'on marche il se met à jour, dès qu'on s'arrête il garde simplement sa dernière valeur.
 let lastShownMeter = 0;
 function updateDistanceMarker() {
   const wall = $('scale-wall');
@@ -2773,9 +2773,6 @@ function updateDistanceMarker() {
   if (meters === lastShownMeter) return;
   lastShownMeter = meters;
   marker.textContent = `${meters} m`;
-  marker.style.opacity = '1';
-  clearTimeout(marker.dataset.fadeTimer ? Number(marker.dataset.fadeTimer) : undefined);
-  marker.dataset.fadeTimer = setTimeout(() => { marker.style.opacity = '0'; }, 900);
 }
 function startWalking(direction) {
   stopWalking();
