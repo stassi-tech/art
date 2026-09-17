@@ -1523,6 +1523,38 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  'guidi': 'gwidi',
+  'ilya': 'riya',
+  'fountain': 'fwaountaïne',
+  'osmer': 'osmère',
+  'ariette': 'ariette',
+  'xxiii': 'vingt-trois',
+  'brueghel': 'breuguel',
+  'bruegel': 'breuguel',
+  'guglielmo': 'goulyémo',
+  'tino di camaino': 'tino di kaméno',
+  'carle van loo': 'carle van lo',
+  'reichler': 'raïchlère',
+  'jacopo': 'giacopo',
+  'serpotta': 'serpotta',
+  'giusto di menabuoi': 'djousto di ménabwoï',
+  'egon': 'égone',
+  'paris bordone': 'pariss bordoné',
+  'vittore': 'vittoré',
+  'michelozzo': 'mikélotso',
+  'wassily': 'vassili',
+  'melendez': 'méléndèze',
+  'permoser': 'permozère',
+  'rusconi': 'rousconi',
+  'gossaert': 'rossart',
+  'bocklin': 'boklinne',
+  'arcimboldo': 'archimboldo',
+  'gellee': 'gelé',
+  'gellée': 'gelé',
+  'barocci': 'barotchi',
+  'filippo della valle': 'filippo della vallé',
+  'flaxman': 'flaxmane',
+  'fabritius': 'fabritsiousse',
   'bartolomeo': 'bartoloméo',
   'gibson': 'gibsone',
   'pollaiolo': 'pollayolo',
@@ -1561,12 +1593,12 @@ const PRONUNCIATION_FIXES = {
   'thomas ball': 'thomas boule',
   'sœur': 'seur',
   'werefkin': 'werefkine',
-  'coysevox': 'kasvo',
+  'coysevox': 'cozevo',
   'manneken pis': 'mannekenne piss',
   'copley': 'kopli',
   'vuillard': 'vuiyar',
-  'damian forment': 'damianne formente',
-  'ambrogio lorenzetti': 'ambrogio lorenzéti',
+  'damian forment': 'damianne forment',
+  'ambrogio lorenzetti': 'ambrogio lorainezétti',
   'borghese': 'borguézé',
   'borghèse': 'borguézé',
   'bernini': 'bérnini',
@@ -1619,7 +1651,7 @@ const PRONUNCIATION_FIXES = {
   'gozzoli': 'Gotsoli',
   'simone': 'Simoné',
   'cione': 'tchioné',
-  'lorenzetti': 'Lorenzéti',
+  'lorenzetti': 'lorainezétti',
   'orsanmichele': 'Orsanmikélé',
   'santa croce': 'Santa Croché',
   'cimabue': 'Chimaboué',
@@ -1641,7 +1673,7 @@ const PRONUNCIATION_FIXES = {
   'thorvaldsen': 'Thordvalsenne',
   'tate britain': 'Téte Britèn',
   'mcneill': 'Macnil',
-  'jongkind': 'Jonkin',
+  'jongkind': 'jongkinde',
   'fine': 'Faïne',
   'oxbow': 'Oxbo',
   'jaleo': 'raléo',
@@ -1652,7 +1684,7 @@ const PRONUNCIATION_FIXES = {
   'epsom': 'Epsome',
   'haussmann': 'Hosmane',
   'rügen': 'Ruguéne',
-  'böcklin': 'Beuklin',
+  'böcklin': 'boklinne',
   'edwin': 'Edwine',
   'iceberg': 'Aïceberg',
   'tahitiennes': 'Tahissiennes',
@@ -2640,18 +2672,27 @@ function splitIntoFourWalls(candidates) {
   });
   return walls;
 }
+// Coordonnées (en %) des 4 coins du trapèze de l'écran de contrôle — mur du fond (haut) plus
+// étroit que le mur d'entrée (bas), murs latéraux en biais entre les deux.
+const TRAP_TOP_LEFT = { x: 25, y: 0 };
+const TRAP_TOP_RIGHT = { x: 75, y: 0 };
+const TRAP_BOTTOM_LEFT = { x: 0, y: 100 };
+const TRAP_BOTTOM_RIGHT = { x: 100, y: 100 };
+// Position (x%, y%) sur le bord du trapèze correspondant à un mur donné et une progression (0..1)
+// le long de ce mur — 0=mur du fond (haut), 1=mur de droite, 2=mur d'entrée (bas), 3=mur de
+// gauche. Le mur 3 va de bas en haut (voir plus loin, sens inversé pour rester intuitif).
+function trapezoidPointForWall(wallIndex, progress) {
+  const lerp = (a, b, t) => a + (b - a) * t;
+  if (wallIndex === 0) return { x: lerp(TRAP_TOP_LEFT.x, TRAP_TOP_RIGHT.x, progress), y: lerp(TRAP_TOP_LEFT.y, TRAP_TOP_RIGHT.y, progress) };
+  if (wallIndex === 1) return { x: lerp(TRAP_TOP_RIGHT.x, TRAP_BOTTOM_RIGHT.x, progress), y: lerp(TRAP_TOP_RIGHT.y, TRAP_BOTTOM_RIGHT.y, progress) };
+  if (wallIndex === 2) return { x: lerp(TRAP_BOTTOM_LEFT.x, TRAP_BOTTOM_RIGHT.x, progress), y: lerp(TRAP_BOTTOM_LEFT.y, TRAP_BOTTOM_RIGHT.y, progress) };
+  return { x: lerp(TRAP_BOTTOM_LEFT.x, TRAP_TOP_LEFT.x, progress), y: lerp(TRAP_BOTTOM_LEFT.y, TRAP_TOP_LEFT.y, progress) };
+}
 function positionMinimapDot() {
   const dot = $('scale-minimap-dot');
   if (!dot) return;
-  // 0=mur du haut (fond), 1=mur de droite, 2=mur du bas (entrée), 3=mur de gauche.
-  const positions = [
-    { left: '50%', top: '12%' },
-    { left: '88%', top: '50%' },
-    { left: '50%', top: '88%' },
-    { left: '12%', top: '50%' },
-  ];
-  const p = positions[currentWallIndex] || positions[0];
-  dot.style.left = p.left; dot.style.top = p.top;
+  const p = trapezoidPointForWall(currentWallIndex, 0.5); // milieu du mur, comme avant
+  dot.style.left = `${p.x}%`; dot.style.top = `${p.y}%`;
 }
 function goToWall(index) {
   currentWallIndex = ((index % 4) + 4) % 4;
@@ -2845,9 +2886,12 @@ function isNearBottomCorner(clientX, clientY) {
 // (0..1) le long du mur actuellement affiché — l'inverse exact d'updateDotAlongWall, pour que le
 // point reste sous le doigt pendant qu'on le glisse plutôt que de « résister » ou sauter ailleurs.
 function progressFromMinimapPosition(wallIndex, x, y) {
-  if (wallIndex === 0 || wallIndex === 2) return Math.min(1, Math.max(0, (x * 100 - 18) / 64));
-  if (wallIndex === 3) return Math.min(1, Math.max(0, (82 - y * 100) / 64));
-  return Math.min(1, Math.max(0, (y * 100 - 18) / 64));
+  // Inverse de trapezoidPointForWall : retrouve la progression (0..1) le long du mur courant à
+  // partir d'une position brute (x,y en 0..1) dans le trapèze.
+  if (wallIndex === 0) return Math.min(1, Math.max(0, (x * 100 - TRAP_TOP_LEFT.x) / (TRAP_TOP_RIGHT.x - TRAP_TOP_LEFT.x)));
+  if (wallIndex === 2) return Math.min(1, Math.max(0, (x * 100 - TRAP_BOTTOM_LEFT.x) / (TRAP_BOTTOM_RIGHT.x - TRAP_BOTTOM_LEFT.x)));
+  if (wallIndex === 3) return Math.min(1, Math.max(0, 1 - y)); // bas (100%) -> haut (0%) = 0 -> 1
+  return Math.min(1, Math.max(0, y)); // mur 1 (droite) : haut (0%) -> bas (100%) = 0 -> 1
 }
 (function attachMinimapDrag() {
   const minimap = $('scale-minimap');
@@ -2862,10 +2906,13 @@ function progressFromMinimapPosition(wallIndex, x, y) {
     if (!rect.width || !rect.height) return;
     const x = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
     const y = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
-    // Distance au centre de chaque côté (haut/droite/bas/gauche), en coordonnées 0..1 — détermine
-    // si on est encore sur le mur courant ou si on vient de glisser vers un autre (les coins
-    // suffisent, pas besoin d'atteindre le centre exact d'un autre côté).
-    const distances = [y, 1 - x, 1 - y, x];
+    // Distance à chaque bord du trapèze, en coordonnées 0..1 — pour les bords latéraux (en biais),
+    // on compare à la position x du bord à cette hauteur y précise (pas juste x brut comme pour
+    // un rectangle), sinon la détection serait décalée à mesure qu'on descend vers le bas, plus
+    // large, du trapèze.
+    const leftEdgeX = (TRAP_TOP_LEFT.x + (TRAP_BOTTOM_LEFT.x - TRAP_TOP_LEFT.x) * y) / 100;
+    const rightEdgeX = (TRAP_TOP_RIGHT.x + (TRAP_BOTTOM_RIGHT.x - TRAP_TOP_RIGHT.x) * y) / 100;
+    const distances = [y, rightEdgeX - x, 1 - y, x - leftEdgeX];
     const nearest = distances.indexOf(Math.min(...distances));
     if (nearest !== currentWallIndex) {
       wallSwitchInProgress = true;
@@ -2901,7 +2948,8 @@ function progressFromMinimapPosition(wallIndex, x, y) {
   const floorDot = $('scale-floor-dot');
   const wall = $('scale-wall');
   if (!floorDot || !wall) return;
-  let dragging = false;
+  const DRAG_THRESHOLD = 8;
+  let dragging = false, moved = false, downX = 0;
   const moveTo = (clientX) => {
     const x = Math.min(0.95, Math.max(0.05, clientX / window.innerWidth));
     const progress = Math.min(1, Math.max(0, (x - 0.05) / 0.90));
@@ -2910,11 +2958,35 @@ function progressFromMinimapPosition(wallIndex, x, y) {
     updateDotAlongWall();
     updateDistanceMarker();
   };
-  floorDot.addEventListener('pointerdown', (event) => { event.preventDefault(); dragging = true; floorDot.setPointerCapture?.(event.pointerId); floorDot.style.cursor = 'grabbing'; });
-  floorDot.addEventListener('pointermove', (event) => { if (dragging) moveTo(event.clientX); });
-  const stopFloor = () => { dragging = false; floorDot.style.cursor = 'grab'; };
-  floorDot.addEventListener('pointerup', stopFloor);
-  floorDot.addEventListener('pointercancel', stopFloor);
+  floorDot.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    dragging = true; moved = false; downX = event.clientX;
+    floorDot.setPointerCapture?.(event.pointerId);
+    floorDot.style.cursor = 'grabbing';
+  });
+  floorDot.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    if (Math.abs(event.clientX - downX) > DRAG_THRESHOLD) { moved = true; moveTo(event.clientX); }
+  });
+  const stop = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    floorDot.style.cursor = 'grab';
+    // Pas de glissement : un simple tap. S'il marchait déjà, on l'arrête ; sinon on le fait
+    // avancer tout seul (comme demandé) dans la direction du tap par rapport à sa position
+    // actuelle — le personnage avance alors visuellement avec lui, sans qu'on ait à le tenir.
+    if (!moved) {
+      if (walkDirection !== 0) {
+        stopWalking();
+      } else {
+        const rect = floorDot.getBoundingClientRect();
+        const center = rect.left + rect.width / 2;
+        startWalking(event.clientX < center ? -1 : 1);
+      }
+    }
+  };
+  floorDot.addEventListener('pointerup', stop);
+  floorDot.addEventListener('pointercancel', stop);
 })();
 makeSilhouetteDraggable($('scale-overview-silhouette'), {
   onDragEnd: (dx, dy, endX, endY) => {
@@ -2944,18 +3016,11 @@ function updateDotAlongWall() {
   if (!wall || !dot) return;
   const maxScroll = Math.max(1, wall.scrollWidth - wall.clientWidth);
   const progress = Math.min(1, Math.max(0, wall.scrollLeft / maxScroll)); // 0..1 le long du mur
-  // Murs du haut/bas (0 et 2) : la progression avance le point horizontalement, de gauche à
-  // droite (18 % à 82 % pour rester bien à l'intérieur du rectangle). Murs latéraux (1 et 3) :
-  // verticalement, de la même façon — sauf le mur gauche (3), où le sens doit être inversé : le
-  // personnage fait face au mur (pas au centre de la salle) pour regarder les œuvres, donc avancer
-  // vers SA droite l'emmène vers le mur du fond (le haut de la mini-carte), pas vers l'entrée.
-  if (currentWallIndex === 0 || currentWallIndex === 2) {
-    dot.style.left = `${18 + progress * 64}%`;
-  } else if (currentWallIndex === 3) {
-    dot.style.top = `${82 - progress * 64}%`;
-  } else {
-    dot.style.top = `${18 + progress * 64}%`;
-  }
+  // Position du point sur le bord correspondant du trapèze — le sens de chaque mur (y compris
+  // l'inversion du mur gauche, qui fait face au mur et non au centre de la salle) est encodé dans
+  // trapezoidPointForWall.
+  const p = trapezoidPointForWall(currentWallIndex, progress);
+  dot.style.left = `${p.x}%`; dot.style.top = `${p.y}%`;
   // Point dupliqué sur le sol : même progression, mais répartie sur toute la largeur de l'écran
   // (5 % à 95 %, pour ne jamais coller pile aux bords) — bien plus facile à manier qu'un petit
   // point dans un coin de l'écran de contrôle.

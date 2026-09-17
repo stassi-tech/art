@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=162" />
+    <link rel="stylesheet" href="style.css?v=163" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1223,8 +1223,11 @@
                  salle, ses 4 côtés les 4 murs, le point rouge la position du joueur. On le glisse
                  pour avancer/reculer le long du mur courant, ou vers un côté pour changer de mur.
                  Agrandie (140×100, contre 90×64 avant) pour un geste plus précis et confortable. -->
-            <div id="scale-minimap" class="hidden" style="position:fixed;top:70px;right:16px;width:140px;height:100px;background:rgba(20,20,20,.65);border:2px solid rgba(255,255,255,.5);border-radius:4px;z-index:7;">
-              <div id="scale-minimap-dot" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);cursor:grab;left:50%;top:88%;transform:translate(-50%,-50%);touch-action:none;"></div>
+            <!-- Écran de contrôle en trapèze (mur du fond plus étroit en haut, murs latéraux en
+                 biais, mur d'entrée pleine largeur en bas) plutôt qu'un simple rectangle — donne
+                 une vraie impression de perspective de la pièce, comme regardée d'en haut. -->
+            <div id="scale-minimap" class="hidden" style="position:fixed;top:70px;right:16px;width:150px;height:110px;background:rgba(20,20,20,.65);border:2px solid rgba(255,255,255,.5);clip-path:polygon(25% 0%, 75% 0%, 100% 100%, 0% 100%);z-index:7;">
+              <div id="scale-minimap-dot" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);cursor:grab;left:50%;top:94%;transform:translate(-50%,-50%);touch-action:none;"></div>
             </div>
             <!-- Repère de distance : le numéro du mètre en cours apparaît puis s'efface au fur et
                  à mesure de la marche, pour donner une vraie idée de la longueur du mur (15 m). -->
@@ -1483,6 +1486,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=237"></script>
+    <script src="app.js?v=240"></script>
   </body>
 </html>

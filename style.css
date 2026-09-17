@@ -720,8 +720,14 @@ body:not([data-ambiance]) #scale-facade { background-color:#c9b896; background-i
 /* Mur du fond nettement réduit et remonté en haut de l'écran, avec beaucoup de sol vide en dessous
    — donne une vraie impression de recul (comme s'il était à 15 m), plutôt qu'un mur juste sous
    le nez du joueur. */
-#scale-checkpoint-wall { display:flex; align-items:flex-end; justify-content:center; gap:10px; max-width:70vw; flex-wrap:wrap; min-height:16vh; opacity:.85; }
-.scale-checkpoint-work { max-height:15vh; max-width:11vw; object-fit:contain; box-shadow:0 4px 12px rgba(0,0,0,.2); }
+/* Mur du fond nettement réduit et remonté en haut de l'écran, avec beaucoup de sol vide en dessous
+   — donne une vraie impression de recul (comme s'il était à 15 m), plutôt qu'un mur juste sous
+   le nez du joueur. Bug réel repéré : en affichant TOUTES les œuvres de la salle (pas seulement
+   6), le conteneur pouvait déborder sans limite de hauteur si beaucoup d'œuvres formaient
+   plusieurs rangées, les faisant se chevaucher avec le reste de l'écran — d'où une hauteur
+   maximale explicite avec défilement, plutôt qu'un simple min-height. */
+#scale-checkpoint-wall { display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; gap:8px; max-width:74vw; max-height:22vh; overflow-y:auto; opacity:.85; padding:4px; }
+.scale-checkpoint-work { max-height:9vh; max-width:7vw; object-fit:contain; box-shadow:0 3px 8px rgba(0,0,0,.2); }
 /* Grand espace de sol vide entre le mur (lointain) et le tourniquet (au premier plan) — c'est cet
    écart qui donne l'impression de distance, pas seulement la petite taille du mur. */
 /* Grand espace de sol vide entre le mur (lointain) et le tourniquet (au premier plan) — c'est cet
