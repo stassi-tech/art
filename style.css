@@ -727,7 +727,11 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    bien, aucun changement nécessaire de ce côté-là). */
 #scale-checkpoint-room {
   position:relative; flex:1 1 auto; width:100%; min-height:16vh; overflow:hidden;
-  --room-inner-x:9%; --room-horizon-y:62%;
+  /* room-inner-x élargi (9% → 15%) : sur la photo de référence envoyée au tout début, les pans de
+     mur latéraux occupent une bonne partie du cadre, comme de vrais piliers qui avancent vers le
+     visiteur plutôt qu'une mince tranche collée au bord — voir aussi le dégradé de lumière ajouté
+     sur ::after ci-dessous, qui accentue cette impression de relief. */
+  --room-inner-x:12%; --room-horizon-y:62%;
 }
 .scale-checkpoint-wallpanel, #scale-checkpoint-floor { position:absolute; background-color:#c9b896; background-size:cover; background-position:center; }
 /* Mur du fond : rectangle plat, vu bien en face — aucune déformation à faire puisqu'on le regarde
@@ -739,16 +743,45 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    espace où accrocher quoi que ce soit. Le motif passe par un ::after (plutôt qu'un background-image
    direct sur l'élément) pour ne jamais se faire écraser par les règles d'ambiance ci-dessus, qui
    ciblent ce même #id avec une spécificité CSS plus forte (body[...] #id > #id seul). */
+/* Piliers en trapèze, avancés jusqu'au bas de l'écran : leur bord intérieur (qui rejoint le mur du
+   fond) reste vertical de haut en bas du mur, mais leur bord extérieur file en diagonale jusqu'au
+   coin bas de l'écran — exactement la même ligne de fuite que le bord du parquet juste en dessous
+   (voir #scale-checkpoint-floor). Avant ce correctif, le pilier s'arrêtait net à hauteur de
+   l'horizon (rectangle droit) : la démarcation avec le fond beige de la page tombait à plat, sans
+   donner l'impression de profondeur. Prolongé ainsi jusqu'à la limite du parquet, il lit comme un
+   vrai pan de mur qui s'éloigne en perspective plutôt qu'un simple bandeau collé sur le mur du
+   fond. */
 #scale-checkpoint-wall-left, #scale-checkpoint-wall-right {
-  top:0; width:var(--room-inner-x); height:var(--room-horizon-y); overflow:hidden;
+  top:0; width:var(--room-inner-x); height:100%; overflow:hidden;
 }
-#scale-checkpoint-wall-left { left:0; }
-#scale-checkpoint-wall-right { right:0; }
+#scale-checkpoint-wall-left {
+  left:0;
+  clip-path: polygon(0% 0%, 100% 0%, 100% var(--room-horizon-y), 0% 100%);
+}
+#scale-checkpoint-wall-right {
+  right:0;
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% var(--room-horizon-y));
+}
+/* Le dégradé va du sombre (bord extérieur, côté écran) vers une arête bien éclairée juste avant de
+   rejoindre le mur du fond, puis se rassombrit légèrement en s'en approchant — cette arête claire
+   est ce qui fait « avancer » visuellement le pilier vers le visiteur (comme un vrai relief pris
+   dans la lumière), plutôt qu'un dégradé plat sans direction. Sens du dégradé inversé entre les
+   deux côtés (90deg à gauche, 270deg à droite) : l'arête claire doit toujours tomber côté mur du
+   fond (à droite du pilier gauche, à gauche du pilier droit), jamais côté bord d'écran. */
 #scale-checkpoint-wall-left::after, #scale-checkpoint-wall-right::after {
   content:''; position:absolute; inset:0;
+  background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 3px, transparent 3px 15px);
+  box-shadow: inset 0 0 24px rgba(0,0,0,.3);
+}
+#scale-checkpoint-wall-left::after {
   background-image:
     repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 3px, transparent 3px 15px),
-    linear-gradient(90deg, rgba(0,0,0,.45), rgba(255,255,255,.14) 40%, rgba(0,0,0,.12) 65%, rgba(0,0,0,.5));
+    linear-gradient(90deg, rgba(0,0,0,.5), rgba(255,255,255,.2) 55%, rgba(255,255,255,.32) 78%, rgba(0,0,0,.35) 92%, rgba(0,0,0,.55));
+}
+#scale-checkpoint-wall-right::after {
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 3px, transparent 3px 15px),
+    linear-gradient(270deg, rgba(0,0,0,.5), rgba(255,255,255,.2) 55%, rgba(255,255,255,.32) 78%, rgba(0,0,0,.35) 92%, rgba(0,0,0,.55));
 }
 /* Sol en trapèze (parquet à chevrons, même texture que le mur rapproché) : étroit à l'endroit où
    il rejoint le mur du fond, plein écran au premier plan, côté joueur — seul élément qui garde une

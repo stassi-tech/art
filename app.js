@@ -2653,6 +2653,24 @@ function checkpointRoomVarPercent(name) {
 const CHECKPOINT_WALL_LENGTH_CM = 1500;
 const CHECKPOINT_EYE_LEVEL_CM = 156;
 const CHECKPOINT_GAP_CM = 25;
+// Plafond de sécurité sur la hauteur/largeur d'UNE œuvre : une faute de frappe dans le fichier
+// source (ex. un zéro de trop sur « longueur ») peut produire une dimension absurde (ex. 6680 cm
+// au lieu de 668 cm pour Un enterrement à Ornans) — bug réel repéré ici. Le danger n'est pas
+// seulement que CETTE œuvre s'affiche trop grande : insérée telle quelle dans le calcul de
+// centrage du mur (qui répartit toutes les œuvres autour d'un total en cm), une seule valeur
+// démesurée fait exploser ce total et repousse TOUTES les autres œuvres du groupe hors de l'écran
+// visible — pas seulement la fautive. 1000 cm (10 m) reste largement au-dessus de toute œuvre
+// réaliste pour cet aperçu, donc ce plafond n'affecte jamais une donnée correcte, et absorbe sans
+// drame une faute de frappe en attendant qu'elle soit corrigée dans le fichier.
+const CHECKPOINT_MAX_WORK_CM = 1000;
+function checkpointSanitizedSizeCm(w) {
+  let hCm = parseCmValue(w.hauteur);
+  if (!hCm || hCm <= 0 || !isFinite(hCm)) hCm = 60;
+  else if (hCm > CHECKPOINT_MAX_WORK_CM) hCm = CHECKPOINT_MAX_WORK_CM;
+  let lCm = parseCmValue(w.longueur) || hCm * 1.3;
+  if (!lCm || lCm <= 0 || !isFinite(lCm) || lCm > CHECKPOINT_MAX_WORK_CM) lCm = Math.min(lCm || hCm * 1.3, CHECKPOINT_MAX_WORK_CM) || CHECKPOINT_MAX_WORK_CM;
+  return { hCm, lCm };
+}
 // Met en place le mur du fond aperçu depuis le contrôle des billets : les œuvres y sont affichées à
 // leur VRAIE échelle (cm réels → pixels, à partir d'un mur de référence de 15 m) plutôt que
 // redimensionnées pour « faire tenir joliment » — c'est ce qui fait qu'un Courbet de 6,68 m occupe
@@ -2702,17 +2720,14 @@ function layoutCheckpointRoom() {
   // pour centrer le groupe sur le mur plutôt que de le coller contre le bord gauche.
   let totalCm = 0;
   works.forEach((w, i) => {
-    let hCm = parseCmValue(w.hauteur);
-    if (!hCm || hCm <= 0 || !isFinite(hCm)) hCm = 60;
-    totalCm += parseCmValue(w.longueur) || hCm * 1.3;
+    const { lCm } = checkpointSanitizedSizeCm(w);
+    totalCm += lCm;
     if (i < works.length - 1) totalCm += CHECKPOINT_GAP_CM;
   });
   backWorks.innerHTML = '';
   let cursorCm = (CHECKPOINT_WALL_LENGTH_CM - totalCm) / 2; // centre le groupe sur les 15 m du mur
   works.forEach((w) => {
-    let hCm = parseCmValue(w.hauteur);
-    if (!hCm || hCm <= 0 || !isFinite(hCm)) hCm = 60;
-    const lCm = parseCmValue(w.longueur) || hCm * 1.3;
+    const { hCm, lCm } = checkpointSanitizedSizeCm(w);
     const centerCm = cursorCm + lCm / 2;
     cursorCm += lCm + CHECKPOINT_GAP_CM;
     const centerXPx = innerXPx + (centerCm / CHECKPOINT_WALL_LENGTH_CM) * backWallWidthPx;
