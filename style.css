@@ -303,7 +303,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intrus-choice-btn.wrong { border-color:var(--wrong); background:#fbeceb; }
 .intrus-choice-btn:disabled { cursor:not-allowed; }
 .intrus-image-choices { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; width:100%; height:100%; }
-.intrus-image-choice { border:2px solid transparent; border-radius:6px; padding:6px; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s; }
+.intrus-image-choice { border:2px solid transparent; border-radius:6px; padding:6px; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s; min-width:0; }
 .intrus-image-choice:hover:not(:disabled) { border-color:var(--accent); background:rgba(255,255,255,.06); }
 .intrus-image-choice img { width:100%; max-height:min(600px, 68vh); object-fit:contain; display:block; }
 .intrus-image-choice.correct { border-color:var(--ok); }
@@ -802,6 +802,13 @@ body.has-other-works .correction-label { font-size:.76rem; }
   .home-mode-button .label { font-size:.8rem; }
   .account-slot-email { font-size:.6rem; }
   .quiz-grid { grid-template-columns:1fr; }
+  /* Garde-fou explicite pour Intrus sur mobile : peu importe la taille demandée en ligne par
+     JavaScript (échelle relative sur PC, taille fixe sur mobile), aucune image de la comparaison
+     ne doit jamais dépasser la largeur réellement disponible — !important pour être certain que
+     rien (y compris nos propres styles en ligne) ne puisse forcer un débordement horizontal. */
+  .intrus-image-choices { max-width:100%; box-sizing:border-box; }
+  .intrus-image-choice { max-width:100%; box-sizing:border-box; }
+  .intrus-image-choice img { max-width:100% !important; box-sizing:border-box; }
   .home-icon-button { width:26px; height:26px; font-size:.85rem; }
   #other-works-panel-list { margin-top:36px; }
   .artwork-card { min-height:52vh; padding:10px; }

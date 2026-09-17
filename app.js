@@ -1523,6 +1523,7 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  'teniers': 'ténié',
   'cumes': 'coumes',
   'velasquez': 'vélasqueze',
   'velázquez': 'vélasqueze',
@@ -2491,7 +2492,7 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
   populateOverviewThumbs(candidates);
   state.scaleViewCandidates = candidates;
 }
@@ -2520,13 +2521,14 @@ function goToWall(index) {
   currentWallIndex = ((index % 4) + 4) % 4;
   positionMinimapDot();
   populateCloserPlanWall((state.roomWalls || [[]])[currentWallIndex] || []);
+  lastShownMeter = 0; // repère de distance réinitialisé : chaque mur repart de 1 mètre
 }
 function enterCloserPlan() {
   const candidates = state.scaleViewCandidates || [];
   state.roomWalls = splitIntoFourWalls(candidates);
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.remove('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
   // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
@@ -2536,7 +2538,7 @@ function enterCloserPlan() {
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
 }
 function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
@@ -2756,6 +2758,25 @@ function updateDotAlongWall() {
     dot.style.top = `${18 + progress * 64}%`;
   }
 }
+// Repère de distance : le numéro du mètre en cours (1 à 15, longueur réelle du mur) apparaît puis
+// s'efface au fil de la marche — donne une vraie idée de la distance parcourue, pas seulement
+// « on avance », plutôt qu'un chiffre qui resterait affiché en continu.
+let lastShownMeter = 0;
+function updateDistanceMarker() {
+  const wall = $('scale-wall');
+  const marker = $('scale-distance-marker');
+  const sil = $('scale-silhouette');
+  if (!wall || !marker || !sil) return;
+  const pxPerCm = sil.getBoundingClientRect().height / 170;
+  if (!pxPerCm) return;
+  const meters = Math.max(1, Math.min(15, Math.round(wall.scrollLeft / pxPerCm / 100)));
+  if (meters === lastShownMeter) return;
+  lastShownMeter = meters;
+  marker.textContent = `${meters} m`;
+  marker.style.opacity = '1';
+  clearTimeout(marker.dataset.fadeTimer ? Number(marker.dataset.fadeTimer) : undefined);
+  marker.dataset.fadeTimer = setTimeout(() => { marker.style.opacity = '0'; }, 900);
+}
 function startWalking(direction) {
   stopWalking();
   walkDirection = direction;
@@ -2765,6 +2786,7 @@ function startWalking(direction) {
   const step = () => {
     wall.scrollLeft += walkDirection * walkSpeed;
     updateDotAlongWall();
+    updateDistanceMarker();
     walkAnimationId = setTimeout(step, 16); // ~60 images/seconde, sans dépendre de requestAnimationFrame
   };
   walkAnimationId = setTimeout(step, 16);
@@ -2810,6 +2832,14 @@ function exitScaleViewCompletely() {
   $('image-lightbox').classList.add('hidden');
   currentLightboxWork = null;
 }
+// Sortie d'urgence : la visionneuse recouvre tout l'écran, y compris le bandeau général — sans ce
+// bouton, quitter la salle depuis le plan rapproché ou général n'était possible qu'en fermant
+// complètement l'application, faute d'accès aux boutons habituels (masqués derrière la visionneuse).
+$('scale-emergency-exit')?.addEventListener('click', () => {
+  stopWalking();
+  exitScaleViewCompletely();
+  showPanel('training-hub');
+});
 $('lightbox-scale-toggle-topbar')?.addEventListener('click', enterScaleView);
 $('lightbox-scale-back-button')?.addEventListener('click', exitScaleView);
 function openLightboxImage(url, caption, work) {
@@ -3992,6 +4022,58 @@ function famNumberWord(n) {
   const words = { 2: 'deux', 3: 'trois', 4: 'quatre', 5: 'cinq', 6: 'six' };
   return words[n] || String(n);
 }
+// Loupe au-dessus de la grille de Famille : suit le doigt/curseur, zoome la zone survolée — pour
+// mieux distinguer une petite œuvre collée à une grande. Le contenu de la loupe est un CLONE de la
+// grille (recloné seulement à l'entrée du survol, pas à chaque mouvement, pour rester léger),
+// agrandi et décalé pour que le point sous le curseur corresponde au même point dans l'original.
+const FAM_ZOOM = 2.2;
+// Loupe : un vrai objet posé sur la carte (poignée comprise), toujours visible, qu'on attrape et
+// qu'on fait glisser sur la grille — pas un effet invisible qui n'apparaissait qu'au survol
+// (repéré comme non repérable par un joueur : « je ne vois pas la loupe »).
+function updateFamMagnifierContent() {
+  const grid = $('fam-image-grid');
+  const lens = $('fam-magnifier');
+  const content = $('fam-magnifier-content');
+  if (!grid || !lens || !content) return;
+  const gridRect = grid.getBoundingClientRect();
+  const lensRect = lens.getBoundingClientRect();
+  // Centre de la loupe, en coordonnées relatives à la grille en dessous.
+  const cx = (lensRect.left + lensRect.width / 2) - gridRect.left;
+  const cy = (lensRect.top + lensRect.height / 2) - gridRect.top;
+  content.style.width = `${gridRect.width}px`;
+  content.style.height = `${gridRect.height}px`;
+  content.style.transform = `scale(${FAM_ZOOM})`;
+  content.style.left = `${lensRect.width / 2 - cx * FAM_ZOOM}px`;
+  content.style.top = `${lensRect.height / 2 - cy * FAM_ZOOM}px`;
+}
+function attachFamMagnifier() {
+  const lens = $('fam-magnifier');
+  const content = $('fam-magnifier-content');
+  const column = lens?.closest('.artwork-column');
+  if (!lens || !content || !column || lens.dataset.attached) return;
+  lens.dataset.attached = '1';
+  let dragging = false, offsetX = 0, offsetY = 0;
+  lens.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    dragging = true;
+    lens.style.cursor = 'grabbing';
+    const rect = lens.getBoundingClientRect();
+    offsetX = event.clientX - rect.left;
+    offsetY = event.clientY - rect.top;
+    lens.setPointerCapture?.(event.pointerId);
+  });
+  lens.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const colRect = column.getBoundingClientRect();
+    lens.style.left = `${event.clientX - colRect.left - offsetX}px`;
+    lens.style.top = `${event.clientY - colRect.top - offsetY}px`;
+    updateFamMagnifierContent();
+  });
+  const stop = () => { dragging = false; lens.style.cursor = 'grab'; };
+  lens.addEventListener('pointerup', stop);
+  lens.addEventListener('pointercancel', stop);
+}
+attachFamMagnifier();
 function famShowQuestion() {
   speechSynthesis.cancel();
   famTimers.forEach(clearTimeout); famTimers = [];
@@ -4021,6 +4103,10 @@ function famShowQuestion() {
   $('fam-image-grid').innerHTML = q.images.map((work, i) =>
     `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" style="max-width:${famSizes[i]}px;max-height:${famSizes[i]}px;" /></button>`
   ).join('');
+  // La loupe garde son propre clone de la grille — à resynchroniser à chaque nouvelle question
+  // (nouvelles images), et repositionner son contenu selon où elle se trouve actuellement.
+  if ($('fam-magnifier-content')) $('fam-magnifier-content').innerHTML = $('fam-image-grid').innerHTML;
+  requestAnimationFrame(updateFamMagnifierContent);
   $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (famStep !== 0) return;
