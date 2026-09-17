@@ -717,49 +717,50 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    que tous les murs de la salle), avant de franchir un tourniquet type métro pour continuer.
    Silhouette à sa taille normale ici (1,70 m), contrairement à la façade. */
 #scale-checkpoint { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:1vh; background:#e8e4d8; padding:20px; padding-top:4vh; }
-/* Vraie salle en volume : mur du fond + 2 murs latéraux + sol, taillés dans UN SEUL trapèze
-   cohérent (mêmes repères que TRAP_* dans app.js : mur du fond en haut, plus étroit ; murs
-   latéraux en biais ; sol en bas, qui s'évase vers le joueur) — plutôt que l'ancien mur plat
-   posé au-dessus d'un simple rectangle de sol, où les œuvres du mur du fond, sans vrai volume
-   pour les contenir, débordaient de leur cadre. Le mur d'entrée (dans le dos du joueur, celui du
-   tourniquet) n'a pas de pan ici : on ne peut pas le voir depuis où l'on se tient. */
+/* Vraie salle en volume : 3 murs de 15 m (mur du fond + 2 murs latéraux), exactement comme le
+   mur affiché au plan rapproché juste derrière (#scale-wall) — donc des pans DROITS, posés côte à
+   côte (flex row), et non des quadrilatères penchés/skewés comme dans une première tentative. Seul
+   le CONTOUR d'ensemble (#scale-checkpoint-walls-row) est taillé en un léger trapèze, pour
+   suggérer que les murs latéraux partent en biais depuis le mur du fond — sans ça, 3 rectangles
+   collés donneraient 3 murs bien d'aplomb face au joueur (comme des murs à 90°), ce qui écraserait
+   toute perspective. Chaque mur garde ses œuvres sur une seule ligne (comme au plan rapproché),
+   jamais empilées. */
 #scale-checkpoint-room {
-  position:relative; flex:1 1 auto; width:100%; min-height:12vh; overflow:hidden;
-  --room-top-l:30%; --room-top-r:70%; --room-bot-l:38%; --room-bot-r:62%; --room-horizon:42%;
+  position:relative; flex:1 1 auto; width:100%; min-height:14vh; display:flex; flex-direction:column;
 }
-#scale-checkpoint-wall, .scale-checkpoint-sidewall, #scale-checkpoint-floor { position:absolute; inset:0; background-color:#c9b896; background-size:cover; background-position:center; }
-#scale-checkpoint-wall {
-  clip-path:polygon(var(--room-top-l) 0%, var(--room-top-r) 0%, var(--room-bot-r) var(--room-horizon), var(--room-bot-l) var(--room-horizon));
+#scale-checkpoint-walls-row {
+  position:relative; flex:1 1 auto; display:flex; width:100%; overflow:hidden;
+  /* Léger trapèze : les coins du haut sont légèrement rentrés, ceux du bas occupent toute la
+     largeur — un angle discret, pas la forte perspective d'un vrai trapèze de sol. */
+  clip-path:polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
 }
-/* Murs latéraux : même texture que le mur du fond (cohérence du décor), simplement assombrie pour
-   suggérer l'angle de vue en biais — comme deux vrais pans de mur qui prolongent la pièce, pas
-   une ombre en dégradé sans rapport avec le mur du fond. */
-#scale-checkpoint-wall-left {
-  clip-path:polygon(0% 0%, var(--room-top-l) 0%, var(--room-bot-l) var(--room-horizon), 0% 100%);
-  filter:brightness(.76);
+.scale-checkpoint-wallpanel {
+  position:relative; flex:1 1 0; min-width:0; background-color:#c9b896; background-size:cover; background-position:center;
+  display:flex; align-items:flex-end; justify-content:center; overflow:hidden;
 }
-#scale-checkpoint-wall-right {
-  clip-path:polygon(100% 0%, var(--room-top-r) 0%, var(--room-bot-r) var(--room-horizon), 100% 100%);
-  filter:brightness(.66);
-}
-/* Sol en trapèze (parquet à chevrons, même texture que le mur rapproché) : étroit à l'endroit où
-   il rejoint le mur du fond, plein écran au premier plan, côté joueur. */
+/* Mur du fond mis en avant (plus large que les deux murs latéraux réunis, comme celui qu'on
+   franchit ensuite) et non assombri ; les murs latéraux, eux, sont légèrement assombris pour
+   suggérer l'angle de vue en biais — sans pour autant déformer leur forme, qui reste un rectangle
+   droit comme le mur du fond. */
+#scale-checkpoint-wall { flex:1.6 1 0; }
+#scale-checkpoint-wall-left { filter:brightness(.78); box-shadow:inset -6px 0 12px rgba(0,0,0,.35); }
+#scale-checkpoint-wall-right { filter:brightness(.68); box-shadow:inset 6px 0 12px rgba(0,0,0,.35); }
+/* Sol en léger trapèze (parquet à chevrons, même texture que le mur rapproché) : un peu plus
+   étroit côté mur du fond, plein écran au premier plan, côté joueur — cohérent avec le contour
+   discret du mur ci-dessus, pas une forte perspective. */
 #scale-checkpoint-floor {
-  clip-path:polygon(var(--room-bot-l) var(--room-horizon), var(--room-bot-r) var(--room-horizon), 100% 100%, 0% 100%);
+  position:relative; flex:0 0 auto; height:16vh; min-height:70px;
+  clip-path:polygon(12% 0%, 88% 0%, 100% 100%, 0% 100%);
   background-color:#b9895a;
   background-image:repeating-linear-gradient(45deg, transparent 0 12px, rgba(0,0,0,.14) 12px 14px),
                     repeating-linear-gradient(-45deg, transparent 0 12px, rgba(255,255,255,.10) 12px 14px);
   box-shadow:inset 0 8px 14px -6px rgba(0,0,0,.35);
 }
-/* Les œuvres de chaque mur restent dans une zone sûre à l'intérieur de son propre polygone (et non
-   centrées sur toute la boîte, qui les ferait retomber hors du trapèze pour les murs latéraux) —
-   bug réel corrigé : c'est ce qui faisait déborder le tableau de son cadre. */
-.scale-checkpoint-wall-works { position:absolute; display:flex; gap:4px; flex-wrap:wrap; opacity:.92; }
-#scale-checkpoint-wall .scale-checkpoint-wall-works { left:36%; top:4%; width:28%; height:34%; align-items:flex-end; justify-content:center; }
-#scale-checkpoint-wall-left .scale-checkpoint-wall-works { left:2%; top:6%; width:24%; height:32%; flex-direction:column; align-items:flex-start; justify-content:flex-start; }
-#scale-checkpoint-wall-right .scale-checkpoint-wall-works { right:2%; top:6%; width:24%; height:32%; flex-direction:column; align-items:flex-end; justify-content:flex-start; }
-.scale-checkpoint-work { max-height:100%; max-width:100%; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.3); }
-#scale-checkpoint-wall .scale-checkpoint-work { max-height:9vh; }
+/* Une seule ligne d'œuvres par mur (comme au plan rapproché) : jamais empilées, jamais coupées
+   par le cadre du mur — bug réel corrigé, c'est ce qui faisait déborder le tableau de son cadre
+   dans une version précédente. */
+.scale-checkpoint-wall-works { position:relative; display:flex; align-items:flex-end; justify-content:center; gap:4px; flex-wrap:nowrap; max-width:92%; overflow:hidden; margin-bottom:6%; }
+.scale-checkpoint-work { max-height:9vh; max-width:100%; flex:0 1 auto; min-width:0; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.3); }
 #scale-checkpoint-wall-left .scale-checkpoint-work, #scale-checkpoint-wall-right .scale-checkpoint-work { max-height:7vh; }
 #scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; }
 #scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }

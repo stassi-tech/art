@@ -1163,20 +1163,26 @@
                  vrai déplacement progressif du personnage à travers l'espace. -->
             <div id="scale-checkpoint" class="hidden">
               <button type="button" id="scale-checkpoint-back" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:absolute;top:16px;left:16px;padding:6px 10px;border-radius:4px;border:2px solid rgba(0,0,0,.3);background:rgba(255,255,255,.85);color:#2b2620;font-size:.72rem;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;">◄ Retour à l'entrée</button>
-              <!-- Vraie salle en volume : mur du fond + 2 murs latéraux + sol, taillés dans un
-                   seul trapèze cohérent (mêmes repères que TRAP_* dans app.js) plutôt qu'un mur
-                   plat surmontant un simple rectangle — le joueur voit ainsi la pièce depuis
-                   l'entrée, comme s'il se tenait à la place du tourniquet juste en dessous. Le
-                   mur d'entrée (celui dans le dos du joueur) n'est logiquement pas représenté. -->
+              <!-- Vraie salle en volume : 3 murs de 15 m (mur du fond + 2 murs latéraux), exactement
+                   comme au plan rapproché juste derrière — donc des murs DROITS (un simple pan
+                   plat, comme #scale-wall), pas des pans penchés/skewés. Seul le contour d'ensemble
+                   dessine un léger trapèze (voir clip-path sur #scale-checkpoint-walls-row) pour
+                   suggérer que les murs latéraux partent en biais depuis le mur du fond — sans quoi
+                   3 rectangles collés seraient d'aplomb face au joueur (murs 90°), ce qui écraserait
+                   toute l'idée de perspective. Les œuvres de chaque mur restent sur une seule ligne
+                   (comme au plan rapproché), pas empilées. Le mur d'entrée (dans le dos du joueur,
+                   ici) n'est logiquement pas représenté. -->
               <div id="scale-checkpoint-room">
-                <div id="scale-checkpoint-wall-left" class="scale-checkpoint-sidewall" aria-hidden="true">
-                  <div id="scale-checkpoint-wall-left-works" class="scale-checkpoint-wall-works"></div>
-                </div>
-                <div id="scale-checkpoint-wall-right" class="scale-checkpoint-sidewall" aria-hidden="true">
-                  <div id="scale-checkpoint-wall-right-works" class="scale-checkpoint-wall-works"></div>
-                </div>
-                <div id="scale-checkpoint-wall">
-                  <div id="scale-checkpoint-wall-works" class="scale-checkpoint-wall-works"></div>
+                <div id="scale-checkpoint-walls-row">
+                  <div id="scale-checkpoint-wall-left" class="scale-checkpoint-wallpanel" aria-hidden="true">
+                    <div id="scale-checkpoint-wall-left-works" class="scale-checkpoint-wall-works"></div>
+                  </div>
+                  <div id="scale-checkpoint-wall" class="scale-checkpoint-wallpanel">
+                    <div id="scale-checkpoint-wall-works" class="scale-checkpoint-wall-works"></div>
+                  </div>
+                  <div id="scale-checkpoint-wall-right" class="scale-checkpoint-wallpanel" aria-hidden="true">
+                    <div id="scale-checkpoint-wall-right-works" class="scale-checkpoint-wall-works"></div>
+                  </div>
                 </div>
                 <div id="scale-checkpoint-floor" aria-hidden="true"></div>
               </div>
