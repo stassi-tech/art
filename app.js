@@ -2499,9 +2499,26 @@ function enterScaleView() {
 // Les œuvres de la session sont réparties sur 4 murs (façon vraie salle rectangulaire) plutôt que
 // sur un seul long mur — state.roomWalls garde les 4 groupes, currentWallIndex celui affiché.
 let currentWallIndex = 0;
+let currentWallLengthM = 15; // longueur du mur actuellement affiché, en mètres (adaptative, voir populateCloserPlanWall)
+// Répartition des œuvres sur les 4 murs par largeur totale estimée (pas juste par nombre) : les
+// œuvres sont triées de la plus large à la plus étroite, puis chacune rejoint le mur qui a
+// actuellement le moins de largeur occupée — évite qu'un mur hérite par hasard de plusieurs
+// immenses formats pendant qu'un autre n'a que des petits, ce qui déséquilibrait fortement les
+// longueurs réelles d'un mur à l'autre.
+function estimateWorkWidthCm(w) {
+  let hCm = parseCmValue(w?.hauteur);
+  if (!hCm || hCm <= 0 || !isFinite(hCm)) hCm = 60;
+  return parseCmValue(w?.longueur) || hCm * 1.3;
+}
 function splitIntoFourWalls(candidates) {
   const walls = [[], [], [], []];
-  candidates.forEach((w, i) => walls[i % 4].push(w));
+  const totals = [0, 0, 0, 0];
+  const sorted = [...candidates].sort((a, b) => estimateWorkWidthCm(b) - estimateWorkWidthCm(a));
+  sorted.forEach((w) => {
+    const target = totals.indexOf(Math.min(...totals));
+    walls[target].push(w);
+    totals[target] += estimateWorkWidthCm(w) + 30; // + un espacement type entre deux œuvres
+  });
   return walls;
 }
 function positionMinimapDot() {
@@ -2591,12 +2608,13 @@ function populateCloserPlanWall(candidates) {
     cursorLeft += Math.max(artW, 4) + 40;
     if (w === currentLightboxWork) { currentNote = note; currentHCm = hCm; }
   });
-  // Mur d'une vraie longueur fixe (pas juste « assez large pour cet écran ») : 15 mètres, une
-  // longueur de galerie plausible, à la même échelle que la silhouette et les œuvres — pour que
-  // la place utilisée/inoccupée ait un sens réel, et pour pouvoir revoir sereinement combien
-  // d'œuvres peuvent y tenir.
-  const WALL_LENGTH_CM = 1500;
-  const wallWidthPx = silhRect.right + WALL_LENGTH_CM * pxPerCm;
+  // La longueur du mur s'adapte maintenant à ce qu'il contient réellement (largeur utilisée par
+  // les œuvres + une marge de recul de 2 m), avec un minimum de 8 m pour rester walkable même
+  // avec très peu d'œuvres — plutôt qu'une longueur fixe identique pour tous les murs, qui
+  // laissait parfois plusieurs mètres vides sans rapport avec ce que le mur contient vraiment.
+  const naturalWidthCm = (cursorLeft - silhRect.right) / pxPerCm;
+  currentWallLengthM = Math.round(Math.max(800, naturalWidthCm + 200) / 100);
+  const wallWidthPx = silhRect.right + currentWallLengthM * 100 * pxPerCm;
   if (cursorLeft < wallWidthPx) {
     const spacer = document.createElement('div');
     spacer.style.cssText = `position:absolute;left:${wallWidthPx}px;width:1px;height:1px;`;
@@ -2769,7 +2787,7 @@ function updateDistanceMarker() {
   if (!wall || !marker || !sil) return;
   const pxPerCm = sil.getBoundingClientRect().height / 170;
   if (!pxPerCm) return;
-  const meters = Math.max(1, Math.min(15, Math.round(wall.scrollLeft / pxPerCm / 100)));
+  const meters = Math.max(1, Math.min(currentWallLengthM, Math.round(wall.scrollLeft / pxPerCm / 100)));
   if (meters === lastShownMeter) return;
   lastShownMeter = meters;
   marker.textContent = `${meters} m`;
