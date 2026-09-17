@@ -774,6 +774,12 @@ body:not([data-ambiance]) #scale-facade { background-color:#c9b896; background-i
 #scale-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a);
   box-shadow:0 -3px 8px rgba(0,0,0,.25); background-size:cover; background-position:center; }
+/* Point rouge dupliqué, en grand, posé sur le sol — mêmes gestes que le petit point de l'écran
+   de contrôle, synchronisés, mais bien plus facile à manier ici puisqu'on dispose de toute la
+   largeur de l'écran plutôt que d'un petit carré. */
+#scale-floor-dot { position:fixed; bottom:calc(16vh - 14px); width:28px; height:28px; border-radius:50%;
+  background:#e2453c; box-shadow:0 3px 8px rgba(0,0,0,.45), 0 0 0 4px rgba(255,255,255,.5);
+  cursor:grab; z-index:6; touch-action:none; transform:translateX(-50%); }
 /* Sol de la salle personnalisable par ambiance (voir salle-<ambiance>-sol.jpg dans assets/) — même
    principe que le mur : un seul fichier par ambiance, utilisé aux deux plans (vue d'ensemble et
    mur rapproché). Couleur/texture de repli tant que le fichier n'est pas déposé. */

@@ -1523,6 +1523,13 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  'bartolomeo': 'bartoloméo',
+  'gibson': 'gibsone',
+  'pollaiolo': 'pollayolo',
+  'juan gris': 'jouane griss',
+  'ruan gris': 'jouane griss',
+  'bandini': 'bandini',
+  'masaccio': 'masatchio',
   'michel-ange': 'mikelange',
   'michel ange': 'mikelange',
   'sabin': 'sabine',
@@ -1531,7 +1538,7 @@ const PRONUNCIATION_FIXES = {
   'kirchner': 'kirchneur',
   'kisling': 'kissling',
   'bernadino': 'bérnadino',
-  'vermeer': 'vérmér',
+  'vermeer': 'vérmeur',
   'kalf': 'kalf',
   'edvard': 'édvard',
   'campione': 'campioné',
@@ -1559,7 +1566,7 @@ const PRONUNCIATION_FIXES = {
   'copley': 'kopli',
   'vuillard': 'vuiyar',
   'damian forment': 'damianne formente',
-  'ambrogio lorenzetti': 'ambrogio lorenzétti',
+  'ambrogio lorenzetti': 'ambrogio lorenzéti',
   'borghese': 'borguézé',
   'borghèse': 'borguézé',
   'bernini': 'bérnini',
@@ -1611,8 +1618,8 @@ const PRONUNCIATION_FIXES = {
   'benozzo': 'Bénotso',
   'gozzoli': 'Gotsoli',
   'simone': 'Simoné',
-  'cione': 'Chioné',
-  'lorenzetti': 'Lorenzétti',
+  'cione': 'tchioné',
+  'lorenzetti': 'Lorenzéti',
   'orsanmichele': 'Orsanmikélé',
   'santa croce': 'Santa Croché',
   'cimabue': 'Chimaboué',
@@ -2556,7 +2563,7 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
   state.scaleViewCandidates = candidates;
   // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer à l'étape du contrôle
   // des billets (voir goThroughDoor).
@@ -2591,9 +2598,11 @@ function goThroughDoor() {
   blurTransition(() => {
     $('scale-overview').classList.add('hidden');
     $('scale-checkpoint').classList.remove('hidden');
-    const backWallWorks = (state.roomWalls || [[]])[0] || [];
-    $('scale-checkpoint-wall').innerHTML = backWallWorks.slice(0, 6).map((w) =>
-      `<img class="scale-checkpoint-work" src="${escapeHtml(imageSourceSized(w.image, 400))}" alt="" />`
+    // Toutes les œuvres de la salle (les 4 murs combinés), pas seulement celles du mur du fond —
+    // on doit déjà avoir un aperçu complet de ce qui nous attend, pas juste un extrait.
+    const allWorks = (state.roomWalls || []).flat();
+    $('scale-checkpoint-wall').innerHTML = allWorks.map((w) =>
+      `<img class="scale-checkpoint-work" src="${escapeHtml(imageSourceSized(w.image, 300))}" alt="" />`
     ).join('');
   });
 }
@@ -2657,7 +2666,7 @@ function enterCloserPlan() {
   currentWallIndex = 0; // on entre toujours par la porte, on se retrouve donc au mur du fond
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
+  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
   // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
@@ -2670,7 +2679,7 @@ function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
 }
 $('scale-checkpoint-back')?.addEventListener('click', backToOverview);
 $('scale-turnstile-exit')?.addEventListener('click', backToOverview);
@@ -2885,6 +2894,28 @@ function progressFromMinimapPosition(wallIndex, x, y) {
   dot.addEventListener('pointerup', stop);
   dot.addEventListener('pointercancel', stop);
 })();
+// Point dupliqué sur le sol : mêmes gestes, mais cette fois sur toute la largeur de l'écran — pas
+// de changement de mur ici (c'est le rôle du petit point de l'écran de contrôle), juste avancer/
+// reculer le long du mur courant, en plus grand et plus facile à manier.
+(function attachFloorDotDrag() {
+  const floorDot = $('scale-floor-dot');
+  const wall = $('scale-wall');
+  if (!floorDot || !wall) return;
+  let dragging = false;
+  const moveTo = (clientX) => {
+    const x = Math.min(0.95, Math.max(0.05, clientX / window.innerWidth));
+    const progress = Math.min(1, Math.max(0, (x - 0.05) / 0.90));
+    const maxScroll = Math.max(1, wall.scrollWidth - wall.clientWidth);
+    wall.scrollLeft = progress * maxScroll;
+    updateDotAlongWall();
+    updateDistanceMarker();
+  };
+  floorDot.addEventListener('pointerdown', (event) => { event.preventDefault(); dragging = true; floorDot.setPointerCapture?.(event.pointerId); floorDot.style.cursor = 'grabbing'; });
+  floorDot.addEventListener('pointermove', (event) => { if (dragging) moveTo(event.clientX); });
+  const stopFloor = () => { dragging = false; floorDot.style.cursor = 'grab'; };
+  floorDot.addEventListener('pointerup', stopFloor);
+  floorDot.addEventListener('pointercancel', stopFloor);
+})();
 makeSilhouetteDraggable($('scale-overview-silhouette'), {
   onDragEnd: (dx, dy, endX, endY) => {
     if (isNearBottomCorner(endX, endY)) { exitScaleViewCompletely(); return; }
@@ -2909,6 +2940,7 @@ function stopWalking() {
 function updateDotAlongWall() {
   const wall = $('scale-wall');
   const dot = $('scale-minimap-dot');
+  const floorDot = $('scale-floor-dot');
   if (!wall || !dot) return;
   const maxScroll = Math.max(1, wall.scrollWidth - wall.clientWidth);
   const progress = Math.min(1, Math.max(0, wall.scrollLeft / maxScroll)); // 0..1 le long du mur
@@ -2924,6 +2956,10 @@ function updateDotAlongWall() {
   } else {
     dot.style.top = `${18 + progress * 64}%`;
   }
+  // Point dupliqué sur le sol : même progression, mais répartie sur toute la largeur de l'écran
+  // (5 % à 95 %, pour ne jamais coller pile aux bords) — bien plus facile à manier qu'un petit
+  // point dans un coin de l'écran de contrôle.
+  if (floorDot) floorDot.style.left = `${5 + progress * 90}%`;
 }
 // Repère de distance : le numéro du mètre en cours (1 à 15, longueur réelle du mur), affiché près
 // du point rouge de la mini-carte, en haut. Il reste figé sur la valeur courante en permanence —
