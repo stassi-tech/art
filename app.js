@@ -2541,7 +2541,7 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker', 'scale-back-to-facade'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
   state.scaleViewCandidates = candidates;
   // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer à l'étape du contrôle
   // des billets (voir goThroughDoor).
@@ -2635,7 +2635,7 @@ function enterCloserPlan() {
   currentWallIndex = 0; // on entre toujours par la porte, on se retrouve donc au mur du fond
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker', 'scale-back-to-facade'].forEach((id) => $(id).classList.remove('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
   // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
@@ -2648,10 +2648,10 @@ function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker', 'scale-back-to-facade'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
 }
-$('scale-back-to-facade')?.addEventListener('click', backToOverview);
 $('scale-checkpoint-back')?.addEventListener('click', backToOverview);
+$('scale-turnstile-exit')?.addEventListener('click', backToOverview);
 function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
   // réelle après affichage pour placer chaque œuvre en conséquence, plutôt que de deviner des
@@ -2826,6 +2826,7 @@ attachMoveButton($('scale-move-right'), 1);
   const dot = $('scale-minimap-dot');
   if (!minimap || !dot) return;
   let dragging = false;
+  let wallSwitchInProgress = false;
   const moveTo = (clientX, clientY) => {
     const rect = minimap.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
@@ -2835,7 +2836,13 @@ attachMoveButton($('scale-move-right'), 1);
     // Distance au centre de chaque côté (haut/droite/bas/gauche), en coordonnées 0..1.
     const distances = [y, 1 - x, 1 - y, x];
     const nearest = distances.indexOf(Math.min(...distances));
-    if (nearest !== currentWallIndex) goToWall(nearest);
+    // Transition floue à chaque passage d'un mur à l'autre — suggère le déplacement du
+    // personnage sans avoir à l'animer vraiment. wallSwitchInProgress évite de superposer
+    // plusieurs transitions si le glissement traverse rapidement plusieurs murs de suite.
+    if (nearest !== currentWallIndex && !wallSwitchInProgress) {
+      wallSwitchInProgress = true;
+      blurTransition(() => { goToWall(nearest); wallSwitchInProgress = false; });
+    }
   };
   dot.addEventListener('pointerdown', (event) => { event.preventDefault(); dragging = true; dot.setPointerCapture?.(event.pointerId); dot.style.cursor = 'grabbing'; });
   dot.addEventListener('pointermove', (event) => { if (dragging) moveTo(event.clientX, event.clientY); });
@@ -2872,9 +2879,13 @@ function updateDotAlongWall() {
   const progress = Math.min(1, Math.max(0, wall.scrollLeft / maxScroll)); // 0..1 le long du mur
   // Murs du haut/bas (0 et 2) : la progression avance le point horizontalement, de gauche à
   // droite (18 % à 82 % pour rester bien à l'intérieur du rectangle). Murs latéraux (1 et 3) :
-  // verticalement, de la même façon.
+  // verticalement, de la même façon — sauf le mur gauche (3), où le sens doit être inversé : le
+  // personnage fait face au mur (pas au centre de la salle) pour regarder les œuvres, donc avancer
+  // vers SA droite l'emmène vers le mur du fond (le haut de la mini-carte), pas vers l'entrée.
   if (currentWallIndex === 0 || currentWallIndex === 2) {
     dot.style.left = `${18 + progress * 64}%`;
+  } else if (currentWallIndex === 3) {
+    dot.style.top = `${82 - progress * 64}%`;
   } else {
     dot.style.top = `${18 + progress * 64}%`;
   }
@@ -2954,7 +2965,12 @@ function exitScaleViewCompletely() {
 // bouton, quitter la salle depuis le plan rapproché ou général n'était possible qu'en fermant
 // complètement l'application, faute d'accès aux boutons habituels (masqués derrière la visionneuse).
 $('scale-emergency-exit')?.addEventListener('click', () => {
+  // Le bouton ramène maintenant à la façade (PG), pas hors de la salle — la vraie sortie
+  // (fermeture du musée, retour au menu des exercices) vit désormais sur la façade elle-même.
   stopWalking();
+  backToOverview();
+});
+$('scale-close-museum')?.addEventListener('click', () => {
   exitScaleViewCompletely();
   showPanel('training-hub');
 });

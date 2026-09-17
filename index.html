@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=158" />
+    <link rel="stylesheet" href="style.css?v=159" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1151,6 +1151,9 @@
                 </svg>
               </div>
               <div id="scale-overview-floor" aria-hidden="true"></div>
+              <!-- Sortir complètement de la salle depuis la façade — thème « fermeture du musée »,
+                   cohérent avec l'ambiance d'entrée/sortie de ce premier plan. -->
+              <button type="button" id="scale-close-museum" aria-label="Fermeture du musée, retour aux exercices" style="position:fixed;top:70px;left:16px;padding:8px 12px;border-radius:4px;border:2px solid #fff;background:#5a3a1a;color:#fff;font-size:.75rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);">🔔 Fermeture du musée</button>
             </div>
             <!-- Étape 2 : le contrôle des billets — après avoir poussé la porte (transition
                  floue), on découvre le mur du fond en retrait depuis l'entrée, avec un tourniquet
@@ -1160,11 +1163,21 @@
             <div id="scale-checkpoint" class="hidden">
               <button type="button" id="scale-checkpoint-back" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:absolute;top:16px;left:16px;padding:6px 10px;border-radius:4px;border:2px solid rgba(0,0,0,.3);background:rgba(255,255,255,.85);color:#2b2620;font-size:.72rem;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;">◄ Retour à l'entrée</button>
               <div id="scale-checkpoint-wall"></div>
-              <div id="scale-turnstile">
-                <div id="scale-turnstile-body">
-                  <button type="button" id="scale-barrier" aria-label="Franchir le tourniquet, donner son ticket">Ticket</button>
+              <div id="scale-checkpoint-floor-gap" aria-hidden="true"></div>
+              <div id="scale-checkpoint-row">
+                <svg id="scale-checkpoint-silhouette" viewBox="0 0 100 340" aria-hidden="true">
+                  <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+                </svg>
+                <div class="scale-rope-post" aria-hidden="true"></div>
+                <div id="scale-rope-line" aria-hidden="true"></div>
+                <div id="scale-turnstile">
+                  <div id="scale-turnstile-body">
+                    <button type="button" id="scale-barrier" aria-label="Franchir le tourniquet, donner son ticket">Ticket</button>
+                    <button type="button" id="scale-turnstile-exit" aria-label="Sortie, retour à l'entrée">Sortie</button>
+                  </div>
+                  <div id="scale-turnstile-base"></div>
                 </div>
-                <div id="scale-turnstile-base"></div>
+                <div class="scale-rope-post" aria-hidden="true"></div>
               </div>
             </div>
             <!-- Voile de transition floue entre les étapes. -->
@@ -1197,11 +1210,7 @@
             <div id="scale-distance-marker" class="hidden" style="position:fixed;top:8px;left:50%;transform:translateX(-50%);min-width:70px;text-align:center;padding:5px 14px;border-radius:6px;background:rgba(20,20,20,.85);border:2px solid rgba(255,255,255,.6);color:#fff;font-family:Arial,sans-serif;font-weight:700;font-size:.9rem;z-index:20;">1 m</div>
             <!-- Sortie d'urgence : la visionneuse recouvre tout l'écran (y compris le bandeau
                  général), donc un moyen de sortir doit exister À L'INTÉRIEUR d'elle-même. -->
-            <button type="button" id="scale-emergency-exit" class="hidden" aria-label="Sortir de la salle" title="Sortir de la salle" style="position:fixed;top:70px;left:16px;padding:8px 12px;border-radius:4px;border:2px solid #fff;background:#0a8a3c;color:#fff;font-size:.75rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;">🏃🚪 Sortie</button>
-            <!-- Retour à la façade (PG) depuis le plan rapproché — distinct de la sortie d'urgence
-                 ci-dessus, qui quitte carrément la salle : celui-ci reste dans la salle, juste un
-                 pas en arrière dans la séquence d'entrée. -->
-            <button type="button" id="scale-back-to-facade" class="hidden" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:fixed;top:118px;left:16px;padding:6px 10px;border-radius:4px;border:2px solid rgba(255,255,255,.6);background:rgba(20,20,20,.65);color:#fff;font-size:.72rem;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;z-index:7;">◄ Retour à l'entrée</button>
+            <button type="button" id="scale-emergency-exit" class="hidden" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:fixed;top:70px;left:16px;padding:8px 12px;border-radius:4px;border:2px solid #fff;background:#0a8a3c;color:#fff;font-size:.75rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;">🏃🚪 Sortie</button>
             <!-- Vue rapprochée d'une œuvre précise : la silhouette entre dans l'image elle-même pour
                  montrer l'échelle en grand — on la tire hors du cadre pour revenir au mur, qui garde
                  sa position (la promenade continue là où elle s'était arrêtée). -->
@@ -1450,6 +1459,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=227"></script>
+    <script src="app.js?v=228"></script>
   </body>
 </html>
