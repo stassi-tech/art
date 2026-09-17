@@ -756,24 +756,18 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
                     repeating-linear-gradient(-45deg, transparent 0 12px, rgba(255,255,255,.10) 12px 14px);
   box-shadow:inset 0 8px 14px -6px rgba(0,0,0,.35);
 }
-/* Chaque rangée d'œuvres est ancrée exactement sur la ligne qui sépare le mur du sol (celle-là
-   même qui trace le bas du mur, voir --room-horizon-y), plutôt que centrée au milieu du mur — une
-   seule ligne, posée sur cette ligne de sol, jamais empilée. Sur les murs latéraux, la rangée
-   pivote (voir alignCheckpointSideRows dans app.js) EXACTEMENT autour du coin intérieur du mur
-   (celui qui touche le mur du fond, transform-origin ci-dessous) : ce coin est un point réel de la
-   ligne de sol, donc faire pivoter la rangée autour de lui la fait suivre cette ligne au lieu de
-   seulement lui être parallèle quelque part au milieu du mur. */
-.scale-checkpoint-wall-works { position:absolute; display:flex; align-items:flex-end; gap:4px; flex-wrap:nowrap; overflow:hidden; }
-#scale-checkpoint-wall .scale-checkpoint-wall-works { left:calc(var(--room-inner-x) + 3%); right:calc(var(--room-inner-x) + 3%); bottom:calc(100% - var(--room-horizon-y) + 1%); justify-content:center; }
-#scale-checkpoint-wall-left .scale-checkpoint-wall-works { right:calc(100% - var(--room-inner-x) + 1%); bottom:calc(100% - var(--room-horizon-y) + 1%); max-width:calc(var(--room-inner-x) - 3%); justify-content:flex-end; transform-origin:100% 100%; }
-#scale-checkpoint-wall-right .scale-checkpoint-wall-works { left:calc(100% - var(--room-inner-x) + 1%); bottom:calc(100% - var(--room-horizon-y) + 1%); max-width:calc(var(--room-inner-x) - 3%); justify-content:flex-start; transform-origin:0% 100%; }
-/* Hauteur pilotée par --work-height (calculée en JS pour que toute la rangée — même à 8 ou 10
-   œuvres — tienne sur une seule ligne dans la largeur réellement disponible) ; 9vh est juste la
-   valeur de repli avant ce calcul. Hauteur explicite plutôt qu'un pourcentage : un pourcentage sur
-   un élément remplacé (img) dans une rangée flex ne se résout pas de façon fiable — bug réel
-   corrigé, c'est ce qui faisait apparaître le tableau du mur du fond démesurément étiré (une seule
-   image, sans contrainte de hauteur effective, s'étalait alors sur toute la largeur disponible). */
-.scale-checkpoint-work { height:var(--work-height, 9vh); width:auto; max-width:100%; flex:0 0 auto; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+/* Chaque œuvre est positionnée et dimensionnée individuellement en JS (voir layoutCheckpointRoom
+   dans app.js), en vraie échelle (cm réels de l'œuvre → pixels, à partir d'un mur de référence de
+   15 m) plutôt qu'ajustée pour « faire joli » : un Courbet de 6,68 m occupe ainsi la vraie
+   proportion d'un mur de 15 m, ni plus petit ni plus grand qu'il ne devrait. Le conteneur n'est
+   donc plus qu'un simple calque plein cadre — le clip-path du mur parent (trapèze) suffit à
+   rogner proprement toute œuvre qui déborderait légèrement de sa forme. */
+.scale-checkpoint-wall-works { position:absolute; inset:0; overflow:hidden; }
+/* Sur les murs latéraux, chaque œuvre reste verticale (jamais inclinée : dans une vraie
+   perspective à un point de fuite, les verticales d'un mur latéral restent verticales) mais sa
+   LARGEUR est comprimée (voir widthCompression dans layoutCheckpointRoom) — on ne voit alors
+   plus le tableau de face mais « de profil », comme sur la photo de référence. */
+.scale-checkpoint-work { position:absolute; object-fit:fill; box-shadow:0 2px 6px rgba(0,0,0,.35); }
 #scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; }
 #scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
 /* Cordon rouge à 8 potelets, tracé en un seul SVG continu, vraies vagues entre chaque potelet

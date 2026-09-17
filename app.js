@@ -2634,21 +2634,9 @@ function goThroughDoor() {
     // joueur, les deux murs latéraux (index 1 = droite, index 3 = gauche) apparaissent de biais —
     // mêmes index que ceux utilisés une fois à l'intérieur, voir trapezoidPointForWall. Le mur
     // d'entrée (index 2, dans le dos du joueur à cet endroit précis) n'a logiquement pas de pan
-    // visible ici. On affiche la totalité des œuvres de chaque mur, sans plafond arbitraire — huit
-    // à gauche, sept à droite, etc. selon l'exposition : layoutCheckpointRoom calcule ensuite la
-    // taille qui permet à toute la rangée de tenir sur une seule ligne, quel que soit leur nombre.
-    const walls = state.roomWalls || [[], [], [], []];
-    const renderWorks = (works) => works.map((w) =>
-      `<img class="scale-checkpoint-work" src="${escapeHtml(imageSourceSized(w.image, 300))}" alt="" />`
-    ).join('');
-    $('scale-checkpoint-wall-works').innerHTML = renderWorks(walls[0]);
-    $('scale-checkpoint-wall-right-works').innerHTML = renderWorks(walls[1]);
-    $('scale-checkpoint-wall-left-works').innerHTML = renderWorks(walls[3]);
-    // Les murs latéraux partent en profondeur (voir CSS, --room-inner-x / --room-horizon-y) : leur
-    // ligne de sol (celle où le mur rejoint le parquet) est donc oblique, pas horizontale, et le
-    // mur du fond est plus étroit que l'écran. On attend une frame (le temps que la salle, tout
-    // juste démasquée, soit vraiment mise en page — sinon ses dimensions mesureraient encore zéro)
-    // puis on calcule la taille et l'angle de chaque rangée pour qu'elle tienne pile sur cette ligne.
+    // visible ici. On attend une frame (le temps que la salle, tout juste démasquée, soit
+    // vraiment mise en page — sinon ses dimensions mesureraient encore zéro) puis on positionne
+    // chaque œuvre individuellement à sa vraie échelle (voir layoutCheckpointRoom).
     requestAnimationFrame(layoutCheckpointRoom);
   });
 }
@@ -2660,41 +2648,56 @@ function checkpointRoomVarPercent(name) {
   const raw = getComputedStyle($('scale-checkpoint-room')).getPropertyValue(name).trim();
   return parseFloat(raw) || 0;
 }
-// Ajuste la hauteur d'une rangée d'œuvres (via --work-height) pour qu'elle tienne tout entière, sur
-// une seule ligne, dans la largeur disponible — qu'il y en ait deux ou huit. On se base sur le
-// rapport largeur/hauteur réel de chaque image (naturalWidth/naturalHeight) plutôt que de leur
-// donner à toutes la même hauteur fixe : c'est justement une hauteur fixe combinée à un
-// pourcentage qui déformait le Courbet (image large) sur le mur du fond. La somme de ces rapports,
-// une fois multipliée par la hauteur commune, doit tenir dans la largeur disponible moins les
-// espaces entre cadres.
-function fitCheckpointRow(container, availableWidthPx, maxHeightPx) {
-  if (!container || !availableWidthPx) return;
-  const imgs = Array.from(container.querySelectorAll('img'));
-  if (!imgs.length) return;
-  const gapPx = 4;
-  const usable = Math.max(10, availableWidthPx - gapPx * Math.max(0, imgs.length - 1));
-  const ratios = imgs.map((img) => (img.naturalWidth && img.naturalHeight)
-    ? img.naturalWidth / img.naturalHeight
-    : 4 / 3);
-  const sumRatio = ratios.reduce((a, b) => a + b, 0) || 1;
-  let height = usable / sumRatio;
-  if (maxHeightPx) height = Math.min(height, maxHeightPx);
-  container.style.setProperty('--work-height', `${Math.max(20, height)}px`);
+// Longueur réelle attribuée à chaque mur de la salle aperçue (15 m, comme tous les murs de la
+// vraie salle rapprochée derrière — voir currentWallLengthM) et hauteur d'accrochage type musée
+// (le centre d'un tableau se pose à hauteur des yeux, ~1,56 m, comme sur le mur rapproché où la
+// silhouette de 1,70 m sert de référence : voir populateCloserPlanWall, eyeLevelFromBottom).
+const CHECKPOINT_WALL_LENGTH_CM = 1500;
+const CHECKPOINT_EYE_LEVEL_CM = 156;
+const CHECKPOINT_GAP_CM = 25;
+// Place une rangée d'œuvres à leur VRAIE échelle (cm réels de chaque œuvre → pixels), plutôt que
+// de les redimensionner pour « faire tenir joliment » — c'est cette mise à l'échelle réelle qui
+// fait qu'un Courbet de 6,68 m occupe bien sa vraie proportion d'un mur de 15 m, ni trop petit ni
+// trop grand. `geometry` décrit le mur visé : pointAtT(t) donne le point (en px, dans le repère de
+// la salle) sur la ligne mur/sol à la fraction t (0 = début du mur, 1 = fin), pxPerCmAt(t) son
+// échelle réelle à cet endroit précis (les murs latéraux rapetissent en profondeur — voir plus
+// bas), et widthCompression (murs latéraux seulement) le facteur qui « tranche » chaque tableau :
+// dans une vraie perspective à un point de fuite, les verticales d'un mur latéral restent
+// verticales (jamais inclinées) mais leur LARGEUR se comprime d'autant plus qu'on regarde le mur
+// de biais — on ne voit alors plus le tableau de face mais « de profil », comme sur la photo de
+// référence envoyée par l'utilisateur. C'est cette compression de largeur (et elle seule) qui
+// « déforme » le tableau : la hauteur, elle, n'est jamais compressée par l'angle, seulement
+// rapetissée par la distance (comme tout objet qui s'éloigne).
+function layoutCheckpointWall(container, works, geometry) {
+  container.innerHTML = '';
+  let cursorCm = 0;
+  works.forEach((w) => {
+    let hCm = parseCmValue(w.hauteur);
+    if (!hCm || hCm <= 0 || !isFinite(hCm)) hCm = 60;
+    const lCm = parseCmValue(w.longueur) || hCm * 1.3;
+    const centerCm = cursorCm + lCm / 2;
+    cursorCm += lCm + CHECKPOINT_GAP_CM;
+    const s = Math.min(1, Math.max(0, centerCm / CHECKPOINT_WALL_LENGTH_CM)); // fraction réelle (distance/longueur du mur)
+    const pxPerCm = geometry.pxPerCmAt(s);
+    const pt = geometry.pointAtT(s);
+    const heightPx = Math.max(4, hCm * pxPerCm);
+    const widthPx = Math.max(4, lCm * pxPerCm * (geometry.widthCompression || 1));
+    const centerY = pt.y - CHECKPOINT_EYE_LEVEL_CM * pxPerCm;
+    const img = document.createElement('img');
+    img.className = 'scale-checkpoint-work';
+    img.alt = '';
+    img.src = imageSourceSized(w.image, Math.max(widthPx, 40));
+    img.style.left = `${pt.x - widthPx / 2}px`;
+    img.style.top = `${centerY - heightPx / 2}px`;
+    img.style.width = `${widthPx}px`;
+    img.style.height = `${heightPx}px`;
+    container.appendChild(img);
+  });
 }
-// naturalWidth/naturalHeight valent 0 tant que l'image n'est pas chargée : on attend que toutes les
-// images d'une rangée le soient avant de calculer la taille qui leur permet de tenir sur une ligne.
-function whenRowImagesReady(container) {
-  const imgs = Array.from(container.querySelectorAll('img'));
-  return Promise.all(imgs.map((img) => (img.complete
-    ? Promise.resolve()
-    : new Promise((resolve) => { img.onload = resolve; img.onerror = resolve; }))));
-}
-// Met en place la salle aperçue depuis le contrôle des billets. Le mur du fond fait face au joueur :
-// sa largeur disponible se lit directement sur la salle. Les murs latéraux, eux, partent en
-// profondeur — la largeur disponible pour leur rangée est donc la longueur réelle de la ligne de
-// sol du mur (hypoténuse du triangle profondeur/largeur, mesurée sur les dimensions réelles de la
-// salle, jamais codée en dur), et la rangée doit ensuite pivoter sur son coin intérieur (voir
-// transform-origin en CSS) pour venir se poser exactement sur cette ligne, plutôt qu'à côté.
+// Met en place la salle aperçue depuis le contrôle des billets, en construisant la géométrie de
+// chacun de ses 3 murs visibles à partir des dimensions réelles de #scale-checkpoint-room (jamais
+// codées en dur, puisque le trapèze — --room-inner-x/--room-top-y/--room-horizon-y — change de
+// proportions avec chaque écran).
 function layoutCheckpointRoom() {
   const room = $('scale-checkpoint-room');
   const backWorks = $('scale-checkpoint-wall-works');
@@ -2703,29 +2706,66 @@ function layoutCheckpointRoom() {
   if (!room || !backWorks || !leftWorks || !rightWorks) return;
   const rect = room.getBoundingClientRect();
   if (!rect.width || !rect.height) return; // salle pas encore mise en page (voir requestAnimationFrame à l'appel)
+  const walls = state.roomWalls || [[], [], [], []];
   const innerX = checkpointRoomVarPercent('--room-inner-x');
   const horizonY = checkpointRoomVarPercent('--room-horizon-y');
-  const dxPx = (innerX / 100) * rect.width; // profondeur du mur latéral, en x
-  const dyPx = ((100 - horizonY) / 100) * rect.height; // profondeur du mur latéral, en y
-  const sideLinePx = Math.hypot(dxPx, dyPx); // longueur réelle de la ligne de sol d'un mur latéral
-  const angleDeg = (Math.atan2(dyPx, dxPx) * 180) / Math.PI;
-  const backWidthPx = rect.width * (1 - 2 * (innerX / 100 + 0.03));
-  const sideWidthPx = sideLinePx * 0.92; // légère marge pour ne pas toucher le coin extérieur du mur
-  const maxRowHeightPx = rect.height * 0.22; // garde-fou : une salle avec très peu d'œuvres ne doit pas en afficher une énorme
-  leftWorks.style.maxWidth = `${sideWidthPx}px`;
-  rightWorks.style.maxWidth = `${sideWidthPx}px`;
-  Promise.all([backWorks, leftWorks, rightWorks].map(whenRowImagesReady)).then(() => {
-    fitCheckpointRow(backWorks, backWidthPx, maxRowHeightPx);
-    fitCheckpointRow(leftWorks, sideWidthPx, maxRowHeightPx);
-    fitCheckpointRow(rightWorks, sideWidthPx, maxRowHeightPx);
-    // Chaque rangée latérale pivote sur son coin intérieur (ancré en CSS pile sur la ligne
-    // mur/sol) pour venir s'aligner sur cette ligne plutôt que de rester à plat.
-    leftWorks.style.transform = `rotate(${-angleDeg}deg)`;
-    rightWorks.style.transform = `rotate(${angleDeg}deg)`;
+  const innerXPx = (innerX / 100) * rect.width;
+  const floorAtInnerPx = (horizonY / 100) * rect.height; // y du sol contre le mur du fond
+  const depthPx = rect.height - floorAtInnerPx; // profondeur du mur latéral, en y (jusqu'au 1er plan)
+  const angleDeg = (Math.atan2(depthPx, innerXPx) * 180) / Math.PI;
+  // Mur du fond : face au joueur, donc jamais comprimé — son échelle vient directement de sa
+  // largeur réellement affichée à l'écran, rapportée aux 15 m qu'il représente.
+  const backWallWidthPx = rect.width - 2 * innerXPx;
+  const backPxPerCm = backWallWidthPx / CHECKPOINT_WALL_LENGTH_CM;
+  layoutCheckpointWall(backWorks, walls[0], {
+    pointAtT: (t) => ({ x: innerXPx + t * backWallWidthPx, y: floorAtInnerPx }),
+    pxPerCmAt: () => backPxPerCm,
+    widthCompression: 1,
+  });
+  // Murs latéraux : leur échelle rapetisse avec la profondeur — proche de l'entrée (t=0), l'échelle
+  // est plus grande (NEAR_FAR_RATIO fois celle du mur du fond, un rapport lu directement sur le
+  // trapèze déjà dessiné : le mur latéral y occupe toute la hauteur de la salle près de l'entrée
+  // mais seulement horizonY-topY près du fond — donc NEAR_FAR_RATIO = 100/(horizonY-topY)) ; au
+  // fond (t=1), elle rejoint exactement celle du mur du fond, pour que les deux murs se raccordent
+  // au même coin. La décroissance suit une vraie loi en 1/distance (comme une perspective réelle),
+  // pas une simple interpolation linéaire. widthCompression comprime la largeur (jamais la
+  // hauteur) d'autant plus que le mur est vu de biais (cosinus de l'angle du mur sur cette salle).
+  const topY = checkpointRoomVarPercent('--room-top-y');
+  const nearFarRatio = Math.max(1.15, 100 / Math.max(10, horizonY - topY));
+  const nearPxPerCm = backPxPerCm * nearFarRatio;
+  // s = fraction RÉELLE parcourue le long du mur (distance réelle en cm / longueur du mur) — c'est
+  // ce que reçoivent pxPerCmAt et pointAtT. Mais une distance réelle uniforme ne correspond PAS à
+  // un déplacement uniforme à l'écran : en perspective, les objets proches du regard occupent
+  // beaucoup plus d'espace à l'écran par mètre réel que les objets lointains (c'est justement ce
+  // qui les fait paraître de plus en plus serrés en s'éloignant). pxPerCmAt applique déjà cette loi
+  // en 1/distance à la TAILLE ; perspectiveScreenT applique la même loi à la POSITION : elle
+  // convertit s (uniforme en distance réelle) en t (uniforme à l'écran), pour que la case réservée
+  // à chaque œuvre sur cette ligne ait bien la même largeur apparente que l'œuvre qu'on y dessine —
+  // sans cette conversion, les œuvres proches (qui doivent occuper beaucoup de place à l'écran)
+  // héritaient d'un espacement bien trop petit et se chevauchaient complètement.
+  const perspectiveScreenT = (s) => (nearFarRatio * s) / (1 + s * (nearFarRatio - 1));
+  const pxPerCmAtS = (s) => nearPxPerCm / (1 + s * (nearFarRatio - 1));
+  // Un mur latéral, dans cette salle, est parallèle à l'axe du regard (comme un vrai couloir) :
+  // vu depuis l'entrée, on ne le voit donc quasiment jamais de face, presque toujours « par la
+  // tranche » — d'où une compression nettement plus marquée qu'un simple cosinus de la pente du
+  // sol (qui, lui, mesure surtout à quel point le trapèze se resserre verticalement, pas l'angle
+  // de vue sur le mur). On garde ce cosinus comme seul ajustement fin selon l'écran (murs qui se
+  // ressèrent plus fort sur mobile → tableaux encore plus « de profil »).
+  const widthCompression = Math.min(0.4, Math.max(0.15, Math.cos((angleDeg * Math.PI) / 180) * 0.55));
+  layoutCheckpointWall(leftWorks, walls[3], {
+    // s=0 au coin extérieur (bas de l'écran, près du joueur), s=1 au coin intérieur (contre le mur du fond)
+    pointAtT: (s) => { const t = perspectiveScreenT(s); return { x: t * innerXPx, y: rect.height - t * depthPx }; },
+    pxPerCmAt: pxPerCmAtS,
+    widthCompression,
+  });
+  layoutCheckpointWall(rightWorks, walls[1], {
+    pointAtT: (s) => { const t = perspectiveScreenT(s); return { x: rect.width - t * innerXPx, y: rect.height - t * depthPx }; },
+    pxPerCmAt: pxPerCmAtS,
+    widthCompression,
   });
 }
-// Recalcule tout si la fenêtre change de taille pendant que ce plan est affiché (sinon l'angle et
-// les tailles, calculés une seule fois à l'entrée, ne correspondraient plus à la nouvelle salle).
+// Recalcule tout si la fenêtre change de taille pendant que ce plan est affiché (sinon la
+// géométrie, calculée une seule fois à l'entrée, ne correspondrait plus à la nouvelle salle).
 window.addEventListener('resize', () => {
   if (!$('scale-checkpoint')?.classList.contains('hidden')) layoutCheckpointRoom();
 });
