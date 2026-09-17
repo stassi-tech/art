@@ -1523,6 +1523,9 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  'velasquez': 'vélasqueze',
+  'velázquez': 'vélasqueze',
+  'gentileschi': 'gentileski',
   'sœurs': 'seurs',
   'chassériau': 'Chasériau',
   'malevitch': 'Malévitch',
@@ -1625,6 +1628,13 @@ let currentSpeechNationality = '';
 const NATIONALITY_AWARE_FIXES = {
   'michael': { exceptFor: /anglais|britannique|english/i, otherwise: 'Mikaël' },
 };
+// Contraction française correcte devant un surnom commençant par « le » (Le Greco, Le Guerchin…) —
+// « de le Greco » n'existe pas en français, on dit « du Greco ». Renvoie la préposition + le nom,
+// prêts à être insérés directement dans une phrase (ex. `Ces œuvres sont bien ${deArtist(name)}`).
+function deArtist(name) {
+  if (/^le\s/i.test(name)) return `du ${name.replace(/^le\s+/i, '')}`;
+  return `de ${name}`;
+}
 function fixSpeechPronunciation(text) {
   // Le texte entre parenthèses (ex. un nom de musée alternatif) reste utile à l'écran mais
   // alourdit la lecture à voix haute : on le retire ici, avant toute autre correction, pour que
@@ -2413,7 +2423,7 @@ function parseCmValue(raw) {
 // - Sur PC, l'écart plein (70 à 560px, soit 8x) rendait deux œuvres de tailles très différentes
 //   difficiles à distinguer l'une de l'autre (la petite devenait minuscule) — resserré à 140-420
 //   (3x) pour garder un vrai sens de proportion sans sacrifier la lisibilité de la plus petite.
-function relativeImageSizes(works, maxPx = 420, minPx = 140, defaultPx = 280) {
+function relativeImageSizes(works, maxPx = 360, minPx = 170, defaultPx = 260) {
   if (window.innerWidth < 700) return works.map(() => defaultPx); // mobile : pas d'échelle relative
   const heights = works.map((w) => parseCmValue(w?.hauteur));
   const validHeights = heights.filter((h) => h && h > 0);
@@ -2578,14 +2588,15 @@ function populateCloserPlanWall(candidates) {
     cursorLeft += Math.max(artW, 4) + 40;
     if (w === currentLightboxWork) { currentNote = note; currentHCm = hCm; }
   });
-  // Bug réel repéré : en répartissant les œuvres sur 4 murs, chacun n'en a plus que quelques-unes
-  // — pas assez de largeur pour dépasser l'écran, donc rien à faire défiler : le personnage
-  // semblait bloqué et les flèches n'avaient plus aucun effet visible. On garantit ici une largeur
-  // minimale de marche (2,5 fois l'écran), avec un repère invisible en bout de mur.
-  const minWidth = window.innerWidth * 2.5;
-  if (cursorLeft < minWidth) {
+  // Mur d'une vraie longueur fixe (pas juste « assez large pour cet écran ») : 15 mètres, une
+  // longueur de galerie plausible, à la même échelle que la silhouette et les œuvres — pour que
+  // la place utilisée/inoccupée ait un sens réel, et pour pouvoir revoir sereinement combien
+  // d'œuvres peuvent y tenir.
+  const WALL_LENGTH_CM = 1500;
+  const wallWidthPx = silhRect.right + WALL_LENGTH_CM * pxPerCm;
+  if (cursorLeft < wallWidthPx) {
     const spacer = document.createElement('div');
-    spacer.style.cssText = `position:absolute;left:${minWidth}px;width:1px;height:1px;`;
+    spacer.style.cssText = `position:absolute;left:${wallWidthPx}px;width:1px;height:1px;`;
     wall.appendChild(spacer);
   }
   $('lightbox-scale-caption').textContent = `Hauteur réelle : ${currentHCm} cm${currentNote}`;
@@ -4080,7 +4091,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
     // La voix dit le surnom quand il existe (ex. « El Greco »), pas le nom complet parfois moins
     // reconnaissable (« Domenikos Theotokopoulos ») — cohérent avec ce qui est écrit à l'écran.
     const spokenArtistName = chronological[0]?.surnomFr || q.artist;
-    famSpeak(`Ces ${famNumberWord(chronological.length)} œuvres sont bien de ${spokenArtistName}. ${titleList}.`);
+    famSpeak(`Ces ${famNumberWord(chronological.length)} œuvres sont bien ${deArtist(spokenArtistName)}. ${titleList}.`);
   } else {
     $('fam-image-grid').className = 'fam-result-rows';
     $('fam-image-grid').innerHTML = `
@@ -4096,7 +4107,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
       if (!wrongSelected.length) { next(); return; }
       $('fam-result-bottom').innerHTML = wrongSelected.map((w) => cellHtml(w, true)).join('');
       const intro = wrongSelected.length > 1 ? `Tu as fait ${famNumberWord(wrongSelected.length)} erreurs.` : 'Tu as fait une erreur.';
-      const details = wrongSelected.map((w) => `Ce tableau était de ${w.surnomFr || w.artist}, intitulé ${w.title}.`).join(' ');
+      const details = wrongSelected.map((w) => `Ce tableau était ${deArtist(w.surnomFr || w.artist)}, intitulé ${w.title}.`).join(' ');
       currentSpeechNationality = wrongSelected[0]?.nationality || '';
       famSpeak(`${intro} ${details}`, next);
     }
@@ -4104,7 +4115,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
       if (!foundFamily.length) { next(); return; }
       foundFamily.forEach(revealTop);
       const spokenArtistName = foundFamily[0]?.surnomFr || q.artist;
-      famSpeak(`Tu avais bien repéré ${famNumberWord(foundFamily.length)} œuvre${foundFamily.length > 1 ? 's' : ''} de ${spokenArtistName}.`, next);
+      famSpeak(`Tu avais bien repéré ${famNumberWord(foundFamily.length)} œuvre${foundFamily.length > 1 ? 's' : ''} ${deArtist(spokenArtistName)}.`, next);
     }
     function announceMissed() {
       if (!missedFamily.length) return;
