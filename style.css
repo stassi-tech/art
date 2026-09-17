@@ -234,7 +234,10 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .chrono-target-slot.right { border-color:var(--ok); }
 .fam-image-cell img { width:100%; height:100%; object-fit:contain; background:#1b1c1e; border-radius:4px; display:block; }
 .fam-image-cell.selected { border-color:var(--accent); }
-.fam-image-cell.selected::after { content:attr(data-num); position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:1rem; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.4); }
+/* Rouge explicite (pas la couleur d'ambiance variable) : un point de sélection net et identifiable
+   au premier coup d'œil, quelle que soit l'ambiance active — et bien à l'opposé de la loupe
+   (déplacée en bas à gauche, voir attachZoomHold) pour ne jamais prêter à confusion. */
+.fam-image-cell.selected::after { content:attr(data-num); position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%; background:#d61f26; color:#fff; font-weight:700; font-size:1rem; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.4); }
 .fam-title-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
 .fam-title-row .fam-num-badge { flex:0 0 28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; font-family:Arial,sans-serif; font-weight:700; font-size:.9rem; display:flex; align-items:center; justify-content:center; }
 .fam-title-row .fam-drop-slot { flex:1; min-height:40px; padding:9px 12px; border:2px dashed #cfc8bc; border-radius:4px; font-family:Arial,sans-serif; font-size:.9rem; display:flex; align-items:center; cursor:pointer; color:var(--muted); transition:border-color .15s, background .15s; }
@@ -664,7 +667,13 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
    ne correspondait à rien de réel. Le personnage se tient à côté, mis à l'échelle d'une porte de
    3 m plutôt qu'à sa taille habituelle de 1,70 m, pour donner une vraie impression de hauteur. */
 #scale-facade {
-  position:relative; width:min(92vw, 1100px); height:62vh; margin-top:auto; margin-bottom:16vh;
+  /* Marge basse retirée : sans elle, la porte et la silhouette restaient alignées au bas de la
+     façade, au-dessus du vrai sol (le sol se superpose par-dessus, en z-index plus élevé) — leurs
+     pieds/base flottaient donc dans le vide plutôt que de toucher le sol. La façade s'étend
+     maintenant jusqu'en bas de l'écran, le sol venant se poser dessus comme une bande au premier
+     plan, donnant l'impression correcte que tout repose bien sur lui.
+  */
+  position:relative; width:min(92vw, 1100px); height:62vh; margin-top:auto;
   background:#c9c2b3 center/cover no-repeat;
   display:flex; align-items:flex-end; justify-content:center; gap:4%;
 }
@@ -695,16 +704,27 @@ body[data-ambiance="gothique"] #scale-facade { background-color:#101d70; backgro
 body:not([data-ambiance]) #scale-facade { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
 /* Étape 2 : le contrôle des billets, entre la façade et le plan rapproché — on découvre tout le
-   mur du fond depuis l'entrée, avant de franchir une barrière type cordon rouge pour continuer.
-   Silhouette à sa taille normale ici (1,70 m), contrairement à la façade. */
-#scale-checkpoint { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5vh; background:#e8e4d8; padding:20px; }
-#scale-checkpoint-wall { display:flex; align-items:flex-end; justify-content:center; gap:24px; max-width:92vw; flex-wrap:wrap; min-height:40vh; }
-.scale-checkpoint-work { max-height:42vh; max-width:26vw; object-fit:contain; box-shadow:0 10px 28px rgba(0,0,0,.3); }
+   mur du fond depuis l'entrée (en retrait, comme vu à distance), avant de franchir un tourniquet
+   type métro pour continuer. Silhouette à sa taille normale ici (1,70 m), contrairement à la
+   façade. */
+#scale-checkpoint { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:2vh; background:#e8e4d8; padding:20px; padding-top:6vh; }
+/* Mur du fond volontairement plus petit et plus haut à l'écran (loin de la barrière, au premier
+   plan) — donne une vraie impression de recul/profondeur, plutôt qu'un mur juste sous le nez. */
+#scale-checkpoint-wall { display:flex; align-items:flex-end; justify-content:center; gap:16px; max-width:80vw; flex-wrap:wrap; min-height:26vh; opacity:.92; }
+.scale-checkpoint-work { max-height:24vh; max-width:16vw; object-fit:contain; box-shadow:0 6px 16px rgba(0,0,0,.25); }
+/* Tourniquet façon métro : pied métallique, écran "TICKET", barres obliques évoquant les bras du
+   tourniquet — bien identifiable comme un vrai contrôle d'accès plutôt qu'un simple bouton. */
+#scale-turnstile { position:relative; width:min(70vw, 360px); margin-top:auto; }
+#scale-turnstile-body { position:relative; height:120px; border-radius:10px 10px 4px 4px; background:linear-gradient(#8a8f96, #5c6066); box-shadow:0 8px 20px rgba(0,0,0,.4), inset 0 2px 4px rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+#scale-turnstile-body::before, #scale-turnstile-body::after { content:''; position:absolute; top:-10%; width:8px; height:120%; background:rgba(0,0,0,.35); transform:rotate(18deg); }
+#scale-turnstile-body::before { left:32%; }
+#scale-turnstile-body::after { left:58%; }
 #scale-barrier {
-  font-family:Arial,sans-serif; font-weight:700; font-size:1.05rem; letter-spacing:.03em;
-  color:#fff; background:#b5252c; border:3px solid #f0d020; border-radius:8px; padding:14px 26px;
-  cursor:pointer; box-shadow:0 6px 16px rgba(0,0,0,.35);
+  position:relative; z-index:1; font-family:Arial,sans-serif; font-weight:700; font-size:1.15rem; letter-spacing:.08em;
+  color:#0a2a1c; background:#7de89a; border:3px solid #2a5c3c; border-radius:6px; padding:10px 22px;
+  cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,.3); text-transform:uppercase;
 }
+#scale-turnstile-base { height:16px; background:linear-gradient(#4a4e54, #2c2f33); border-radius:0 0 6px 6px; box-shadow:0 4px 10px rgba(0,0,0,.35); }
 /* Voile de transition floue entre chaque étape — évite, pour l'instant, d'avoir à animer un vrai
    déplacement progressif du personnage à travers l'espace. */
 #scale-blur-veil { position:fixed; inset:0; z-index:15; background:rgba(20,18,14,0); backdrop-filter:blur(0px); pointer-events:none; transition:background .5s, backdrop-filter .5s; }

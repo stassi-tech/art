@@ -2474,14 +2474,24 @@ function attachZoomHold(cellEl, imgEl) {
   // Un <span role="button">, pas un <button> : la case elle-même (.intrus-image-choice,
   // .fam-image-cell) est déjà un <button>, et un bouton imbriqué dans un autre est invalide en
   // HTML (le navigateur le remonte hors de son parent, cassant tout le positionnement).
+  // Bug d'usage repéré : la pastille numérotée de sélection (Famille) est en haut à droite — la
+  // loupe posée juste à côté, même coin, prêtait à confusion au doigt sur petit écran (on visait
+  // l'une, on touchait l'autre). Déplacée en bas à GAUCHE, à l'opposé, avec une zone tampon plus
+  // large autour d'elle (elle aussi insensible au clic de sélection) pour une cible plus fiable.
+  const zone = document.createElement('span');
+  zone.style.cssText = 'position:absolute;bottom:0;left:0;width:40px;height:40px;z-index:3;';
   const icon = document.createElement('span');
   icon.setAttribute('role', 'button');
   icon.setAttribute('aria-label', 'Agrandir cette œuvre au maximum (maintenir appuyé)');
   icon.title = 'Maintenir pour agrandir au maximum';
   icon.textContent = '🔍';
-  icon.style.cssText = 'position:absolute;bottom:2px;right:2px;width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.6);background:rgba(0,0,0,.55);color:#fff;font-size:.7rem;line-height:1;cursor:pointer;z-index:3;display:flex;align-items:center;justify-content:center;touch-action:none;';
+  icon.style.cssText = 'position:absolute;bottom:4px;left:4px;width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.6);background:rgba(0,0,0,.6);color:#fff;font-size:.75rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:none;';
+  zone.appendChild(icon);
   cellEl.style.position = cellEl.style.position || 'relative';
-  cellEl.appendChild(icon);
+  cellEl.appendChild(zone);
+  // La zone tampon elle-même intercepte aussi le clic, pas seulement l'icône visible — un tap
+  // juste à côté de la loupe (mais encore dans son coin) ne déclenche donc jamais une sélection.
+  zone.addEventListener('click', (event) => event.stopPropagation());
   let savedMaxWidth = '', savedMaxHeight = '';
   const zoomIn = (event) => {
     event.preventDefault();
@@ -2531,7 +2541,7 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker', 'scale-back-to-facade'].forEach((id) => $(id).classList.add('hidden'));
   state.scaleViewCandidates = candidates;
   // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer à l'étape du contrôle
   // des billets (voir goThroughDoor).
@@ -2625,7 +2635,7 @@ function enterCloserPlan() {
   currentWallIndex = 0; // on entre toujours par la porte, on se retrouve donc au mur du fond
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker', 'scale-back-to-facade'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
   // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
@@ -2636,9 +2646,12 @@ function enterCloserPlan() {
 // plus haut — plus une entrée directe au clic sur la porte elle-même)
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
+  $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker', 'scale-back-to-facade'].forEach((id) => $(id).classList.add('hidden'));
 }
+$('scale-back-to-facade')?.addEventListener('click', backToOverview);
+$('scale-checkpoint-back')?.addEventListener('click', backToOverview);
 function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
   // réelle après affichage pour placer chaque œuvre en conséquence, plutôt que de deviner des
