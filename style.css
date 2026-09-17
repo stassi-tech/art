@@ -743,25 +743,20 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    espace où accrocher quoi que ce soit. Le motif passe par un ::after (plutôt qu'un background-image
    direct sur l'élément) pour ne jamais se faire écraser par les règles d'ambiance ci-dessus, qui
    ciblent ce même #id avec une spécificité CSS plus forte (body[...] #id > #id seul). */
-/* Piliers en trapèze, avancés jusqu'au bas de l'écran : leur bord intérieur (qui rejoint le mur du
-   fond) reste vertical de haut en bas du mur, mais leur bord extérieur file en diagonale jusqu'au
-   coin bas de l'écran — exactement la même ligne de fuite que le bord du parquet juste en dessous
-   (voir #scale-checkpoint-floor). Avant ce correctif, le pilier s'arrêtait net à hauteur de
-   l'horizon (rectangle droit) : la démarcation avec le fond beige de la page tombait à plat, sans
-   donner l'impression de profondeur. Prolongé ainsi jusqu'à la limite du parquet, il lit comme un
-   vrai pan de mur qui s'éloigne en perspective plutôt qu'un simple bandeau collé sur le mur du
-   fond. */
+/* Piliers au premier plan : bande verticale DROITE (pas en trapèze) qui court sur toute la hauteur
+   de l'écran, posée AU-DESSUS du sol (z-index supérieur à #scale-checkpoint-floor, alors qu'ils
+   sont pourtant déclarés avant lui dans le HTML — sans ce z-index, le sol, peint après eux,
+   recouvrirait leur partie basse). Comme le sol s'évase en trapèze jusqu'à occuper toute la largeur
+   de l'écran en bas, et que le pilier occupe exactement la même tranche verticale (0 à
+   --room-inner-x) sur toute la hauteur, il cache entièrement le coin évasé du sol de son côté —
+   comme un vrai pilier posé devant la salle, entre le visiteur et le mur du fond, plutôt qu'un pan
+   de mur qui s'éloignerait en perspective avec la salle. Plus besoin d'y placer des œuvres en
+   perspective : elles resteraient de toute façon invisibles, cachées derrière ce pilier. */
 #scale-checkpoint-wall-left, #scale-checkpoint-wall-right {
-  top:0; width:var(--room-inner-x); height:100%; overflow:hidden;
+  top:0; width:var(--room-inner-x); height:100%; overflow:hidden; z-index:2;
 }
-#scale-checkpoint-wall-left {
-  left:0;
-  clip-path: polygon(0% 0%, 100% 0%, 100% var(--room-horizon-y), 0% 100%);
-}
-#scale-checkpoint-wall-right {
-  right:0;
-  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% var(--room-horizon-y));
-}
+#scale-checkpoint-wall-left { left:0; }
+#scale-checkpoint-wall-right { right:0; }
 /* Le dégradé va du sombre (bord extérieur, côté écran) vers une arête bien éclairée juste avant de
    rejoindre le mur du fond, puis se rassombrit légèrement en s'en approchant — cette arête claire
    est ce qui fait « avancer » visuellement le pilier vers le visiteur (comme un vrai relief pris
