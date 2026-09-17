@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=160" />
+    <link rel="stylesheet" href="style.css?v=161" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1180,18 +1180,19 @@
                 <svg id="scale-checkpoint-silhouette" viewBox="0 0 100 340" aria-hidden="true">
                   <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
                 </svg>
-                <!-- Cordon rouge à 6 potelets dorés, en vagues d'un potelet à l'autre (un seul
-                     tracé SVG continu — plus de corde visuellement disjointe des potelets). -->
-                <svg id="scale-rope-barrier" viewBox="0 0 600 90" preserveAspectRatio="none" aria-hidden="true">
-                  <path d="M20 30 Q 70 62 116 30 Q 166 62 212 30 Q 262 62 308 30 Q 358 62 404 30 Q 454 62 500 30" fill="none" stroke="#7a0f18" stroke-width="7" stroke-linecap="round"/>
-                  <path d="M20 30 Q 70 60 116 30 Q 166 60 212 30 Q 262 60 308 30 Q 358 60 404 30 Q 454 60 500 30" fill="none" stroke="#c81f2c" stroke-width="4" stroke-linecap="round"/>
+                <!-- Cordon rouge à 8 potelets dorés (espacés, sur toute la largeur de la pièce),
+                     en vagues d'un potelet à l'autre — un seul tracé SVG continu, plus de corde
+                     visuellement disjointe des potelets. -->
+                <svg id="scale-rope-barrier" viewBox="0 0 800 90" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M20 30 Q 75 62 130 30 Q 185 62 240 30 Q 295 62 350 30 Q 405 62 460 30 Q 515 62 570 30 Q 625 62 680 30 Q 735 62 780 30" fill="none" stroke="#7a0f18" stroke-width="7" stroke-linecap="round"/>
+                  <path d="M20 30 Q 75 60 130 30 Q 185 60 240 30 Q 295 60 350 30 Q 405 60 460 30 Q 515 60 570 30 Q 625 60 680 30 Q 735 60 780 30" fill="none" stroke="#c81f2c" stroke-width="4" stroke-linecap="round"/>
                   <g fill="url(#scale-rope-post-gradient)">
-                    <circle cx="20" cy="18" r="9"/><circle cx="116" cy="18" r="9"/><circle cx="212" cy="18" r="9"/>
-                    <circle cx="308" cy="18" r="9"/><circle cx="404" cy="18" r="9"/><circle cx="500" cy="18" r="9"/>
+                    <circle cx="20" cy="18" r="9"/><circle cx="130" cy="18" r="9"/><circle cx="240" cy="18" r="9"/><circle cx="350" cy="18" r="9"/>
+                    <circle cx="460" cy="18" r="9"/><circle cx="570" cy="18" r="9"/><circle cx="680" cy="18" r="9"/><circle cx="780" cy="18" r="9"/>
                   </g>
                   <g stroke="#8a6a1a" stroke-width="5">
-                    <line x1="20" y1="18" x2="20" y2="80"/><line x1="116" y1="18" x2="116" y2="80"/><line x1="212" y1="18" x2="212" y2="80"/>
-                    <line x1="308" y1="18" x2="308" y2="80"/><line x1="404" y1="18" x2="404" y2="80"/><line x1="500" y1="18" x2="500" y2="80"/>
+                    <line x1="20" y1="18" x2="20" y2="80"/><line x1="130" y1="18" x2="130" y2="80"/><line x1="240" y1="18" x2="240" y2="80"/><line x1="350" y1="18" x2="350" y2="80"/>
+                    <line x1="460" y1="18" x2="460" y2="80"/><line x1="570" y1="18" x2="570" y2="80"/><line x1="680" y1="18" x2="680" y2="80"/><line x1="780" y1="18" x2="780" y2="80"/>
                   </g>
                   <defs>
                     <radialGradient id="scale-rope-post-gradient" cx="35%" cy="30%">
@@ -1211,17 +1212,14 @@
             </svg>
             <!-- Les mains cliquables (tap/glisser/double-tap) ont été essayées puis retirées : les
                  deux flèches ◄ ► ci-dessous se sont avérées plus claires à l'usage. -->
-            <p id="scale-silhouette-label">Adulte de référence — 1,70 m — tirez la silhouette pour vous déplacer, ou utilisez les flèches</p>
-            <div id="scale-move-buttons" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:14px;z-index:6;">
-              <button type="button" id="scale-move-left" class="nav-arrow-button" aria-label="Se déplacer vers la gauche" title="Se déplacer vers la gauche" style="width:52px;height:52px;font-size:1.3rem;">◄</button>
-              <button type="button" id="scale-move-right" class="nav-arrow-button" aria-label="Se déplacer vers la droite" title="Se déplacer vers la droite" style="width:52px;height:52px;font-size:1.3rem;">►</button>
-            </div>
+            <p id="scale-silhouette-label">Adulte de référence — 1,70 m — tirez la silhouette, ou pilotez tout depuis l'écran de contrôle</p>
             <p id="lightbox-scale-caption" class="lightbox-scale-caption"></p>
             <!-- Mini-carte vue de dessus (façon écran de contrôle) : le rectangle représente la
                  salle, ses 4 côtés les 4 murs, le point rouge la position du joueur. On le glisse
-                 vers un côté pour aller voir ce mur — le PR se met à jour en conséquence. -->
-            <div id="scale-minimap" class="hidden" style="position:fixed;top:70px;right:16px;width:90px;height:64px;background:rgba(20,20,20,.65);border:2px solid rgba(255,255,255,.5);border-radius:4px;z-index:7;">
-              <div id="scale-minimap-dot" style="position:absolute;width:12px;height:12px;border-radius:50%;background:#e2453c;box-shadow:0 0 4px rgba(0,0,0,.6);cursor:grab;left:50%;top:88%;transform:translate(-50%,-50%);"></div>
+                 pour avancer/reculer le long du mur courant, ou vers un côté pour changer de mur.
+                 Agrandie (140×100, contre 90×64 avant) pour un geste plus précis et confortable. -->
+            <div id="scale-minimap" class="hidden" style="position:fixed;top:70px;right:16px;width:140px;height:100px;background:rgba(20,20,20,.65);border:2px solid rgba(255,255,255,.5);border-radius:4px;z-index:7;">
+              <div id="scale-minimap-dot" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);cursor:grab;left:50%;top:88%;transform:translate(-50%,-50%);touch-action:none;"></div>
             </div>
             <!-- Repère de distance : le numéro du mètre en cours apparaît puis s'efface au fur et
                  à mesure de la marche, pour donner une vraie idée de la longueur du mur (15 m). -->
@@ -1480,6 +1478,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=234"></script>
+    <script src="app.js?v=235"></script>
   </body>
 </html>

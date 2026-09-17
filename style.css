@@ -725,21 +725,29 @@ body:not([data-ambiance]) #scale-facade { background-color:#c9b896; background-i
 /* Grand espace de sol vide entre le mur (lointain) et le tourniquet (au premier plan) — c'est cet
    écart qui donne l'impression de distance, pas seulement la petite taille du mur. */
 /* Grand espace de sol vide entre le mur (lointain) et le tourniquet (au premier plan) — c'est cet
-   écart qui donne l'impression de distance, pas seulement la petite taille du mur. Parquet
-   (chevrons simples en dégradé répété), bien distinct de l'aspect des murs, pour suggérer un vrai
-   espace de pièce plutôt qu'un simple fond neutre. */
-#scale-checkpoint-floor-gap { position:relative; flex:1 1 auto; min-height:10vh;
-  background:repeating-linear-gradient(45deg, #b9895a 0 14px, #a8794c 14px 28px), repeating-linear-gradient(-45deg, #c99968 0 14px, #b9895a 14px 28px);
-  background-blend-mode:multiply; opacity:.9;
+   écart qui donne l'impression de distance, pas seulement la petite taille du mur. Parquet à
+   chevrons, nettement visible (pas de fondu qui l'assombrissait trop), bien distinct de
+   l'aspect des murs, pour suggérer un vrai espace de pièce plutôt qu'un simple fond neutre. */
+#scale-checkpoint-floor-gap { position:relative; flex:1 1 auto; min-height:12vh;
+  background-color:#b9895a;
+  background-image:repeating-linear-gradient(45deg, transparent 0 12px, rgba(0,0,0,.14) 12px 14px),
+                    repeating-linear-gradient(-45deg, transparent 0 12px, rgba(255,255,255,.10) 12px 14px);
+  box-shadow:inset 0 8px 14px -6px rgba(0,0,0,.35);
 }
-/* Amorce du mur de retour (mur latéral), à gauche — juste une bande verticale suggérant que la
-   pièce continue au-delà du mur du fond seul visible ici. */
-#scale-checkpoint-side-wall { position:absolute; top:0; bottom:0; left:0; width:6vw; background:linear-gradient(90deg, rgba(0,0,0,.25), transparent); }
+/* Amorce du mur de retour (mur latéral), à gauche — un vrai pan de mur, pas juste une ombre
+   fondue, pour donner une vraie impression que la pièce continue au-delà du seul mur du fond
+   visible ici. Même teinte que le mur du fond (--accent-dark), légèrement assombrie pour
+   suggérer l'angle/la perspective vers ce mur latéral. */
+#scale-checkpoint-side-wall { position:absolute; top:0; bottom:0; left:0; width:12vw;
+  background:linear-gradient(90deg, var(--accent-dark, #5a4530), var(--accent, #9c7a4a) 70%, transparent);
+  box-shadow:4px 0 14px rgba(0,0,0,.3);
+}
 #scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; }
 #scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
-/* Cordon rouge à 6 potelets, tracé en un seul SVG continu (plus de corde visuellement disjointe
-   des potelets, comme avant) — vraies vagues entre chaque potelet doré. */
-#scale-rope-barrier { flex:1 1 auto; height:11vh; max-width:520px; }
+/* Cordon rouge à 8 potelets, tracé en un seul SVG continu, vraies vagues entre chaque potelet
+   doré — étendu sur toute la largeur disponible (plus de max-width, pour vraiment aller d'un
+   bout à l'autre de la pièce, comme un vrai cordon de musée). */
+#scale-rope-barrier { flex:1 1 auto; height:11vh; }
 /* Tourniquet façon métro, maintenant en orientation VERTICALE : pied métallique, "Ticket" en haut,
    "Sortie" en dessous — barres obliques évoquant les bras du tourniquet. */
 #scale-turnstile { position:relative; width:min(30vw, 160px); }

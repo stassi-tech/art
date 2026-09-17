@@ -2556,7 +2556,7 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
   state.scaleViewCandidates = candidates;
   // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer à l'étape du contrôle
   // des billets (voir goThroughDoor).
@@ -2657,7 +2657,7 @@ function enterCloserPlan() {
   currentWallIndex = 0; // on entre toujours par la porte, on se retrouve donc au mur du fond
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
   // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
@@ -2670,7 +2670,7 @@ function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
 }
 $('scale-checkpoint-back')?.addEventListener('click', backToOverview);
 $('scale-turnstile-exit')?.addEventListener('click', backToOverview);
@@ -2827,48 +2827,61 @@ function isNearBottomCorner(clientX, clientY) {
   const nearEdge = clientX < 70 || clientX > window.innerWidth - 70;
   return nearBottom && nearEdge;
 }
-// Les mains cliquables (tap/glisser/double-tap) ont été essayées puis retirées : les deux flèches
-// ◄ ► ci-dessous se sont avérées plus simples et plus claires à l'usage.
-// Appui maintenu = avance tant qu'on garde le doigt/la souris dessus, relâchement = arrêt immédiat.
-function attachMoveButton(btn, direction) {
-  if (!btn) return;
-  const start = (event) => { event.preventDefault(); startWalking(direction); };
-  const stop = () => stopWalking();
-  btn.addEventListener('pointerdown', start);
-  btn.addEventListener('pointerup', stop);
-  btn.addEventListener('pointercancel', stop);
-  btn.addEventListener('pointerleave', stop); // relâché hors du bouton (doigt qui glisse) = arrêt aussi
+// Grand chantier : le point rouge de l'écran de contrôle pilote maintenant TOUT le déplacement —
+// avancer/reculer le long du mur courant ET changer de mur en glissant vers un coin — les
+// flèches ◄ ► ont été retirées, devenues inutiles. On glisse le point où l'on veut se trouver,
+// il y va directement (pas de marche automatique animée), plutôt que de le pousser dans une
+// direction et attendre.
+// Convertit une position brute du doigt/souris sur la mini-carte (x,y en 0..1) en progression
+// (0..1) le long du mur actuellement affiché — l'inverse exact d'updateDotAlongWall, pour que le
+// point reste sous le doigt pendant qu'on le glisse plutôt que de « résister » ou sauter ailleurs.
+function progressFromMinimapPosition(wallIndex, x, y) {
+  if (wallIndex === 0 || wallIndex === 2) return Math.min(1, Math.max(0, (x * 100 - 18) / 64));
+  if (wallIndex === 3) return Math.min(1, Math.max(0, (82 - y * 100) / 64));
+  return Math.min(1, Math.max(0, (y * 100 - 18) / 64));
 }
-attachMoveButton($('scale-move-left'), -1);
-attachMoveButton($('scale-move-right'), 1);
-// Glisser le point rouge de la mini-carte vers un des 4 côtés du rectangle fait passer sur ce mur
-// — on détermine le côté le plus proche au relâchement (pas besoin de viser pile un coin).
 (function attachMinimapDrag() {
   const minimap = $('scale-minimap');
   const dot = $('scale-minimap-dot');
-  if (!minimap || !dot) return;
+  const wall = $('scale-wall');
+  if (!minimap || !dot || !wall) return;
   let dragging = false;
   let wallSwitchInProgress = false;
   const moveTo = (clientX, clientY) => {
+    if (wallSwitchInProgress) return; // laisse la transition floue se terminer avant de reprendre la main
     const rect = minimap.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const x = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
     const y = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
-    dot.style.left = `${x * 100}%`; dot.style.top = `${y * 100}%`;
-    // Distance au centre de chaque côté (haut/droite/bas/gauche), en coordonnées 0..1.
+    // Distance au centre de chaque côté (haut/droite/bas/gauche), en coordonnées 0..1 — détermine
+    // si on est encore sur le mur courant ou si on vient de glisser vers un autre (les coins
+    // suffisent, pas besoin d'atteindre le centre exact d'un autre côté).
     const distances = [y, 1 - x, 1 - y, x];
     const nearest = distances.indexOf(Math.min(...distances));
-    // Transition floue à chaque passage d'un mur à l'autre — suggère le déplacement du
-    // personnage sans avoir à l'animer vraiment. wallSwitchInProgress évite de superposer
-    // plusieurs transitions si le glissement traverse rapidement plusieurs murs de suite.
-    if (nearest !== currentWallIndex && !wallSwitchInProgress) {
+    if (nearest !== currentWallIndex) {
       wallSwitchInProgress = true;
+      stopWalking();
       blurTransition(() => { goToWall(nearest); wallSwitchInProgress = false; });
+      return;
     }
+    // Même mur : le point pilote directement le défilement, sans marche automatique animée — on
+    // va là où on glisse le doigt, immédiatement.
+    stopWalking();
+    const progress = progressFromMinimapPosition(currentWallIndex, x, y);
+    const maxScroll = Math.max(1, wall.scrollWidth - wall.clientWidth);
+    wall.scrollLeft = progress * maxScroll;
+    updateDotAlongWall();
+    updateDistanceMarker();
   };
   dot.addEventListener('pointerdown', (event) => { event.preventDefault(); dragging = true; dot.setPointerCapture?.(event.pointerId); dot.style.cursor = 'grabbing'; });
   dot.addEventListener('pointermove', (event) => { if (dragging) moveTo(event.clientX, event.clientY); });
-  const stop = () => { dragging = false; dot.style.cursor = 'grab'; positionMinimapDot(); };
+  const stop = () => {
+    dragging = false;
+    dot.style.cursor = 'grab';
+    // Pas de recentrage forcé ici (contrairement à avant) : le point reste où le défilement réel
+    // l'a placé — un recentrage systématique donnait justement l'impression que le point
+    // « résistait » et retournait au milieu au lieu de rester sous le doigt.
+  };
   dot.addEventListener('pointerup', stop);
   dot.addEventListener('pointercancel', stop);
 })();
