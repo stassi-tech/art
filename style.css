@@ -717,51 +717,55 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    que tous les murs de la salle), avant de franchir un tourniquet type métro pour continuer.
    Silhouette à sa taille normale ici (1,70 m), contrairement à la façade. */
 #scale-checkpoint { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:1vh; background:#e8e4d8; padding:20px; padding-top:4vh; }
-/* Vraie salle en volume : 3 murs de 15 m (mur du fond + 2 murs latéraux), exactement comme le
-   mur affiché au plan rapproché juste derrière (#scale-wall) — donc des pans DROITS, posés côte à
-   côte (flex row), et non des quadrilatères penchés/skewés comme dans une première tentative. Seul
-   le CONTOUR d'ensemble (#scale-checkpoint-walls-row) est taillé en un léger trapèze, pour
-   suggérer que les murs latéraux partent en biais depuis le mur du fond — sans ça, 3 rectangles
-   collés donneraient 3 murs bien d'aplomb face au joueur (comme des murs à 90°), ce qui écraserait
-   toute perspective. Chaque mur garde ses œuvres sur une seule ligne (comme au plan rapproché),
-   jamais empilées. */
+/* Vraie salle en volume, façon photo de galerie (référence envoyée par l'utilisateur) : le mur du
+   fond fait face au joueur (un simple rectangle, pas de déformation puisqu'on le regarde de face),
+   les 2 murs latéraux partent réellement en profondeur — PAS sur le même plan que le mur du fond.
+   Chaque mur latéral est un trapèze dont les deux bords sont VERTICAUX (des droites, x fixe) :
+   le bord extérieur (--room-outer-x, côté écran) va du haut en bas de la salle ; le bord intérieur
+   (--room-inner-x, celui qui rejoint le mur du fond, plus loin) est plus court, entre
+   --room-top-y et --room-horizon-y. Seule la ligne du HAUT qui relie ces deux bords est oblique —
+   jamais les bords eux-mêmes, ce qui donnait l'impression fautive de murs « penchés » dans une
+   version précédente. Le sol, en dessous, s'évase en trapèze du mur du fond vers le joueur. */
 #scale-checkpoint-room {
-  position:relative; flex:1 1 auto; width:100%; min-height:14vh; display:flex; flex-direction:column;
+  position:relative; flex:1 1 auto; width:100%; min-height:16vh; overflow:hidden;
+  --room-inner-x:24%; --room-top-y:8%; --room-horizon-y:62%;
 }
-#scale-checkpoint-walls-row {
-  position:relative; flex:1 1 auto; display:flex; width:100%; overflow:hidden;
-  /* Léger trapèze : les coins du haut sont légèrement rentrés, ceux du bas occupent toute la
-     largeur — un angle discret, pas la forte perspective d'un vrai trapèze de sol. */
-  clip-path:polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
+.scale-checkpoint-wallpanel, #scale-checkpoint-floor { position:absolute; inset:0; background-color:#c9b896; background-size:cover; background-position:center; }
+/* Mur du fond : simple rectangle plat, élargi (voir --room-inner-x) pour bien dominer la vue,
+   comme celui qu'on s'apprête à franchir. */
+#scale-checkpoint-wall {
+  clip-path:polygon(var(--room-inner-x) var(--room-top-y), calc(100% - var(--room-inner-x)) var(--room-top-y), calc(100% - var(--room-inner-x)) var(--room-horizon-y), var(--room-inner-x) var(--room-horizon-y));
 }
-.scale-checkpoint-wallpanel {
-  position:relative; flex:1 1 0; min-width:0; background-color:#c9b896; background-size:cover; background-position:center;
-  display:flex; align-items:flex-end; justify-content:center; overflow:hidden;
+/* Murs latéraux : bord extérieur (0% ou 100%) sur toute la hauteur, bord intérieur (vers le mur du
+   fond) plus court — les deux restent des droites verticales, seule la ligne du haut est oblique.
+   Légèrement assombris pour suggérer l'angle de vue, sans déformer leur forme. */
+#scale-checkpoint-wall-left {
+  clip-path:polygon(0% 0%, var(--room-inner-x) var(--room-top-y), var(--room-inner-x) var(--room-horizon-y), 0% 100%);
+  filter:brightness(.78);
 }
-/* Mur du fond mis en avant (plus large que les deux murs latéraux réunis, comme celui qu'on
-   franchit ensuite) et non assombri ; les murs latéraux, eux, sont légèrement assombris pour
-   suggérer l'angle de vue en biais — sans pour autant déformer leur forme, qui reste un rectangle
-   droit comme le mur du fond. */
-#scale-checkpoint-wall { flex:1.6 1 0; }
-#scale-checkpoint-wall-left { filter:brightness(.78); box-shadow:inset -6px 0 12px rgba(0,0,0,.35); }
-#scale-checkpoint-wall-right { filter:brightness(.68); box-shadow:inset 6px 0 12px rgba(0,0,0,.35); }
-/* Sol en léger trapèze (parquet à chevrons, même texture que le mur rapproché) : un peu plus
-   étroit côté mur du fond, plein écran au premier plan, côté joueur — cohérent avec le contour
-   discret du mur ci-dessus, pas une forte perspective. */
+#scale-checkpoint-wall-right {
+  clip-path:polygon(100% 0%, calc(100% - var(--room-inner-x)) var(--room-top-y), calc(100% - var(--room-inner-x)) var(--room-horizon-y), 100% 100%);
+  filter:brightness(.68);
+}
+/* Sol en trapèze (parquet à chevrons, même texture que le mur rapproché) : étroit à l'endroit où
+   il rejoint le mur du fond, plein écran au premier plan, côté joueur. */
 #scale-checkpoint-floor {
-  position:relative; flex:0 0 auto; height:16vh; min-height:70px;
-  clip-path:polygon(12% 0%, 88% 0%, 100% 100%, 0% 100%);
+  clip-path:polygon(var(--room-inner-x) var(--room-horizon-y), calc(100% - var(--room-inner-x)) var(--room-horizon-y), 100% 100%, 0% 100%);
   background-color:#b9895a;
   background-image:repeating-linear-gradient(45deg, transparent 0 12px, rgba(0,0,0,.14) 12px 14px),
                     repeating-linear-gradient(-45deg, transparent 0 12px, rgba(255,255,255,.10) 12px 14px);
   box-shadow:inset 0 8px 14px -6px rgba(0,0,0,.35);
 }
-/* Une seule ligne d'œuvres par mur (comme au plan rapproché) : jamais empilées, jamais coupées
-   par le cadre du mur — bug réel corrigé, c'est ce qui faisait déborder le tableau de son cadre
-   dans une version précédente. */
-.scale-checkpoint-wall-works { position:relative; display:flex; align-items:flex-end; justify-content:center; gap:4px; flex-wrap:nowrap; max-width:92%; overflow:hidden; margin-bottom:6%; }
-.scale-checkpoint-work { max-height:9vh; max-width:100%; flex:0 1 auto; min-width:0; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.3); }
-#scale-checkpoint-wall-left .scale-checkpoint-work, #scale-checkpoint-wall-right .scale-checkpoint-work { max-height:7vh; }
+/* Les œuvres de chaque mur restent dans une zone sûre à l'intérieur de son propre polygone (et non
+   centrées sur toute la boîte, qui les ferait retomber hors du mur pour les murs latéraux, dont la
+   hauteur utile diminue vers l'intérieur) — bug réel corrigé, c'est ce qui faisait déborder le
+   tableau de son cadre dans une version précédente. Une seule ligne d'œuvres par mur (comme au
+   plan rapproché), jamais empilées. */
+.scale-checkpoint-wall-works { position:absolute; display:flex; align-items:flex-end; justify-content:center; gap:4px; flex-wrap:nowrap; overflow:hidden; }
+#scale-checkpoint-wall .scale-checkpoint-wall-works { left:calc(var(--room-inner-x) + 3%); right:calc(var(--room-inner-x) + 3%); top:calc(var(--room-top-y) + 4%); height:calc(var(--room-horizon-y) - var(--room-top-y) - 8%); }
+#scale-checkpoint-wall-left .scale-checkpoint-wall-works { left:3%; width:calc(var(--room-inner-x) - 6%); top:calc(var(--room-top-y) + 4%); height:calc(var(--room-horizon-y) - var(--room-top-y) - 8%); }
+#scale-checkpoint-wall-right .scale-checkpoint-wall-works { right:3%; width:calc(var(--room-inner-x) - 6%); top:calc(var(--room-top-y) + 4%); height:calc(var(--room-horizon-y) - var(--room-top-y) - 8%); }
+.scale-checkpoint-work { max-height:100%; max-width:100%; flex:0 1 auto; min-width:0; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.3); }
 #scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; }
 #scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
 /* Cordon rouge à 8 potelets, tracé en un seul SVG continu, vraies vagues entre chaque potelet
