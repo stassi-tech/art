@@ -2509,36 +2509,6 @@ function setLightboxScaleData(work) {
   $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
   exitScaleView();
 }
-function populateOverviewThumbs(candidates) {
-  const container = $('scale-overview-thumbs');
-  container.innerHTML = '';
-  if (!candidates.length) return;
-  // Vue d'ensemble : simples pastilles miniatures dispersées sur le mur, pour donner une idée du
-  // nombre d'œuvres sans chercher à être proportionnées (ce sera le rôle du plan rapproché). Le
-  // trapèze est plus étroit en haut (voir clip-path en CSS, 18%-82% à 0% de hauteur, 0%-100% à
-  // 100%) — sans en tenir compte, les vignettes des rangées du haut tombaient hors de la forme
-  // visible et semblaient toutes s'accumuler tout en bas (bug réel repéré : "les tableaux sont sur
-  // le sol"). On calcule donc la largeur réellement visible à chaque rangée.
-  const perRow = 6;
-  candidates.slice(0, 24).forEach((w, i) => {
-    const thumb = document.createElement('img');
-    thumb.src = imageSourceSized(w.image, 60);
-    thumb.alt = '';
-    thumb.className = 'scale-overview-thumb';
-    const col = i % perRow;
-    const row = Math.floor(i / perRow);
-    const topPct = 14 + row * 20;
-    const narrow = 18 * (1 - topPct / 100); // marge perdue de chaque côté à cette hauteur
-    const visibleLeft = narrow + 4;
-    const visibleRight = 100 - narrow - 4;
-    const step = (visibleRight - visibleLeft) / perRow;
-    thumb.style.left = `${visibleLeft + col * step}%`;
-    thumb.style.top = `${topPct}%`;
-    thumb.style.width = `${Math.max(step - 1.5, 3)}%`;
-    thumb.style.height = '11%';
-    container.appendChild(thumb);
-  });
-}
 function enterScaleView() {
   // Filet de sécurité pour « Revoir l'exposition » : si on est repassé par l'accueil entre-temps,
   // currentLightboxWork peut avoir été perdu alors que la sélection d'œuvres, elle, est toujours
@@ -2562,8 +2532,14 @@ function enterScaleView() {
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
   ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
-  populateOverviewThumbs(candidates);
   state.scaleViewCandidates = candidates;
+  // Calculé dès l'entrée (pas seulement en poussant la porte) pour connaître l'œuvre du mur du
+  // fond à montrer en aperçu à travers la porte.
+  state.roomWalls = splitIntoFourWalls(candidates);
+  const backWallWorks = state.roomWalls[0] || [];
+  const centerWork = backWallWorks[Math.floor(backWallWorks.length / 2)];
+  const peekImg = $('scale-door-peek-img');
+  if (peekImg) peekImg.src = centerWork ? imageSourceSized(centerWork.image, 300) : '';
 }
 // Les œuvres de la session sont réparties sur 4 murs (façon vraie salle rectangulaire) plutôt que
 // sur un seul long mur — state.roomWalls garde les 4 groupes, currentWallIndex celui affiché.
@@ -2610,8 +2586,10 @@ function goToWall(index) {
   lastShownMeter = 0; // repère de distance réinitialisé : chaque mur repart de 1 mètre
 }
 function enterCloserPlan() {
-  const candidates = state.scaleViewCandidates || [];
-  state.roomWalls = splitIntoFourWalls(candidates);
+  // state.roomWalls est déjà calculé dès l'entrée en vue d'ensemble (voir enterScaleView), pour
+  // connaître l'œuvre du mur du fond à montrer en aperçu à travers la porte.
+  if (!state.roomWalls) state.roomWalls = splitIntoFourWalls(state.scaleViewCandidates || []);
+  currentWallIndex = 0; // on entre toujours par la porte, on se retrouve donc au mur du fond
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
   ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
@@ -2621,6 +2599,7 @@ function enterCloserPlan() {
   // tableaux, au ras du sol au lieu de les accrocher à hauteur des yeux.
   requestAnimationFrame(() => { goToWall(currentWallIndex); });
 }
+$('scale-door')?.addEventListener('click', enterCloserPlan);
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
@@ -2632,7 +2611,15 @@ function populateCloserPlanWall(candidates) {
   // chiffres qui se déréglent au moindre changement de mise en page.
   const silhRect = $('scale-silhouette').getBoundingClientRect();
   const pxPerCm = silhRect.height / 170;
-  const maxPx = Math.min(window.innerHeight * 0.7, 900);
+  // Bug réel repéré : ce plafond dépendait de la hauteur d'écran (70% de window.innerHeight) —
+  // sur mobile, bien plus petit que sur PC, beaucoup plus d'œuvres finissaient plafonnées à cette
+  // même valeur, écrasant leurs vraies différences de taille (« toutes les œuvres à égalité »).
+  // Le plafond est maintenant relatif à l'échelle elle-même (jusqu'à 6 fois la hauteur de la
+  // silhouette, soit environ 10 m de haut) plutôt qu'à la taille de l'écran qui l'affiche — une
+  // très grande œuvre peut désormais dépasser le haut de l'écran (comme en vrai, il faudrait
+  // reculer pour la voir en entier), plutôt que d'être ramenée de force à la même taille que les
+  // autres grandes œuvres.
+  const maxPx = Math.max(window.innerHeight * 0.85, silhRect.height * 6);
   const eyeLevelFromBottom = silhRect.height * 0.92;
   const wall = $('scale-wall');
   wall.innerHTML = '';
@@ -4106,58 +4093,9 @@ function famNumberWord(n) {
   const words = { 2: 'deux', 3: 'trois', 4: 'quatre', 5: 'cinq', 6: 'six' };
   return words[n] || String(n);
 }
-// Loupe au-dessus de la grille de Famille : suit le doigt/curseur, zoome la zone survolée — pour
-// mieux distinguer une petite œuvre collée à une grande. Le contenu de la loupe est un CLONE de la
-// grille (recloné seulement à l'entrée du survol, pas à chaque mouvement, pour rester léger),
-// agrandi et décalé pour que le point sous le curseur corresponde au même point dans l'original.
-const FAM_ZOOM = 2.2;
-// Loupe : un vrai objet posé sur la carte (poignée comprise), toujours visible, qu'on attrape et
-// qu'on fait glisser sur la grille — pas un effet invisible qui n'apparaissait qu'au survol
-// (repéré comme non repérable par un joueur : « je ne vois pas la loupe »).
-function updateFamMagnifierContent() {
-  const grid = $('fam-image-grid');
-  const lens = $('fam-magnifier');
-  const content = $('fam-magnifier-content');
-  if (!grid || !lens || !content) return;
-  const gridRect = grid.getBoundingClientRect();
-  const lensRect = lens.getBoundingClientRect();
-  // Centre de la loupe, en coordonnées relatives à la grille en dessous.
-  const cx = (lensRect.left + lensRect.width / 2) - gridRect.left;
-  const cy = (lensRect.top + lensRect.height / 2) - gridRect.top;
-  content.style.width = `${gridRect.width}px`;
-  content.style.height = `${gridRect.height}px`;
-  content.style.transform = `scale(${FAM_ZOOM})`;
-  content.style.left = `${lensRect.width / 2 - cx * FAM_ZOOM}px`;
-  content.style.top = `${lensRect.height / 2 - cy * FAM_ZOOM}px`;
-}
-function attachFamMagnifier() {
-  const lens = $('fam-magnifier');
-  const content = $('fam-magnifier-content');
-  const column = lens?.closest('.artwork-column');
-  if (!lens || !content || !column || lens.dataset.attached) return;
-  lens.dataset.attached = '1';
-  let dragging = false, offsetX = 0, offsetY = 0;
-  lens.addEventListener('pointerdown', (event) => {
-    event.preventDefault();
-    dragging = true;
-    lens.style.cursor = 'grabbing';
-    const rect = lens.getBoundingClientRect();
-    offsetX = event.clientX - rect.left;
-    offsetY = event.clientY - rect.top;
-    lens.setPointerCapture?.(event.pointerId);
-  });
-  lens.addEventListener('pointermove', (event) => {
-    if (!dragging) return;
-    const colRect = column.getBoundingClientRect();
-    lens.style.left = `${event.clientX - colRect.left - offsetX}px`;
-    lens.style.top = `${event.clientY - colRect.top - offsetY}px`;
-    updateFamMagnifierContent();
-  });
-  const stop = () => { dragging = false; lens.style.cursor = 'grab'; };
-  lens.addEventListener('pointerup', stop);
-  lens.addEventListener('pointercancel', stop);
-}
-attachFamMagnifier();
+// L'ancienne loupe flottante (objet déplaçable avec poignée, suivant le doigt/curseur) a été
+// retirée : la petite loupe posée au coin de chaque cadre (appui maintenu = agrandissement, voir
+// attachZoomHold) l'a remplacée avec succès — plus simple à comprendre et à utiliser.
 function famShowQuestion() {
   speechSynthesis.cancel();
   famTimers.forEach(clearTimeout); famTimers = [];
@@ -4187,17 +4125,6 @@ function famShowQuestion() {
   $('fam-image-grid').innerHTML = q.images.map((work, i) =>
     `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" style="max-width:${famSizes[i]}px;max-height:${famSizes[i]}px;" /></button>`
   ).join('');
-  // La loupe garde son propre clone de la grille — à resynchroniser à chaque nouvelle question
-  // (nouvelles images), et repositionner son contenu selon où elle se trouve actuellement.
-  // Bug réel repéré : le clone n'avait pas la classe qui définit la disposition en grille (juste
-  // les boutons copiés, sans le display:grid qui les organise) — ses enfants se réorganisaient
-  // donc tout autrement que l'original, montrant une zone qui ne correspondait à rien de réel une
-  // fois zoomée. On copie maintenant aussi la classe (grille standard ou variante à 6 cases).
-  if ($('fam-magnifier-content')) {
-    $('fam-magnifier-content').className = $('fam-image-grid').className;
-    $('fam-magnifier-content').innerHTML = $('fam-image-grid').innerHTML;
-  }
-  requestAnimationFrame(updateFamMagnifierContent);
   $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
     attachZoomHold(btn, btn.querySelector('img'));
     btn.addEventListener('click', () => {

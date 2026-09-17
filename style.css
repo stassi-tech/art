@@ -660,13 +660,22 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
    ambiance (voir salle-<ambiance>-mur.jpg dans assets/) remplira ce trapèze une fois préparée ;
    en attendant, une couleur de repli assure que la forme reste lisible. */
 #scale-overview { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
-#scale-overview-trapezoid {
+/* Mur extérieur du musée, avec une porte centrale — remplace l'ancien trapèze de vignettes, qui
+   ne correspondait à rien de réel. Le personnage se tient devant, et aperçoit à travers la porte
+   l'œuvre qui l'attend au centre du mur du fond, une fois entré. */
+#scale-facade {
   position:relative; width:min(92vw, 1100px); height:62vh; margin-top:auto; margin-bottom:16vh;
-  clip-path:polygon(18% 0%, 82% 0%, 100% 100%, 0% 100%);
   background:#c9c2b3 center/cover no-repeat;
+  display:flex; align-items:flex-end; justify-content:center;
 }
-#scale-overview-thumbs { position:absolute; inset:0; }
-.scale-overview-thumb { position:absolute; box-shadow:0 4px 10px rgba(0,0,0,.35); object-fit:cover; border-radius:2px; }
+#scale-door {
+  position:relative; width:22%; height:78%; border:none; padding:0; cursor:pointer;
+  background:#1a1712; border-radius:6px 6px 0 0;
+  box-shadow:inset 0 0 24px rgba(0,0,0,.7), 0 0 0 4px rgba(0,0,0,.25);
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+#scale-door-peek { width:72%; height:60%; display:flex; align-items:center; justify-content:center; }
+#scale-door-peek img { max-width:100%; max-height:100%; object-fit:contain; opacity:.92; }
 /* Sol de la vue d'ensemble : lui aussi en perspective (plus étroit en haut, où il rejoint le mur,
    plus large en bas, côté spectateur) — un simple rectangle ne donnait aucune impression de
    profondeur et laissait croire que le personnage se tenait sur le mur plutôt qu'au sol (bug réel
@@ -678,15 +687,15 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
    déplacer, plus aucun bouton de direction séparé. touch-action:none empêche le geste de faire
    défiler la page au lieu de contrôler la silhouette sur mobile. */
 #scale-overview-silhouette { position:absolute; bottom:calc(16vh - 22px); left:6%; height:12vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); touch-action:none; }
-body[data-ambiance="pitti"] #scale-overview-trapezoid { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
-body[data-ambiance="bauhaus"] #scale-overview-trapezoid { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
-body[data-ambiance="space"] #scale-overview-trapezoid { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
-body[data-ambiance="versailles"] #scale-overview-trapezoid { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
-body[data-ambiance="wedgwood"] #scale-overview-trapezoid { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
-body[data-ambiance="ermitage"] #scale-overview-trapezoid { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
-body[data-ambiance="renaissance"] #scale-overview-trapezoid { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
-body[data-ambiance="gothique"] #scale-overview-trapezoid { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
-body:not([data-ambiance]) #scale-overview-trapezoid { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
+body[data-ambiance="pitti"] #scale-facade { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
+body[data-ambiance="bauhaus"] #scale-facade { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
+body[data-ambiance="space"] #scale-facade { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
+body[data-ambiance="versailles"] #scale-facade { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
+body[data-ambiance="wedgwood"] #scale-facade { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
+body[data-ambiance="ermitage"] #scale-facade { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
+body[data-ambiance="renaissance"] #scale-facade { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
+body[data-ambiance="gothique"] #scale-facade { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
+body:not([data-ambiance]) #scale-facade { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
 #scale-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a);
