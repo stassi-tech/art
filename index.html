@@ -1163,11 +1163,22 @@
                  vrai déplacement progressif du personnage à travers l'espace. -->
             <div id="scale-checkpoint" class="hidden">
               <button type="button" id="scale-checkpoint-back" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:absolute;top:16px;left:16px;padding:6px 10px;border-radius:4px;border:2px solid rgba(0,0,0,.3);background:rgba(255,255,255,.85);color:#2b2620;font-size:.72rem;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;">◄ Retour à l'entrée</button>
-              <div id="scale-checkpoint-wall"></div>
-              <div id="scale-checkpoint-floor-gap" aria-hidden="true">
-                <!-- Amorce du mur de retour (mur latéral) à gauche — suggère l'espace de la pièce,
-                     qui continue au-delà du seul mur du fond visible ici. -->
-                <div id="scale-checkpoint-side-wall" aria-hidden="true"></div>
+              <!-- Vraie salle en volume : mur du fond + 2 murs latéraux + sol, taillés dans un
+                   seul trapèze cohérent (mêmes repères que TRAP_* dans app.js) plutôt qu'un mur
+                   plat surmontant un simple rectangle — le joueur voit ainsi la pièce depuis
+                   l'entrée, comme s'il se tenait à la place du tourniquet juste en dessous. Le
+                   mur d'entrée (celui dans le dos du joueur) n'est logiquement pas représenté. -->
+              <div id="scale-checkpoint-room">
+                <div id="scale-checkpoint-wall-left" class="scale-checkpoint-sidewall" aria-hidden="true">
+                  <div id="scale-checkpoint-wall-left-works" class="scale-checkpoint-wall-works"></div>
+                </div>
+                <div id="scale-checkpoint-wall-right" class="scale-checkpoint-sidewall" aria-hidden="true">
+                  <div id="scale-checkpoint-wall-right-works" class="scale-checkpoint-wall-works"></div>
+                </div>
+                <div id="scale-checkpoint-wall">
+                  <div id="scale-checkpoint-wall-works" class="scale-checkpoint-wall-works"></div>
+                </div>
+                <div id="scale-checkpoint-floor" aria-hidden="true"></div>
               </div>
               <div id="scale-checkpoint-row">
                 <div id="scale-turnstile">

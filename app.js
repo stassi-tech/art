@@ -2630,12 +2630,19 @@ function goThroughDoor() {
   blurTransition(() => {
     $('scale-overview').classList.add('hidden');
     $('scale-checkpoint').classList.remove('hidden');
-    // Toutes les œuvres de la salle (les 4 murs combinés), pas seulement celles du mur du fond —
-    // on doit déjà avoir un aperçu complet de ce qui nous attend, pas juste un extrait.
-    const allWorks = (state.roomWalls || []).flat();
-    $('scale-checkpoint-wall').innerHTML = allWorks.map((w) =>
+    // Aperçu de la vraie salle en volume depuis l'entrée : le mur du fond (index 0) fait face au
+    // joueur, les deux murs latéraux (index 1 = droite, index 3 = gauche) apparaissent de biais —
+    // mêmes index que ceux utilisés une fois à l'intérieur, voir trapezoidPointForWall. Le mur
+    // d'entrée (index 2, dans le dos du joueur à cet endroit précis) n'a logiquement pas de pan
+    // visible ici. Chaque mur est plafonné à un petit nombre d'œuvres : son cadre, en trapèze,
+    // reste volontairement modeste à ce stade (aperçu, pas encore la visite).
+    const walls = state.roomWalls || [[], [], [], []];
+    const renderWorks = (works, max) => works.slice(0, max).map((w) =>
       `<img class="scale-checkpoint-work" src="${escapeHtml(imageSourceSized(w.image, 300))}" alt="" />`
     ).join('');
+    $('scale-checkpoint-wall-works').innerHTML = renderWorks(walls[0], 4);
+    $('scale-checkpoint-wall-right-works').innerHTML = renderWorks(walls[1], 3);
+    $('scale-checkpoint-wall-left-works').innerHTML = renderWorks(walls[3], 3);
   });
 }
 $('scale-enter-button')?.addEventListener('click', goThroughDoor);

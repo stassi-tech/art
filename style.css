@@ -702,57 +702,65 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
 #scale-overview-floor { position:absolute; bottom:0; left:0; right:0; height:6vh; min-height:40px; z-index:1;
   clip-path:polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a); }
-body[data-ambiance="pitti"] #scale-facade { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
-body[data-ambiance="bauhaus"] #scale-facade { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
-body[data-ambiance="space"] #scale-facade { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
-body[data-ambiance="versailles"] #scale-facade { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
-body[data-ambiance="wedgwood"] #scale-facade { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
-body[data-ambiance="ermitage"] #scale-facade { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
-body[data-ambiance="renaissance"] #scale-facade { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
-body[data-ambiance="gothique"] #scale-facade { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
-body:not([data-ambiance]) #scale-facade { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
+body[data-ambiance="pitti"] #scale-facade, body[data-ambiance="pitti"] #scale-checkpoint-wall, body[data-ambiance="pitti"] #scale-checkpoint-wall-left, body[data-ambiance="pitti"] #scale-checkpoint-wall-right { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
+body[data-ambiance="bauhaus"] #scale-facade, body[data-ambiance="bauhaus"] #scale-checkpoint-wall, body[data-ambiance="bauhaus"] #scale-checkpoint-wall-left, body[data-ambiance="bauhaus"] #scale-checkpoint-wall-right { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
+body[data-ambiance="space"] #scale-facade, body[data-ambiance="space"] #scale-checkpoint-wall, body[data-ambiance="space"] #scale-checkpoint-wall-left, body[data-ambiance="space"] #scale-checkpoint-wall-right { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
+body[data-ambiance="versailles"] #scale-facade, body[data-ambiance="versailles"] #scale-checkpoint-wall, body[data-ambiance="versailles"] #scale-checkpoint-wall-left, body[data-ambiance="versailles"] #scale-checkpoint-wall-right { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
+body[data-ambiance="wedgwood"] #scale-facade, body[data-ambiance="wedgwood"] #scale-checkpoint-wall, body[data-ambiance="wedgwood"] #scale-checkpoint-wall-left, body[data-ambiance="wedgwood"] #scale-checkpoint-wall-right { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
+body[data-ambiance="ermitage"] #scale-facade, body[data-ambiance="ermitage"] #scale-checkpoint-wall, body[data-ambiance="ermitage"] #scale-checkpoint-wall-left, body[data-ambiance="ermitage"] #scale-checkpoint-wall-right { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
+body[data-ambiance="renaissance"] #scale-facade, body[data-ambiance="renaissance"] #scale-checkpoint-wall, body[data-ambiance="renaissance"] #scale-checkpoint-wall-left, body[data-ambiance="renaissance"] #scale-checkpoint-wall-right { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
+body[data-ambiance="gothique"] #scale-facade, body[data-ambiance="gothique"] #scale-checkpoint-wall, body[data-ambiance="gothique"] #scale-checkpoint-wall-left, body[data-ambiance="gothique"] #scale-checkpoint-wall-right { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
+body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) #scale-checkpoint-wall-left, body:not([data-ambiance]) #scale-checkpoint-wall-right { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
 /* Étape 2 : le contrôle des billets, entre la façade et le plan rapproché — on découvre tout le
    mur du fond depuis l'entrée, en retrait (impression d'une distance de 15 m, la même longueur
    que tous les murs de la salle), avant de franchir un tourniquet type métro pour continuer.
    Silhouette à sa taille normale ici (1,70 m), contrairement à la façade. */
 #scale-checkpoint { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:1vh; background:#e8e4d8; padding:20px; padding-top:4vh; }
-/* Mur du fond nettement réduit et remonté en haut de l'écran, avec beaucoup de sol vide en dessous
-   — donne une vraie impression de recul (comme s'il était à 15 m), plutôt qu'un mur juste sous
-   le nez du joueur. */
-/* Mur du fond nettement réduit et remonté en haut de l'écran, avec beaucoup de sol vide en dessous
-   — donne une vraie impression de recul (comme s'il était à 15 m), plutôt qu'un mur juste sous
-   le nez du joueur. Bug réel repéré : en affichant TOUTES les œuvres de la salle (pas seulement
-   6), le conteneur pouvait déborder sans limite de hauteur si beaucoup d'œuvres formaient
-   plusieurs rangées, les faisant se chevaucher avec le reste de l'écran — d'où une hauteur
-   maximale explicite avec défilement, plutôt qu'un simple min-height. */
-/* Bug réel repéré : overflow-y:auto donnait l'apparence d'une boîte déroulante avec ascenseur
-   (« menu déroulant »), très éloigné de l'esprit d'un mur d'exposition — retiré. Les œuvres sont
-   maintenant nettement plus petites pour toutes tenir naturellement, sans avoir besoin de
-   défiler ; au-delà d'un certain nombre, l'excédent est simplement masqué (overflow:hidden)
-   plutôt que de proposer un ascenseur. */
-#scale-checkpoint-wall { display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; gap:5px; max-width:78vw; max-height:26vh; overflow:hidden; opacity:.85; padding:4px; }
-.scale-checkpoint-work { max-height:5.5vh; max-width:4.5vw; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.2); }
-/* Grand espace de sol vide entre le mur (lointain) et le tourniquet (au premier plan) — c'est cet
-   écart qui donne l'impression de distance, pas seulement la petite taille du mur. */
-/* Grand espace de sol vide entre le mur (lointain) et le tourniquet (au premier plan) — c'est cet
-   écart qui donne l'impression de distance, pas seulement la petite taille du mur. Parquet à
-   chevrons, nettement visible (pas de fondu qui l'assombrissait trop), bien distinct de
-   l'aspect des murs, pour suggérer un vrai espace de pièce plutôt qu'un simple fond neutre. */
-#scale-checkpoint-floor-gap { position:relative; flex:1 1 auto; min-height:12vh;
+/* Vraie salle en volume : mur du fond + 2 murs latéraux + sol, taillés dans UN SEUL trapèze
+   cohérent (mêmes repères que TRAP_* dans app.js : mur du fond en haut, plus étroit ; murs
+   latéraux en biais ; sol en bas, qui s'évase vers le joueur) — plutôt que l'ancien mur plat
+   posé au-dessus d'un simple rectangle de sol, où les œuvres du mur du fond, sans vrai volume
+   pour les contenir, débordaient de leur cadre. Le mur d'entrée (dans le dos du joueur, celui du
+   tourniquet) n'a pas de pan ici : on ne peut pas le voir depuis où l'on se tient. */
+#scale-checkpoint-room {
+  position:relative; flex:1 1 auto; width:100%; min-height:12vh; overflow:hidden;
+  --room-top-l:30%; --room-top-r:70%; --room-bot-l:38%; --room-bot-r:62%; --room-horizon:42%;
+}
+#scale-checkpoint-wall, .scale-checkpoint-sidewall, #scale-checkpoint-floor { position:absolute; inset:0; background-color:#c9b896; background-size:cover; background-position:center; }
+#scale-checkpoint-wall {
+  clip-path:polygon(var(--room-top-l) 0%, var(--room-top-r) 0%, var(--room-bot-r) var(--room-horizon), var(--room-bot-l) var(--room-horizon));
+}
+/* Murs latéraux : même texture que le mur du fond (cohérence du décor), simplement assombrie pour
+   suggérer l'angle de vue en biais — comme deux vrais pans de mur qui prolongent la pièce, pas
+   une ombre en dégradé sans rapport avec le mur du fond. */
+#scale-checkpoint-wall-left {
+  clip-path:polygon(0% 0%, var(--room-top-l) 0%, var(--room-bot-l) var(--room-horizon), 0% 100%);
+  filter:brightness(.76);
+}
+#scale-checkpoint-wall-right {
+  clip-path:polygon(100% 0%, var(--room-top-r) 0%, var(--room-bot-r) var(--room-horizon), 100% 100%);
+  filter:brightness(.66);
+}
+/* Sol en trapèze (parquet à chevrons, même texture que le mur rapproché) : étroit à l'endroit où
+   il rejoint le mur du fond, plein écran au premier plan, côté joueur. */
+#scale-checkpoint-floor {
+  clip-path:polygon(var(--room-bot-l) var(--room-horizon), var(--room-bot-r) var(--room-horizon), 100% 100%, 0% 100%);
   background-color:#b9895a;
   background-image:repeating-linear-gradient(45deg, transparent 0 12px, rgba(0,0,0,.14) 12px 14px),
                     repeating-linear-gradient(-45deg, transparent 0 12px, rgba(255,255,255,.10) 12px 14px);
   box-shadow:inset 0 8px 14px -6px rgba(0,0,0,.35);
 }
-/* Amorce du mur de retour (mur latéral), à gauche — un vrai pan de mur, pas juste une ombre
-   fondue, pour donner une vraie impression que la pièce continue au-delà du seul mur du fond
-   visible ici. Même teinte que le mur du fond (--accent-dark), légèrement assombrie pour
-   suggérer l'angle/la perspective vers ce mur latéral. */
-#scale-checkpoint-side-wall { position:absolute; top:0; bottom:0; left:0; width:12vw;
-  background:linear-gradient(90deg, var(--accent-dark, #5a4530), var(--accent, #9c7a4a) 70%, transparent);
-  box-shadow:4px 0 14px rgba(0,0,0,.3);
-}
+/* Les œuvres de chaque mur restent dans une zone sûre à l'intérieur de son propre polygone (et non
+   centrées sur toute la boîte, qui les ferait retomber hors du trapèze pour les murs latéraux) —
+   bug réel corrigé : c'est ce qui faisait déborder le tableau de son cadre. */
+.scale-checkpoint-wall-works { position:absolute; display:flex; gap:4px; flex-wrap:wrap; opacity:.92; }
+#scale-checkpoint-wall .scale-checkpoint-wall-works { left:36%; top:4%; width:28%; height:34%; align-items:flex-end; justify-content:center; }
+#scale-checkpoint-wall-left .scale-checkpoint-wall-works { left:2%; top:6%; width:24%; height:32%; flex-direction:column; align-items:flex-start; justify-content:flex-start; }
+#scale-checkpoint-wall-right .scale-checkpoint-wall-works { right:2%; top:6%; width:24%; height:32%; flex-direction:column; align-items:flex-end; justify-content:flex-start; }
+.scale-checkpoint-work { max-height:100%; max-width:100%; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+#scale-checkpoint-wall .scale-checkpoint-work { max-height:9vh; }
+#scale-checkpoint-wall-left .scale-checkpoint-work, #scale-checkpoint-wall-right .scale-checkpoint-work { max-height:7vh; }
 #scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; }
 #scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
 /* Cordon rouge à 8 potelets, tracé en un seul SVG continu, vraies vagues entre chaque potelet
@@ -794,15 +802,15 @@ body:not([data-ambiance]) #scale-facade { background-color:#c9b896; background-i
 /* Sol de la salle personnalisable par ambiance (voir salle-<ambiance>-sol.jpg dans assets/) — même
    principe que le mur : un seul fichier par ambiance, utilisé aux deux plans (vue d'ensemble et
    mur rapproché). Couleur/texture de repli tant que le fichier n'est pas déposé. */
-body[data-ambiance="pitti"] #scale-floor, body[data-ambiance="pitti"] #scale-overview-floor { background-color:#b8a888; background-image:url('assets/salle-pitti-sol.jpg'); }
-body[data-ambiance="bauhaus"] #scale-floor, body[data-ambiance="bauhaus"] #scale-overview-floor { background-color:#8a8a8c; background-image:url('assets/salle-bauhaus-sol.jpg'); }
-body[data-ambiance="space"] #scale-floor, body[data-ambiance="space"] #scale-overview-floor { background-color:#4a4a52; background-image:url('assets/salle-space-sol.jpg'); }
-body[data-ambiance="versailles"] #scale-floor, body[data-ambiance="versailles"] #scale-overview-floor { background-color:#a8824a; background-image:url('assets/salle-versailles-sol.jpg'); }
-body[data-ambiance="wedgwood"] #scale-floor, body[data-ambiance="wedgwood"] #scale-overview-floor { background-color:#d8ccb0; background-image:url('assets/salle-wedgwood-sol.jpg'); }
-body[data-ambiance="ermitage"] #scale-floor, body[data-ambiance="ermitage"] #scale-overview-floor { background-color:#8a6a3a; background-image:url('assets/salle-ermitage-sol.jpg'); }
-body[data-ambiance="renaissance"] #scale-floor, body[data-ambiance="renaissance"] #scale-overview-floor { background-color:#b89468; background-image:url('assets/salle-renaissance-sol.jpg'); }
-body[data-ambiance="gothique"] #scale-floor, body[data-ambiance="gothique"] #scale-overview-floor { background-color:#8a7a5c; background-image:url('assets/salle-gothique-sol.jpg'); }
-body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overview-floor { background-color:#6f5638; background-image:url('assets/salle-renoir-sol.jpg'); }
+body[data-ambiance="pitti"] #scale-floor, body[data-ambiance="pitti"] #scale-overview-floor, body[data-ambiance="pitti"] #scale-checkpoint-floor { background-color:#b8a888; background-image:url('assets/salle-pitti-sol.jpg'); }
+body[data-ambiance="bauhaus"] #scale-floor, body[data-ambiance="bauhaus"] #scale-overview-floor, body[data-ambiance="bauhaus"] #scale-checkpoint-floor { background-color:#8a8a8c; background-image:url('assets/salle-bauhaus-sol.jpg'); }
+body[data-ambiance="space"] #scale-floor, body[data-ambiance="space"] #scale-overview-floor, body[data-ambiance="space"] #scale-checkpoint-floor { background-color:#4a4a52; background-image:url('assets/salle-space-sol.jpg'); }
+body[data-ambiance="versailles"] #scale-floor, body[data-ambiance="versailles"] #scale-overview-floor, body[data-ambiance="versailles"] #scale-checkpoint-floor { background-color:#a8824a; background-image:url('assets/salle-versailles-sol.jpg'); }
+body[data-ambiance="wedgwood"] #scale-floor, body[data-ambiance="wedgwood"] #scale-overview-floor, body[data-ambiance="wedgwood"] #scale-checkpoint-floor { background-color:#d8ccb0; background-image:url('assets/salle-wedgwood-sol.jpg'); }
+body[data-ambiance="ermitage"] #scale-floor, body[data-ambiance="ermitage"] #scale-overview-floor, body[data-ambiance="ermitage"] #scale-checkpoint-floor { background-color:#8a6a3a; background-image:url('assets/salle-ermitage-sol.jpg'); }
+body[data-ambiance="renaissance"] #scale-floor, body[data-ambiance="renaissance"] #scale-overview-floor, body[data-ambiance="renaissance"] #scale-checkpoint-floor { background-color:#b89468; background-image:url('assets/salle-renaissance-sol.jpg'); }
+body[data-ambiance="gothique"] #scale-floor, body[data-ambiance="gothique"] #scale-overview-floor, body[data-ambiance="gothique"] #scale-checkpoint-floor { background-color:#8a7a5c; background-image:url('assets/salle-gothique-sol.jpg'); }
+body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overview-floor, body:not([data-ambiance]) #scale-checkpoint-floor { background-color:#6f5638; background-image:url('assets/salle-renoir-sol.jpg'); }
 /* Ligne de plinthe séparant le mur du sol — repère visuel simple demandé pour bien distinguer les
    deux plans, en attendant une vraie salle en 3 dimensions. */
 #scale-wall-line { position:fixed; bottom:16vh; left:0; right:0; height:3px; background:rgba(0,0,0,.35); z-index:1; box-shadow:0 1px 2px rgba(255,255,255,.15); }
