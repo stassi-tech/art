@@ -712,62 +712,62 @@ body[data-ambiance="renaissance"] #scale-facade, body[data-ambiance="renaissance
 body[data-ambiance="gothique"] #scale-facade, body[data-ambiance="gothique"] #scale-checkpoint-wall, body[data-ambiance="gothique"] #scale-checkpoint-wall-left, body[data-ambiance="gothique"] #scale-checkpoint-wall-right { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
 body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) #scale-checkpoint-wall-left, body:not([data-ambiance]) #scale-checkpoint-wall-right { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
-/* Étape 2 : le contrôle des billets, entre la façade et le plan rapproché — on découvre tout le
-   mur du fond depuis l'entrée, en retrait (impression d'une distance de 15 m, la même longueur
-   que tous les murs de la salle), avant de franchir un tourniquet type métro pour continuer.
+/* Étape 2 : le contrôle des billets, entre la façade et le plan rapproché — on découvre le mur du
+   fond depuis l'entrée, en retrait (impression d'une distance de 15 m, la même longueur que tous
+   les murs de la salle), avant de franchir un tourniquet type métro pour continuer.
    Silhouette à sa taille normale ici (1,70 m), contrairement à la façade. */
 #scale-checkpoint { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:1vh; background:#e8e4d8; padding:20px; padding-top:4vh; }
-/* Vraie salle en volume, façon photo de galerie (référence envoyée par l'utilisateur) : le mur du
-   fond fait face au joueur (un simple rectangle, pas de déformation puisqu'on le regarde de face),
-   les 2 murs latéraux partent réellement en profondeur — PAS sur le même plan que le mur du fond.
-   Chaque mur latéral est un trapèze dont les deux bords sont VERTICAUX (des droites, x fixe) :
-   le bord extérieur (--room-outer-x, côté écran) va du haut en bas de la salle ; le bord intérieur
-   (--room-inner-x, celui qui rejoint le mur du fond, plus loin) est plus court, entre
-   --room-top-y et --room-horizon-y. Seule la ligne du HAUT qui relie ces deux bords est oblique —
-   jamais les bords eux-mêmes, ce qui donnait l'impression fautive de murs « penchés » dans une
-   version précédente. Le sol, en dessous, s'évase en trapèze du mur du fond vers le joueur. */
+/* Depuis l'entrée, on ne voit que le mur du fond, bien en face — comme au théâtre, un décor de
+   fond plat. Les deux murs latéraux ne sont volontairement PAS montrés en perspective : essayer de
+   les faire reculer en trapèze avec leurs propres œuvres déformées correctement s'est révélé trop
+   casse-gueule (murs qui semblaient penchés, œuvres qui se chevauchaient ou perdaient leurs
+   proportions). On n'en montre donc que la « tranche » — une bande étroite et fixe de chaque côté,
+   façon colonnes/pilastres d'entrée de salle — sans aucune œuvre dessus : le joueur les découvrira
+   plus tard, une fois entré, en se retournant sur le plan rapproché (goToWall gère déjà ça très
+   bien, aucun changement nécessaire de ce côté-là). */
 #scale-checkpoint-room {
   position:relative; flex:1 1 auto; width:100%; min-height:16vh; overflow:hidden;
-  --room-inner-x:24%; --room-top-y:8%; --room-horizon-y:62%;
+  --room-inner-x:9%; --room-horizon-y:62%;
 }
-.scale-checkpoint-wallpanel, #scale-checkpoint-floor { position:absolute; inset:0; background-color:#c9b896; background-size:cover; background-position:center; }
-/* Mur du fond : simple rectangle plat, élargi (voir --room-inner-x) pour bien dominer la vue,
-   comme celui qu'on s'apprête à franchir. */
-#scale-checkpoint-wall {
-  clip-path:polygon(var(--room-inner-x) var(--room-top-y), calc(100% - var(--room-inner-x)) var(--room-top-y), calc(100% - var(--room-inner-x)) var(--room-horizon-y), var(--room-inner-x) var(--room-horizon-y));
+.scale-checkpoint-wallpanel, #scale-checkpoint-floor { position:absolute; background-color:#c9b896; background-size:cover; background-position:center; }
+/* Mur du fond : rectangle plat, vu bien en face — aucune déformation à faire puisqu'on le regarde
+   de front. C'est ici, et ici seulement, que les œuvres du fond s'affichent (à leur vraie échelle,
+   voir layoutCheckpointRoom dans app.js), centrées sur ce mur de 15 m. */
+#scale-checkpoint-wall { left:var(--room-inner-x); right:var(--room-inner-x); top:0; height:var(--room-horizon-y); }
+/* Tranches des murs latéraux : bandes fixes et étroites, jamais en perspective. Un dégradé et de
+   fines cannelures suggèrent une colonne vue de profil plutôt qu'un vrai mur — décor, pas un
+   espace où accrocher quoi que ce soit. Le motif passe par un ::after (plutôt qu'un background-image
+   direct sur l'élément) pour ne jamais se faire écraser par les règles d'ambiance ci-dessus, qui
+   ciblent ce même #id avec une spécificité CSS plus forte (body[...] #id > #id seul). */
+#scale-checkpoint-wall-left, #scale-checkpoint-wall-right {
+  top:0; width:var(--room-inner-x); height:var(--room-horizon-y); overflow:hidden;
 }
-/* Murs latéraux : bord extérieur (0% ou 100%) sur toute la hauteur, bord intérieur (vers le mur du
-   fond) plus court — les deux restent des droites verticales, seule la ligne du haut est oblique.
-   Légèrement assombris pour suggérer l'angle de vue, sans déformer leur forme. */
-#scale-checkpoint-wall-left {
-  clip-path:polygon(0% 0%, var(--room-inner-x) var(--room-top-y), var(--room-inner-x) var(--room-horizon-y), 0% 100%);
-  filter:brightness(.78);
-}
-#scale-checkpoint-wall-right {
-  clip-path:polygon(100% 0%, calc(100% - var(--room-inner-x)) var(--room-top-y), calc(100% - var(--room-inner-x)) var(--room-horizon-y), 100% 100%);
-  filter:brightness(.68);
+#scale-checkpoint-wall-left { left:0; }
+#scale-checkpoint-wall-right { right:0; }
+#scale-checkpoint-wall-left::after, #scale-checkpoint-wall-right::after {
+  content:''; position:absolute; inset:0;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 3px, transparent 3px 15px),
+    linear-gradient(90deg, rgba(0,0,0,.45), rgba(255,255,255,.14) 40%, rgba(0,0,0,.12) 65%, rgba(0,0,0,.5));
 }
 /* Sol en trapèze (parquet à chevrons, même texture que le mur rapproché) : étroit à l'endroit où
-   il rejoint le mur du fond, plein écran au premier plan, côté joueur. */
+   il rejoint le mur du fond, plein écran au premier plan, côté joueur — seul élément qui garde une
+   perspective, en pur décor (rien n'y est positionné en fonction de sa forme). */
 #scale-checkpoint-floor {
+  inset:0;
   clip-path:polygon(var(--room-inner-x) var(--room-horizon-y), calc(100% - var(--room-inner-x)) var(--room-horizon-y), 100% 100%, 0% 100%);
   background-color:#b9895a;
   background-image:repeating-linear-gradient(45deg, transparent 0 12px, rgba(0,0,0,.14) 12px 14px),
                     repeating-linear-gradient(-45deg, transparent 0 12px, rgba(255,255,255,.10) 12px 14px);
   box-shadow:inset 0 8px 14px -6px rgba(0,0,0,.35);
 }
-/* Chaque œuvre est positionnée et dimensionnée individuellement en JS (voir layoutCheckpointRoom
-   dans app.js), en vraie échelle (cm réels de l'œuvre → pixels, à partir d'un mur de référence de
-   15 m) plutôt qu'ajustée pour « faire joli » : un Courbet de 6,68 m occupe ainsi la vraie
-   proportion d'un mur de 15 m, ni plus petit ni plus grand qu'il ne devrait. Le conteneur n'est
-   donc plus qu'un simple calque plein cadre — le clip-path du mur parent (trapèze) suffit à
-   rogner proprement toute œuvre qui déborderait légèrement de sa forme. */
+/* Chaque œuvre du mur du fond est positionnée et dimensionnée individuellement en JS (voir
+   layoutCheckpointRoom dans app.js), en vraie échelle (cm réels de l'œuvre → pixels, à partir d'un
+   mur de référence de 15 m) plutôt qu'ajustée pour « faire joli » : un Courbet de 6,68 m occupe
+   ainsi la vraie proportion d'un mur de 15 m, ni plus petit ni plus grand qu'il ne devrait, et le
+   groupe d'œuvres est centré sur ce mur. */
 .scale-checkpoint-wall-works { position:absolute; inset:0; overflow:hidden; }
-/* Sur les murs latéraux, chaque œuvre reste verticale (jamais inclinée : dans une vraie
-   perspective à un point de fuite, les verticales d'un mur latéral restent verticales) mais sa
-   LARGEUR est comprimée (voir widthCompression dans layoutCheckpointRoom) — on ne voit alors
-   plus le tableau de face mais « de profil », comme sur la photo de référence. */
-.scale-checkpoint-work { position:absolute; object-fit:fill; box-shadow:0 2px 6px rgba(0,0,0,.35); }
+.scale-checkpoint-work { position:absolute; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.35); }
 #scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; }
 #scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
 /* Cordon rouge à 8 potelets, tracé en un seul SVG continu, vraies vagues entre chaque potelet
