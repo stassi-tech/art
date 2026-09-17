@@ -1253,6 +1253,11 @@
             <!-- Sortie d'urgence : la visionneuse recouvre tout l'écran (y compris le bandeau
                  général), donc un moyen de sortir doit exister À L'INTÉRIEUR d'elle-même. -->
             <button type="button" id="scale-emergency-exit" class="hidden" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:fixed;top:70px;left:16px;padding:8px 12px;border-radius:4px;border:2px solid #fff;background:#0a8a3c;color:#fff;font-size:.75rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;">🏃🚪 Sortie</button>
+            <!-- Passage vers une salle voisine : n'apparaît que sur le mur de droite (salle
+                 suivante) ou le mur de gauche (salle précédente) d'une salle qui a effectivement un
+                 voisin de ce côté — voir updateRoomNavButtons, appelé à chaque changement de mur. -->
+            <button type="button" id="scale-next-room-button" class="hidden" aria-label="Salle suivante" title="Salle suivante" style="position:fixed;bottom:16px;right:16px;padding:10px 16px;border-radius:4px;border:2px solid #fff;background:#0a8a3c;color:#fff;font-size:.8rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;">Salle suivante →</button>
+            <button type="button" id="scale-prev-room-button" class="hidden" aria-label="Salle précédente" title="Salle précédente" style="position:fixed;bottom:16px;left:16px;padding:10px 16px;border-radius:4px;border:2px solid #fff;background:#0a8a3c;color:#fff;font-size:.8rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;">← Salle précédente</button>
             <!-- Vue rapprochée d'une œuvre précise : la silhouette entre dans l'image elle-même pour
                  montrer l'échelle en grand — on la tire hors du cadre pour revenir au mur, qui garde
                  sa position (la promenade continue là où elle s'était arrêtée). -->

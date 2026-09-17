@@ -2595,11 +2595,16 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker', 'scale-next-room-button', 'scale-prev-room-button'].forEach((id) => $(id).classList.add('hidden'));
   state.scaleViewCandidates = candidates;
   // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer à l'étape du contrôle
-  // des billets (voir goThroughDoor).
-  state.roomWalls = splitIntoFourWalls(candidates);
+  // des billets (voir goThroughDoor). state.allRooms garde TOUTES les salles (une deuxième salle
+  // n'est créée que s'il y a assez d'œuvres, voir splitIntoRooms) ; state.roomWalls reste, comme
+  // avant, les 4 murs de la salle actuellement visitée — la plupart du code existant (goToWall,
+  // enterCloserPlan...) n'a donc pas besoin de savoir qu'il peut exister plusieurs salles.
+  state.allRooms = splitIntoRooms(candidates);
+  state.currentRoomIndex = 0;
+  state.roomWalls = state.allRooms[0];
   // Panneau d'exposition au-dessus de la porte, avec les artistes de la sélection en cours.
   const sign = $('scale-exhibition-sign');
   if (sign) {
@@ -2651,7 +2656,12 @@ function checkpointRoomVarPercent(name) {
 // hauteur des yeux, ~1,56 m, comme sur le mur rapproché où la silhouette de 1,70 m sert de
 // référence : voir populateCloserPlanWall, eyeLevelFromBottom).
 const CHECKPOINT_WALL_LENGTH_CM = 1500;
-const CHECKPOINT_EYE_LEVEL_CM = 156;
+// Relevé de 156 (hauteur des yeux standard musée) à 190 : sur cet aperçu depuis l'entrée, une
+// oeuvre accrochée pile à hauteur des yeux se retrouvait visuellement basse (le mur du fond
+// occupe toute la hauteur disponible jusqu'à l'horizon, sans plafond visible au-dessus pour
+// équilibrer) — remontée « un peu », comme demandé, sans risquer de dépasser le haut du mur pour
+// une oeuvre de taille courante.
+const CHECKPOINT_EYE_LEVEL_CM = 190;
 const CHECKPOINT_GAP_CM = 25;
 // Plafond de sécurité sur la hauteur/largeur d'UNE œuvre : une faute de frappe dans le fichier
 // source (ex. un zéro de trop sur « longueur ») peut produire une dimension absurde (ex. 6680 cm
@@ -2680,28 +2690,22 @@ function checkpointSanitizedSizeCm(w) {
 // propres œuvres correctement déformées s'est révélé trop fragile (murs qui semblaient penchés,
 // œuvres qui se chevauchaient ou perdaient leurs proportions) pour le peu que ça apportait, puisque
 // le joueur les voit de toute façon correctement une fois entré, sur le plan rapproché.
-// Choisit les œuvres du mur du fond pour cet aperçu : l'œuvre la plus large de toute l'exposition
-// (le « clou » — Courbet, ici) au centre, encadrée de 2 petites œuvres de chaque côté. On pioche
-// dans state.scaleViewCandidates (toute l'exposition), PAS dans state.roomWalls[0] : ce dernier ne
-// contient que ce que splitIntoFourWalls a mis sur le mur du fond pour la VRAIE visite (plan
-// rapproché), un tirage qui peut très bien ne laisser qu'une seule œuvre là-bas. Cet aperçu depuis
-// l'entrée est une simple mise en scène (comme un rideau de théâtre qui s'ouvre sur l'œuvre
-// vedette) : il peut donc très bien montrer d'autres œuvres que celles qu'on croisera vraiment sur
-// ce mur une fois entré, sans que ça pose problème.
+// Choisit l'œuvre du mur du fond pour cet aperçu : uniquement la plus large de toute l'exposition
+// (le « clou » — Courbet, ici), seule et bien centrée — les petites œuvres qui l'encadraient ont
+// été retirées à la demande : elles éloignaient l'œil du sujet principal plutôt que de le mettre
+// en valeur. On pioche dans state.scaleViewCandidates (toute l'exposition), PAS dans
+// state.roomWalls[0] : ce dernier ne contient que ce que splitIntoFourWalls a mis sur le mur du
+// fond pour la VRAIE visite (plan rapproché), un tirage qui peut très bien ne laisser qu'une seule
+// œuvre là-bas. Cet aperçu depuis l'entrée est une simple mise en scène (comme un rideau de
+// théâtre qui s'ouvre sur l'œuvre vedette) : il peut donc très bien montrer une autre œuvre que
+// celle qu'on croisera vraiment sur ce mur une fois entré, sans que ça pose problème.
 function checkpointBackWallWorks() {
   const all = state.scaleViewCandidates && state.scaleViewCandidates.length
     ? state.scaleViewCandidates
     : (state.roomWalls || []).flat();
   if (!all.length) return [];
-  const byWidthDesc = all.map((w) => ({ w, width: estimateWorkWidthCm(w) })).sort((a, b) => b.width - a.width);
-  const headliner = byWidthDesc[0].w;
-  // Les 4 plus petites œuvres restantes (hors vedette), 2 de chaque côté — la plus petite tout à
-  // l'extérieur, la deuxième plus petite juste à côté du Courbet, pour une composition qui
-  // s'équilibre visuellement vers le centre.
-  const smallest = byWidthDesc.slice(1).sort((a, b) => a.width - b.width).slice(0, 4).map((x) => x.w);
-  const left = [smallest[2], smallest[0]].filter(Boolean);
-  const right = [smallest[1], smallest[3]].filter(Boolean);
-  return [...left, headliner, ...right];
+  const headliner = all.reduce((biggest, w) => (estimateWorkWidthCm(w) > estimateWorkWidthCm(biggest) ? w : biggest), all[0]);
+  return [headliner];
 }
 function layoutCheckpointRoom() {
   const room = $('scale-checkpoint-room');
@@ -2784,6 +2788,27 @@ function splitIntoFourWalls(candidates) {
   });
   return walls;
 }
+// Première salle bien remplie plutôt que 8 murs clairsemés à moitié vides : une deuxième salle
+// n'est créée que s'il y a de quoi peupler les deux correctement (repère approximatif : au moins
+// 2 œuvres par mur en moyenne, soit 8 au total). Même logique de répartition par largeur totale
+// que splitIntoFourWalls, étendue à roomCount*4 « murs » (compartiments) au lieu de 4 seulement,
+// puis regroupée 4 par 4 en salles — chaque salle reste donc, à l'intérieur d'elle-même, équilibrée
+// exactement comme avant.
+function splitIntoRooms(candidates) {
+  const roomCount = candidates.length >= 8 ? 2 : 1;
+  if (roomCount === 1) return [splitIntoFourWalls(candidates)];
+  const compartments = Array.from({ length: roomCount * 4 }, () => []);
+  const totals = new Array(roomCount * 4).fill(0);
+  const sorted = [...candidates].sort((a, b) => estimateWorkWidthCm(b) - estimateWorkWidthCm(a));
+  sorted.forEach((w) => {
+    const target = totals.indexOf(Math.min(...totals));
+    compartments[target].push(w);
+    totals[target] += estimateWorkWidthCm(w) + 30;
+  });
+  const rooms = [];
+  for (let r = 0; r < roomCount; r++) rooms.push(compartments.slice(r * 4, r * 4 + 4));
+  return rooms;
+}
 // Coordonnées (en %) des 4 coins du trapèze de l'écran de contrôle — mur du fond (haut) plus
 // étroit que le mur d'entrée (bas), murs latéraux en biais entre les deux.
 const TRAP_TOP_LEFT = { x: 25, y: 0 };
@@ -2815,11 +2840,39 @@ function goToWall(index) {
   // les points pourraient hériter d'une position laissée par le mur précédent.
   updateDotAlongWall(); // positionne aussi la silhouette (attachée au point) dès l'entrée sur ce mur
   lastShownMeter = 0; // repère de distance réinitialisé : chaque mur repart de 1 mètre
+  updateRoomNavButtons();
 }
+// Salles voisines : le bouton « salle suivante » n'apparaît que sur le mur de droite (index 1)
+// d'une salle qui a effectivement une salle après elle, et « salle précédente » symétriquement sur
+// le mur de gauche (index 3) — jamais les deux en même temps, puisqu'on ne peut être que sur un
+// seul mur à la fois. Rien à voir avec le glisser-déposer du minimap (qui ne connaît que 4 murs) :
+// un bouton fixe et explicite plutôt que d'ajouter un 5e bord au trapèze, plus sûr pour une
+// première version de cette fonctionnalité.
+function updateRoomNavButtons() {
+  const rooms = state.allRooms || [];
+  const roomIndex = state.currentRoomIndex || 0;
+  $('scale-next-room-button')?.classList.toggle('hidden', !(currentWallIndex === 1 && rooms[roomIndex + 1]));
+  $('scale-prev-room-button')?.classList.toggle('hidden', !(currentWallIndex === 3 && roomIndex > 0));
+}
+function enterRoom(roomIndex) {
+  if (!state.allRooms || !state.allRooms[roomIndex]) return;
+  stopWalking();
+  blurTransition(() => {
+    state.currentRoomIndex = roomIndex;
+    state.roomWalls = state.allRooms[roomIndex];
+    goToWall(0); // on arrive toujours face au mur du fond de la nouvelle salle, comme à l'entrée
+  });
+}
+$('scale-next-room-button')?.addEventListener('click', () => enterRoom((state.currentRoomIndex || 0) + 1));
+$('scale-prev-room-button')?.addEventListener('click', () => enterRoom((state.currentRoomIndex || 0) - 1));
 function enterCloserPlan() {
   // state.roomWalls est déjà calculé dès l'entrée en vue d'ensemble (voir enterScaleView), pour
   // connaître l'œuvre du mur du fond à montrer en aperçu à travers la porte.
-  if (!state.roomWalls) state.roomWalls = splitIntoFourWalls(state.scaleViewCandidates || []);
+  if (!state.roomWalls) {
+    state.allRooms = state.allRooms || splitIntoRooms(state.scaleViewCandidates || []);
+    state.currentRoomIndex = state.currentRoomIndex || 0;
+    state.roomWalls = state.allRooms[state.currentRoomIndex];
+  }
   currentWallIndex = 0; // on entre toujours par la porte, on se retrouve donc au mur du fond
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
@@ -2836,7 +2889,7 @@ function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker', 'scale-next-room-button', 'scale-prev-room-button'].forEach((id) => $(id).classList.add('hidden'));
 }
 $('scale-checkpoint-back')?.addEventListener('click', backToOverview);
 $('scale-turnstile-exit')?.addEventListener('click', backToOverview);
