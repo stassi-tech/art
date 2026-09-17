@@ -1363,59 +1363,8 @@ function restoreLastSelection(panelId) {
   });
 }
 
-// Pilotage du personnage à la voix dans le plan rapproché de la salle d'exposition : « gauche »,
-// « droite », « plus vite », « moins vite »/« ralentis », « stop »/« arrête ». Même schéma
-// d'écoute continue avec redémarrage automatique que le micro du quiz, mais on « renforce » la
-// fiabilité en examinant TOUTES les hypothèses de reconnaissance (maxAlternatives) plutôt que la
-// seule première — une commande courte est plus vite noyée dans une reconnaissance imparfaite
-// qu'une phrase entière dictée.
-function attachExhibitionVoiceControl(button) {
-  if (!voiceSupported || !button) { button?.classList.add('hidden'); return; }
-  button.classList.remove('hidden');
-  let recognition = null, listening = false, manualStop = false;
-  const commandMatches = (transcript, words) => words.some((w) => transcript.includes(w));
-  const handleTranscript = (transcript) => {
-    const t = transcript.toLowerCase();
-    if (commandMatches(t, ['arrête', 'stop', 'arrete'])) { stopWalking(); return; }
-    if (commandMatches(t, ['plus vite', 'accélère', 'accelere', 'plus rapide'])) {
-      walkSpeed = Math.min(12, walkSpeed + 2);
-      if (walkDirection !== 0) startWalking(walkDirection);
-      return;
-    }
-    if (commandMatches(t, ['moins vite', 'ralentis', 'ralenti', 'plus lentement'])) {
-      walkSpeed = Math.max(2, walkSpeed - 2);
-      if (walkDirection !== 0) startWalking(walkDirection);
-      return;
-    }
-    if (commandMatches(t, ['gauche'])) { startWalking(-1); return; }
-    if (commandMatches(t, ['droite'])) { startWalking(1); return; }
-  };
-  button.addEventListener('click', () => {
-    if (listening) { manualStop = true; try { recognition.abort(); } catch (e) {} button.classList.remove('listening'); listening = false; return; }
-    manualStop = false;
-    try { recognition = new SpeechRecognitionImpl(); } catch (e) { return; }
-    recognition.lang = 'fr-FR'; recognition.continuous = true; recognition.interimResults = false; recognition.maxAlternatives = 3;
-    button.classList.add('listening'); listening = true;
-    const thisRecognition = recognition;
-    recognition.addEventListener('result', (event) => {
-      const last = event.results[event.results.length - 1];
-      // On examine chaque hypothèse renvoyée par le moteur, pas seulement la plus probable — une
-      // commande d'un ou deux mots se glisse plus facilement dans une hypothèse secondaire.
-      for (let i = 0; i < last.length; i += 1) handleTranscript(last[i].transcript);
-    });
-    recognition.addEventListener('end', () => {
-      if (manualStop || recognition !== thisRecognition) { button.classList.remove('listening'); listening = false; return; }
-      try { thisRecognition.start(); } catch (e) { button.classList.remove('listening'); listening = false; recognition = null; }
-    });
-    recognition.addEventListener('error', (event) => {
-      if (event.error === 'aborted' || event.error === 'no-speech') return; // redémarrage géré par 'end'
-      manualStop = true;
-      button.classList.remove('listening'); listening = false; recognition = null;
-    });
-    try { recognition.start(); } catch (e) { button.classList.remove('listening'); listening = false; }
-  });
-}
-attachExhibitionVoiceControl($('scale-voice-control-button'));
+// Le pilotage à la voix a été essayé puis retiré : les deux flèches ◄ ► se sont avérées plus
+// simples et plus fiables à l'usage (moins de bruit, réponse immédiate).
 function attachSimpleMic(button, input) {
   if (!voiceSupported || !button || !input) { button?.classList.add('hidden'); return; }
   button.classList.remove('hidden');
@@ -2456,12 +2405,16 @@ function parseCmValue(raw) {
 }
 // Échelle relative « vraie » pour les jeux de comparaison d'images (Intrus, Famille) : la plus
 // grande œuvre du lot reçoit la taille maximale disponible à l'écran, les autres suivent en
-// PROPORTION RÉELLE (pas compressée) — avec un plancher minimal pour qu'une toute petite œuvre
-// (un médaillon d'émail à côté d'un Courbet monumental) reste tout de même visible et cliquable.
-// Chaque image reste de toute façon bornée par sa propre case dans la grille (CSS width:100% +
-// max-width) : si la case est plus étroite que la taille calculée ici, l'image se réduit
-// naturellement à la largeur de sa case — inutile de recalculer un facteur de réduction à part.
-function relativeImageSizes(works, maxPx = 560, minPx = 70, defaultPx = 320) {
+// proportion réelle — avec un plancher minimal pour qu'une toute petite œuvre reste visible et
+// cliquable. Deux ajustements suite à des retours concrets :
+// - Sur mobile, un écart trop marqué entre 3 colonnes déjà étroites rendait certaines images
+//   quasi invisibles — on désactive alors l'échelle (toutes les cases à taille égale, comme
+//   avant cette fonctionnalité) plutôt que de l'adapter, plus sûr sur un petit écran.
+// - Sur PC, l'écart plein (70 à 560px, soit 8x) rendait deux œuvres de tailles très différentes
+//   difficiles à distinguer l'une de l'autre (la petite devenait minuscule) — resserré à 140-420
+//   (3x) pour garder un vrai sens de proportion sans sacrifier la lisibilité de la plus petite.
+function relativeImageSizes(works, maxPx = 420, minPx = 140, defaultPx = 280) {
+  if (window.innerWidth < 700) return works.map(() => defaultPx); // mobile : pas d'échelle relative
   const heights = works.map((w) => parseCmValue(w?.hauteur));
   const validHeights = heights.filter((h) => h && h > 0);
   // Moins de 2 hauteurs connues : rien à comparer, on garde toutes les cases à une taille
@@ -2527,7 +2480,7 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.add('hidden'));
   populateOverviewThumbs(candidates);
   state.scaleViewCandidates = candidates;
 }
@@ -2562,17 +2515,17 @@ function enterCloserPlan() {
   state.roomWalls = splitIntoFourWalls(candidates);
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.remove('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
   // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
   // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
   // tableaux, au ras du sol au lieu de les accrocher à hauteur des yeux.
-  requestAnimationFrame(() => { goToWall(currentWallIndex); positionSilhouetteMic(); });
+  requestAnimationFrame(() => { goToWall(currentWallIndex); });
 }
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-voice-control-button', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-move-buttons', 'scale-minimap'].forEach((id) => $(id).classList.add('hidden'));
 }
 function populateCloserPlanWall(candidates) {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
@@ -2755,19 +2708,6 @@ attachMoveButton($('scale-move-right'), 1);
   dot.addEventListener('pointerup', stop);
   dot.addEventListener('pointercancel', stop);
 })();
-// Repositionne le micro façon audioguide, contre l'oreille de la silhouette — recalculé à chaque
-// entrée dans le mur rapproché, puisque la taille de la silhouette change avec l'échelle choisie.
-function positionSilhouetteMic() {
-  const sil = $('scale-silhouette');
-  const mic = $('scale-voice-control-button');
-  if (!sil || !mic || sil.classList.contains('hidden')) return;
-  const rect = sil.getBoundingClientRect();
-  if (!rect.height) return;
-  // L'oreille se situe vers le tiers droit de la tête, elle-même les ~6 % du haut du corps.
-  mic.style.left = `${rect.left + rect.width * 0.62 - 13}px`;
-  mic.style.top = `${rect.top + rect.height * 0.045 - 13}px`;
-}
-window.addEventListener('resize', positionSilhouetteMic);
 makeSilhouetteDraggable($('scale-overview-silhouette'), {
   onDragEnd: (dx, dy, endX, endY) => {
     if (isNearBottomCorner(endX, endY)) { exitScaleViewCompletely(); return; }
