@@ -1523,6 +1523,21 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  'michel-ange': 'mikelange',
+  'michel ange': 'mikelange',
+  'sabin': 'sabine',
+  'antéa': 'antéa',
+  'antea': 'antéa',
+  'kirchner': 'kirchneur',
+  'kisling': 'kissling',
+  'bernadino': 'bérnadino',
+  'vermeer': 'vérmér',
+  'kalf': 'kalf',
+  'edvard': 'édvard',
+  'campione': 'campioné',
+  'ercole': 'ércolé',
+  'gaudens': 'gaudenss',
+  'leone': 'léoné',
   'allan ramsay': 'allanne ramsay',
   'champaigne': 'champagne',
   'boccioni': 'bochioni',
@@ -1635,7 +1650,7 @@ const PRONUNCIATION_FIXES = {
   'iceberg': 'Aïceberg',
   'tahitiennes': 'Tahissiennes',
   'phryné': 'Friné',
-  'vallotton': 'Vallotto',
+  'vallotton': 'Valloton',
   'gismonda': 'Guismonda',
   'léonidas': 'Léonidasse',
   'caliban': 'Caliba',
@@ -1645,7 +1660,7 @@ const PRONUNCIATION_FIXES = {
   'alyscamps': 'Aliscan',
   'poisson': 'Pouasson',
   'vœu': 'veu',
-  'bernin': 'Bérnini',
+  'bernin': 'Bèrnin',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2303,7 +2318,7 @@ function correctionInfoRow(label, value) {
 function formatTitleWithCycle(work) {
   // Titre entre guillemets et en italique ; si l'œuvre est extraite d'un cycle (ex. un
   // manuscrit ou une série de fresques), on ajoute « extrait du "Cycle" », lui aussi en italique.
-  const titlePart = `<em>"${escapeHtml(work.title)}"</em>`;
+  const titlePart = `<em>"${escapeHtml(work.title)}\u00a0"</em>`;
   if (!work.cycle) return titlePart;
   return `${titlePart}, extrait du <em>"${escapeHtml(work.cycle)}"</em>`;
 }
@@ -2362,7 +2377,7 @@ function spokenFullReference(work, extraFields = null) {
   const dimsPhrase = on('dimensions') ? spokenDimensionsPhrase(work) : '';
   const matDims = [on('materiaux') ? (work.materialsPhrase || work.materials) : '', dimsPhrase].filter(Boolean).join(' ');
   const parts = [
-    `${work.artist}, « ${work.title} »${on('date') ? `, ${work.date}` : ''}.`,
+    `${work.artist}, «\u00a0${work.title}\u00a0»${on('date') ? `, ${work.date}` : ''}.`,
     matDims ? `${matDims}.` : '',
     (on('location') && work.location) ? `${work.location}.` : '',
   ].filter(Boolean);
@@ -2546,6 +2561,13 @@ function enterScaleView() {
   // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer à l'étape du contrôle
   // des billets (voir goThroughDoor).
   state.roomWalls = splitIntoFourWalls(candidates);
+  // Panneau d'exposition au-dessus de la porte, avec les artistes de la sélection en cours.
+  const sign = $('scale-exhibition-sign');
+  if (sign) {
+    let artists = [];
+    try { artists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
+    sign.textContent = artists.length ? `Exposition — ${artists.join(', ')}` : 'Exposition';
+  }
 }
 // Voile de transition floue entre chaque étape (façade → contrôle des billets → plan rapproché) —
 // évite, pour l'instant, d'avoir à animer un vrai déplacement progressif du personnage à travers
@@ -3882,7 +3904,7 @@ $('chrono-validate-button')?.addEventListener('click', () => {
     return `<div class="fam-image-cell ${rightFlags[i] ? 'right' : 'wrong'}" style="position:relative;margin-bottom:58px;">
       <span class="chrono-slot-num">${i + 1}</span><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" />
       <span class="fam-result-caption" style="position:absolute;bottom:-58px;left:0;right:0;">
-        <strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${meta}
+        <strong>${formatArtistDisplayName(work)}</strong><br><em>«\u00a0${escapeHtml(work.title)}\u00a0»</em><br>${meta}
       </span>
     </div>`;
   }).join('');
@@ -3895,7 +3917,7 @@ $('chrono-validate-button')?.addEventListener('click', () => {
         const meta = [escapeHtml(work.date), locationWithFlag(work)].filter(Boolean).join(' — ');
         return `<div class="fam-result-item">
           <img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" />
-          <span class="fam-result-caption"><strong>${formatArtistDisplayName(work)}</strong><br><em>« ${escapeHtml(work.title)} »</em><br>${meta}</span>
+          <span class="fam-result-caption"><strong>${formatArtistDisplayName(work)}</strong><br><em>«\u00a0${escapeHtml(work.title)}\u00a0»</em><br>${meta}</span>
         </div>`;
       }).join('')}</div>`;
   }
@@ -5755,7 +5777,7 @@ function impShowCurrent() {
   const fieldOn = (key) => showFullCorrection || (anyFieldChecked ? $(`imp-field-${key}`).checked : true);
   const fields = [
     { key: 'artist', label: 'Auteur', value: formatArtistDisplayName(work), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
-    { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>« ${escapeHtml(work.title)} »</em>`, spoken: `« ${work.title} »`, on: fieldOn('title') },
+    { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
     { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },

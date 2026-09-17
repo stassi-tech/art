@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=159" />
+    <link rel="stylesheet" href="style.css?v=160" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1144,6 +1144,7 @@
                    impression de hauteur avant d'entrer. -->
               <div id="scale-facade">
                 <div id="scale-door">
+                  <div id="scale-exhibition-sign"></div>
                   <button type="button" id="scale-enter-button">Entrée</button>
                 </div>
                 <svg id="scale-overview-silhouette" viewBox="0 0 100 340" aria-hidden="true">
@@ -1163,13 +1164,12 @@
             <div id="scale-checkpoint" class="hidden">
               <button type="button" id="scale-checkpoint-back" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:absolute;top:16px;left:16px;padding:6px 10px;border-radius:4px;border:2px solid rgba(0,0,0,.3);background:rgba(255,255,255,.85);color:#2b2620;font-size:.72rem;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;">◄ Retour à l'entrée</button>
               <div id="scale-checkpoint-wall"></div>
-              <div id="scale-checkpoint-floor-gap" aria-hidden="true"></div>
+              <div id="scale-checkpoint-floor-gap" aria-hidden="true">
+                <!-- Amorce du mur de retour (mur latéral) à gauche — suggère l'espace de la pièce,
+                     qui continue au-delà du seul mur du fond visible ici. -->
+                <div id="scale-checkpoint-side-wall" aria-hidden="true"></div>
+              </div>
               <div id="scale-checkpoint-row">
-                <svg id="scale-checkpoint-silhouette" viewBox="0 0 100 340" aria-hidden="true">
-                  <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
-                </svg>
-                <div class="scale-rope-post" aria-hidden="true"></div>
-                <div id="scale-rope-line" aria-hidden="true"></div>
                 <div id="scale-turnstile">
                   <div id="scale-turnstile-body">
                     <button type="button" id="scale-barrier" aria-label="Franchir le tourniquet, donner son ticket">Ticket</button>
@@ -1177,7 +1177,28 @@
                   </div>
                   <div id="scale-turnstile-base"></div>
                 </div>
-                <div class="scale-rope-post" aria-hidden="true"></div>
+                <svg id="scale-checkpoint-silhouette" viewBox="0 0 100 340" aria-hidden="true">
+                  <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+                </svg>
+                <!-- Cordon rouge à 6 potelets dorés, en vagues d'un potelet à l'autre (un seul
+                     tracé SVG continu — plus de corde visuellement disjointe des potelets). -->
+                <svg id="scale-rope-barrier" viewBox="0 0 600 90" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M20 30 Q 70 62 116 30 Q 166 62 212 30 Q 262 62 308 30 Q 358 62 404 30 Q 454 62 500 30" fill="none" stroke="#7a0f18" stroke-width="7" stroke-linecap="round"/>
+                  <path d="M20 30 Q 70 60 116 30 Q 166 60 212 30 Q 262 60 308 30 Q 358 60 404 30 Q 454 60 500 30" fill="none" stroke="#c81f2c" stroke-width="4" stroke-linecap="round"/>
+                  <g fill="url(#scale-rope-post-gradient)">
+                    <circle cx="20" cy="18" r="9"/><circle cx="116" cy="18" r="9"/><circle cx="212" cy="18" r="9"/>
+                    <circle cx="308" cy="18" r="9"/><circle cx="404" cy="18" r="9"/><circle cx="500" cy="18" r="9"/>
+                  </g>
+                  <g stroke="#8a6a1a" stroke-width="5">
+                    <line x1="20" y1="18" x2="20" y2="80"/><line x1="116" y1="18" x2="116" y2="80"/><line x1="212" y1="18" x2="212" y2="80"/>
+                    <line x1="308" y1="18" x2="308" y2="80"/><line x1="404" y1="18" x2="404" y2="80"/><line x1="500" y1="18" x2="500" y2="80"/>
+                  </g>
+                  <defs>
+                    <radialGradient id="scale-rope-post-gradient" cx="35%" cy="30%">
+                      <stop offset="0%" stop-color="#f0d878"/><stop offset="100%" stop-color="#b5902a"/>
+                    </radialGradient>
+                  </defs>
+                </svg>
               </div>
             </div>
             <!-- Voile de transition floue entre les étapes. -->
@@ -1459,6 +1480,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=228"></script>
+    <script src="app.js?v=234"></script>
   </body>
 </html>
