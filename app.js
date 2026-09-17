@@ -1523,6 +1523,7 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  'cumes': 'coumes',
   'velasquez': 'vélasqueze',
   'velázquez': 'vélasqueze',
   'gentileschi': 'gentileski',
