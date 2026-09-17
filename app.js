@@ -2698,6 +2698,10 @@ function goToWall(index) {
   currentWallIndex = ((index % 4) + 4) % 4;
   positionMinimapDot();
   populateCloserPlanWall((state.roomWalls || [[]])[currentWallIndex] || []);
+  const wall = $('scale-wall');
+  if (wall) wall.scrollLeft = 0; // chaque nouveau mur repart du début — sinon la silhouette et
+  // les points pourraient hériter d'une position laissée par le mur précédent.
+  updateDotAlongWall(); // positionne aussi la silhouette (attachée au point) dès l'entrée sur ce mur
   lastShownMeter = 0; // repère de distance réinitialisé : chaque mur repart de 1 mètre
 }
 function enterCloserPlan() {
@@ -3013,6 +3017,7 @@ function updateDotAlongWall() {
   const wall = $('scale-wall');
   const dot = $('scale-minimap-dot');
   const floorDot = $('scale-floor-dot');
+  const silhouette = $('scale-silhouette');
   if (!wall || !dot) return;
   const maxScroll = Math.max(1, wall.scrollWidth - wall.clientWidth);
   const progress = Math.min(1, Math.max(0, wall.scrollLeft / maxScroll)); // 0..1 le long du mur
@@ -3021,10 +3026,12 @@ function updateDotAlongWall() {
   // trapezoidPointForWall.
   const p = trapezoidPointForWall(currentWallIndex, progress);
   dot.style.left = `${p.x}%`; dot.style.top = `${p.y}%`;
-  // Point dupliqué sur le sol : même progression, mais répartie sur toute la largeur de l'écran
-  // (5 % à 95 %, pour ne jamais coller pile aux bords) — bien plus facile à manier qu'un petit
-  // point dans un coin de l'écran de contrôle.
+  // Point dupliqué sur le sol, ET la silhouette elle-même : même progression, répartie sur toute
+  // la largeur de l'écran (5 % à 95 %). La silhouette est maintenant « attachée » au point —
+  // c'est elle qui se déplace visiblement à l'écran, plutôt qu'une illusion où seul le mur
+  // défilait derrière un personnage immobile.
   if (floorDot) floorDot.style.left = `${5 + progress * 90}%`;
+  if (silhouette) silhouette.style.left = `${5 + progress * 90}%`;
 }
 // Repère de distance : le numéro du mètre en cours (1 à 15, longueur réelle du mur), affiché près
 // du point rouge de la mini-carte, en haut. Il reste figé sur la valeur courante en permanence —

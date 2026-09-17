@@ -726,8 +726,13 @@ body:not([data-ambiance]) #scale-facade { background-color:#c9b896; background-i
    6), le conteneur pouvait déborder sans limite de hauteur si beaucoup d'œuvres formaient
    plusieurs rangées, les faisant se chevaucher avec le reste de l'écran — d'où une hauteur
    maximale explicite avec défilement, plutôt qu'un simple min-height. */
-#scale-checkpoint-wall { display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; gap:8px; max-width:74vw; max-height:22vh; overflow-y:auto; opacity:.85; padding:4px; }
-.scale-checkpoint-work { max-height:9vh; max-width:7vw; object-fit:contain; box-shadow:0 3px 8px rgba(0,0,0,.2); }
+/* Bug réel repéré : overflow-y:auto donnait l'apparence d'une boîte déroulante avec ascenseur
+   (« menu déroulant »), très éloigné de l'esprit d'un mur d'exposition — retiré. Les œuvres sont
+   maintenant nettement plus petites pour toutes tenir naturellement, sans avoir besoin de
+   défiler ; au-delà d'un certain nombre, l'excédent est simplement masqué (overflow:hidden)
+   plutôt que de proposer un ascenseur. */
+#scale-checkpoint-wall { display:flex; align-items:flex-end; justify-content:center; flex-wrap:wrap; gap:5px; max-width:78vw; max-height:26vh; overflow:hidden; opacity:.85; padding:4px; }
+.scale-checkpoint-work { max-height:5.5vh; max-width:4.5vw; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.2); }
 /* Grand espace de sol vide entre le mur (lointain) et le tourniquet (au premier plan) — c'est cet
    écart qui donne l'impression de distance, pas seulement la petite taille du mur. */
 /* Grand espace de sol vide entre le mur (lointain) et le tourniquet (au premier plan) — c'est cet
@@ -801,7 +806,10 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
 /* Ligne de plinthe séparant le mur du sol — repère visuel simple demandé pour bien distinguer les
    deux plans, en attendant une vraie salle en 3 dimensions. */
 #scale-wall-line { position:fixed; bottom:16vh; left:0; right:0; height:3px; background:rgba(0,0,0,.35); z-index:1; box-shadow:0 1px 2px rgba(255,255,255,.15); }
-#scale-silhouette { position:fixed; bottom:0; left:32px; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); z-index:5; touch-action:none; transform-origin:bottom center; }
+/* Position horizontale fixée en JS désormais (attachée au point, voir updateDotAlongWall) plutôt
+   qu'une valeur fixe — la silhouette se déplace maintenant réellement à l'écran plutôt que de
+   rester immobile pendant que seul le mur défilait derrière elle. */
+#scale-silhouette { position:fixed; bottom:0; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); z-index:5; touch-action:none; transform-origin:bottom center; }
 /* Léger balancement pendant la marche — seul repère visuel disponible avec une silhouette fixe à
    l'écran (c'est le mur qui défile en dessous) : sans lui, rien à l'image ne suggère qu'elle
    avance vraiment, seulement le décor qui glisse tout seul. */
