@@ -2643,8 +2643,50 @@ function goThroughDoor() {
     $('scale-checkpoint-wall-works').innerHTML = renderWorks(walls[0], 4);
     $('scale-checkpoint-wall-right-works').innerHTML = renderWorks(walls[1], 3);
     $('scale-checkpoint-wall-left-works').innerHTML = renderWorks(walls[3], 3);
+    // Les murs latéraux partent en profondeur (voir CSS, --room-inner-x / --room-horizon-y) : leur
+    // ligne de sol (celle où le mur rejoint le parquet) est donc oblique, pas horizontale. Sans
+    // ça, la rangée de tableaux — restée bien à plat — semblait posée n'importe comment sur un mur
+    // penché, au lieu de suivre cette ligne de sol comme de vrais tableaux accrochés au mur. On
+    // fait pivoter chaque rangée pour qu'elle reste parallèle à cette ligne, mesurée sur les
+    // dimensions réelles de la salle (attend une frame : sans ça, la salle vient tout juste d'être
+    // démasquée et sa boîte peut encore mesurer une taille nulle).
+    requestAnimationFrame(alignCheckpointSideRows);
   });
 }
+// Angle (en degrés) de la ligne de sol d'un mur latéral, calculé sur les dimensions réelles de la
+// salle plutôt que codé en dur : #scale-checkpoint-room utilise des % de largeur et de hauteur
+// différents (--room-inner-x en x, --room-horizon-y en y), donc l'angle visuel dépend du rapport
+// largeur/hauteur réel de l'écran, qui change avec chaque fenêtre.
+function checkpointRoomVarPercent(name) {
+  const raw = getComputedStyle($('scale-checkpoint-room')).getPropertyValue(name).trim();
+  return parseFloat(raw) || 0;
+}
+function alignCheckpointSideRows() {
+  const room = $('scale-checkpoint-room');
+  const leftWorks = $('scale-checkpoint-wall-left-works');
+  const rightWorks = $('scale-checkpoint-wall-right-works');
+  if (!room || !leftWorks || !rightWorks) return;
+  const rect = room.getBoundingClientRect();
+  if (!rect.width || !rect.height) return; // salle pas encore mise en page (voir requestAnimationFrame à l'appel)
+  const innerX = checkpointRoomVarPercent('--room-inner-x');
+  const horizonY = checkpointRoomVarPercent('--room-horizon-y');
+  const dxPx = (innerX / 100) * rect.width;
+  const dyPx = ((100 - horizonY) / 100) * rect.height;
+  // Plafonné à 40° : sur un écran étroit et haut (mobile en portrait), la salle devient bien plus
+  // haute que large et cet angle géométrique réel peut dépasser 65-70°, ce qui fait sortir la
+  // rangée pivotée de son mur (donc disparaître, cachée par le clip-path) — bug réel corrigé. Un
+  // angle plafonné reste visuellement « parallèle au sol » sans jamais faire déborder la rangée.
+  const angleDeg = Math.min((Math.atan2(dyPx, dxPx) * 180) / Math.PI, 40);
+  // Mur gauche : la ligne de sol monte de l'extérieur (bord de l'écran) vers l'intérieur (mur du
+  // fond) — rotation antihoraire (angle négatif). Mur droit : symétrique, rotation horaire.
+  leftWorks.style.transform = `rotate(${-angleDeg}deg)`;
+  rightWorks.style.transform = `rotate(${angleDeg}deg)`;
+}
+// Repositionne les rangées si la fenêtre change de taille pendant que ce plan est affiché (sinon
+// l'angle, calculé une seule fois à l'entrée, ne correspondrait plus à la nouvelle forme de salle).
+window.addEventListener('resize', () => {
+  if (!$('scale-checkpoint')?.classList.contains('hidden')) alignCheckpointSideRows();
+});
 $('scale-enter-button')?.addEventListener('click', goThroughDoor);
 // Étape 3 : franchir la barrière (donner son ticket) — transition floue vers le plan rapproché,
 // toujours au mur du fond (celui qu'on vient d'apercevoir depuis le contrôle des billets).
