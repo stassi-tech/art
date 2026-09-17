@@ -1173,7 +1173,7 @@
             <!-- Le vrai bandeau général est caché derrière la visionneuse (superposition plein
                  écran) — on recrée donc une bande dédiée, en haut, centrée, bien à l'écart de
                  l'écran de contrôle pour éviter tout chevauchement. -->
-            <div id="scale-distance-marker" class="hidden" style="position:fixed;top:0;left:50%;transform:translateX(-50%);min-width:70px;text-align:center;padding:5px 14px;border-radius:0 0 6px 6px;background:rgba(20,20,20,.75);border:2px solid rgba(255,255,255,.5);border-top:none;color:#fff;font-family:Arial,sans-serif;font-weight:700;font-size:.85rem;z-index:7;">1 m</div>
+            <div id="scale-distance-marker" class="hidden" style="position:fixed;top:8px;left:50%;transform:translateX(-50%);min-width:70px;text-align:center;padding:5px 14px;border-radius:6px;background:rgba(20,20,20,.85);border:2px solid rgba(255,255,255,.6);color:#fff;font-family:Arial,sans-serif;font-weight:700;font-size:.9rem;z-index:20;">1 m</div>
             <!-- Sortie d'urgence : la visionneuse recouvre tout l'écran (y compris le bandeau
                  général), donc un moyen de sortir doit exister À L'INTÉRIEUR d'elle-même. -->
             <button type="button" id="scale-emergency-exit" class="hidden" aria-label="Sortir de la salle" title="Sortir de la salle" style="position:fixed;top:70px;left:16px;padding:8px 12px;border-radius:4px;border:2px solid #fff;background:#0a8a3c;color:#fff;font-size:.75rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;">🏃🚪 Sortie</button>
@@ -1425,6 +1425,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=217"></script>
+    <script src="app.js?v=221"></script>
   </body>
 </html>

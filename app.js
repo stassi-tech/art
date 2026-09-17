@@ -1523,6 +1523,31 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  'allan ramsay': 'allanne ramsay',
+  'champaigne': 'champagne',
+  'boccioni': 'bochioni',
+  'dordrecht': 'dordrekt',
+  'horaces': 'oraces',
+  'mochi': 'moki',
+  'pacher': 'pareur',
+  'guardi': 'gouardi',
+  'straub': 'chtraob',
+  'agnolo': 'aniolo',
+  'faydherbe': 'féderbe',
+  'emmaüs': 'emmaüss',
+  'emmaus': 'emmauss',
+  'thomas ball': 'thomas boule',
+  'sœur': 'seur',
+  'werefkin': 'werefkine',
+  'coysevox': 'kasvo',
+  'manneken pis': 'mannekenne piss',
+  'copley': 'kopli',
+  'vuillard': 'vuiyar',
+  'damian forment': 'damianne formente',
+  'ambrogio lorenzetti': 'ambrogio lorenzétti',
+  'borghese': 'borguézé',
+  'borghèse': 'borguézé',
+  'bernini': 'bérnini',
   'teniers': 'ténié',
   'cumes': 'coumes',
   'velasquez': 'vélasqueze',
@@ -1559,14 +1584,14 @@ const PRONUNCIATION_FIXES = {
   'condottiere': 'condotière',
   'condottière': 'condotière',
   'rogier': 'Roger',
-  'weyden': 'Wédenne',
+  'weyden': 'védeune',
   'pollaiuolo': 'Pollayouolo',
   'veneziano': 'Vénétsiano',
   'angelico': 'Angéliko',
   'ursins': 'Ursin',
   'ciarda': 'Tcharda',
-  'dürer': 'Duré',
-  'durer': 'Duré',
+  'dürer': 'dureur',
+  'durer': 'dureur',
   'alvise': 'Alvisé',
   'benozzo': 'Bénotso',
   'gozzoli': 'Gotsoli',
@@ -2439,6 +2464,46 @@ function relativeImageSizes(works, maxPx = 360, minPx = 170, defaultPx = 260) {
     return Math.max(minPx, Math.round((h / maxH) * maxPx));
   });
 }
+// Petite loupe posée au coin du cadre de chaque œuvre comparée (Intrus, Famille) : appui maintenu
+// = l'œuvre s'agrandit au maximum dans son propre cadre (ignore un instant sa taille relative),
+// relâchement = elle reprend sa taille relative normale. Ne gêne pas le clic de réponse sur la
+// case elle-même (icône séparée, stopPropagation), et fonctionne aussi bien au doigt qu'à la
+// souris.
+function attachZoomHold(cellEl, imgEl) {
+  if (!cellEl || !imgEl) return;
+  // Un <span role="button">, pas un <button> : la case elle-même (.intrus-image-choice,
+  // .fam-image-cell) est déjà un <button>, et un bouton imbriqué dans un autre est invalide en
+  // HTML (le navigateur le remonte hors de son parent, cassant tout le positionnement).
+  const icon = document.createElement('span');
+  icon.setAttribute('role', 'button');
+  icon.setAttribute('aria-label', 'Agrandir cette œuvre au maximum (maintenir appuyé)');
+  icon.title = 'Maintenir pour agrandir au maximum';
+  icon.textContent = '🔍';
+  icon.style.cssText = 'position:absolute;bottom:2px;right:2px;width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.6);background:rgba(0,0,0,.55);color:#fff;font-size:.7rem;line-height:1;cursor:pointer;z-index:3;display:flex;align-items:center;justify-content:center;touch-action:none;';
+  cellEl.style.position = cellEl.style.position || 'relative';
+  cellEl.appendChild(icon);
+  let savedMaxWidth = '', savedMaxHeight = '';
+  const zoomIn = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    savedMaxWidth = imgEl.style.maxWidth;
+    savedMaxHeight = imgEl.style.maxHeight;
+    imgEl.style.maxWidth = '100%';
+    imgEl.style.maxHeight = '100%';
+    icon.setPointerCapture?.(event.pointerId);
+  };
+  const zoomOut = (event) => {
+    event.stopPropagation();
+    imgEl.style.maxWidth = savedMaxWidth;
+    imgEl.style.maxHeight = savedMaxHeight;
+  };
+  icon.addEventListener('pointerdown', zoomIn);
+  icon.addEventListener('pointerup', zoomOut);
+  icon.addEventListener('pointercancel', zoomOut);
+  icon.addEventListener('pointerleave', zoomOut);
+  // Empêche le clic sur l'icône elle-même de compter comme une réponse au jeu.
+  icon.addEventListener('click', (event) => event.stopPropagation());
+}
 function setLightboxScaleData(work) {
   currentLightboxWork = work && parseCmValue(work.hauteur) ? work : null;
   $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
@@ -2483,8 +2548,12 @@ function enterScaleView() {
   $('lightbox-scale-view').classList.remove('hidden');
   $('lightbox-scale-toggle-topbar').classList.add('hidden');
   $('lightbox-scale-back-button').classList.remove('hidden');
-  const candidates = (state.currentOtherWorks && state.currentOtherWorks.length ? state.currentOtherWorks : [currentLightboxWork])
-    .filter((w) => parseCmValue(w.hauteur));
+  // Toutes les œuvres de la sélection sont désormais acceptées, même sans hauteur connue dans le
+  // fichier (un repli à taille raisonnable s'applique alors à l'affichage, voir
+  // populateCloserPlanWall) — le filtre précédent, qui excluait toute œuvre sans hauteur
+  // renseignée, réduisait considérablement le pool réel : une salle qui ne montrait plus qu'une
+  // seule œuvre (celle ayant, par chance, sa hauteur remplie) plutôt que la sélection complète.
+  const candidates = (state.currentOtherWorks && state.currentOtherWorks.length ? state.currentOtherWorks : [currentLightboxWork]);
   // On entre toujours par la vue d'ensemble (1er plan) — le mur rapproché (2e plan, ci-dessous)
   // ne s'affiche qu'après avoir tiré la silhouette vers l'avant. Le sol de la vue d'ensemble a sa
   // propre forme en trapèze (#scale-overview-floor, une perspective différente de celle du mur) —
@@ -4120,9 +4189,17 @@ function famShowQuestion() {
   ).join('');
   // La loupe garde son propre clone de la grille — à resynchroniser à chaque nouvelle question
   // (nouvelles images), et repositionner son contenu selon où elle se trouve actuellement.
-  if ($('fam-magnifier-content')) $('fam-magnifier-content').innerHTML = $('fam-image-grid').innerHTML;
+  // Bug réel repéré : le clone n'avait pas la classe qui définit la disposition en grille (juste
+  // les boutons copiés, sans le display:grid qui les organise) — ses enfants se réorganisaient
+  // donc tout autrement que l'original, montrant une zone qui ne correspondait à rien de réel une
+  // fois zoomée. On copie maintenant aussi la classe (grille standard ou variante à 6 cases).
+  if ($('fam-magnifier-content')) {
+    $('fam-magnifier-content').className = $('fam-image-grid').className;
+    $('fam-magnifier-content').innerHTML = $('fam-image-grid').innerHTML;
+  }
   requestAnimationFrame(updateFamMagnifierContent);
   $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
+    attachZoomHold(btn, btn.querySelector('img'));
     btn.addEventListener('click', () => {
       if (famStep !== 0) return;
       const idx = Number(btn.dataset.index);
@@ -5962,6 +6039,7 @@ function intrusShowQuestion() {
     ).join('')}</div>`;
     promptCard.querySelectorAll('.intrus-image-choice').forEach((btn) => {
       btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
+      attachZoomHold(btn, btn.querySelector('img'));
     });
     $('intrus-choices').innerHTML = `<div class="correction-details">
       <span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>
@@ -6145,35 +6223,44 @@ refreshAccordionLabels();
 
 const LEVEL_QUESTION_COUNTS = { '1': 30, '2': 60, '3': 120 };
 
-// Cache des fichiers déjà téléchargés (clé = URL), avec déduplication des requêtes en vol : un
-// fichier n'est jamais téléchargé deux fois, et si plusieurs appels arrivent PENDANT qu'un
-// téléchargement est encore en cours (ex. le joueur clique plusieurs fois sur « Lancer » de suite
-// avant que le premier chargement ait fini), ils partagent tous la même requête au lieu d'en
-// déclencher chacun une nouvelle en parallèle — c'est ce qui rendait les boutons lents et
-// capricieux : plusieurs téléchargements complets du même gros fichier se disputaient la bande
-// passante en même temps.
+// Anti-cache pour les fichiers Excel : contrairement à app.js/style.css (numéro de version
+// manuel), ces fichiers de données changent indépendamment des mises à jour du code — le joueur
+// peut corriger une donnée dans son fichier à tout moment. Sans paramètre anti-cache, le
+// navigateur (mobile en particulier, plus agressif à ce sujet) pouvait continuer à servir une
+// ancienne version du fichier même après correction sur GitHub, l'adresse ne changeant jamais.
+// Calculé une fois au chargement de la page : une visite fraîche récupère toujours la dernière
+// version, tout en gardant le cache en mémoire (quizRowsCache) efficace pendant cette session.
+const DATA_CACHE_BUST = Date.now();
+// Cache des fichiers déjà téléchargés (clé = art+siècle, pas l'URL complète avec son paramètre
+// anti-cache — sinon chaque appel générerait sa propre clé et le cache ne servirait plus à rien),
+// avec déduplication des requêtes en vol : un fichier n'est jamais téléchargé deux fois, et si
+// plusieurs appels arrivent PENDANT qu'un téléchargement est encore en cours (ex. le joueur
+// clique plusieurs fois sur « Lancer » de suite avant que le premier chargement ait fini), ils
+// partagent tous la même requête au lieu d'en déclencher chacun une nouvelle en parallèle —
+// c'est ce qui rendait les boutons lents et capricieux : plusieurs téléchargements complets du
+// même gros fichier se disputaient la bande passante en même temps.
 const quizRowsCache = new Map();
 async function fetchQuizRows(art, century) {
   // Un seul fichier par (art, siècle) désormais : le filtrage par niveau se fait côté appli via
   // la colonne "Niveau" de chaque ligne (voir plus bas), plus de suffixe "-niveauX" dans l'URL.
-  const url = `quizzes/${art}-${century}.xlsx`;
-  if (quizRowsCache.has(url)) return quizRowsCache.get(url);
+  const cacheKey = `${art}-${century}`;
+  if (quizRowsCache.has(cacheKey)) return quizRowsCache.get(cacheKey);
   const promise = (async () => {
-    const response = await fetch(url);
+    const response = await fetch(`quizzes/${art}-${century}.xlsx?v=${DATA_CACHE_BUST}`);
     if (!response.ok) throw new Error('fichier introuvable');
     const buffer = await response.arrayBuffer();
     const book = XLSX.read(buffer, { type: 'array' });
     const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
     return normaliseRows(rows).map((q) => ({ ...q, art }));
   })();
-  quizRowsCache.set(url, promise);
+  quizRowsCache.set(cacheKey, promise);
   try {
     const cached = await promise;
     return [...cached]; // copie superficielle : chaque appelant peut trier/modifier son propre
     // tableau (ex. mélanger l'ordre des questions) sans jamais altérer le cache partagé par les
     // autres appels — seul le contenu (déjà téléchargé et lu) est réutilisé, pas la structure.
   } catch (error) {
-    quizRowsCache.delete(url); // un échec ne doit pas rester en cache : on retentera la prochaine fois
+    quizRowsCache.delete(cacheKey); // un échec ne doit pas rester en cache : on retentera la prochaine fois
     throw error;
   }
 }
