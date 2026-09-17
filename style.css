@@ -756,20 +756,24 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
                     repeating-linear-gradient(-45deg, transparent 0 12px, rgba(255,255,255,.10) 12px 14px);
   box-shadow:inset 0 8px 14px -6px rgba(0,0,0,.35);
 }
-/* Les œuvres de chaque mur restent dans une zone sûre à l'intérieur de son propre polygone (et non
-   centrées sur toute la boîte, qui les ferait retomber hors du mur pour les murs latéraux, dont la
-   hauteur utile diminue vers l'intérieur) — bug réel corrigé, c'est ce qui faisait déborder le
-   tableau de son cadre dans une version précédente. Une seule ligne d'œuvres par mur (comme au
-   plan rapproché), jamais empilées. Hauteur fixe (9vh, PAS une grande zone en % de la salle) :
-   sur les murs latéraux, cette boîte est pivotée (voir alignCheckpointSideRows dans app.js) pour
-   rester parallèle à la ligne de sol du mur — une boîte inutilement haute, une fois pivotée,
-   basculait hors de l'écran (bug réel corrigé, notamment en mobile portrait où la salle est bien
-   plus haute que large). */
-.scale-checkpoint-wall-works { position:absolute; display:flex; align-items:flex-end; justify-content:center; gap:4px; flex-wrap:nowrap; overflow:hidden; height:9vh; max-height:calc(var(--room-horizon-y) - var(--room-top-y) - 4%); }
-#scale-checkpoint-wall .scale-checkpoint-wall-works { left:calc(var(--room-inner-x) + 3%); right:calc(var(--room-inner-x) + 3%); top:calc(var(--room-top-y) + (var(--room-horizon-y) - var(--room-top-y) - 9vh) / 2); }
-#scale-checkpoint-wall-left .scale-checkpoint-wall-works { left:3%; width:calc(var(--room-inner-x) - 6%); top:calc(var(--room-top-y) + (var(--room-horizon-y) - var(--room-top-y) - 9vh) / 2); }
-#scale-checkpoint-wall-right .scale-checkpoint-wall-works { right:3%; width:calc(var(--room-inner-x) - 6%); top:calc(var(--room-top-y) + (var(--room-horizon-y) - var(--room-top-y) - 9vh) / 2); }
-.scale-checkpoint-work { max-height:100%; max-width:100%; flex:0 1 auto; min-width:0; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.3); }
+/* Chaque rangée d'œuvres est ancrée exactement sur la ligne qui sépare le mur du sol (celle-là
+   même qui trace le bas du mur, voir --room-horizon-y), plutôt que centrée au milieu du mur — une
+   seule ligne, posée sur cette ligne de sol, jamais empilée. Sur les murs latéraux, la rangée
+   pivote (voir alignCheckpointSideRows dans app.js) EXACTEMENT autour du coin intérieur du mur
+   (celui qui touche le mur du fond, transform-origin ci-dessous) : ce coin est un point réel de la
+   ligne de sol, donc faire pivoter la rangée autour de lui la fait suivre cette ligne au lieu de
+   seulement lui être parallèle quelque part au milieu du mur. */
+.scale-checkpoint-wall-works { position:absolute; display:flex; align-items:flex-end; gap:4px; flex-wrap:nowrap; overflow:hidden; }
+#scale-checkpoint-wall .scale-checkpoint-wall-works { left:calc(var(--room-inner-x) + 3%); right:calc(var(--room-inner-x) + 3%); bottom:calc(100% - var(--room-horizon-y) + 1%); justify-content:center; }
+#scale-checkpoint-wall-left .scale-checkpoint-wall-works { right:calc(100% - var(--room-inner-x) + 1%); bottom:calc(100% - var(--room-horizon-y) + 1%); max-width:calc(var(--room-inner-x) - 3%); justify-content:flex-end; transform-origin:100% 100%; }
+#scale-checkpoint-wall-right .scale-checkpoint-wall-works { left:calc(100% - var(--room-inner-x) + 1%); bottom:calc(100% - var(--room-horizon-y) + 1%); max-width:calc(var(--room-inner-x) - 3%); justify-content:flex-start; transform-origin:0% 100%; }
+/* Hauteur pilotée par --work-height (calculée en JS pour que toute la rangée — même à 8 ou 10
+   œuvres — tienne sur une seule ligne dans la largeur réellement disponible) ; 9vh est juste la
+   valeur de repli avant ce calcul. Hauteur explicite plutôt qu'un pourcentage : un pourcentage sur
+   un élément remplacé (img) dans une rangée flex ne se résout pas de façon fiable — bug réel
+   corrigé, c'est ce qui faisait apparaître le tableau du mur du fond démesurément étiré (une seule
+   image, sans contrainte de hauteur effective, s'étalait alors sur toute la largeur disponible). */
+.scale-checkpoint-work { height:var(--work-height, 9vh); width:auto; max-width:100%; flex:0 0 auto; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.3); }
 #scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; }
 #scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
 /* Cordon rouge à 8 potelets, tracé en un seul SVG continu, vraies vagues entre chaque potelet

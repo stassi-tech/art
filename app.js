@@ -2634,58 +2634,100 @@ function goThroughDoor() {
     // joueur, les deux murs latéraux (index 1 = droite, index 3 = gauche) apparaissent de biais —
     // mêmes index que ceux utilisés une fois à l'intérieur, voir trapezoidPointForWall. Le mur
     // d'entrée (index 2, dans le dos du joueur à cet endroit précis) n'a logiquement pas de pan
-    // visible ici. Chaque mur est plafonné à un petit nombre d'œuvres : son cadre, en trapèze,
-    // reste volontairement modeste à ce stade (aperçu, pas encore la visite).
+    // visible ici. On affiche la totalité des œuvres de chaque mur, sans plafond arbitraire — huit
+    // à gauche, sept à droite, etc. selon l'exposition : layoutCheckpointRoom calcule ensuite la
+    // taille qui permet à toute la rangée de tenir sur une seule ligne, quel que soit leur nombre.
     const walls = state.roomWalls || [[], [], [], []];
-    const renderWorks = (works, max) => works.slice(0, max).map((w) =>
+    const renderWorks = (works) => works.map((w) =>
       `<img class="scale-checkpoint-work" src="${escapeHtml(imageSourceSized(w.image, 300))}" alt="" />`
     ).join('');
-    $('scale-checkpoint-wall-works').innerHTML = renderWorks(walls[0], 4);
-    $('scale-checkpoint-wall-right-works').innerHTML = renderWorks(walls[1], 3);
-    $('scale-checkpoint-wall-left-works').innerHTML = renderWorks(walls[3], 3);
+    $('scale-checkpoint-wall-works').innerHTML = renderWorks(walls[0]);
+    $('scale-checkpoint-wall-right-works').innerHTML = renderWorks(walls[1]);
+    $('scale-checkpoint-wall-left-works').innerHTML = renderWorks(walls[3]);
     // Les murs latéraux partent en profondeur (voir CSS, --room-inner-x / --room-horizon-y) : leur
-    // ligne de sol (celle où le mur rejoint le parquet) est donc oblique, pas horizontale. Sans
-    // ça, la rangée de tableaux — restée bien à plat — semblait posée n'importe comment sur un mur
-    // penché, au lieu de suivre cette ligne de sol comme de vrais tableaux accrochés au mur. On
-    // fait pivoter chaque rangée pour qu'elle reste parallèle à cette ligne, mesurée sur les
-    // dimensions réelles de la salle (attend une frame : sans ça, la salle vient tout juste d'être
-    // démasquée et sa boîte peut encore mesurer une taille nulle).
-    requestAnimationFrame(alignCheckpointSideRows);
+    // ligne de sol (celle où le mur rejoint le parquet) est donc oblique, pas horizontale, et le
+    // mur du fond est plus étroit que l'écran. On attend une frame (le temps que la salle, tout
+    // juste démasquée, soit vraiment mise en page — sinon ses dimensions mesureraient encore zéro)
+    // puis on calcule la taille et l'angle de chaque rangée pour qu'elle tienne pile sur cette ligne.
+    requestAnimationFrame(layoutCheckpointRoom);
   });
 }
-// Angle (en degrés) de la ligne de sol d'un mur latéral, calculé sur les dimensions réelles de la
-// salle plutôt que codé en dur : #scale-checkpoint-room utilise des % de largeur et de hauteur
-// différents (--room-inner-x en x, --room-horizon-y en y), donc l'angle visuel dépend du rapport
-// largeur/hauteur réel de l'écran, qui change avec chaque fenêtre.
+// Lit une variable CSS numérique (en %) posée sur #scale-checkpoint-room, plutôt que coder en dur
+// les proportions de la salle : #scale-checkpoint-room utilise des % de largeur et de hauteur
+// différents (--room-inner-x en x, --room-horizon-y en y), donc l'angle et les longueurs réels
+// dépendent du rapport largeur/hauteur de l'écran, qui change avec chaque fenêtre.
 function checkpointRoomVarPercent(name) {
   const raw = getComputedStyle($('scale-checkpoint-room')).getPropertyValue(name).trim();
   return parseFloat(raw) || 0;
 }
-function alignCheckpointSideRows() {
+// Ajuste la hauteur d'une rangée d'œuvres (via --work-height) pour qu'elle tienne tout entière, sur
+// une seule ligne, dans la largeur disponible — qu'il y en ait deux ou huit. On se base sur le
+// rapport largeur/hauteur réel de chaque image (naturalWidth/naturalHeight) plutôt que de leur
+// donner à toutes la même hauteur fixe : c'est justement une hauteur fixe combinée à un
+// pourcentage qui déformait le Courbet (image large) sur le mur du fond. La somme de ces rapports,
+// une fois multipliée par la hauteur commune, doit tenir dans la largeur disponible moins les
+// espaces entre cadres.
+function fitCheckpointRow(container, availableWidthPx, maxHeightPx) {
+  if (!container || !availableWidthPx) return;
+  const imgs = Array.from(container.querySelectorAll('img'));
+  if (!imgs.length) return;
+  const gapPx = 4;
+  const usable = Math.max(10, availableWidthPx - gapPx * Math.max(0, imgs.length - 1));
+  const ratios = imgs.map((img) => (img.naturalWidth && img.naturalHeight)
+    ? img.naturalWidth / img.naturalHeight
+    : 4 / 3);
+  const sumRatio = ratios.reduce((a, b) => a + b, 0) || 1;
+  let height = usable / sumRatio;
+  if (maxHeightPx) height = Math.min(height, maxHeightPx);
+  container.style.setProperty('--work-height', `${Math.max(20, height)}px`);
+}
+// naturalWidth/naturalHeight valent 0 tant que l'image n'est pas chargée : on attend que toutes les
+// images d'une rangée le soient avant de calculer la taille qui leur permet de tenir sur une ligne.
+function whenRowImagesReady(container) {
+  const imgs = Array.from(container.querySelectorAll('img'));
+  return Promise.all(imgs.map((img) => (img.complete
+    ? Promise.resolve()
+    : new Promise((resolve) => { img.onload = resolve; img.onerror = resolve; }))));
+}
+// Met en place la salle aperçue depuis le contrôle des billets. Le mur du fond fait face au joueur :
+// sa largeur disponible se lit directement sur la salle. Les murs latéraux, eux, partent en
+// profondeur — la largeur disponible pour leur rangée est donc la longueur réelle de la ligne de
+// sol du mur (hypoténuse du triangle profondeur/largeur, mesurée sur les dimensions réelles de la
+// salle, jamais codée en dur), et la rangée doit ensuite pivoter sur son coin intérieur (voir
+// transform-origin en CSS) pour venir se poser exactement sur cette ligne, plutôt qu'à côté.
+function layoutCheckpointRoom() {
   const room = $('scale-checkpoint-room');
+  const backWorks = $('scale-checkpoint-wall-works');
   const leftWorks = $('scale-checkpoint-wall-left-works');
   const rightWorks = $('scale-checkpoint-wall-right-works');
-  if (!room || !leftWorks || !rightWorks) return;
+  if (!room || !backWorks || !leftWorks || !rightWorks) return;
   const rect = room.getBoundingClientRect();
   if (!rect.width || !rect.height) return; // salle pas encore mise en page (voir requestAnimationFrame à l'appel)
   const innerX = checkpointRoomVarPercent('--room-inner-x');
   const horizonY = checkpointRoomVarPercent('--room-horizon-y');
-  const dxPx = (innerX / 100) * rect.width;
-  const dyPx = ((100 - horizonY) / 100) * rect.height;
-  // Plafonné à 40° : sur un écran étroit et haut (mobile en portrait), la salle devient bien plus
-  // haute que large et cet angle géométrique réel peut dépasser 65-70°, ce qui fait sortir la
-  // rangée pivotée de son mur (donc disparaître, cachée par le clip-path) — bug réel corrigé. Un
-  // angle plafonné reste visuellement « parallèle au sol » sans jamais faire déborder la rangée.
-  const angleDeg = Math.min((Math.atan2(dyPx, dxPx) * 180) / Math.PI, 40);
-  // Mur gauche : la ligne de sol monte de l'extérieur (bord de l'écran) vers l'intérieur (mur du
-  // fond) — rotation antihoraire (angle négatif). Mur droit : symétrique, rotation horaire.
-  leftWorks.style.transform = `rotate(${-angleDeg}deg)`;
-  rightWorks.style.transform = `rotate(${angleDeg}deg)`;
+  const dxPx = (innerX / 100) * rect.width; // profondeur du mur latéral, en x
+  const dyPx = ((100 - horizonY) / 100) * rect.height; // profondeur du mur latéral, en y
+  const sideLinePx = Math.hypot(dxPx, dyPx); // longueur réelle de la ligne de sol d'un mur latéral
+  const angleDeg = (Math.atan2(dyPx, dxPx) * 180) / Math.PI;
+  const backWidthPx = rect.width * (1 - 2 * (innerX / 100 + 0.03));
+  const sideWidthPx = sideLinePx * 0.92; // légère marge pour ne pas toucher le coin extérieur du mur
+  const maxRowHeightPx = rect.height * 0.22; // garde-fou : une salle avec très peu d'œuvres ne doit pas en afficher une énorme
+  leftWorks.style.maxWidth = `${sideWidthPx}px`;
+  rightWorks.style.maxWidth = `${sideWidthPx}px`;
+  Promise.all([backWorks, leftWorks, rightWorks].map(whenRowImagesReady)).then(() => {
+    fitCheckpointRow(backWorks, backWidthPx, maxRowHeightPx);
+    fitCheckpointRow(leftWorks, sideWidthPx, maxRowHeightPx);
+    fitCheckpointRow(rightWorks, sideWidthPx, maxRowHeightPx);
+    // Chaque rangée latérale pivote sur son coin intérieur (ancré en CSS pile sur la ligne
+    // mur/sol) pour venir s'aligner sur cette ligne plutôt que de rester à plat.
+    leftWorks.style.transform = `rotate(${-angleDeg}deg)`;
+    rightWorks.style.transform = `rotate(${angleDeg}deg)`;
+  });
 }
-// Repositionne les rangées si la fenêtre change de taille pendant que ce plan est affiché (sinon
-// l'angle, calculé une seule fois à l'entrée, ne correspondrait plus à la nouvelle forme de salle).
+// Recalcule tout si la fenêtre change de taille pendant que ce plan est affiché (sinon l'angle et
+// les tailles, calculés une seule fois à l'entrée, ne correspondraient plus à la nouvelle salle).
 window.addEventListener('resize', () => {
-  if (!$('scale-checkpoint')?.classList.contains('hidden')) alignCheckpointSideRows();
+  if (!$('scale-checkpoint')?.classList.contains('hidden')) layoutCheckpointRoom();
 });
 $('scale-enter-button')?.addEventListener('click', goThroughDoor);
 // Étape 3 : franchir la barrière (donner son ticket) — transition floue vers le plan rapproché,
