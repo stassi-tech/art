@@ -2595,7 +2595,7 @@ function enterScaleView() {
   // afficher deux sols superposés (bug réel repéré sur smartphone).
   $('scale-overview').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker', 'scale-next-room-button', 'scale-prev-room-button'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
   state.scaleViewCandidates = candidates;
   // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer à l'étape du contrôle
   // des billets (voir goThroughDoor). state.allRooms garde TOUTES les salles (une deuxième salle
@@ -2606,12 +2606,7 @@ function enterScaleView() {
   state.currentRoomIndex = 0;
   state.roomWalls = state.allRooms[0];
   // Panneau d'exposition au-dessus de la porte, avec les artistes de la sélection en cours.
-  const sign = $('scale-exhibition-sign');
-  if (sign) {
-    let artists = [];
-    try { artists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
-    sign.textContent = artists.length ? `Exposition — ${artists.join(', ')}` : 'Exposition';
-  }
+  updateFacadeSign();
 }
 // Voile de transition floue entre chaque étape (façade → contrôle des billets → plan rapproché) —
 // évite, pour l'instant, d'avoir à animer un vrai déplacement progressif du personnage à travers
@@ -2734,7 +2729,13 @@ function layoutCheckpointRoom() {
     const { hCm, lCm } = checkpointSanitizedSizeCm(w);
     const centerCm = cursorCm + lCm / 2;
     cursorCm += lCm + CHECKPOINT_GAP_CM;
-    const centerXPx = innerXPx + (centerCm / CHECKPOINT_WALL_LENGTH_CM) * backWallWidthPx;
+    // Position en pixels LOCALE au conteneur des œuvres (.scale-checkpoint-wall-works), qui vit
+    // déjà à l'intérieur du mur du fond (lui-même décalé de innerXPx par rapport à la salle) — pas
+    // besoin d'ajouter innerXPx ici : ce décalage est déjà pris en compte une fois par la position
+    // CSS du mur. L'ajouter une deuxième fois ici décalait chaque œuvre vers la droite d'exactement
+    // la largeur d'un pilier (bug réel repéré : le Courbet, seul sur le mur, apparaissait décalé
+    // plutôt que centré).
+    const centerXPx = (centerCm / CHECKPOINT_WALL_LENGTH_CM) * backWallWidthPx;
     const heightPx = Math.max(4, hCm * pxPerCm);
     const widthPx = Math.max(4, lCm * pxPerCm);
     const centerY = floorY - CHECKPOINT_EYE_LEVEL_CM * pxPerCm;
@@ -2840,31 +2841,34 @@ function goToWall(index) {
   // les points pourraient hériter d'une position laissée par le mur précédent.
   updateDotAlongWall(); // positionne aussi la silhouette (attachée au point) dès l'entrée sur ce mur
   lastShownMeter = 0; // repère de distance réinitialisé : chaque mur repart de 1 mètre
-  updateRoomNavButtons();
 }
-// Salles voisines : le bouton « salle suivante » n'apparaît que sur le mur de droite (index 1)
-// d'une salle qui a effectivement une salle après elle, et « salle précédente » symétriquement sur
-// le mur de gauche (index 3) — jamais les deux en même temps, puisqu'on ne peut être que sur un
-// seul mur à la fois. Rien à voir avec le glisser-déposer du minimap (qui ne connaît que 4 murs) :
-// un bouton fixe et explicite plutôt que d'ajouter un 5e bord au trapèze, plus sûr pour une
-// première version de cette fonctionnalité.
-function updateRoomNavButtons() {
+// Salles voisines : plus de bouton dédié — on ne change de salle QUE depuis la façade (jamais au
+// milieu d'une visite), en marchant le long d'elle. Concrètement : ressortir au plan d'ensemble
+// (glisser la silhouette vers le bas depuis le mur rapproché, voir backToOverview) puis glisser la
+// silhouette sur le côté à la façade (voir le geste horizontal ajouté sur son
+// makeSilhouetteDraggable, plus bas) — les piliers et le cordon de #scale-facade restent fixes
+// pendant que la porte et son enseigne changent (voir style.css), ce qui donne l'impression d'un
+// même bâtiment qui se prolonge plutôt que d'un simple saut d'un décor à l'autre.
+function enterFacadeRoom(roomIndex) {
   const rooms = state.allRooms || [];
-  const roomIndex = state.currentRoomIndex || 0;
-  $('scale-next-room-button')?.classList.toggle('hidden', !(currentWallIndex === 1 && rooms[roomIndex + 1]));
-  $('scale-prev-room-button')?.classList.toggle('hidden', !(currentWallIndex === 3 && roomIndex > 0));
-}
-function enterRoom(roomIndex) {
-  if (!state.allRooms || !state.allRooms[roomIndex]) return;
-  stopWalking();
+  if (roomIndex < 0 || roomIndex >= rooms.length || roomIndex === (state.currentRoomIndex || 0)) return;
   blurTransition(() => {
     state.currentRoomIndex = roomIndex;
-    state.roomWalls = state.allRooms[roomIndex];
-    goToWall(0); // on arrive toujours face au mur du fond de la nouvelle salle, comme à l'entrée
+    state.roomWalls = rooms[roomIndex];
+    updateFacadeSign();
   });
 }
-$('scale-next-room-button')?.addEventListener('click', () => enterRoom((state.currentRoomIndex || 0) + 1));
-$('scale-prev-room-button')?.addEventListener('click', () => enterRoom((state.currentRoomIndex || 0) - 1));
+// Enseigne au-dessus de la porte : indique le numéro de salle seulement s'il y en a plus d'une (une
+// seule salle n'a pas besoin d'être numérotée), suivi des artistes de la sélection en cours.
+function updateFacadeSign() {
+  const sign = $('scale-exhibition-sign');
+  if (!sign) return;
+  let artists = [];
+  try { artists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
+  const roomCount = (state.allRooms || []).length;
+  const roomLabel = roomCount > 1 ? `Salle ${(state.currentRoomIndex || 0) + 1} — ` : '';
+  sign.textContent = artists.length ? `${roomLabel}Exposition — ${artists.join(', ')}` : `${roomLabel}Exposition`;
+}
 function enterCloserPlan() {
   // state.roomWalls est déjà calculé dès l'entrée en vue d'ensemble (voir enterScaleView), pour
   // connaître l'œuvre du mur du fond à montrer en aperçu à travers la porte.
@@ -2889,7 +2893,7 @@ function backToOverview() {
   $('scale-overview').classList.remove('hidden');
   $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets
   $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker', 'scale-next-room-button', 'scale-prev-room-button'].forEach((id) => $(id).classList.add('hidden'));
+  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
 }
 $('scale-checkpoint-back')?.addEventListener('click', backToOverview);
 $('scale-turnstile-exit')?.addEventListener('click', backToOverview);
@@ -3160,6 +3164,15 @@ function progressFromMinimapPosition(wallIndex, x, y) {
 makeSilhouetteDraggable($('scale-overview-silhouette'), {
   onDragEnd: (dx, dy, endX, endY) => {
     if (isNearBottomCorner(endX, endY)) { exitScaleViewCompletely(); return; }
+    // Geste franchement horizontal (nettement plus large que haut) : marcher le long de la façade,
+    // vers la salle suivante en tirant à gauche, la précédente en tirant à droite — comme si le
+    // personnage longeait le bâtiment jusqu'à l'entrée voisine (voir enterFacadeRoom). Seuil élevé
+    // et rapport dx/dy exigé pour ne jamais se déclencher par erreur en tirant simplement la
+    // silhouette vers le haut pour avancer.
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      enterFacadeRoom((state.currentRoomIndex || 0) + (dx < 0 ? 1 : -1));
+      return;
+    }
     // Tirer vers le haut (vers le fond de la salle) fait avancer vers le mur rapproché.
     if (dy < -40) enterCloserPlan();
   },

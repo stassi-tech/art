@@ -696,6 +696,22 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
    plus grande que le 1,70 m utilisé ailleurs dans l'appli) — 78% * 62vh (hauteur de la porte)
    divisé par le rapport 300/180 donne sa hauteur ici. */
 #scale-facade #scale-overview-silhouette { position:relative; height:calc(0.78 * 62vh / 1.667); color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
+/* Piliers de la façade : deux bandes verticales fixes, posées AU-DESSUS du sol (comme les piliers du
+   plan rapproché, même logique de z-index), qui ne bougent jamais quand on passe d'une salle à
+   l'autre (voir enterFacadeRoom dans app.js) — seuls la porte et son enseigne, entre eux, changent.
+   C'est ce qui donne l'impression d'un même bâtiment qui se prolonge, plutôt que deux façades sans
+   rapport visuel. */
+.scale-facade-pillar {
+  position:absolute; top:0; bottom:6vh; width:9%; z-index:2;
+  background-color:#b3a68c;
+  background-image: repeating-linear-gradient(180deg, rgba(0,0,0,.12) 0 3px, transparent 3px 26px);
+}
+#scale-facade-pillar-left { left:0; box-shadow: inset -14px 0 20px -10px rgba(255,255,255,.35), inset 0 0 30px rgba(0,0,0,.35); }
+#scale-facade-pillar-right { right:0; box-shadow: inset 14px 0 20px -10px rgba(255,255,255,.35), inset 0 0 30px rgba(0,0,0,.35); }
+/* Cordon rouge de la façade, entre les deux piliers, au ras du sol — reste également fixe pendant le
+   passage d'une salle à l'autre : le visiteur le suit d'une entrée à l'autre, comme un vrai cordon
+   qui longerait tout le bâtiment (peut être prolongé plus tard si d'autres salles s'ajoutent). */
+#scale-facade-cordon { position:absolute; left:9%; right:9%; bottom:5vh; height:8vh; z-index:3; }
 /* Bande de sol réduite (6vh, pas 16vh comme le sol du mur rapproché) : sans ça, elle recouvrait
    trop la base de la porte et de la silhouette, les coupant visuellement — juste assez ici pour
    donner l'impression d'un sol sous leurs pieds sans les amputer. */

@@ -1143,12 +1143,36 @@
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
                    impression de hauteur avant d'entrer. -->
               <div id="scale-facade">
+                <!-- Piliers de la façade, fixes en permanence (voir CSS) : quand on passe à une salle
+                     voisine (glisser la silhouette sur le côté, voir enterFacadeRoom dans app.js), seuls
+                     la porte et son enseigne changent — ces piliers, eux, ne bougent jamais, ce qui donne
+                     l'impression d'un même bâtiment qui se prolonge plutôt que deux façades sans rapport. -->
+                <div id="scale-facade-pillar-left" class="scale-facade-pillar" aria-hidden="true"></div>
+                <div id="scale-facade-pillar-right" class="scale-facade-pillar" aria-hidden="true"></div>
                 <div id="scale-door">
                   <div id="scale-exhibition-sign"></div>
                   <button type="button" id="scale-enter-button">Entrée</button>
                 </div>
                 <svg id="scale-overview-silhouette" viewBox="0 0 100 340" aria-hidden="true">
                   <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+                </svg>
+                <!-- Cordon rouge de la façade, entre les deux piliers, tout aussi fixe pendant le
+                     passage d'une salle à l'autre : le visiteur le suit d'une entrée à l'autre, comme un
+                     vrai cordon qui longerait tout le bâtiment. -->
+                <svg id="scale-facade-cordon" viewBox="0 0 800 70" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M20 28 Q 130 58 240 28 Q 350 58 460 28 Q 570 58 680 28 Q 735 48 780 28" fill="none" stroke="#7a0f18" stroke-width="7" stroke-linecap="round"/>
+                  <path d="M20 28 Q 130 55 240 28 Q 350 55 460 28 Q 570 55 680 28 Q 735 44 780 28" fill="none" stroke="#c81f2c" stroke-width="4" stroke-linecap="round"/>
+                  <g fill="url(#scale-facade-rope-post-gradient)">
+                    <circle cx="20" cy="16" r="9"/><circle cx="240" cy="16" r="9"/><circle cx="460" cy="16" r="9"/><circle cx="680" cy="16" r="9"/><circle cx="780" cy="16" r="9"/>
+                  </g>
+                  <g stroke="#8a6a1a" stroke-width="5">
+                    <line x1="20" y1="16" x2="20" y2="66"/><line x1="240" y1="16" x2="240" y2="66"/><line x1="460" y1="16" x2="460" y2="66"/><line x1="680" y1="16" x2="680" y2="66"/><line x1="780" y1="16" x2="780" y2="66"/>
+                  </g>
+                  <defs>
+                    <radialGradient id="scale-facade-rope-post-gradient" cx="35%" cy="30%">
+                      <stop offset="0%" stop-color="#f0d878"/><stop offset="100%" stop-color="#b5902a"/>
+                    </radialGradient>
+                  </defs>
                 </svg>
               </div>
               <div id="scale-overview-floor" aria-hidden="true"></div>
@@ -1253,11 +1277,10 @@
             <!-- Sortie d'urgence : la visionneuse recouvre tout l'écran (y compris le bandeau
                  général), donc un moyen de sortir doit exister À L'INTÉRIEUR d'elle-même. -->
             <button type="button" id="scale-emergency-exit" class="hidden" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:fixed;top:70px;left:16px;padding:8px 12px;border-radius:4px;border:2px solid #fff;background:#0a8a3c;color:#fff;font-size:.75rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;">🏃🚪 Sortie</button>
-            <!-- Passage vers une salle voisine : n'apparaît que sur le mur de droite (salle
-                 suivante) ou le mur de gauche (salle précédente) d'une salle qui a effectivement un
-                 voisin de ce côté — voir updateRoomNavButtons, appelé à chaque changement de mur. -->
-            <button type="button" id="scale-next-room-button" class="hidden" aria-label="Salle suivante" title="Salle suivante" style="position:fixed;bottom:16px;right:16px;padding:10px 16px;border-radius:4px;border:2px solid #fff;background:#0a8a3c;color:#fff;font-size:.8rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;">Salle suivante →</button>
-            <button type="button" id="scale-prev-room-button" class="hidden" aria-label="Salle précédente" title="Salle précédente" style="position:fixed;bottom:16px;left:16px;padding:10px 16px;border-radius:4px;border:2px solid #fff;background:#0a8a3c;color:#fff;font-size:.8rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;">← Salle précédente</button>
+            <!-- Le passage à une salle voisine ne se fait plus par bouton : on ressort au plan
+                 d'ensemble (glisser la silhouette vers le bas depuis le mur rapproché) puis on marche
+                 le long de la façade (glisser la silhouette sur le côté) — voir enterFacadeRoom dans
+                 app.js, et les piliers/le cordon fixes de #scale-facade ci-dessus. -->
             <!-- Vue rapprochée d'une œuvre précise : la silhouette entre dans l'image elle-même pour
                  montrer l'échelle en grand — on la tire hors du cadre pour revenir au mur, qui garde
                  sa position (la promenade continue là où elle s'était arrêtée). -->
