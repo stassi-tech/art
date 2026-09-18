@@ -1143,36 +1143,16 @@
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
                    impression de hauteur avant d'entrer. -->
               <div id="scale-facade">
-                <!-- Piliers de la façade, fixes en permanence (voir CSS) : quand on passe à une salle
-                     voisine (glisser la silhouette sur le côté, voir enterFacadeRoom dans app.js), seuls
-                     la porte et son enseigne changent — ces piliers, eux, ne bougent jamais, ce qui donne
-                     l'impression d'un même bâtiment qui se prolonge plutôt que deux façades sans rapport. -->
-                <div id="scale-facade-pillar-left" class="scale-facade-pillar" aria-hidden="true"></div>
-                <div id="scale-facade-pillar-right" class="scale-facade-pillar" aria-hidden="true"></div>
+                <!-- Zone volontairement nue : pas de décor codé en dur ici (plus de piliers/cordon
+                     ajoutés puis retirés) — toute la surface du mur (le fond de #scale-facade) reste
+                     disponible pour y poser une image de décor personnalisée par ambiance, comme les
+                     autres murs de l'appli (voir les règles body[data-ambiance=...] #scale-facade
+                     plus bas). -->
                 <div id="scale-door">
-                  <div id="scale-exhibition-sign"></div>
                   <button type="button" id="scale-enter-button">Entrée</button>
                 </div>
                 <svg id="scale-overview-silhouette" viewBox="0 0 100 340" aria-hidden="true">
                   <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
-                </svg>
-                <!-- Cordon rouge de la façade, entre les deux piliers, tout aussi fixe pendant le
-                     passage d'une salle à l'autre : le visiteur le suit d'une entrée à l'autre, comme un
-                     vrai cordon qui longerait tout le bâtiment. -->
-                <svg id="scale-facade-cordon" viewBox="0 0 800 70" preserveAspectRatio="none" aria-hidden="true">
-                  <path d="M20 28 Q 130 58 240 28 Q 350 58 460 28 Q 570 58 680 28 Q 735 48 780 28" fill="none" stroke="#7a0f18" stroke-width="7" stroke-linecap="round"/>
-                  <path d="M20 28 Q 130 55 240 28 Q 350 55 460 28 Q 570 55 680 28 Q 735 44 780 28" fill="none" stroke="#c81f2c" stroke-width="4" stroke-linecap="round"/>
-                  <g fill="url(#scale-facade-rope-post-gradient)">
-                    <circle cx="20" cy="16" r="9"/><circle cx="240" cy="16" r="9"/><circle cx="460" cy="16" r="9"/><circle cx="680" cy="16" r="9"/><circle cx="780" cy="16" r="9"/>
-                  </g>
-                  <g stroke="#8a6a1a" stroke-width="5">
-                    <line x1="20" y1="16" x2="20" y2="66"/><line x1="240" y1="16" x2="240" y2="66"/><line x1="460" y1="16" x2="460" y2="66"/><line x1="680" y1="16" x2="680" y2="66"/><line x1="780" y1="16" x2="780" y2="66"/>
-                  </g>
-                  <defs>
-                    <radialGradient id="scale-facade-rope-post-gradient" cx="35%" cy="30%">
-                      <stop offset="0%" stop-color="#f0d878"/><stop offset="100%" stop-color="#b5902a"/>
-                    </radialGradient>
-                  </defs>
                 </svg>
               </div>
               <div id="scale-overview-floor" aria-hidden="true"></div>
@@ -1258,18 +1238,22 @@
                  deux flèches ◄ ► ci-dessous se sont avérées plus claires à l'usage. -->
             <p id="scale-silhouette-label">Adulte de référence — 1,70 m — tirez la silhouette, ou pilotez tout depuis l'écran de contrôle</p>
             <p id="lightbox-scale-caption" class="lightbox-scale-caption"></p>
-            <!-- Mini-carte vue de dessus (façon écran de contrôle) : le rectangle représente la
-                 salle, ses 4 côtés les 4 murs, le point rouge la position du joueur. On le glisse
-                 pour avancer/reculer le long du mur courant, ou vers un côté pour changer de mur.
-                 Agrandie (140×100, contre 90×64 avant) pour un geste plus précis et confortable. -->
+            <!-- Mini-carte vue de dessus (façon écran de contrôle), déplacée en bas (elle passait
+                 devant les tableaux quand elle était en haut) : le rectangle représente la salle, le
+                 point rouge la position du joueur le long des 3 murs réellement exploitables (fond +
+                 2 latéraux — jamais le mur côté couloir, qui reste toujours vide). On le glisse pour
+                 avancer/reculer, y compris à travers les 2 angles de la pièce, en une seule fois :
+                 plus de « changement de mur » séparé, le trajet est continu (voir buildContinuousWall
+                 et scrollLeftFromPathPosition dans app.js). -->
             <!-- Écran de contrôle en trapèze (mur du fond plus étroit en haut, murs latéraux en
-                 biais, mur d'entrée pleine largeur en bas) plutôt qu'un simple rectangle — donne
-                 une vraie impression de perspective de la pièce, comme regardée d'en haut. -->
-            <div id="scale-minimap" class="hidden" style="position:fixed;top:70px;right:16px;width:150px;height:110px;background:rgba(20,20,20,.65);border:2px solid rgba(255,255,255,.5);clip-path:polygon(25% 0%, 75% 0%, 100% 100%, 0% 100%);z-index:7;">
+                 biais) plutôt qu'un simple rectangle — donne une vraie impression de perspective de
+                 la pièce, comme regardée d'en haut ; le 4e côté (bas) reste la limite physique de la
+                 salle côté couloir, mais n'est plus une destination possible pour le point. -->
+            <div id="scale-minimap" class="hidden" style="position:fixed;bottom:16px;right:16px;width:150px;height:110px;background:rgba(20,20,20,.65);border:2px solid rgba(255,255,255,.5);clip-path:polygon(25% 0%, 75% 0%, 100% 100%, 0% 100%);z-index:7;">
               <div id="scale-minimap-dot" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);cursor:grab;left:50%;top:94%;transform:translate(-50%,-50%);touch-action:none;"></div>
             </div>
-            <!-- Repère de distance : le numéro du mètre en cours apparaît puis s'efface au fur et
-                 à mesure de la marche, pour donner une vraie idée de la longueur du mur (15 m). -->
+            <!-- Repère de distance : le mur courant et le numéro du mètre en cours (utile maintenant
+                 que le trajet est continu — plus de coupure de décor pour savoir où l'on se trouve). -->
             <!-- Le vrai bandeau général est caché derrière la visionneuse (superposition plein
                  écran) — on recrée donc une bande dédiée, en haut, centrée, bien à l'écart de
                  l'écran de contrôle pour éviter tout chevauchement. -->
@@ -1277,10 +1261,6 @@
             <!-- Sortie d'urgence : la visionneuse recouvre tout l'écran (y compris le bandeau
                  général), donc un moyen de sortir doit exister À L'INTÉRIEUR d'elle-même. -->
             <button type="button" id="scale-emergency-exit" class="hidden" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:fixed;top:70px;left:16px;padding:8px 12px;border-radius:4px;border:2px solid #fff;background:#0a8a3c;color:#fff;font-size:.75rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:6px;">🏃🚪 Sortie</button>
-            <!-- Le passage à une salle voisine ne se fait plus par bouton : on ressort au plan
-                 d'ensemble (glisser la silhouette vers le bas depuis le mur rapproché) puis on marche
-                 le long de la façade (glisser la silhouette sur le côté) — voir enterFacadeRoom dans
-                 app.js, et les piliers/le cordon fixes de #scale-facade ci-dessus. -->
             <!-- Vue rapprochée d'une œuvre précise : la silhouette entre dans l'image elle-même pour
                  montrer l'échelle en grand — on la tire hors du cadre pour revenir au mur, qui garde
                  sa position (la promenade continue là où elle s'était arrêtée). -->

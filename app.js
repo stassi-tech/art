@@ -2605,8 +2605,6 @@ function enterScaleView() {
   state.allRooms = splitIntoRooms(candidates);
   state.currentRoomIndex = 0;
   state.roomWalls = state.allRooms[0];
-  // Panneau d'exposition au-dessus de la porte, avec les artistes de la sélection en cours.
-  updateFacadeSign();
 }
 // Voile de transition floue entre chaque étape (façade → contrôle des billets → plan rapproché) —
 // évite, pour l'instant, d'avoir à animer un vrai déplacement progressif du personnage à travers
@@ -2630,11 +2628,10 @@ function goThroughDoor() {
   blurTransition(() => {
     $('scale-overview').classList.add('hidden');
     $('scale-checkpoint').classList.remove('hidden');
-    // Depuis l'entrée, on ne voit que le mur du fond (index 0), bien en face — les murs latéraux
-    // (index 1 = droite, index 3 = gauche ; mêmes index que ceux utilisés une fois à l'intérieur,
-    // voir trapezoidPointForWall) ne sont ici que des tranches décoratives (en CSS), sans œuvres :
-    // le joueur ne les découvrira qu'en se retournant une fois entré (voir goToWall, déjà correct,
-    // pas touché ici). On attend une frame (le temps que la salle, tout juste démasquée, soit vraiment
+    // Depuis l'entrée, on ne voit que le mur du fond, bien en face — les murs latéraux ne sont ici
+    // que des tranches décoratives (en CSS), sans œuvres : le joueur ne les découvrira qu'en se
+    // retournant une fois entré (voir buildContinuousWall, la vraie bande continue des 3 murs, pas
+    // touchée ici). On attend une frame (le temps que la salle, tout juste démasquée, soit vraiment
     // mise en page — sinon ses dimensions mesureraient encore zéro) puis on positionne les œuvres du
     // mur du fond à leur vraie échelle (voir layoutCheckpointRoom).
     requestAnimationFrame(layoutCheckpointRoom);
@@ -2646,17 +2643,11 @@ function checkpointRoomVarPercent(name) {
   const raw = getComputedStyle($('scale-checkpoint-room')).getPropertyValue(name).trim();
   return parseFloat(raw) || 0;
 }
-// Longueur réelle du mur du fond (15 m, comme tous les murs de la vraie salle rapprochée derrière —
-// voir currentWallLengthM) et hauteur d'accrochage type musée (le centre d'un tableau se pose à
-// hauteur des yeux, ~1,56 m, comme sur le mur rapproché où la silhouette de 1,70 m sert de
-// référence : voir populateCloserPlanWall, eyeLevelFromBottom).
+// Longueur réelle du mur du fond (15 m, comme les murs de la vraie salle rapprochée derrière — voir
+// wallSegments) et hauteur d'accrochage type musée (le centre d'un tableau se pose à hauteur des
+// yeux, ~1,56 m, comme sur le mur rapproché où la silhouette de 1,70 m sert de référence : voir
+// buildWallSegment, eyeLevelFromBottom).
 const CHECKPOINT_WALL_LENGTH_CM = 1500;
-// Relevé de 156 (hauteur des yeux standard musée) à 190 : sur cet aperçu depuis l'entrée, une
-// oeuvre accrochée pile à hauteur des yeux se retrouvait visuellement basse (le mur du fond
-// occupe toute la hauteur disponible jusqu'à l'horizon, sans plafond visible au-dessus pour
-// équilibrer) — remontée « un peu », comme demandé, sans risquer de dépasser le haut du mur pour
-// une oeuvre de taille courante.
-const CHECKPOINT_EYE_LEVEL_CM = 190;
 const CHECKPOINT_GAP_CM = 25;
 // Plafond de sécurité sur la hauteur/largeur d'UNE œuvre : une faute de frappe dans le fichier
 // source (ex. un zéro de trop sur « longueur ») peut produire une dimension absurde (ex. 6680 cm
@@ -2738,7 +2729,11 @@ function layoutCheckpointRoom() {
     const centerXPx = (centerCm / CHECKPOINT_WALL_LENGTH_CM) * backWallWidthPx;
     const heightPx = Math.max(4, hCm * pxPerCm);
     const widthPx = Math.max(4, lCm * pxPerCm);
-    const centerY = floorY - CHECKPOINT_EYE_LEVEL_CM * pxPerCm;
+    // Centré verticalement dans la hauteur visible du mur du fond (de 0, le haut de l'écran, à
+    // floorY, où le sol commence) plutôt qu'à une hauteur des yeux fixe : cette dernière donnait
+    // toujours une position légèrement basse (elle ne dépend pas de la hauteur réelle de l'écran),
+    // repéré ici — un vrai milieu (floorY / 2) reste centré quel que soit l'écran.
+    const centerY = floorY / 2;
     const img = document.createElement('img');
     img.className = 'scale-checkpoint-work';
     img.alt = '';
@@ -2764,42 +2759,44 @@ $('scale-barrier')?.addEventListener('click', () => {
     enterCloserPlan();
   });
 });
-// Les œuvres de la session sont réparties sur 4 murs (façon vraie salle rectangulaire) plutôt que
-// sur un seul long mur — state.roomWalls garde les 4 groupes, currentWallIndex celui affiché.
-let currentWallIndex = 0;
-let currentWallLengthM = 15; // longueur du mur actuellement affiché, en mètres (adaptative, voir populateCloserPlanWall)
-// Répartition des œuvres sur les 4 murs par largeur totale estimée (pas juste par nombre) : les
-// œuvres sont triées de la plus large à la plus étroite, puis chacune rejoint le mur qui a
-// actuellement le moins de largeur occupée — évite qu'un mur hérite par hasard de plusieurs
-// immenses formats pendant qu'un autre n'a que des petits, ce qui déséquilibrait fortement les
-// longueurs réelles d'un mur à l'autre.
+// Les œuvres de la session sont réparties sur les 3 murs réellement exploitables d'une salle : le
+// mur du fond et les 2 murs latéraux — jamais le mur côté couloir (là où est la porte), qui reste
+// toujours vide, comme dans une vraie salle où l'on n'accroche rien juste après l'entrée.
+// state.roomWalls garde la forme historique à 4 emplacements [fond, droite, entrée, gauche] pour ne
+// rien casser ailleurs (checkpointBackWallWorks, enterCloserPlan...), mais l'emplacement « entrée »
+// (index 2) est désormais TOUJOURS un tableau vide.
 function estimateWorkWidthCm(w) {
   let hCm = parseCmValue(w?.hauteur);
   if (!hCm || hCm <= 0 || !isFinite(hCm)) hCm = 60;
   return parseCmValue(w?.longueur) || hCm * 1.3;
 }
+// Répartition des œuvres sur les 3 murs par largeur totale estimée (pas juste par nombre) : les
+// œuvres sont triées de la plus large à la plus étroite, puis chacune rejoint le mur qui a
+// actuellement le moins de largeur occupée — évite qu'un mur hérite par hasard de plusieurs
+// immenses formats pendant qu'un autre n'a que des petits, ce qui déséquilibrait fortement les
+// longueurs réelles d'un mur à l'autre.
 function splitIntoFourWalls(candidates) {
-  const walls = [[], [], [], []];
-  const totals = [0, 0, 0, 0];
+  const buckets = [[], [], []]; // fond, droite, gauche — jamais l'entrée
+  const totals = [0, 0, 0];
   const sorted = [...candidates].sort((a, b) => estimateWorkWidthCm(b) - estimateWorkWidthCm(a));
   sorted.forEach((w) => {
     const target = totals.indexOf(Math.min(...totals));
-    walls[target].push(w);
+    buckets[target].push(w);
     totals[target] += estimateWorkWidthCm(w) + 30; // + un espacement type entre deux œuvres
   });
-  return walls;
+  return [buckets[0], buckets[1], [], buckets[2]]; // forme à 4 emplacements conservée, entrée vide
 }
-// Première salle bien remplie plutôt que 8 murs clairsemés à moitié vides : une deuxième salle
-// n'est créée que s'il y a de quoi peupler les deux correctement (repère approximatif : au moins
-// 2 œuvres par mur en moyenne, soit 8 au total). Même logique de répartition par largeur totale
-// que splitIntoFourWalls, étendue à roomCount*4 « murs » (compartiments) au lieu de 4 seulement,
-// puis regroupée 4 par 4 en salles — chaque salle reste donc, à l'intérieur d'elle-même, équilibrée
+// Première salle bien remplie plutôt que plusieurs murs clairsemés à moitié vides : une deuxième
+// salle n'est créée que s'il y a de quoi peupler les deux correctement (repère approximatif : au
+// moins 2-3 œuvres par mur en moyenne, soit 8 au total). Même logique de répartition par largeur
+// totale, étendue à roomCount*3 « murs » (compartiments, puisque l'entrée n'en fait plus partie),
+// puis regroupée 3 par 3 en salles — chaque salle reste donc, à l'intérieur d'elle-même, équilibrée
 // exactement comme avant.
 function splitIntoRooms(candidates) {
   const roomCount = candidates.length >= 8 ? 2 : 1;
   if (roomCount === 1) return [splitIntoFourWalls(candidates)];
-  const compartments = Array.from({ length: roomCount * 4 }, () => []);
-  const totals = new Array(roomCount * 4).fill(0);
+  const compartments = Array.from({ length: roomCount * 3 }, () => []);
+  const totals = new Array(roomCount * 3).fill(0);
   const sorted = [...candidates].sort((a, b) => estimateWorkWidthCm(b) - estimateWorkWidthCm(a));
   sorted.forEach((w) => {
     const target = totals.indexOf(Math.min(...totals));
@@ -2807,117 +2804,36 @@ function splitIntoRooms(candidates) {
     totals[target] += estimateWorkWidthCm(w) + 30;
   });
   const rooms = [];
-  for (let r = 0; r < roomCount; r++) rooms.push(compartments.slice(r * 4, r * 4 + 4));
+  for (let r = 0; r < roomCount; r++) {
+    const [back, right, left] = compartments.slice(r * 3, r * 3 + 3);
+    rooms.push([back, right, [], left]);
+  }
   return rooms;
 }
-// Coordonnées (en %) des 4 coins du trapèze de l'écran de contrôle — mur du fond (haut) plus
-// étroit que le mur d'entrée (bas), murs latéraux en biais entre les deux.
+// Coordonnées (en %) des 4 coins du plan de la salle, vue de dessus — mur du fond (haut) plus
+// étroit que le mur d'entrée (bas), murs latéraux en biais entre les deux. Le bord du bas
+// (TRAP_BOTTOM_*) reste la vraie limite physique de la salle côté couloir, mais n'est plus une
+// destination possible pour le point : seuls les 3 segments fond/gauche/droite sont walkables (voir
+// pathPointForScrollLeft ci-dessous).
 const TRAP_TOP_LEFT = { x: 25, y: 0 };
 const TRAP_TOP_RIGHT = { x: 75, y: 0 };
 const TRAP_BOTTOM_LEFT = { x: 0, y: 100 };
 const TRAP_BOTTOM_RIGHT = { x: 100, y: 100 };
-// Position (x%, y%) sur le bord du trapèze correspondant à un mur donné et une progression (0..1)
-// le long de ce mur — 0=mur du fond (haut), 1=mur de droite, 2=mur d'entrée (bas), 3=mur de
-// gauche. Le mur 3 va de bas en haut (voir plus loin, sens inversé pour rester intuitif).
-function trapezoidPointForWall(wallIndex, progress) {
-  const lerp = (a, b, t) => a + (b - a) * t;
-  if (wallIndex === 0) return { x: lerp(TRAP_TOP_LEFT.x, TRAP_TOP_RIGHT.x, progress), y: lerp(TRAP_TOP_LEFT.y, TRAP_TOP_RIGHT.y, progress) };
-  if (wallIndex === 1) return { x: lerp(TRAP_TOP_RIGHT.x, TRAP_BOTTOM_RIGHT.x, progress), y: lerp(TRAP_TOP_RIGHT.y, TRAP_BOTTOM_RIGHT.y, progress) };
-  if (wallIndex === 2) return { x: lerp(TRAP_BOTTOM_LEFT.x, TRAP_BOTTOM_RIGHT.x, progress), y: lerp(TRAP_BOTTOM_LEFT.y, TRAP_BOTTOM_RIGHT.y, progress) };
-  return { x: lerp(TRAP_BOTTOM_LEFT.x, TRAP_TOP_LEFT.x, progress), y: lerp(TRAP_BOTTOM_LEFT.y, TRAP_TOP_LEFT.y, progress) };
-}
-function positionMinimapDot() {
-  const dot = $('scale-minimap-dot');
-  if (!dot) return;
-  const p = trapezoidPointForWall(currentWallIndex, 0.5); // milieu du mur, comme avant
-  dot.style.left = `${p.x}%`; dot.style.top = `${p.y}%`;
-}
-function goToWall(index) {
-  currentWallIndex = ((index % 4) + 4) % 4;
-  positionMinimapDot();
-  populateCloserPlanWall((state.roomWalls || [[]])[currentWallIndex] || []);
-  const wall = $('scale-wall');
-  if (wall) wall.scrollLeft = 0; // chaque nouveau mur repart du début — sinon la silhouette et
-  // les points pourraient hériter d'une position laissée par le mur précédent.
-  updateDotAlongWall(); // positionne aussi la silhouette (attachée au point) dès l'entrée sur ce mur
-  lastShownMeter = 0; // repère de distance réinitialisé : chaque mur repart de 1 mètre
-}
-// Salles voisines : plus de bouton dédié — on ne change de salle QUE depuis la façade (jamais au
-// milieu d'une visite), en marchant le long d'elle. Concrètement : ressortir au plan d'ensemble
-// (glisser la silhouette vers le bas depuis le mur rapproché, voir backToOverview) puis glisser la
-// silhouette sur le côté à la façade (voir le geste horizontal ajouté sur son
-// makeSilhouetteDraggable, plus bas) — les piliers et le cordon de #scale-facade restent fixes
-// pendant que la porte et son enseigne changent (voir style.css), ce qui donne l'impression d'un
-// même bâtiment qui se prolonge plutôt que d'un simple saut d'un décor à l'autre.
-function enterFacadeRoom(roomIndex) {
-  const rooms = state.allRooms || [];
-  if (roomIndex < 0 || roomIndex >= rooms.length || roomIndex === (state.currentRoomIndex || 0)) return;
-  blurTransition(() => {
-    state.currentRoomIndex = roomIndex;
-    state.roomWalls = rooms[roomIndex];
-    updateFacadeSign();
-  });
-}
-// Enseigne au-dessus de la porte : indique le numéro de salle seulement s'il y en a plus d'une (une
-// seule salle n'a pas besoin d'être numérotée), suivi des artistes de la sélection en cours.
-function updateFacadeSign() {
-  const sign = $('scale-exhibition-sign');
-  if (!sign) return;
-  let artists = [];
-  try { artists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
-  const roomCount = (state.allRooms || []).length;
-  const roomLabel = roomCount > 1 ? `Salle ${(state.currentRoomIndex || 0) + 1} — ` : '';
-  sign.textContent = artists.length ? `${roomLabel}Exposition — ${artists.join(', ')}` : `${roomLabel}Exposition`;
-}
-function enterCloserPlan() {
-  // state.roomWalls est déjà calculé dès l'entrée en vue d'ensemble (voir enterScaleView), pour
-  // connaître l'œuvre du mur du fond à montrer en aperçu à travers la porte.
-  if (!state.roomWalls) {
-    state.allRooms = state.allRooms || splitIntoRooms(state.scaleViewCandidates || []);
-    state.currentRoomIndex = state.currentRoomIndex || 0;
-    state.roomWalls = state.allRooms[state.currentRoomIndex];
-  }
-  currentWallIndex = 0; // on entre toujours par la porte, on se retrouve donc au mur du fond
-  $('scale-overview').classList.add('hidden');
-  $('scale-wall-line').classList.remove('hidden');
-  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
-  // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
-  // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
-  // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
-  // tableaux, au ras du sol au lieu de les accrocher à hauteur des yeux.
-  requestAnimationFrame(() => { goToWall(currentWallIndex); });
-}
-// (l'entrée se fait maintenant via #scale-enter-button → goThroughDoor → #scale-barrier, voir
-// plus haut — plus une entrée directe au clic sur la porte elle-même)
-function backToOverview() {
-  $('scale-overview').classList.remove('hidden');
-  $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets
-  $('scale-wall-line').classList.add('hidden');
-  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
-}
-$('scale-checkpoint-back')?.addEventListener('click', backToOverview);
-$('scale-turnstile-exit')?.addEventListener('click', backToOverview);
-function populateCloserPlanWall(candidates) {
-  // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
-  // réelle après affichage pour placer chaque œuvre en conséquence, plutôt que de deviner des
-  // chiffres qui se déréglent au moindre changement de mise en page.
-  const silhRect = $('scale-silhouette').getBoundingClientRect();
-  const pxPerCm = silhRect.height / 170;
-  // Bug réel repéré : ce plafond dépendait de la hauteur d'écran (70% de window.innerHeight) —
-  // sur mobile, bien plus petit que sur PC, beaucoup plus d'œuvres finissaient plafonnées à cette
-  // même valeur, écrasant leurs vraies différences de taille (« toutes les œuvres à égalité »).
-  // Le plafond est maintenant relatif à l'échelle elle-même (jusqu'à 6 fois la hauteur de la
-  // silhouette, soit environ 10 m de haut) plutôt qu'à la taille de l'écran qui l'affiche — une
-  // très grande œuvre peut désormais dépasser le haut de l'écran (comme en vrai, il faudrait
-  // reculer pour la voir en entier), plutôt que d'être ramenée de force à la même taille que les
-  // autres grandes œuvres.
-  const maxPx = Math.max(window.innerHeight * 0.85, silhRect.height * 6);
-  const eyeLevelFromBottom = silhRect.height * 0.92;
-  const wall = $('scale-wall');
-  wall.innerHTML = '';
-  let cursorLeft = silhRect.right + 28;
-  let currentNote = '';
-  let currentHCm = 0;
+// LE DÉFI : plutôt que 4 murs qu'on affiche un par un (avec un changement de décor abrupt, façon
+// diapositive, pour passer de l'un à l'autre — et un 4e mur, côté couloir, qui ne servait à rien),
+// le mur rapproché est maintenant UNE SEULE bande continue qui enchaîne mur gauche → mur du fond →
+// mur droit, avec un simple repli d'ombre (voir .scale-wall-corner) à chaque angle pour suggérer le
+// virage. On peut ainsi tirer le personnage jusque dans un coin et le voir continuer tout seul sur
+// le mur suivant, sans jamais changer de décor ni de plan — un seul scrollLeft pilote tout du début
+// à la fin, exactement comme un seul mur, simplement 3 fois plus long et « plié » 2 fois.
+const WALL_CORNER_PX = 70; // largeur décorative de l'angle entre 2 murs
+let wallSegments = []; // [{ key, label, startPx, widthPx, lengthM }, ...] posé par buildContinuousWall
+// Construit un morceau d'œuvres pour UN mur (gauche, fond ou droit), en repartant du point où le
+// mur précédent de la bande s'est arrêté (startPx) plutôt que de zéro à chaque fois — c'est cet
+// enchaînement qui rend la bande continue. currentInfo accumule les infos de l'œuvre actuellement
+// sélectionnée (currentLightboxWork), où qu'elle se trouve parmi les 3 murs.
+function buildWallSegment(wall, candidates, startPx, pxPerCm, maxPx, eyeLevelFromBottom, currentInfo) {
+  let cursorLeft = startPx;
   candidates.forEach((w) => {
     // Repli si la hauteur réelle manque ou est invalide pour cette œuvre précise (donnée absente
     // ou mal renseignée dans le fichier) : une taille de tableau courante plutôt qu'un calcul qui
@@ -2954,22 +2870,104 @@ function populateCloserPlanWall(candidates) {
     });
     wall.appendChild(item);
     cursorLeft += Math.max(artW, 4) + 40;
-    if (w === currentLightboxWork) { currentNote = note; currentHCm = hCm; }
+    if (w === currentLightboxWork) { currentInfo.note = note; currentInfo.hCm = hCm; }
   });
-  // La longueur du mur s'adapte maintenant à ce qu'il contient réellement (largeur utilisée par
-  // les œuvres + une marge de recul de 2 m), avec un minimum de 8 m pour rester walkable même
-  // avec très peu d'œuvres — plutôt qu'une longueur fixe identique pour tous les murs, qui
-  // laissait parfois plusieurs mètres vides sans rapport avec ce que le mur contient vraiment.
-  const naturalWidthCm = (cursorLeft - silhRect.right) / pxPerCm;
-  currentWallLengthM = Math.round(Math.max(800, naturalWidthCm + 200) / 100);
-  const wallWidthPx = silhRect.right + currentWallLengthM * 100 * pxPerCm;
-  if (cursorLeft < wallWidthPx) {
-    const spacer = document.createElement('div');
-    spacer.style.cssText = `position:absolute;left:${wallWidthPx}px;width:1px;height:1px;`;
-    wall.appendChild(spacer);
-  }
-  $('lightbox-scale-caption').textContent = `Hauteur réelle : ${currentHCm} cm${currentNote}`;
+  return cursorLeft;
 }
+// Construit toute la bande continue (les 3 murs mis bout à bout) dans #scale-wall, et renvoie le
+// scrollLeft du tout début du mur du fond — c'est là qu'on arrive toujours en entrant dans la salle
+// (comme avant : face au mur du fond), sauf qu'on peut désormais aussi reculer vers la gauche ou
+// avancer vers la droite pour rejoindre les murs latéraux sans aucune coupure.
+function buildContinuousWall() {
+  // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
+  // réelle après affichage pour placer chaque œuvre en conséquence, plutôt que de deviner des
+  // chiffres qui se déréglent au moindre changement de mise en page.
+  const silhRect = $('scale-silhouette').getBoundingClientRect();
+  const pxPerCm = silhRect.height / 170;
+  // Bug réel repéré : ce plafond dépendait de la hauteur d'écran (70% de window.innerHeight) —
+  // sur mobile, bien plus petit que sur PC, beaucoup plus d'œuvres finissaient plafonnées à cette
+  // même valeur, écrasant leurs vraies différences de taille (« toutes les œuvres à égalité »).
+  // Le plafond est maintenant relatif à l'échelle elle-même (jusqu'à 6 fois la hauteur de la
+  // silhouette, soit environ 10 m de haut) plutôt qu'à la taille de l'écran qui l'affiche.
+  const maxPx = Math.max(window.innerHeight * 0.85, silhRect.height * 6);
+  const eyeLevelFromBottom = silhRect.height * 0.92;
+  const wall = $('scale-wall');
+  wall.innerHTML = '';
+  const rooms3 = state.roomWalls || [[], [], [], []];
+  const legs = [
+    { key: 'left', label: 'Mur gauche', items: rooms3[3] || [] },
+    { key: 'back', label: 'Mur du fond', items: rooms3[0] || [] },
+    { key: 'right', label: 'Mur droit', items: rooms3[1] || [] },
+  ];
+  const currentInfo = { note: '', hCm: 0 };
+  let cursor = silhRect.right + 28; // marge de départ réservée à la silhouette, une seule fois (au
+  // tout début de la bande) plutôt qu'à chaque mur : au milieu de la bande, la silhouette reste
+  // fixe à l'écran pendant que le mur défile dessous, aucun espace supplémentaire n'y est need.
+  wallSegments = [];
+  legs.forEach((leg, i) => {
+    const startPx = cursor;
+    const endPx = buildWallSegment(wall, leg.items, startPx, pxPerCm, maxPx, eyeLevelFromBottom, currentInfo);
+    // Longueur adaptative comme avant (largeur réellement occupée + 2 m de recul, minimum 8 m),
+    // calculée par mur puisque chacun peut contenir un nombre d'œuvres différent.
+    const naturalWidthCm = (endPx - startPx) / pxPerCm;
+    const legLengthM = Math.round(Math.max(800, naturalWidthCm + 200) / 100);
+    const widthPx = Math.max(endPx - startPx, legLengthM * 100 * pxPerCm);
+    wallSegments.push({ key: leg.key, label: leg.label, startPx, widthPx, lengthM: legLengthM });
+    cursor = startPx + widthPx;
+    // Angle décoratif entre ce mur et le suivant (jamais après le dernier) : une ombre verticale,
+    // façon repli du mur — pas une vraie rotation en 3D, mais assez pour suggérer que la bande
+    // « tourne » ici plutôt que de continuer tout droit, sans jamais couper la marche pour autant.
+    if (i < legs.length - 1) {
+      const corner = document.createElement('div');
+      corner.className = 'scale-wall-corner';
+      corner.style.left = `${cursor}px`;
+      corner.style.width = `${WALL_CORNER_PX}px`;
+      wall.appendChild(corner);
+      cursor += WALL_CORNER_PX;
+    }
+  });
+  const spacer = document.createElement('div');
+  spacer.style.cssText = `position:absolute;left:${cursor}px;width:1px;height:1px;`;
+  wall.appendChild(spacer);
+  $('lightbox-scale-caption').textContent = `Hauteur réelle : ${currentInfo.hCm} cm${currentInfo.note}`;
+  const backSeg = wallSegments.find((s) => s.key === 'back');
+  return backSeg ? backSeg.startPx : silhRect.right + 28;
+}
+function enterCloserPlan() {
+  // state.roomWalls est déjà calculé dès l'entrée en vue d'ensemble (voir enterScaleView), pour
+  // connaître l'œuvre du mur du fond à montrer en aperçu à travers la porte.
+  if (!state.roomWalls) {
+    state.allRooms = state.allRooms || splitIntoRooms(state.scaleViewCandidates || []);
+    state.currentRoomIndex = state.currentRoomIndex || 0;
+    state.roomWalls = state.allRooms[state.currentRoomIndex];
+  }
+  $('scale-overview').classList.add('hidden');
+  $('scale-wall-line').classList.remove('hidden');
+  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
+  // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
+  // sans ce délai d'une frame, la silhouette pouvait encore mesurer une hauteur nulle sur certains
+  // mobiles (rendu moins immédiat qu'sur ordinateur), ce qui plaçait alors tout, y compris les
+  // tableaux, au ras du sol au lieu de les accrocher à hauteur des yeux.
+  requestAnimationFrame(() => {
+    const backStartPx = buildContinuousWall();
+    const wall = $('scale-wall');
+    if (wall) wall.scrollLeft = backStartPx; // on arrive toujours face au mur du fond, comme avant
+    lastShownMeter = 0;
+    lastShownWallKey = '';
+    updateDotAlongWall();
+    updateDistanceMarker();
+  });
+}
+// (l'entrée se fait maintenant via #scale-enter-button → goThroughDoor → #scale-barrier, voir
+// plus haut — plus une entrée directe au clic sur la porte elle-même)
+function backToOverview() {
+  $('scale-overview').classList.remove('hidden');
+  $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets
+  $('scale-wall-line').classList.add('hidden');
+  ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+}
+$('scale-checkpoint-back')?.addEventListener('click', backToOverview);
+$('scale-turnstile-exit')?.addEventListener('click', backToOverview);
 // Vue rapprochée d'une œuvre précise : elle occupe le plus possible de l'écran, la silhouette se
 // tient juste à côté à sa vraie échelle relative — même principe que le mur, mais en très grand,
 // pour bien ressentir la taille d'une seule œuvre. On sort en tirant la silhouette hors du cadre ;
@@ -3050,21 +3048,48 @@ function isNearBottomCorner(clientX, clientY) {
   const nearEdge = clientX < 70 || clientX > window.innerWidth - 70;
   return nearBottom && nearEdge;
 }
-// Grand chantier : le point rouge de l'écran de contrôle pilote maintenant TOUT le déplacement —
-// avancer/reculer le long du mur courant ET changer de mur en glissant vers un coin — les
-// flèches ◄ ► ont été retirées, devenues inutiles. On glisse le point où l'on veut se trouver,
-// il y va directement (pas de marche automatique animée), plutôt que de le pousser dans une
-// direction et attendre.
-// Convertit une position brute du doigt/souris sur la mini-carte (x,y en 0..1) en progression
-// (0..1) le long du mur actuellement affiché — l'inverse exact d'updateDotAlongWall, pour que le
-// point reste sous le doigt pendant qu'on le glisse plutôt que de « résister » ou sauter ailleurs.
-function progressFromMinimapPosition(wallIndex, x, y) {
-  // Inverse de trapezoidPointForWall : retrouve la progression (0..1) le long du mur courant à
-  // partir d'une position brute (x,y en 0..1) dans le trapèze.
-  if (wallIndex === 0) return Math.min(1, Math.max(0, (x * 100 - TRAP_TOP_LEFT.x) / (TRAP_TOP_RIGHT.x - TRAP_TOP_LEFT.x)));
-  if (wallIndex === 2) return Math.min(1, Math.max(0, (x * 100 - TRAP_BOTTOM_LEFT.x) / (TRAP_BOTTOM_RIGHT.x - TRAP_BOTTOM_LEFT.x)));
-  if (wallIndex === 3) return Math.min(1, Math.max(0, 1 - y)); // bas (100%) -> haut (0%) = 0 -> 1
-  return Math.min(1, Math.max(0, y)); // mur 1 (droite) : haut (0%) -> bas (100%) = 0 -> 1
+// Grand chantier : le point rouge de l'écran de contrôle pilote maintenant TOUT le déplacement,
+// sur toute la longueur de la bande continue (les 3 murs mis bout à bout, y compris les 2 angles) —
+// on glisse le point où l'on veut se trouver, il y va directement (pas de marche automatique
+// animée), plutôt que de le pousser dans une direction et attendre. Il n'y a plus de notion de
+// « changer de mur » à gérer à part : un seul scrollLeft continu couvre toute la bande.
+// Point (x%, y%) sur le plan vu de dessus correspondant à une position absolue le long de la bande
+// (en pixels de scrollLeft) — mur gauche puis mur du fond puis mur droit, chacun sur son propre
+// segment de wallSegments (posé par buildContinuousWall). Remplace l'ancienne trapezoidPointForWall
+// (un mur à la fois, indépendants) : tout tient maintenant sur un seul repère continu, cohérent avec
+// le fait qu'on peut marcher d'un bout à l'autre de la salle sans coupure.
+function pathPointForScrollLeft(scrollLeft) {
+  const lerp = (a, b, t) => a + (b - a) * t;
+  if (!wallSegments.length) return { x: 50, y: 50 };
+  const seg = wallSegments.find((s) => scrollLeft < s.startPx + s.widthPx) || wallSegments[wallSegments.length - 1];
+  const t = Math.min(1, Math.max(0, (scrollLeft - seg.startPx) / Math.max(1, seg.widthPx)));
+  if (seg.key === 'left') return { x: lerp(TRAP_BOTTOM_LEFT.x, TRAP_TOP_LEFT.x, t), y: lerp(TRAP_BOTTOM_LEFT.y, TRAP_TOP_LEFT.y, t) };
+  if (seg.key === 'back') return { x: lerp(TRAP_TOP_LEFT.x, TRAP_TOP_RIGHT.x, t), y: lerp(TRAP_TOP_LEFT.y, TRAP_TOP_RIGHT.y, t) };
+  return { x: lerp(TRAP_TOP_RIGHT.x, TRAP_BOTTOM_RIGHT.x, t), y: lerp(TRAP_TOP_RIGHT.y, TRAP_BOTTOM_RIGHT.y, t) };
+}
+// Inverse de la fonction ci-dessus : à partir d'une position brute (x,y en 0..1) glissée sur le
+// plan, trouve le point le plus proche sur le tracé (les 3 murs mis bout à bout, en forme de U
+// ouvert côté couloir) et renvoie le scrollLeft correspondant — on peut ainsi glisser le point
+// n'importe où sur le plan, il retombe toujours sur le mur le plus proche, sans jamais avoir besoin
+// de détecter explicitement un « changement de mur ».
+function scrollLeftFromPathPosition(x, y) {
+  if (!wallSegments.length) return 0;
+  const project = (ax, ay, bx, by) => {
+    const abx = bx - ax, aby = by - ay;
+    const len2 = abx * abx + aby * aby || 1;
+    const t = Math.min(1, Math.max(0, ((x * 100 - ax) * abx + (y * 100 - ay) * aby) / len2));
+    const px = ax + abx * t, py = ay + aby * t;
+    return { t, dist: Math.hypot(x * 100 - px, y * 100 - py) };
+  };
+  const edges = {
+    left: project(TRAP_BOTTOM_LEFT.x, TRAP_BOTTOM_LEFT.y, TRAP_TOP_LEFT.x, TRAP_TOP_LEFT.y),
+    back: project(TRAP_TOP_LEFT.x, TRAP_TOP_LEFT.y, TRAP_TOP_RIGHT.x, TRAP_TOP_RIGHT.y),
+    right: project(TRAP_TOP_RIGHT.x, TRAP_TOP_RIGHT.y, TRAP_BOTTOM_RIGHT.x, TRAP_BOTTOM_RIGHT.y),
+  };
+  let bestKey = 'back';
+  Object.keys(edges).forEach((k) => { if (edges[k].dist < edges[bestKey].dist) bestKey = k; });
+  const seg = wallSegments.find((s) => s.key === bestKey) || wallSegments[0];
+  return seg.startPx + edges[bestKey].t * seg.widthPx;
 }
 (function attachMinimapDrag() {
   const minimap = $('scale-minimap');
@@ -3072,33 +3097,14 @@ function progressFromMinimapPosition(wallIndex, x, y) {
   const wall = $('scale-wall');
   if (!minimap || !dot || !wall) return;
   let dragging = false;
-  let wallSwitchInProgress = false;
   const moveTo = (clientX, clientY) => {
-    if (wallSwitchInProgress) return; // laisse la transition floue se terminer avant de reprendre la main
     const rect = minimap.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const x = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
     const y = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
-    // Distance à chaque bord du trapèze, en coordonnées 0..1 — pour les bords latéraux (en biais),
-    // on compare à la position x du bord à cette hauteur y précise (pas juste x brut comme pour
-    // un rectangle), sinon la détection serait décalée à mesure qu'on descend vers le bas, plus
-    // large, du trapèze.
-    const leftEdgeX = (TRAP_TOP_LEFT.x + (TRAP_BOTTOM_LEFT.x - TRAP_TOP_LEFT.x) * y) / 100;
-    const rightEdgeX = (TRAP_TOP_RIGHT.x + (TRAP_BOTTOM_RIGHT.x - TRAP_TOP_RIGHT.x) * y) / 100;
-    const distances = [y, rightEdgeX - x, 1 - y, x - leftEdgeX];
-    const nearest = distances.indexOf(Math.min(...distances));
-    if (nearest !== currentWallIndex) {
-      wallSwitchInProgress = true;
-      stopWalking();
-      blurTransition(() => { goToWall(nearest); wallSwitchInProgress = false; });
-      return;
-    }
-    // Même mur : le point pilote directement le défilement, sans marche automatique animée — on
-    // va là où on glisse le doigt, immédiatement.
     stopWalking();
-    const progress = progressFromMinimapPosition(currentWallIndex, x, y);
     const maxScroll = Math.max(1, wall.scrollWidth - wall.clientWidth);
-    wall.scrollLeft = progress * maxScroll;
+    wall.scrollLeft = Math.min(maxScroll, Math.max(0, scrollLeftFromPathPosition(x, y)));
     updateDotAlongWall();
     updateDistanceMarker();
   };
@@ -3164,15 +3170,6 @@ function progressFromMinimapPosition(wallIndex, x, y) {
 makeSilhouetteDraggable($('scale-overview-silhouette'), {
   onDragEnd: (dx, dy, endX, endY) => {
     if (isNearBottomCorner(endX, endY)) { exitScaleViewCompletely(); return; }
-    // Geste franchement horizontal (nettement plus large que haut) : marcher le long de la façade,
-    // vers la salle suivante en tirant à gauche, la précédente en tirant à droite — comme si le
-    // personnage longeait le bâtiment jusqu'à l'entrée voisine (voir enterFacadeRoom). Seuil élevé
-    // et rapport dx/dy exigé pour ne jamais se déclencher par erreur en tirant simplement la
-    // silhouette vers le haut pour avancer.
-    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      enterFacadeRoom((state.currentRoomIndex || 0) + (dx < 0 ? 1 : -1));
-      return;
-    }
     // Tirer vers le haut (vers le fond de la salle) fait avancer vers le mur rapproché.
     if (dy < -40) enterCloserPlan();
   },
@@ -3198,11 +3195,11 @@ function updateDotAlongWall() {
   const silhouette = $('scale-silhouette');
   if (!wall || !dot) return;
   const maxScroll = Math.max(1, wall.scrollWidth - wall.clientWidth);
-  const progress = Math.min(1, Math.max(0, wall.scrollLeft / maxScroll)); // 0..1 le long du mur
-  // Position du point sur le bord correspondant du trapèze — le sens de chaque mur (y compris
-  // l'inversion du mur gauche, qui fait face au mur et non au centre de la salle) est encodé dans
-  // trapezoidPointForWall.
-  const p = trapezoidPointForWall(currentWallIndex, progress);
+  const progress = Math.min(1, Math.max(0, wall.scrollLeft / maxScroll)); // 0..1 sur toute la bande
+  // Position du point sur le plan, à l'endroit correspondant de la bande continue (voir
+  // pathPointForScrollLeft) — plus besoin de savoir « sur quel mur » on se trouve : un seul point
+  // d'entrée (scrollLeft) suffit, qu'on soit sur un mur ou en train de tourner dans un angle.
+  const p = pathPointForScrollLeft(wall.scrollLeft);
   dot.style.left = `${p.x}%`; dot.style.top = `${p.y}%`;
   // Point dupliqué sur le sol, ET la silhouette elle-même : même progression, répartie sur toute
   // la largeur de l'écran (5 % à 95 %). La silhouette est maintenant « attachée » au point —
@@ -3211,21 +3208,27 @@ function updateDotAlongWall() {
   if (floorDot) floorDot.style.left = `${5 + progress * 90}%`;
   if (silhouette) silhouette.style.left = `${5 + progress * 90}%`;
 }
-// Repère de distance : le numéro du mètre en cours (1 à 15, longueur réelle du mur), affiché près
-// du point rouge de la mini-carte, en haut. Il reste figé sur la valeur courante en permanence —
-// tant qu'on marche il se met à jour, dès qu'on s'arrête il garde simplement sa dernière valeur.
+// Repère de distance : le mur courant (fond/gauche/droite) et le numéro du mètre en cours sur CE
+// mur (recalculés à partir de wallSegments — la bande étant continue, on ne « change » plus jamais
+// de mur d'un coup, mais glisser d'un mur à l'autre doit quand même remettre le compteur à 1 m).
+// Reste figé sur la valeur courante en permanence — tant qu'on marche il se met à jour, dès qu'on
+// s'arrête il garde simplement sa dernière valeur.
 let lastShownMeter = 0;
+let lastShownWallKey = '';
 function updateDistanceMarker() {
   const wall = $('scale-wall');
   const marker = $('scale-distance-marker');
   const sil = $('scale-silhouette');
-  if (!wall || !marker || !sil) return;
+  if (!wall || !marker || !sil || !wallSegments.length) return;
   const pxPerCm = sil.getBoundingClientRect().height / 170;
   if (!pxPerCm) return;
-  const meters = Math.max(1, Math.min(currentWallLengthM, Math.round(wall.scrollLeft / pxPerCm / 100)));
-  if (meters === lastShownMeter) return;
+  const seg = wallSegments.find((s) => wall.scrollLeft < s.startPx + s.widthPx) || wallSegments[wallSegments.length - 1];
+  const localPx = Math.max(0, wall.scrollLeft - seg.startPx);
+  const meters = Math.max(1, Math.min(seg.lengthM, Math.round(localPx / pxPerCm / 100)));
+  if (meters === lastShownMeter && seg.key === lastShownWallKey) return;
   lastShownMeter = meters;
-  marker.textContent = `${meters} m`;
+  lastShownWallKey = seg.key;
+  marker.textContent = `${seg.label} — ${meters} m`;
 }
 function startWalking(direction) {
   stopWalking();
