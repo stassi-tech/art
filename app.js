@@ -2605,7 +2605,59 @@ function enterScaleView() {
   state.allRooms = splitIntoRooms(candidates);
   state.currentRoomIndex = 0;
   state.roomWalls = state.allRooms[0];
+  // Plan du bâtiment sur la façade, seulement si l'exposition tient sur 2 salles — voir
+  // updateOverviewRoomDot et attachOverviewRoomNavDrag plus bas.
+  const roomNav = $('scale-overview-room-nav');
+  if (roomNav) roomNav.classList.toggle('hidden', state.allRooms.length < 2);
+  requestAnimationFrame(updateOverviewRoomDot);
 }
+// Positionne le rond rouge du plan du bâtiment (façade) sur le centre de la salle actuellement
+// choisie (state.currentRoomIndex) — recalculé à partir des vraies dimensions à l'écran des 2
+// rectangles plutôt que des pourcentages fixes, pour rester juste quelle que soit la taille de
+// l'écran (même principe que buildContinuousWall/pathPointForScrollLeft pour le mur rapproché).
+function updateOverviewRoomDot() {
+  const dot = $('scale-overview-room-dot');
+  const nav = $('scale-overview-room-nav');
+  if (!dot || !nav || nav.classList.contains('hidden')) return;
+  const target = $(state.currentRoomIndex === 1 ? 'scale-overview-room-2' : 'scale-overview-room-1');
+  if (!target) return;
+  const navRect = nav.getBoundingClientRect();
+  const tRect = target.getBoundingClientRect();
+  if (!navRect.width || !navRect.height) return;
+  dot.style.left = `${((tRect.left + tRect.width / 2 - navRect.left) / navRect.width) * 100}%`;
+  dot.style.top = `${((tRect.top + tRect.height / 2 - navRect.top) / navRect.height) * 100}%`;
+}
+// Glisser (ou simplement toucher/relâcher) le rond d'un rectangle à l'autre choisit la salle dans
+// laquelle on entrera au prochain passage de la porte (voir goThroughDoor → enterCloserPlan, qui
+// lisent state.roomWalls) — pas de marche animée ici, juste un choix binaire entre les 2 salles,
+// comme demandé (« le personnage se déplace vers la deuxième salle »).
+(function attachOverviewRoomNavDrag() {
+  const dot = $('scale-overview-room-dot');
+  const nav = $('scale-overview-room-nav');
+  if (!dot || !nav) return;
+  let dragging = false;
+  const selectFromClientX = (clientX) => {
+    const navRect = nav.getBoundingClientRect();
+    if (!navRect.width) return;
+    const targetIndex = (clientX - navRect.left) / navRect.width < 0.5 ? 0 : 1;
+    if (state.allRooms && state.allRooms[targetIndex] && state.currentRoomIndex !== targetIndex) {
+      state.currentRoomIndex = targetIndex;
+      state.roomWalls = state.allRooms[targetIndex];
+    }
+    updateOverviewRoomDot();
+  };
+  dot.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    event.stopPropagation(); // ne doit pas aussi déclencher le glissement de la silhouette dessous
+    dragging = true;
+    dot.setPointerCapture?.(event.pointerId);
+    dot.style.cursor = 'grabbing';
+  });
+  dot.addEventListener('pointermove', (event) => { if (dragging) selectFromClientX(event.clientX); });
+  const stop = () => { dragging = false; dot.style.cursor = 'grab'; };
+  dot.addEventListener('pointerup', stop);
+  dot.addEventListener('pointercancel', stop);
+})();
 // Voile de transition floue entre chaque étape (façade → contrôle des billets → plan rapproché) —
 // évite, pour l'instant, d'avoir à animer un vrai déplacement progressif du personnage à travers
 // l'espace : le voile masque le changement de décor pendant sa courte durée.
@@ -2965,6 +3017,10 @@ function backToOverview() {
   $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets
   $('scale-wall-line').classList.add('hidden');
   ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+  // Le rond du plan du bâtiment doit refléter la salle actuellement choisie dès qu'on revoit la
+  // façade (ses dimensions à l'écran n'ont pas pu être mesurées correctement pendant qu'il était
+  // caché) — une frame d'attente, comme ailleurs, le temps que la mise en page soit posée.
+  requestAnimationFrame(updateOverviewRoomDot);
 }
 $('scale-checkpoint-back')?.addEventListener('click', backToOverview);
 $('scale-turnstile-exit')?.addEventListener('click', backToOverview);
@@ -3193,14 +3249,26 @@ function updateDotAlongWall() {
   const dot = $('scale-minimap-dot');
   const floorDot = $('scale-floor-dot');
   const silhouette = $('scale-silhouette');
-  if (!wall || !dot) return;
-  const maxScroll = Math.max(1, wall.scrollWidth - wall.clientWidth);
-  const progress = Math.min(1, Math.max(0, wall.scrollLeft / maxScroll)); // 0..1 sur toute la bande
+  if (!wall || !dot || !wallSegments.length) return;
   // Position du point sur le plan, à l'endroit correspondant de la bande continue (voir
   // pathPointForScrollLeft) — plus besoin de savoir « sur quel mur » on se trouve : un seul point
   // d'entrée (scrollLeft) suffit, qu'on soit sur un mur ou en train de tourner dans un angle.
   const p = pathPointForScrollLeft(wall.scrollLeft);
   dot.style.left = `${p.x}%`; dot.style.top = `${p.y}%`;
+  // Bug réel repéré (désynchronisation) : la silhouette utilisait une progression brute en pixels
+  // sur toute la bande (scrollLeft / largeur totale), alors que le point rouge du plan avance mur
+  // par mur, chacun occupant le même tiers du trajet sur le trapèze quelle que soit sa largeur
+  // réelle à l'écran. Un mur avec peu d'œuvres (donc étroit en pixels) faisait alors avancer la
+  // silhouette bien plus vite en proportion que le point — au bout du mur (t=1 pour ce mur), la
+  // silhouette avait déjà parcouru une bien plus grande fraction de l'écran que le point, qui lui
+  // n'était encore qu'au premier tiers. Correctif : calculer la même fraction « en tiers égaux »
+  // (segment + position locale dans ce segment) que celle utilisée pour placer le point sur le
+  // trapèze, afin que les deux terminent CHAQUE mur exactement ensemble.
+  const segIndex = wallSegments.findIndex((s) => wall.scrollLeft < s.startPx + s.widthPx);
+  const idx = segIndex === -1 ? wallSegments.length - 1 : segIndex;
+  const seg = wallSegments[idx];
+  const localT = Math.min(1, Math.max(0, (wall.scrollLeft - seg.startPx) / Math.max(1, seg.widthPx)));
+  const progress = (idx + localT) / wallSegments.length; // 0..1, un tiers exact par mur
   // Point dupliqué sur le sol, ET la silhouette elle-même : même progression, répartie sur toute
   // la largeur de l'écran (5 % à 95 %). La silhouette est maintenant « attachée » au point —
   // c'est elle qui se déplace visiblement à l'écran, plutôt qu'une illusion où seul le mur
