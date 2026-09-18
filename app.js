@@ -1529,11 +1529,17 @@ const PRONUNCIATION_FIXES = {
   'osmer': 'osmère',
   'ariette': 'ariette',
   'xxiii': 'vingt-trois',
+  'xvi': 'seize',
   'brueghel': 'breuguel',
   'bruegel': 'breuguel',
   'guglielmo': 'goulyémo',
   'tino di camaino': 'tino di kaméno',
-  'carle van loo': 'carle van lo',
+  // « van lo » tout court restait mal prononcé (« vané lo ») : le simple « n » de « van » se
+  // nasalise en français (comme dans « vent »), puis le moteur ajoutait un « é » en bout de
+  // syllabe. Doubler le « n » (« vanne ») bloque cette nasalisation — comme dans « Anne », qui se
+  // prononce bien « ane » et pas « an(e) » nasalisé — et donne enfin le son attendu.
+  'carle van loo': 'carle vanne lo',
+  'watteau': 'vatteau',
   'reichler': 'raïchlère',
   'jacopo': 'giacopo',
   'serpotta': 'serpotta',
@@ -1938,6 +1944,18 @@ function nationalityFlag(rawValue) {
 // dans Mon compte, certaines personnes n'aimant pas les drapeaux pour l'un ou l'autre usage.
 function artistFlag(rawValue) {
   return getGlobalPrefs().flagsArtists ? nationalityFlag(rawValue) : '';
+}
+// Nom de pays (pour l'info-bulle au survol du drapeau d'un ARTISTE) à partir de l'adjectif de
+// nationalité brut du fichier — même logique de correspondance par sous-chaîne que
+// nationalityFlag (donc les deux tombent toujours d'accord sur le pays retenu), mais renvoie le
+// nom du pays plutôt que l'émoji. Distinct de countryNameFromFlag, qui part d'une VILLE.
+function nationalityCountryName(rawValue) {
+  const key = keyName(rawValue);
+  if (!key) return '';
+  for (const label of Object.keys(NATIONALITY_FLAGS)) {
+    if (key.includes(label)) return COUNTRY_NAMES[label] || '';
+  }
+  return '';
 }
 // Ville de conservation -> pays, pour afficher un petit drapeau à côté du lieu quand la ville
 // est peu connue (ex. « Sibiu » → 🇷🇴) — aide à situer l'œuvre sans avoir à chercher. Couvre les
@@ -2361,15 +2379,32 @@ function formatTitleWithCycle(work) {
   if (!work.cycle) return titlePart;
   return `${titlePart}, extrait du <em>"${escapeHtml(work.cycle)}"</em>`;
 }
+// Retire l'unité (cm/mm/m) d'une valeur si elle y figure déjà, en gardant tout le reste intact
+// (le nombre, un « environ », une note entre parenthèses comme « (diamètre) ») — utilisé pour ne
+// montrer l'unité qu'une seule fois, sur la DERNIÈRE dimension renseignée, plutôt que répétée sur
+// chacune (h/l/p) : bug/retour réel, « h 200 cm × l 250 cm » lit comme une répétition inutile,
+// « h 200 × l 250 cm » se lit bien mieux.
+function stripUnit(value) {
+  return String(value || '').trim().replace(/\s*\b(cm|mm|m)\b\s*/i, ' ').trim();
+}
+// Liste ordonnée (h, l, p) des dimensions réellement renseignées pour une œuvre, chacune avec son
+// texte final déjà décidé : seule la DERNIÈRE de la liste garde son unité (via withCm), les autres
+// sont affichées nues (stripUnit) — la position de « la dernière » dépend donc de ce qui est
+// rempli ligne par ligne (toujours "l" pour un tableau, puisque sa profondeur n'est jamais
+// renseignée ; "p" pour une statue quand elle est connue, sinon on retombe sur "l" ou "h").
+function dimensionEntries(work) {
+  const raw = [
+    { key: 'h', value: work.hauteur },
+    { key: 'l', value: work.longueur },
+    { key: 'p', value: work.profondeur },
+  ].filter((d) => d.value);
+  return raw.map((d, i) => ({ key: d.key, text: i === raw.length - 1 ? withCm(d.value) : stripUnit(d.value) }));
+}
 function formatDimensionsDisplay(work) {
   // Hauteur/Longueur/Profondeur viennent directement de colonnes séparées : chacune, quand elle
   // est renseignée, est précédée d'un petit "h"/"l"/"p" en grisé. Rien n'est affiché pour une
   // dimension non précisée plutôt que d'inventer une valeur.
-  const parts = [];
-  if (work.hauteur) parts.push(`<span class="dim-hl">h</span> ${escapeHtml(withCm(work.hauteur))}`);
-  if (work.longueur) parts.push(`<span class="dim-hl">l</span> ${escapeHtml(withCm(work.longueur))}`);
-  if (work.profondeur) parts.push(`<span class="dim-hl">p</span> ${escapeHtml(withCm(work.profondeur))}`);
-  return parts.join(' × ');
+  return dimensionEntries(work).map((d) => `<span class="dim-hl">${d.key}</span> ${escapeHtml(d.text)}`).join(' × ');
 }
 // Ajoute « cm » si l'unité n'est pas déjà précisée dans la valeur du fichier (certaines lignes
 // ont juste un nombre, d'autres ont déjà « cm » ou « m » écrit). Gère aussi un éventuel préfixe
@@ -2385,10 +2420,7 @@ function withCm(value) {
 // Version texte brut (sans balises) de formatDimensionsDisplay, pour les affichages qui écrivent
 // via textContent plutôt qu'innerHTML (Imprégnation, à l'effet d'écriture progressive).
 function formatDimensionsPlainText(work) {
-  const parts = [];
-  if (work.hauteur) parts.push(`h ${withCm(work.hauteur)}`);
-  if (work.longueur) parts.push(`l ${withCm(work.longueur)}`);
-  if (work.profondeur) parts.push(`p ${withCm(work.profondeur)}`);
+  const parts = dimensionEntries(work).map((d) => `${d.key} ${d.text}`);
   return parts.join(' × ');
 }
 // Phrase parlée des dimensions, ex. « de 300 centimètres de hauteur, 50 centimètres de largeur,
@@ -2605,21 +2637,23 @@ function enterScaleView() {
   state.allRooms = splitIntoRooms(candidates);
   state.currentRoomIndex = 0;
   state.roomWalls = state.allRooms[0];
-  // Plan du bâtiment sur la façade, seulement si l'exposition tient sur 2 salles — voir
-  // updateOverviewRoomDot et attachOverviewRoomNavDrag plus bas.
-  const roomNav = $('scale-overview-room-nav');
-  if (roomNav) roomNav.classList.toggle('hidden', state.allRooms.length < 2);
-  requestAnimationFrame(updateOverviewRoomDot);
 }
-// Positionne le rond rouge du plan du bâtiment (façade) sur le centre de la salle actuellement
-// choisie (state.currentRoomIndex) — recalculé à partir des vraies dimensions à l'écran des 2
-// rectangles plutôt que des pourcentages fixes, pour rester juste quelle que soit la taille de
-// l'écran (même principe que buildContinuousWall/pathPointForScrollLeft pour le mur rapproché).
-function updateOverviewRoomDot() {
-  const dot = $('scale-overview-room-dot');
-  const nav = $('scale-overview-room-nav');
-  if (!dot || !nav || nav.classList.contains('hidden')) return;
-  const target = $(state.currentRoomIndex === 1 ? 'scale-overview-room-2' : 'scale-overview-room-1');
+// Positionne le rond rouge du plan du bâtiment (contrôle des billets) sur le centre de la salle
+// actuellement choisie (state.currentRoomIndex) — recalculé à partir des vraies dimensions à
+// l'écran des 2 rectangles plutôt que des pourcentages fixes, pour rester juste quelle que soit la
+// taille de l'écran (même principe que buildContinuousWall/pathPointForScrollLeft pour le mur
+// rapproché). Placé au contrôle des billets (et non à la façade) à la demande de Stéphane : c'est
+// juste avant de franchir le tourniquet que choisir sa salle a du sens.
+function updateCheckpointRoomDot() {
+  const nav = $('scale-checkpoint-room-nav');
+  if (!nav) return;
+  // Le plan n'a de sens que s'il existe vraiment 2 salles — cette fonction est aussi celle qui
+  // décide de l'afficher ou non (appelée à chaque passage par le contrôle des billets, voir
+  // goThroughDoor), plutôt qu'un simple recalcul de position d'un widget déjà montré ailleurs.
+  nav.classList.toggle('hidden', !state.allRooms || state.allRooms.length < 2);
+  const dot = $('scale-checkpoint-room-dot');
+  if (!dot || nav.classList.contains('hidden')) return;
+  const target = $(state.currentRoomIndex === 1 ? 'scale-checkpoint-room-2' : 'scale-checkpoint-room-1');
   if (!target) return;
   const navRect = nav.getBoundingClientRect();
   const tRect = target.getBoundingClientRect();
@@ -2628,12 +2662,12 @@ function updateOverviewRoomDot() {
   dot.style.top = `${((tRect.top + tRect.height / 2 - navRect.top) / navRect.height) * 100}%`;
 }
 // Glisser (ou simplement toucher/relâcher) le rond d'un rectangle à l'autre choisit la salle dans
-// laquelle on entrera au prochain passage de la porte (voir goThroughDoor → enterCloserPlan, qui
-// lisent state.roomWalls) — pas de marche animée ici, juste un choix binaire entre les 2 salles,
-// comme demandé (« le personnage se déplace vers la deuxième salle »).
-(function attachOverviewRoomNavDrag() {
-  const dot = $('scale-overview-room-dot');
-  const nav = $('scale-overview-room-nav');
+// laquelle on entrera en franchissant le tourniquet (voir #scale-barrier → enterCloserPlan, qui lit
+// state.roomWalls) — pas de marche animée ici, juste un choix binaire entre les 2 salles, comme
+// demandé (« le personnage se déplace vers la deuxième salle »).
+(function attachCheckpointRoomNavDrag() {
+  const dot = $('scale-checkpoint-room-dot');
+  const nav = $('scale-checkpoint-room-nav');
   if (!dot || !nav) return;
   let dragging = false;
   const selectFromClientX = (clientX) => {
@@ -2644,11 +2678,11 @@ function updateOverviewRoomDot() {
       state.currentRoomIndex = targetIndex;
       state.roomWalls = state.allRooms[targetIndex];
     }
-    updateOverviewRoomDot();
+    updateCheckpointRoomDot();
   };
   dot.addEventListener('pointerdown', (event) => {
     event.preventDefault();
-    event.stopPropagation(); // ne doit pas aussi déclencher le glissement de la silhouette dessous
+    event.stopPropagation();
     dragging = true;
     dot.setPointerCapture?.(event.pointerId);
     dot.style.cursor = 'grabbing';
@@ -2685,8 +2719,9 @@ function goThroughDoor() {
     // retournant une fois entré (voir buildContinuousWall, la vraie bande continue des 3 murs, pas
     // touchée ici). On attend une frame (le temps que la salle, tout juste démasquée, soit vraiment
     // mise en page — sinon ses dimensions mesureraient encore zéro) puis on positionne les œuvres du
-    // mur du fond à leur vraie échelle (voir layoutCheckpointRoom).
-    requestAnimationFrame(layoutCheckpointRoom);
+    // mur du fond à leur vraie échelle (voir layoutCheckpointRoom), et on affiche/positionne le
+    // plan de choix de salle (uniquement si state.allRooms en compte 2, voir updateCheckpointRoomDot).
+    requestAnimationFrame(() => { layoutCheckpointRoom(); updateCheckpointRoomDot(); });
   });
 }
 // Lit une variable CSS numérique (en %) posée sur #scale-checkpoint-room, plutôt que coder en dur
@@ -2878,8 +2913,9 @@ const TRAP_BOTTOM_RIGHT = { x: 100, y: 100 };
 // virage. On peut ainsi tirer le personnage jusque dans un coin et le voir continuer tout seul sur
 // le mur suivant, sans jamais changer de décor ni de plan — un seul scrollLeft pilote tout du début
 // à la fin, exactement comme un seul mur, simplement 3 fois plus long et « plié » 2 fois.
-const WALL_CORNER_PX = 70; // largeur décorative de l'angle entre 2 murs
+const WALL_CORNER_PX = 130; // largeur de la zone d'angle (le temps de « pivoter ») entre 2 murs — assez large pour que le pivotement du panneau (voir updateCornerVisuals) ait le temps de bien se voir
 let wallSegments = []; // [{ key, label, startPx, widthPx, lengthM }, ...] posé par buildContinuousWall
+let wallCorners = []; // [{ startPx, inner }, ...] posé par buildContinuousWall — voir updateCornerVisuals
 // Construit un morceau d'œuvres pour UN mur (gauche, fond ou droit), en repartant du point où le
 // mur précédent de la bande s'est arrêté (startPx) plutôt que de zéro à chaque fois — c'est cet
 // enchaînement qui rend la bande continue. currentInfo accumule les infos de l'œuvre actuellement
@@ -2956,6 +2992,7 @@ function buildContinuousWall() {
   // tout début de la bande) plutôt qu'à chaque mur : au milieu de la bande, la silhouette reste
   // fixe à l'écran pendant que le mur défile dessous, aucun espace supplémentaire n'y est need.
   wallSegments = [];
+  wallCorners = [];
   legs.forEach((leg, i) => {
     const startPx = cursor;
     const endPx = buildWallSegment(wall, leg.items, startPx, pxPerCm, maxPx, eyeLevelFromBottom, currentInfo);
@@ -2966,15 +3003,30 @@ function buildContinuousWall() {
     const widthPx = Math.max(endPx - startPx, legLengthM * 100 * pxPerCm);
     wallSegments.push({ key: leg.key, label: leg.label, startPx, widthPx, lengthM: legLengthM });
     cursor = startPx + widthPx;
-    // Angle décoratif entre ce mur et le suivant (jamais après le dernier) : une ombre verticale,
-    // façon repli du mur — pas une vraie rotation en 3D, mais assez pour suggérer que la bande
-    // « tourne » ici plutôt que de continuer tout droit, sans jamais couper la marche pour autant.
+    // Angle entre ce mur et le suivant (jamais après le dernier) : un vrai panneau en 3D (CSS
+    // perspective + rotateY), qui pivote au fur et à mesure qu'on avance dans cette zone plutôt que
+    // de rester un simple repli d'ombre statique — voir updateCornerVisuals, qui lit wallCorners
+    // pour faire tourner .scale-wall-corner-inner selon la position exacte dans cette zone (0° en
+    // entrant = face « sortie » visible, 180° en sortant = face « entrée » visible). Bug réel
+    // repéré en même temps : la marche « gelait » pendant ces 70 px (le mur ne semblait plus
+    // avancer) — comme le personnage tourne bien sur lui-même à cet endroit plutôt que de glisser,
+    // ce n'est plus un défaut : l'animation de rotation lui donne enfin un sens visible.
     if (i < legs.length - 1) {
       const corner = document.createElement('div');
       corner.className = 'scale-wall-corner';
       corner.style.left = `${cursor}px`;
       corner.style.width = `${WALL_CORNER_PX}px`;
+      const inner = document.createElement('div');
+      inner.className = 'scale-wall-corner-inner';
+      const faceExit = document.createElement('div');
+      faceExit.className = 'scale-wall-corner-face scale-wall-corner-face-exit';
+      const faceEnter = document.createElement('div');
+      faceEnter.className = 'scale-wall-corner-face scale-wall-corner-face-enter';
+      inner.appendChild(faceExit);
+      inner.appendChild(faceEnter);
+      corner.appendChild(inner);
       wall.appendChild(corner);
+      wallCorners.push({ startPx: cursor, inner });
       cursor += WALL_CORNER_PX;
     }
   });
@@ -3014,13 +3066,9 @@ function enterCloserPlan() {
 // plus haut — plus une entrée directe au clic sur la porte elle-même)
 function backToOverview() {
   $('scale-overview').classList.remove('hidden');
-  $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets
+  $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets — cache aussi avec lui le plan de choix de salle, qui y vit désormais
   $('scale-wall-line').classList.add('hidden');
   ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
-  // Le rond du plan du bâtiment doit refléter la salle actuellement choisie dès qu'on revoit la
-  // façade (ses dimensions à l'écran n'ont pas pu être mesurées correctement pendant qu'il était
-  // caché) — une frame d'attente, comme ailleurs, le temps que la mise en page soit posée.
-  requestAnimationFrame(updateOverviewRoomDot);
 }
 $('scale-checkpoint-back')?.addEventListener('click', backToOverview);
 $('scale-turnstile-exit')?.addEventListener('click', backToOverview);
@@ -3238,11 +3286,28 @@ makeSilhouetteDraggable($('scale-overview-silhouette'), {
 let walkAnimationId = null;
 let walkSpeed = 4; // pixels par image (~60 im/s) — ajustable à la voix ("plus vite"/"moins vite")
 let walkDirection = 0; // -1 gauche, 0 arrêté, 1 droite — mémorisé pour "plus vite" sans redonner le sens
+// Compte les images consécutives passées collé à une extrémité de la bande tout en continuant de
+// marcher dans ce sens — déclenche la sortie automatique de la salle (voir startWalking). Posée en
+// dehors de startWalking (pas remise à zéro à chaque relance de la marche) : onDrag relance
+// startWalking à chaque mouvement de pointeur, donc une variable locale à la fonction ne tiendrait
+// jamais assez longtemps pour compter quoi que ce soit.
+let edgeHoldTicks = 0;
 function stopWalking() {
   if (walkAnimationId) clearTimeout(walkAnimationId);
   walkAnimationId = null;
   walkDirection = 0;
   $('scale-silhouette').classList.remove('walking-left', 'walking-right');
+}
+// Fait pivoter chaque panneau d'angle selon la position exacte de la marche à l'intérieur de sa
+// zone (0 à WALL_CORNER_PX) : 0° tant qu'on ne l'a pas atteinte (face « sortie », le mur qu'on
+// quitte, visible), 180° une fois franchie (face « entrée », le mur suivant, visible) — et tout ce
+// qui est entre-deux pendant qu'on la traverse, pour un vrai pivotement progressif plutôt qu'un
+// changement brusque.
+function updateCornerVisuals(scrollLeft) {
+  wallCorners.forEach((corner) => {
+    const t = Math.min(1, Math.max(0, (scrollLeft - corner.startPx) / WALL_CORNER_PX));
+    corner.inner.style.transform = `rotateY(${t * 180}deg)`;
+  });
 }
 function updateDotAlongWall() {
   const wall = $('scale-wall');
@@ -3250,6 +3315,7 @@ function updateDotAlongWall() {
   const floorDot = $('scale-floor-dot');
   const silhouette = $('scale-silhouette');
   if (!wall || !dot || !wallSegments.length) return;
+  updateCornerVisuals(wall.scrollLeft);
   // Position du point sur le plan, à l'endroit correspondant de la bande continue (voir
   // pathPointForScrollLeft) — plus besoin de savoir « sur quel mur » on se trouve : un seul point
   // d'entrée (scrollLeft) suffit, qu'on soit sur un mur ou en train de tourner dans un angle.
@@ -3305,7 +3371,29 @@ function startWalking(direction) {
   const sil = $('scale-silhouette');
   sil.classList.add(direction > 0 ? 'walking-right' : 'walking-left');
   const step = () => {
+    const maxScroll = Math.max(0, wall.scrollWidth - wall.clientWidth);
+    const before = wall.scrollLeft;
     wall.scrollLeft += walkDirection * walkSpeed;
+    // Sortie automatique de la salle : les 2 bouts de la bande continue (tout au bout du mur
+    // gauche, tout au bout du mur droit) sont en réalité le même mur d'entrée manquant (voir
+    // buildContinuousWall) — si on continue de marcher alors qu'on y est déjà collé (le
+    // scrollLeft ne peut plus bouger dans ce sens), c'est qu'on ressort par là, comme demandé
+    // (« il rentre dans la salle, il sort de la salle »). On exige quelques images consécutives
+    // collé au bord (edgeHoldTicks) plutôt qu'une sortie au premier pixel, pour ne pas ressortir
+    // par accident au moment pile où on atteint le bout d'un mur en marchant normalement.
+    const atRightEnd = walkDirection > 0 && before >= maxScroll - 0.5 && wall.scrollLeft >= maxScroll - 0.5;
+    const atLeftEnd = walkDirection < 0 && before <= 0.5 && wall.scrollLeft <= 0.5;
+    if (atRightEnd || atLeftEnd) {
+      edgeHoldTicks++;
+      if (edgeHoldTicks > 12) { // ~200 ms collé au bord en continuant de marcher
+        edgeHoldTicks = 0;
+        stopWalking();
+        backToOverview();
+        return;
+      }
+    } else {
+      edgeHoldTicks = 0;
+    }
     updateDotAlongWall();
     updateDistanceMarker();
     walkAnimationId = setTimeout(step, 16); // ~60 images/seconde, sans dépendre de requestAnimationFrame
@@ -6146,7 +6234,11 @@ function impShowCurrent() {
   // s'affiche, sans avoir à revenir modifier la configuration de l'exercice pour le voir.
   const fieldOn = (key) => showFullCorrection || (anyFieldChecked ? $(`imp-field-${key}`).checked : true);
   const fields = [
-    { key: 'artist', label: 'Auteur', value: formatArtistDisplayName(work), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
+    // Bug réel repéré : le drapeau de nationalité s'affichait déjà pour le lieu de conservation
+    // (juste en dessous) mais jamais pour l'artiste ici, alors que la même info existe pour les
+    // deux (colonne Nationalité) — désormais affiché de la même façon (drapeau + info-bulle avec
+    // le nom du pays au survol), qu'on peut désactiver indépendamment dans Mon compte.
+    { key: 'artist', label: 'Auteur', value: artistFlag(work.nationality) ? `${formatArtistDisplayName(work)} <span title="${escapeHtml(nationalityCountryName(work.nationality))}">${artistFlag(work.nationality)}</span>` : formatArtistDisplayName(work), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
     { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },

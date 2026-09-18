@@ -1140,7 +1140,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:50;letter-spacing:.04em;">VERSION 4</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 7</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1159,20 +1159,6 @@
                 </svg>
               </div>
               <div id="scale-overview-floor" aria-hidden="true"></div>
-              <!-- Plan du bâtiment, uniquement si l'exposition remplit 2 salles (voir splitIntoRooms
-                   côté JS, qui décide state.allRooms) : un rectangle par salle, avec un rond rouge
-                   qu'on glisse (ou qu'on touche) de l'un à l'autre pour choisir celle où l'on va
-                   entrer — remplace l'ancien geste de glisser la façade elle-même pour changer de
-                   salle (retiré avec les piliers/le cordon, c'était un essai). Même principe visuel
-                   que le petit plan du mur rapproché une fois entré (#scale-minimap) : le fond a
-                   pointer-events:none (ne doit jamais bloquer un autre geste — bug réel repéré et
-                   corrigé sur l'autre plan, voir #scale-minimap plus bas), seul le rond a
-                   pointer-events:auto. -->
-              <div id="scale-overview-room-nav" class="hidden" style="position:fixed;bottom:16px;right:16px;width:190px;height:90px;background:rgba(20,20,20,.65);border:2px solid rgba(255,255,255,.5);border-radius:6px;z-index:7;pointer-events:none;display:flex;gap:10px;padding:8px;box-sizing:border-box;">
-                <div id="scale-overview-room-1" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;"></div>
-                <div id="scale-overview-room-2" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;"></div>
-                <div id="scale-overview-room-dot" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);cursor:grab;top:50%;left:25%;transform:translate(-50%,-50%);touch-action:none;pointer-events:auto;"></div>
-              </div>
               <!-- Sortir complètement de la salle depuis la façade — thème « fermeture du musée »,
                    cohérent avec l'ambiance d'entrée/sortie de ce premier plan. -->
               <button type="button" id="scale-close-museum" aria-label="Fermeture du musée, retour aux exercices" style="position:fixed;top:70px;left:16px;padding:8px 12px;border-radius:4px;border:2px solid #fff;background:#5a3a1a;color:#fff;font-size:.75rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:7;box-shadow:0 2px 8px rgba(0,0,0,.4);">🔔 Fermeture du musée</button>
@@ -1184,6 +1170,21 @@
                  vrai déplacement progressif du personnage à travers l'espace. -->
             <div id="scale-checkpoint" class="hidden">
               <button type="button" id="scale-checkpoint-back" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:absolute;top:16px;left:16px;padding:6px 10px;border-radius:4px;border:2px solid rgba(0,0,0,.3);background:rgba(255,255,255,.85);color:#2b2620;font-size:.72rem;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;">◄ Retour à l'entrée</button>
+              <!-- Plan du bâtiment, uniquement si l'exposition remplit 2 salles (voir splitIntoRooms
+                   côté JS, qui décide state.allRooms) : un rectangle par salle, avec un rond rouge
+                   qu'on glisse (ou qu'on touche) de l'un à l'autre pour choisir celle où l'on va
+                   entrer. Placé ici, au contrôle des billets (et non à la façade), à la demande de
+                   Stéphane : c'est ici, juste avant de franchir le tourniquet, que le choix de la
+                   salle a du sens (dans l'esprit d'origine, se déplacer « le long du cordon »).
+                   Même principe visuel que le petit plan du mur rapproché une fois entré
+                   (#scale-minimap) : le fond a pointer-events:none (ne doit jamais bloquer un autre
+                   geste — bug réel repéré et corrigé sur l'autre plan), seul le rond a
+                   pointer-events:auto. -->
+              <div id="scale-checkpoint-room-nav" class="hidden" style="position:fixed;bottom:16px;right:16px;width:190px;height:90px;background:rgba(20,20,20,.65);border:2px solid rgba(255,255,255,.5);border-radius:6px;z-index:7;pointer-events:none;display:flex;gap:10px;padding:8px;box-sizing:border-box;">
+                <div id="scale-checkpoint-room-1" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;"></div>
+                <div id="scale-checkpoint-room-2" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;"></div>
+                <div id="scale-checkpoint-room-dot" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);cursor:grab;top:50%;left:25%;transform:translate(-50%,-50%);touch-action:none;pointer-events:auto;"></div>
+              </div>
               <!-- Vraie salle en volume, façon photo de galerie : le mur du fond nous fait face
                    (un simple rectangle plat, pas de déformation puisqu'on le regarde de face), les
                    2 murs latéraux partent réellement en profondeur — leur bord extérieur (côté
@@ -1533,6 +1534,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=242"></script>
+    <script src="app.js?v=244"></script>
   </body>
 </html>

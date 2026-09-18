@@ -871,14 +871,28 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
 .scale-wall-item.scale-sculpture.current { box-shadow:0 0 0 3px var(--accent), 0 4px 10px rgba(0,0,0,.25); }
 .scale-wall-item.scale-sculpture img { object-fit:cover; }
 /* Angle entre 2 murs, sur la bande continue (mur gauche → mur du fond → mur droit, voir
-   buildContinuousWall dans app.js) : un simple repli d'ombre, pas une vraie rotation en 3D, mais
-   assez pour suggérer que la bande « tourne » ici plutôt que de continuer tout droit — le défilement,
-   lui, reste continu de part et d'autre, sans coupure de décor ni changement de plan. */
-.scale-wall-corner {
-  position:absolute; top:0; bottom:0;
-  background:linear-gradient(90deg, transparent, rgba(0,0,0,.4) 45%, rgba(0,0,0,.4) 55%, transparent);
-  z-index:1;
+   buildContinuousWall dans app.js) : un vrai panneau qui pivote en 3D (perspective + rotateY),
+   piloté image par image par updateCornerVisuals selon la position exacte de la marche dans cette
+   zone de 70 px — pas un simple repli d'ombre statique comme avant (bug/retour réel : « on n'a pas
+   l'impression qu'il tourne »). Deux faces collées dos à dos (comme une pancarte à 2 faces) : la
+   face « sortie » (le mur qu'on quitte) reste visible tant qu'on n'a pas atteint le milieu de la
+   zone, puis la rotation la fait disparaître (backface-visibility) pendant que la face « entrée »
+   (le mur suivant) apparaît à sa place — à 0° et 180° on retrouve un panneau bien plat, aligné avec
+   le reste de la bande ; entre les deux, on voit littéralement le panneau tourner sur lui-même. Le
+   défilement, lui, reste continu de part et d'autre, sans coupure de décor ni changement de plan. */
+.scale-wall-corner { position:absolute; top:0; bottom:0; z-index:3; perspective:340px; }
+.scale-wall-corner-inner { position:absolute; inset:0; transform-style:preserve-3d; }
+/* 3 nervures verticales (comme la moulure d'un vrai angle de mur) plutôt qu'un dégradé uni : sans
+   ce relief, un panneau qui pivote se contente de rétrécir puis de s'élargir sans qu'on distingue
+   vraiment un mouvement de rotation plutôt qu'un simple fondu — avec des rayures verticales, on
+   voit clairement leur espacement se resserrer près de 90° (vue de tranche) et se rouvrir ensuite,
+   ce qui lit sans ambiguïté comme un vrai pivotement plutôt qu'un effet plat. */
+.scale-wall-corner-face {
+  position:absolute; inset:0; backface-visibility:hidden;
+  background-size:34% 100%; background-repeat:repeat-x;
 }
+.scale-wall-corner-face-exit { background-color:#2a241c; background-image:linear-gradient(90deg, rgba(255,255,255,.22) 0 8%, transparent 8% 100%); box-shadow:inset -14px 0 22px rgba(0,0,0,.5); }
+.scale-wall-corner-face-enter { background-color:#3a3226; background-image:linear-gradient(90deg, transparent 0 92%, rgba(255,255,255,.22) 92% 100%); box-shadow:inset 14px 0 22px rgba(0,0,0,.5); transform:rotateY(180deg); }
 .lightbox-scale-caption { position:fixed; bottom:20px; right:24px; color:#4a453c; font-family:Arial,sans-serif; font-size:.9rem; margin:0; background:rgba(255,255,255,.8); padding:6px 12px; border-radius:4px; }
 @media (max-width:640px) {
   #scale-silhouette { height:52vh; left:16px; }
