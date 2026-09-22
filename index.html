@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=175" />
+    <link rel="stylesheet" href="style.css?v=176" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 19</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 20</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1274,6 +1274,23 @@
                     </radialGradient>
                   </defs>
                 </svg>
+              </div>
+            </div>
+            <!-- Couloir animé entre 2 salles (essai demandé par Stéphane : « il faut revenir au
+                 déplacement du personnage sur le plan d'ensemble, d'une salle à l'autre... on doit
+                 comme dans un travelling voir la salle 1 disparaître et la salle 2 apparaître » ).
+                 Même principe visuel que le mur rapproché (#scale-wall) : la silhouette
+                 (#scale-silhouette, réutilisée telle quelle, pas dupliquée) reste fixe à l'écran,
+                 c'est le décor qui défile dessous — sauf qu'ici la marche est automatique
+                 (walkCorridorToRoom dans app.js), pas pilotée à la main, puisqu'il s'agit d'un
+                 simple passage d'une salle à l'autre, pas d'une exploration libre. -->
+            <div id="scale-corridor" class="hidden">
+              <div id="scale-corridor-floor" aria-hidden="true"></div>
+              <div id="scale-corridor-wall">
+                <div id="scale-corridor-strip">
+                  <div class="scale-corridor-doorway scale-corridor-doorway-exit" aria-hidden="true"></div>
+                  <div class="scale-corridor-doorway scale-corridor-doorway-enter" aria-hidden="true"></div>
+                </div>
               </div>
             </div>
             <!-- Voile de transition floue entre les étapes. -->
@@ -1571,6 +1588,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=256"></script>
+    <script src="app.js?v=257"></script>
   </body>
 </html>

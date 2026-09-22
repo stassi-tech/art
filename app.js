@@ -2959,6 +2959,25 @@ function setLightboxScaleData(work) {
   $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
   exitScaleView();
 }
+// ============================================================================
+// RÉGLAGE TEMPORAIRE — essai du couloir animé (demande de Stéphane : « on va faire un essai avec
+// 2 peintres, on laisse courbet dans la 1 et on met David dans le 2e salle avec au fond le Sacre de
+// Napoléon »). Remplace, UNIQUEMENT quand ces deux artistes sont bien présents dans la sélection en
+// cours, la répartition automatique habituelle (splitIntoRooms) par cette configuration fixe et
+// reconnaissable — le temps de tester le nouveau couloir animé, en attendant le vrai outil de
+// placement des tableaux sur les murs (demandé mais pas encore construit, voir Stéphane). À retirer
+// (ou à rendre optionnel) une fois cet outil disponible. Si l'un des deux artistes manque à la
+// sélection en cours, on retombe silencieusement sur splitIntoRooms, comme avant ce réglage.
+function temporaryCorridorTestRooms(candidates) {
+  const courbetWorks = candidates.filter((w) => keyName(w.artist).includes('courbet'));
+  const davidWorks = candidates.filter((w) => keyName(w.artist).includes('david'));
+  if (!courbetWorks.length || !davidWorks.length) return null;
+  const sacre = davidWorks.find((w) => keyName(w.title).includes('sacre')) || davidWorks[0];
+  const davidRest = davidWorks.filter((w) => w !== sacre);
+  const room1 = [courbetWorks, [], [], []]; // Courbet au fond (seul mur peuplé) de la salle 1
+  const room2 = [[sacre], davidRest, [], []]; // Le Sacre de Napoléon bien au fond de la salle 2
+  return [room1, room2];
+}
 function enterScaleView() {
   // Filet de sécurité pour « Revoir l'exposition » : si on est repassé par l'accueil entre-temps,
   // currentLightboxWork peut avoir été perdu alors que la sélection d'œuvres, elle, est toujours
@@ -2988,7 +3007,7 @@ function enterScaleView() {
   // n'est créée que s'il y a assez d'œuvres, voir splitIntoRooms) ; state.roomWalls reste, comme
   // avant, les 4 murs de la salle actuellement visitée — la plupart du code existant (goToWall,
   // enterCloserPlan...) n'a donc pas besoin de savoir qu'il peut exister plusieurs salles.
-  state.allRooms = splitIntoRooms(candidates);
+  state.allRooms = temporaryCorridorTestRooms(candidates) || splitIntoRooms(candidates);
   state.currentRoomIndex = 0;
   state.roomWalls = state.allRooms[0];
 }
@@ -3020,33 +3039,51 @@ function updateCheckpointRoomDot() {
   dot.style.top = `${((tRect.top + tRect.height / 2 - navRect.top) / navRect.height) * 100}%`;
 }
 // Glisser (ou simplement toucher/relâcher) le rond d'un rectangle à l'autre choisit la salle dans
-// laquelle on entrera en franchissant le tourniquet (voir #scale-barrier → enterCloserPlan, qui lit
-// state.roomWalls) — pas de marche animée ici, juste un choix binaire entre les 2 salles, comme
-// demandé (« le personnage se déplace vers la deuxième salle »).
+// laquelle on ira. Pendant le geste, le point suit juste le doigt/curseur (retour visuel immédiat,
+// sans encore rien changer à la salle actuelle) ; c'est seulement au RELÂCHEMENT, une fois la
+// destination définitive connue, que la vraie marche démarre — un vrai couloir traversé (voir
+// walkCorridorToRoom ci-dessous), pas un simple échange d'état instantané comme avant. Changement
+// demandé par Stéphane : « il faut revenir au déplacement du personnage sur le plan d'ensemble,
+// d'une salle à l'autre... on doit comme dans un travelling voir la salle 1 disparaître et la
+// salle 2 apparaître. »
 (function attachCheckpointRoomNavDrag() {
   const dot = $('scale-checkpoint-room-dot');
   const nav = $('scale-checkpoint-room-nav');
   if (!dot || !nav) return;
   let dragging = false;
-  const selectFromClientX = (clientX) => {
+  const followClientX = (clientX) => {
     const navRect = nav.getBoundingClientRect();
     if (!navRect.width) return;
     const targetIndex = (clientX - navRect.left) / navRect.width < 0.5 ? 0 : 1;
-    if (state.allRooms && state.allRooms[targetIndex] && state.currentRoomIndex !== targetIndex) {
-      state.currentRoomIndex = targetIndex;
-      state.roomWalls = state.allRooms[targetIndex];
-    }
-    updateCheckpointRoomDot();
+    const target = $(targetIndex === 1 ? 'scale-checkpoint-room-2' : 'scale-checkpoint-room-1');
+    if (!target) return;
+    const tRect = target.getBoundingClientRect();
+    dot.style.left = `${((tRect.left + tRect.width / 2 - navRect.left) / navRect.width) * 100}%`;
+    dot.style.top = `${((tRect.top + tRect.height / 2 - navRect.top) / navRect.height) * 100}%`;
+    dot.dataset.pendingRoom = String(targetIndex);
   };
   dot.addEventListener('pointerdown', (event) => {
     event.preventDefault();
     event.stopPropagation();
+    if (corridorWalking) return; // un couloir est déjà en cours : on ignore ce nouveau geste
     dragging = true;
     dot.setPointerCapture?.(event.pointerId);
     dot.style.cursor = 'grabbing';
+    followClientX(event.clientX); // couvre aussi le simple toucher/relâcher, sans glisser
   });
-  dot.addEventListener('pointermove', (event) => { if (dragging) selectFromClientX(event.clientX); });
-  const stop = () => { dragging = false; dot.style.cursor = 'grab'; };
+  dot.addEventListener('pointermove', (event) => { if (dragging) followClientX(event.clientX); });
+  const stop = () => {
+    if (!dragging) return;
+    dragging = false;
+    dot.style.cursor = 'grab';
+    const targetIndex = dot.dataset.pendingRoom != null ? Number(dot.dataset.pendingRoom) : state.currentRoomIndex;
+    delete dot.dataset.pendingRoom;
+    if (state.allRooms && state.allRooms[targetIndex] && state.currentRoomIndex !== targetIndex) {
+      walkCorridorToRoom(targetIndex);
+    } else {
+      updateCheckpointRoomDot(); // pas de changement : le point revient à sa vraie position actuelle
+    }
+  };
   dot.addEventListener('pointerup', stop);
   dot.addEventListener('pointercancel', stop);
 })();
@@ -3065,6 +3102,74 @@ function blurTransition(swap) {
       setTimeout(() => veil.classList.add('hidden'), 500);
     });
   }, 500);
+}
+// Couloir animé entre 2 salles (« un vrai couloir traversé », demandé par Stéphane à la place du
+// changement instantané précédent) : même principe visuel que la marche dans la salle rapprochée
+// (une bande de décor défile pendant que la silhouette reste fixe à l'écran), mais ici la marche est
+// AUTOMATIQUE — il s'agit juste de rejoindre l'autre salle, pas d'une exploration libre — donc on
+// avance le décor via un simple transform plutôt que de réutiliser tout l'appareillage de #scale-wall
+// (scrollLeft, minimap, murs latéraux...), qui ne concerne que la vraie visite. La silhouette
+// réutilisée est #scale-silhouette elle-même (normalement masquée à l'étape du contrôle des billets)
+// plutôt qu'une silhouette dupliquée : elle est déjà position:fixed, donc visible aussi bien ici.
+let corridorWalking = false;
+let corridorWalkId = null;
+const CORRIDOR_STRIP_PX = 2400; // largeur totale du couloir, bien plus large que l'écran
+const CORRIDOR_WALK_SPEED = 5; // px/image — même esprit que walkSpeed (startWalking), marche non pilotée
+function walkCorridorToRoom(targetIndex) {
+  const corridor = $('scale-corridor');
+  const wall = $('scale-corridor-wall');
+  const strip = $('scale-corridor-strip');
+  const sil = $('scale-silhouette');
+  if (!corridor || !wall || !strip || !sil || corridorWalking) {
+    // Filet de sécurité (décor de couloir absent — ex. page pas encore rechargée après cette
+    // livraison — ou marche déjà en cours) : on retombe sur l'ancien échange instantané plutôt que
+    // de laisser le geste sans aucun effet.
+    if (state.allRooms && state.allRooms[targetIndex]) {
+      state.currentRoomIndex = targetIndex;
+      state.roomWalls = state.allRooms[targetIndex];
+    }
+    updateCheckpointRoomDot();
+    return;
+  }
+  corridorWalking = true;
+  $('scale-checkpoint').classList.add('hidden');
+  corridor.classList.remove('hidden');
+  sil.classList.remove('hidden');
+  sil.style.pointerEvents = 'none'; // pas de glisser accidentel pendant que la marche est automatique
+  sil.style.left = '50%'; // reste centrée à l'écran tout le couloir, comme sur le mur rapproché
+  strip.style.transition = 'none';
+  strip.style.transform = 'translateX(0px)';
+  requestAnimationFrame(() => {
+    const maxOffset = Math.max(0, CORRIDOR_STRIP_PX - wall.getBoundingClientRect().width);
+    let offset = 0;
+    sil.classList.add('walking-right');
+    const step = () => {
+      offset = Math.min(maxOffset, offset + CORRIDOR_WALK_SPEED);
+      strip.style.transform = `translateX(-${offset}px)`;
+      if (offset >= maxOffset) {
+        sil.classList.remove('walking-right');
+        arriveInRoomAfterCorridor(targetIndex);
+        return;
+      }
+      corridorWalkId = setTimeout(step, 16); // ~60 images/seconde, comme startWalking
+    };
+    corridorWalkId = setTimeout(step, 16);
+  });
+}
+function arriveInRoomAfterCorridor(targetIndex) {
+  if (corridorWalkId) clearTimeout(corridorWalkId);
+  corridorWalkId = null;
+  state.currentRoomIndex = targetIndex;
+  state.roomWalls = state.allRooms[targetIndex];
+  blurTransition(() => {
+    $('scale-corridor').classList.add('hidden');
+    const sil = $('scale-silhouette');
+    sil.classList.add('hidden'); // redevient masquée au contrôle des billets, comme avant d'entrer dans le couloir
+    sil.style.pointerEvents = '';
+    $('scale-checkpoint').classList.remove('hidden');
+    corridorWalking = false;
+    requestAnimationFrame(() => { layoutCheckpointRoom(); updateCheckpointRoomDot(); });
+  });
 }
 // Étape 2 : pousser la porte — transition floue vers le contrôle des billets, qui montre le mur du
 // fond depuis l'entrée avant de le franchir.
