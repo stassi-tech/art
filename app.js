@@ -1,4 +1,45 @@
 const $ = (id) => document.getElementById(id);
+// Filet de sécurité pour le diagnostic à distance : si une erreur JavaScript survient N'IMPORTE OÙ
+// dans l'app (même très tôt, avant tout le reste), elle reste aujourd'hui invisible pour Stéphane
+// tant qu'il n'ouvre pas la console du navigateur (F12) — ce qu'on ne peut pas lui demander de faire
+// en permanence. Ce bandeau l'affiche directement à l'écran, en rouge, dès qu'elle se produit, pour
+// qu'un blocage silencieux (ex. la salle 2/le point rouge au sol qui semblent inertes sans raison
+// visible) devienne immédiatement repérable et communicable, sans étape technique supplémentaire.
+// Volontairement tout en styles inline (pas de dépendance à style.css, pour qu'il fonctionne même si
+// la feuille de style elle-même est en cause) et posé tout en haut du fichier, avant Firebase et tout
+// le reste, pour capter aussi les erreurs les plus précoces au chargement.
+(function installErrorBanner() {
+  let banner = null;
+  let count = 0;
+  const show = (text) => {
+    count += 1;
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'debug-error-banner';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:#b3261e;color:#fff;font-family:monospace;font-size:12px;line-height:1.4;padding:8px 40px 8px 10px;max-height:35vh;overflow:auto;white-space:pre-wrap;box-shadow:0 2px 10px rgba(0,0,0,.5);';
+      const closeBtn = document.createElement('button');
+      closeBtn.textContent = '✕';
+      closeBtn.style.cssText = 'position:absolute;top:4px;right:8px;background:transparent;color:#fff;border:1px solid #fff;border-radius:3px;width:26px;height:26px;font-size:14px;cursor:pointer;';
+      closeBtn.onclick = () => banner.remove();
+      banner.appendChild(closeBtn);
+      const list = document.createElement('div');
+      list.id = 'debug-error-banner-list';
+      banner.appendChild(list);
+      (document.body || document.documentElement).appendChild(banner);
+    }
+    const list = banner.querySelector('#debug-error-banner-list');
+    const line = document.createElement('div');
+    line.textContent = `#${count} — ${text}`;
+    list.appendChild(line);
+  };
+  window.addEventListener('error', (event) => {
+    const loc = event.filename ? ` (${event.filename.split('/').pop()}:${event.lineno}:${event.colno})` : '';
+    show(`ERREUR JS : ${event.message}${loc}`);
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    show(`PROMESSE REJETÉE : ${event.reason && event.reason.message ? event.reason.message : event.reason}`);
+  });
+})();
 const state = {
   questions: [],
   answers: [],
