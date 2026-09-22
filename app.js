@@ -759,9 +759,12 @@ $('pf-fields-clear')?.addEventListener('click', () => {
 // celui des exercices eux-mêmes : rien coché = tout accepté).
 function artistMatchesCurrentField(row) {
   const fields = readGlobalFieldDefaults();
-  const rowArts = String(row['Art(s)'] || '').split(',').map((s) => s.trim().toLocaleLowerCase('fr-FR'));
+  // La colonne « Art(s) » a disparu du fichier maître (même restructuration que le correctif de
+  // la salle d'exposition) : on ne peut plus savoir ici si un artiste donné fait de la peinture,
+  // de la sculpture, ou les deux. Plutôt que d'exclure silencieusement tout le monde dès qu'un
+  // art précis est coché (bug réel repéré : plus aucun artiste ne passait ce filtre), on renonce
+  // à filtrer sur cette dimension — un artiste reste proposé quel que soit l'art coché.
   const rowCenturies = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim());
-  if (fields.arts?.length && !rowArts.some((a) => fields.arts.includes(a))) return false;
   if (fields.centuries?.length && !rowCenturies.some((c) => fields.centuries.includes(c))) return false;
   if (fields.zones?.length) {
     const z = zoneOfNationality(row['Nationalité']);
@@ -3905,7 +3908,13 @@ async function openArtistWorksPage(idx) {
   $('other-works-artist-dates').textContent = '';
   const list = $('other-works-panel-list');
   list.innerHTML = '<p class="modal-hint">Chargement des œuvres…</p>';
-  const arts = String(row['Art(s)'] || '').split(',').map((s) => keyName(s.trim())).filter(Boolean);
+  // Même cause que le correctif de la salle d'exposition : la colonne « Art(s) » a disparu du
+  // fichier maître (bug réel repéré : ceci renvoyait toujours une liste vide, donc plus aucune
+  // œuvre pour personne). Ici, rien ne doit se limiter à la peinture — on veut TOUTES les œuvres
+  // de l'artiste — donc on essaie simplement les deux arts : le filtre par nom d'artiste, dans
+  // chaque fichier (peinture-SIÈCLE.xlsx / sculpture-SIÈCLE.xlsx), élimine de lui-même celui où
+  // l'artiste n'a rien.
+  const arts = ['peinture', 'sculpture'];
   const centuries = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   let allRows = [];
   for (const art of arts) {
