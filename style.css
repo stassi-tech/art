@@ -473,8 +473,15 @@ body.lefty .hamburger-menu { right:auto; left:16px; }
    colorée, devient un vrai bouton texte — fond blanc, texte bien visible — posé sur la même ligne
    que "Voir/Arrêter la correction complète" (même hauteur/police, cf. le style inline de ce dernier
    :padding:4px 10px;font-size:.72rem, volontairement inchangé). */
-.exercise-hub-text-button { display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; font-size:.72rem; font-weight:700; font-family:Arial,sans-serif; border-radius:5px; border:1px solid var(--cta); background:#fff; color:var(--cta-dark); cursor:pointer; transition:background .15s, color .15s; }
+/* Retour de Stéphane : ce bouton et son voisin « Voir la correction complète » (voir
+   .exercise-correction-toggle-button plus bas) doivent être plus grands et plus visibles (un
+   vrai entourage bien marqué autour de chaque cartouche), tout en restant sur la même ligne. */
+.exercise-hub-text-button { display:inline-flex; align-items:center; justify-content:center; padding:12px 20px; font-size:.92rem; font-weight:700; font-family:Arial,sans-serif; border-radius:6px; border:2px solid var(--cta); background:#fff; color:var(--cta-dark); cursor:pointer; transition:background .15s, color .15s; }
 .exercise-hub-text-button:hover { background:var(--cta); color:#fff; }
+/* Partagé avec les 4 boutons "Voir/Arrêter la correction complète" (imp/intrus/recon/vf) pour
+   qu'ils s'agrandissent et s'entourent exactement comme le bouton ci-dessus, sans toucher au
+   style de base .secondary-button utilisé ailleurs dans l'appli. */
+.exercise-correction-toggle-button { padding:12px 20px; font-size:.92rem; border-width:2px; }
 .exercise-icon-scores { background:#8a2be2; border-color:#8a2be2; }
 .exercise-icon-scores:hover { background:#6f1fb8; border-color:#6f1fb8; }
 .home-icon-button:hover { opacity:1; background:#f7f2ea; }

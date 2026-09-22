@@ -1050,7 +1050,11 @@ function populateReadyExplanation(prefix) {
   const el = $(`${prefix}-ready-explanation`);
   if (!el) return;
   const rules = EXERCISE_RULES[prefix];
-  const show = getGlobalPrefs().showExplanations && !!rules;
+  // En parcours guidé, la règle du jeu doit toujours apparaître (et se dire à voix haute plus bas)
+  // sur cette page d'attente, même si "showExplanations" a été désactivé par ailleurs (ex. via
+  // « Effacer la sélection » dans Mon compte) — cette préférence ne doit régir que le hors-parcours
+  // guidé, exactement comme guidedModeActive force déjà la voix indépendamment de audioOn ci-dessous.
+  const show = !!rules && (guidedModeActive || getGlobalPrefs().showExplanations);
   el.classList.toggle('hidden', !show);
   if (show) el.textContent = rules.texte;
   // Retour de Stéphane : le bouton qui lance l'exercice répond parfois avec un peu de retard
