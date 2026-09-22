@@ -1007,10 +1007,12 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
                      linear-gradient(90deg, rgba(0,0,0,.5), rgba(255,255,255,.22) 50%, rgba(0,0,0,.5));
   box-shadow: inset 0 0 24px rgba(0,0,0,.4), 4px 0 10px rgba(0,0,0,.3), -4px 0 10px rgba(0,0,0,.3);
 }
-/* v24 : repère de jonction salle 1 / salle 2 sur le plan d'ensemble (voir setupCheckpointWalk/
-   updateCheckpointWalkVisual dans app.js) — centré sur le mur du fond, invisible par défaut
-   (opacity:0, pilotée en JS selon la progression de la marche), jamais cliquable. */
-.scale-checkpoint-pillar { left:50%; width:9%; transform:translateX(-50%); opacity:0; pointer-events:none; }
+/* v25 : repère de jonction salle 1 / salle 2 sur le plan d'ensemble (voir setupCheckpointWalk/
+   updateCheckpointWalkVisual dans app.js) — posé près de la fin du mur du fond (pas centré : le
+   personnage doit marcher jusque là, passer devant, ET SEULEMENT ENSUITE voir la salle 2, retour
+   de Stéphane), invisible par défaut (opacity:0, pilotée en JS selon la progression de la marche),
+   jamais cliquable. */
+.scale-checkpoint-pillar { left:76%; width:9%; opacity:0; pointer-events:none; }
 /* Point rouge au sol du plan d'ensemble (voir attachCheckpointFloorDotDrag dans app.js) — même
    apparence que #scale-floor-dot, mais position:absolute (pas fixed) puisqu'il vit DANS
    #scale-checkpoint-row plutôt que sur tout l'écran, et sans transform:translateX(-50%) de base :

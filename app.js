@@ -3116,12 +3116,24 @@ function updateCheckpointRoomIndicator() {
 // porte (une mise en scène quasi photographique, pas un vrai espace qu'on parcourt comme le plan
 // rapproché) — impossible d'y faire défiler un vrai mur de 15 m. Le personnage marche donc sur une
 // distance courte et fixe à l'écran (CHECKPOINT_WALK_RANGE_PX), et le changement de salle se fait
-// en substituant l'œuvre du mur du fond (voir layoutCheckpointRoom) au passage, avec un pilier qui
-// apparaît brièvement au milieu du trajet pour marquer la jonction — même principe que le pilier
-// du plan rapproché (voir appendStaticPillar), juste sans vrai défilement puisqu'il n'y en a pas
-// ici. Première version : la distance/le rythme de marche pourront être ajustés selon le retour de
-// Stéphane une fois vus en situation réelle.
+// en substituant l'œuvre du mur du fond (voir layoutCheckpointRoom) au passage — mais seulement une
+// fois le pilier (voir CHECKPOINT_PILLAR_START/END plus bas) vraiment franchi, pas au milieu du
+// trajet : Stéphane a précisé qu'il faut d'abord marcher jusqu'au pilier, passer devant lui (le
+// tableau de la salle 1 reste visible pendant qu'on le franchit), et SEULEMENT APRÈS voir
+// apparaître la salle 2 — même principe que le pilier du plan rapproché (voir appendStaticPillar),
+// juste sans vrai défilement puisqu'il n'y en a pas ici.
 const CHECKPOINT_WALK_RANGE_PX = 220;
+// Retour de Stéphane après avoir vu la v25 : la salle ne doit PAS changer dès le milieu du trajet —
+// le personnage doit aller jusqu'au pilier, passer DEVANT lui (l'enterrement à Ornans doit encore
+// être visible à ce moment-là, juste partiellement masqué par le pilier), et ce n'est qu'UNE FOIS
+// le pilier bien franchi que la salle 2 apparaît. Le pilier n'est donc plus centré à 50 % du
+// trajet mais posé près de la fin (une vraie zone, pas un instant unique) : la salle affichée ne
+// change que lorsqu'on est passé ENTIÈREMENT de l'autre côté de cette zone — tant qu'on est dans
+// la zone elle-même (en train de la franchir, dans un sens ou dans l'autre), la salle affichée
+// reste celle d'où l'on vient (hysteresis : ça évite aussi un aller-retour minuscule pile sur le
+// pilier qui ferait clignoter la salle affichée).
+const CHECKPOINT_PILLAR_START = 0.72; // début de la zone du pilier (encore salle 1 jusque-là)
+const CHECKPOINT_PILLAR_END = 0.90; // fin de la zone (au-delà : vraiment salle 2)
 let checkpointProgress = 0; // 0 = salle 1, 1 = salle 2
 let checkpointWalkDirection = 0;
 let checkpointWalkAnimationId = null;
@@ -3130,12 +3142,20 @@ function stopCheckpointWalking() {
   checkpointWalkAnimationId = null;
   checkpointWalkDirection = 0;
 }
+// Opacité du pilier : 100 % tant qu'on est DANS sa zone (on est en train de le franger), et un
+// court fondu (0,06 de progression) juste avant/après, pour qu'il n'apparaisse/disparaisse jamais
+// d'un coup sec.
+function checkpointPillarOpacity(progress) {
+  const fade = 0.06;
+  if (progress < CHECKPOINT_PILLAR_START) return Math.max(0, 1 - (CHECKPOINT_PILLAR_START - progress) / fade);
+  if (progress > CHECKPOINT_PILLAR_END) return Math.max(0, 1 - (progress - CHECKPOINT_PILLAR_END) / fade);
+  return 1;
+}
 // Applique la progression courante (0..1) au personnage ET au point qui le suit (même translation
 // pour les deux, afin que le point reste bien « attaché » à ses pieds pendant qu'il marche), fait
-// apparaître le pilier près du croisement (~50 % du trajet), et bascule réellement de salle dès
-// qu'on a franchi la moitié — en remplaçant l'œuvre affichée sur le mur du fond (layoutCheckpointRoom)
-// et en mettant à jour le témoin passif (updateCheckpointRoomIndicator), exactement ce qui se
-// passait déjà en franchissant le pilier dans le plan rapproché avant ce changement.
+// apparaître le pilier dans sa zone (voir CHECKPOINT_PILLAR_START/END), et ne bascule réellement de
+// salle qu'une fois cette zone entièrement franchie — en remplaçant l'œuvre affichée sur le mur du
+// fond (layoutCheckpointRoom) et en mettant à jour le témoin passif (updateCheckpointRoomIndicator).
 function updateCheckpointWalkVisual() {
   const dot = $('scale-checkpoint-floor-dot');
   const sil = $('scale-checkpoint-silhouette');
@@ -3143,8 +3163,13 @@ function updateCheckpointWalkVisual() {
   const tx = checkpointProgress * CHECKPOINT_WALK_RANGE_PX;
   if (dot) dot.style.transform = `translateX(${tx}px)`;
   if (sil) sil.style.transform = `translateX(${tx}px)`;
-  if (pillar) pillar.style.opacity = String(Math.max(0, 1 - Math.abs(checkpointProgress - 0.5) * 6));
-  const newRoomIndex = checkpointProgress < 0.5 ? 0 : 1;
+  if (pillar) pillar.style.opacity = String(checkpointPillarOpacity(checkpointProgress));
+  // Hysteresis : au-delà de la fin de la zone → salle 2 ; avant le début → salle 1 ; À L'INTÉRIEUR
+  // de la zone, on ne touche à rien, la salle affichée reste celle d'avant qu'on y entre (qu'on
+  // vienne de la gauche ou de la droite).
+  let newRoomIndex = state.currentRoomIndex;
+  if (checkpointProgress > CHECKPOINT_PILLAR_END) newRoomIndex = 1;
+  else if (checkpointProgress < CHECKPOINT_PILLAR_START) newRoomIndex = 0;
   if (state.allRooms && newRoomIndex !== state.currentRoomIndex) {
     state.currentRoomIndex = newRoomIndex;
     state.roomWalls = state.allRooms[newRoomIndex];
