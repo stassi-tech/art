@@ -773,17 +773,24 @@ async function populateArtistSuggestions() {
     }
     matchingRows = kept;
   }
-  const names = matchingRows.map((r) => [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim())
-    .filter(Boolean).sort((a, b) => a.localeCompare(b, 'fr'));
+  // Même tri (nom de famille ou surnom, particules ignorées) et même présentation — case à cocher
+  // + drapeau national — que la liste équivalente du parcours guidé (gc-artist-list) : les deux
+  // affichaient jusqu'ici le même réglage de deux façons très différentes (ici, des boutons pleins
+  // sans drapeau à cliquer ; là, des cases à cocher avec drapeau), ce qui donnait l'impression de
+  // deux fonctionnalités distinctes alors que c'est exactement le même choix vu depuis deux
+  // endroits de l'appli (parcours guidé vs Mon compte).
+  matchingRows.sort((a, b) => particleStrippedSortKey(a['Surnom'] || a['Patronyme']).localeCompare(particleStrippedSortKey(b['Surnom'] || b['Patronyme']), 'fr'));
   const selected = (readGlobalArtistDefaults().artists || []);
-  list.innerHTML = names.map((name) => {
+  list.innerHTML = matchingRows.map((r) => {
+    const name = [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim();
     const isSel = selected.includes(name);
-    return `<button type="button" class="pf-artist-pick" data-name="${escapeHtml(name)}" style="display:block;width:100%;text-align:left;padding:7px 10px;border:0;cursor:pointer;font:inherit;border-radius:4px;margin-bottom:2px;background:${isSel ? 'var(--accent)' : 'none'};color:${isSel ? '#fff' : 'inherit'};font-weight:${isSel ? '700' : '400'};">${isSel ? '✓ ' : ''}${escapeHtml(name)}</button>`;
+    const flag = artistFlag(r['Nationalité']) || '';
+    return `<label class="rubrique-option" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="pf-artist-pick" value="${escapeHtml(name)}" ${isSel ? 'checked' : ''} /><span>${flag} ${escapeHtml(name)}</span></label>`;
   }).join('');
-  list.querySelectorAll('.pf-artist-pick').forEach((btn) => {
-    btn.addEventListener('click', () => toggleArtistSelection(btn.dataset.name));
+  list.querySelectorAll('.pf-artist-pick').forEach((cb) => {
+    cb.addEventListener('change', () => toggleArtistSelection(cb.value));
   });
-  status.textContent = `${names.length} artiste${names.length > 1 ? 's' : ''} compatible${names.length > 1 ? 's' : ''} avec vos choix de niveau et de champ actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
+  status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec vos choix de niveau et de champ actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
 }
 function toggleArtistSelection(name) {
   sessionStorage.setItem('hasConfiguredThisSession', 'true');
@@ -1008,25 +1015,23 @@ const EXERCISE_RULES = {
     texte: "Une œuvre s'affiche. Pour chaque rubrique choisie (artiste, titre, date, lieu…), tapez votre réponse dans le champ correspondant, ou dictez-la avec le micro 🎤. Une fois toutes les rubriques renseignées, validez : la correction affiche les informations disponibles, avec un indicateur « Exact » ou « À réviser » pour chacune. Les réponses proches (fautes d'orthographe, surnoms) sont tolérées dans une certaine mesure.",
   },
 };
-let exerciseRulesConfirmCallback = null;
-function showExerciseRules(prefix, onConfirm) {
+// Le popup bloquant « comment ça marche » (modal-exercise-rules, à fermer avant de pouvoir
+// démarrer) a été supprimé : Stéphane a demandé que cette explication n'interrompe plus le
+// lancement d'un exercice par une fenêtre séparée, mais apparaisse directement sur l'écran
+// d'attente (la mosaïque « Cette galerie vous attend… »), en même temps que le reste de son
+// contenu — un aller simple vers l'exercice plutôt qu'un clic de confirmation en plus.
+// Le réglage qui affiche/masque ce texte est désormais « showExplanations » (déjà utilisé pour
+// l'objectif court affiché/lu sur l'écran de configuration, cf. speakObjective) : « showRules »
+// pilote maintenant uniquement l'astuce du micro (cf. mic-tooltip plus bas), qui en avait besoin
+// mais ne l'utilisait pas alors que son intitulé Mon compte le laissait croire.
+function populateReadyExplanation(prefix) {
+  const el = $(`${prefix}-ready-explanation`);
+  if (!el) return;
   const rules = EXERCISE_RULES[prefix];
-  if (!rules || !getGlobalPrefs().showRules) { onConfirm(); return; }
-  $('exercise-rules-title').textContent = rules.titre;
-  $('exercise-rules-text').textContent = rules.texte;
-  exerciseRulesConfirmCallback = onConfirm;
-  openModal('modal-exercise-rules');
+  const show = getGlobalPrefs().showExplanations && !!rules;
+  el.classList.toggle('hidden', !show);
+  if (show) el.textContent = rules.texte;
 }
-$('exercise-rules-confirm')?.addEventListener('click', () => {
-  closeModal('modal-exercise-rules');
-  const cb = exerciseRulesConfirmCallback;
-  exerciseRulesConfirmCallback = null;
-  cb?.();
-});
-$('exercise-rules-cancel')?.addEventListener('click', () => {
-  closeModal('modal-exercise-rules');
-  exerciseRulesConfirmCallback = null;
-});
 // Fenêtre de fin d'exercice : score, message encourageant, retour au menu des exercices — plutôt
 // que de renvoyer directement à la page de configuration, ce qui déroutait des joueurs (un
 // bouton « Terminer » qui semblait ramener en arrière plutôt que clore la session).
@@ -1145,8 +1150,14 @@ async function applyFieldLinkedAmbiance() {
     $('ambiance-ask-box')?.classList.remove('hidden');
   }
 }
+// La voix du parcours guidé est volontairement obligatoire (retour de Stéphane : « pour le
+// parcours guidé la voix est obligatoire, on ne peut pas l'enlever, s'il ne veut plus l'entendre
+// le joueur entre dans les jeux par le menu ») — donc PAS de vérification de la préférence
+// audioOn ici, contrairement aux autres fonctions *Speak() de l'appli. La case à cocher
+// « Lecture audio » du parcours guidé (voir gc-personalize-audio) continue de régler audioOn pour
+// la suite (Mon compte, jeux par le menu), juste pas pour ce qui reste du parcours guidé lui-même.
 function guidedSpeak(text) {
-  if (!getGlobalPrefs().audioOn || !window.speechSynthesis || !text) return;
+  if (!window.speechSynthesis || !text) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
@@ -1397,7 +1408,11 @@ function attachSimpleMic(button, input) {
 
 if (voiceSupported) {
   $('mic-global').classList.remove('hidden');
-  if (localStorage.getItem('micTooltipDismissed') !== 'true') $('mic-tooltip')?.classList.remove('hidden');
+  // « showRules » (Mon compte : « Afficher les conseils d'utilisation du micro avant le début des
+  // jeux ») pilote maintenant cette astuce — c'est ce que son intitulé a toujours suggéré, mais le
+  // code ne le faisait pas encore avant cette correction (elle n'était gouvernée que par la case
+  // « Ne plus afficher ce message », indépendamment de tout réglage Mon compte).
+  if (getGlobalPrefs().showRules && localStorage.getItem('micTooltipDismissed') !== 'true') $('mic-tooltip')?.classList.remove('hidden');
 }
 $('mic-tooltip-close')?.addEventListener('click', () => {
   if ($('mic-tooltip-dismiss')?.checked) localStorage.setItem('micTooltipDismissed', 'true');
@@ -1540,6 +1555,12 @@ const PRONUNCIATION_FIXES = {
   // prononce bien « ane » et pas « an(e) » nasalisé — et donne enfin le son attendu.
   'carle van loo': 'carle vanne lo',
   'watteau': 'vatteau',
+  // « Simon » se lisait à l'anglaise (« Saïmon », comme le prénom anglais) plutôt qu'à la
+  // française (« Simon », comme dans « Simone ») — certaines voix semblent reconnaître ce prénom
+  // très courant en anglais et basculer dessus malgré la langue fr-FR de l'utterance. Respelling
+  // avec un « y » (qui se lit comme un « i » en français) : orthographe assez différente pour ne
+  // plus déclencher cette reconnaissance, tout en se prononçant pareil une fois lu en français.
+  'simon vouet': 'symon vouet',
   'reichler': 'raïchlère',
   'jacopo': 'giacopo',
   'serpotta': 'serpotta',
@@ -1576,7 +1597,10 @@ const PRONUNCIATION_FIXES = {
   'kirchner': 'kirchneur',
   'kisling': 'kissling',
   'bernadino': 'bérnadino',
-  'vermeer': 'vérmeur',
+  // Repéré à nouveau malgré 'vérmeur' : le moteur semble parfois avaler le second "r" final —
+  // 'vérmère' calque la finale sur un mot français très courant ("mère"), dont le "r" final se
+  // prononce toujours de façon fiable.
+  'vermeer': 'vérmère',
   'kalf': 'kalf',
   'edvard': 'édvard',
   'campione': 'campioné',
@@ -1610,8 +1634,11 @@ const PRONUNCIATION_FIXES = {
   'bernini': 'bérnini',
   'teniers': 'ténié',
   'cumes': 'coumes',
-  'velasquez': 'vélasqueze',
-  'velázquez': 'vélasqueze',
+  // "pas zé" (retour de Stéphane) : la finale "-ueze" se faisait apparemment entendre comme un
+  // "é" accentué plutôt qu'un e muet. "-èze" calque la finale sur des mots français courants
+  // (ex. "obèse") dont le e final reste bien muet.
+  'velasquez': 'vélaskèze',
+  'velázquez': 'vélaskèze',
   'gentileschi': 'gentileski',
   'sœurs': 'seurs',
   'chassériau': 'Chasériau',
@@ -1706,6 +1733,47 @@ const PRONUNCIATION_FIXES = {
   'poisson': 'Pouasson',
   'vœu': 'veu',
   'bernin': 'Bèrnin',
+  // Nouvelle liste de retours (chiffres romains, noms d'artistes et lieux réels des fichiers,
+  // vérifiés dans les données avant d'écrire chaque correction).
+  'xiv': 'quatorze',
+  // Domenico Zampieri, dit Domenichino — le "ch" italien (son "k") se lisait comme un "ch" français.
+  'domenichino': 'doménikino',
+  // "Canon de salut" (Le Canon de salut) : le sens ici est bien le canon-arme, pas la marque
+  // d'appareil photo — le "n" final se perdait. Le double "n" force à la fois la nasale et la
+  // consonne à s'entendre distinctement.
+  'canon': 'kanonne',
+  // Francisco de Zurbarán : le "n" final espagnol se nasalisait à la française et disparaissait.
+  'zurbarán': 'zurbaranne',
+  'zurbaran': 'zurbaranne',
+  // "Samson et Dalila", "Samson et le Philistin" : le nom biblique se nasalisait entièrement
+  // ("an", "on"), perdant le m et le n. Les doubler bloque la nasalisation, comme pour "vanne".
+  'samson': 'sammesonne',
+  // Annibale Carrache : la finale italienne doit rester un "é" audible, pas un e muet à la française.
+  'annibale': 'annibalé',
+  // Rembrandt van Rijn : le digramme néerlandais "ij" se lit "aille"/"i" selon les moteurs — jamais
+  // comme un "j" français. Rembrandt seul seul restait correct (le "dt" final s'avale naturellement
+  // à la française) donc pas touché ici.
+  'rijn': 'rine',
+  // Musée d'art Nelson-Atkins (Kansas City) : le "s" final anglais de "Atkins" restait muet.
+  'atkins': 'atkinnse',
+  // Bernardo Strozzi : le double "z" italien se prononce "ts", pas comme un "z" français.
+  'strozzi': 'strotsi',
+  // Metropolitan Museum of Art : le "n" final anglais se perdait dans la nasalisation française.
+  'metropolitan': 'metropolitanne',
+  // Piet Mondrian : prénom néerlandais (se prononce "pite"), pas le "pyè" que donnerait la lecture
+  // à la française d'un "et" final.
+  'piet': 'pitte',
+  // Jean-Baptiste Clésinger : un "r" final se faisait entendre alors que cette terminaison en
+  // "-er" doit rester muette, comme dans "boulanger".
+  'clésinger': 'clésinjé',
+  'clesinger': 'clésinjé',
+  // "Alma Mater" (titre d'une sculpture) : locution latine, pas un verbe français en "-er" — le
+  // "r" final doit au contraire s'entendre.
+  'alma mater': 'alma matère',
+  // Saint-Germain-en-Laye : "Laye" se prononce "lè", pas épelé ou lu autrement.
+  'laye': 'lè',
+  // Mount Rushmore : nom anglais, "mount" ne se prononce pas comme le mot français "mont".
+  'mount': 'maounnte',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -1931,11 +1999,34 @@ const NATIONALITY_FLAGS = {
   "serbe": "🇷🇸", "serbie": "🇷🇸",
   "bulgare": "🇧🇬", "bulgarie": "🇧🇬",
 };
+// Dérive le code ISO 3166-1 (2 lettres, ex. "gb") depuis l'emoji drapeau déjà stocké dans
+// NATIONALITY_FLAGS, plutôt que de dupliquer une deuxième table pays → code à maintenir en double.
+// Un drapeau emoji standard est composé de 2 « regional indicator symbols » (U+1F1E6..U+1F1FF, un
+// par lettre) : on inverse simplement cet encodage. Le drapeau écossais (ecossais/ecossaise) est un
+// cas à part — il encode une sous-division du Royaume-Uni via des « tag characters », pas des
+// regional indicators — d'où l'exception ci-dessous (flag-icons expose ce drapeau sous "gb-sct").
+const FLAG_ISO_OVERRIDES = { '🏴󠁧󠁢󠁳󠁣󠁴󠁿': 'gb-sct' };
+function isoFromFlagEmoji(emoji) {
+  if (FLAG_ISO_OVERRIDES[emoji]) return FLAG_ISO_OVERRIDES[emoji];
+  const points = Array.from(emoji).map((c) => c.codePointAt(0));
+  if (points.length !== 2 || points.some((p) => p < 0x1F1E6 || p > 0x1F1FF)) return '';
+  return points.map((p) => String.fromCharCode(p - 0x1F1E6 + 65)).join('').toLowerCase();
+}
+// Rendu via la librairie flag-icons (vraies images SVG, voir index.html) plutôt que l'emoji drapeau
+// brut — bug réel repéré : sur certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche
+// pas comme une image et retombe sur les 2 lettres du code pays écrites telles quelles (« les
+// drapeaux n'apparaissent pas dans les jeux, juste l'abréviation du pays »). Un rendu par image
+// garantit le même résultat partout, indépendamment du système d'exploitation ou de la police
+// installée. Repli sur l'emoji brut si le code ISO n'a pas pu être dérivé (filet de sécurité).
+function flagIconMarkup(emoji) {
+  const iso = isoFromFlagEmoji(emoji);
+  return iso ? `<span class="fi fi-${iso}"></span>` : emoji;
+}
 function nationalityFlag(rawValue) {
   const key = keyName(rawValue);
   if (!key) return '';
   for (const label of Object.keys(NATIONALITY_FLAGS)) {
-    if (key.includes(label)) return NATIONALITY_FLAGS[label];
+    if (key.includes(label)) return flagIconMarkup(NATIONALITY_FLAGS[label]);
   }
   return '';
 }
@@ -2423,14 +2514,15 @@ function formatDimensionsPlainText(work) {
   const parts = dimensionEntries(work).map((d) => `${d.key} ${d.text}`);
   return parts.join(' × ');
 }
-// Phrase parlée des dimensions, ex. « de 300 centimètres de hauteur, 50 centimètres de largeur,
-// et 30 centimètres de profondeur » — l'unité est répétée sur chaque dimension (plus naturel à
-// l'oral qu'une seule mention en tête), et on dit « largeur » plutôt que « longueur ».
+// Phrase parlée des dimensions, ex. « de 300 de hauteur, 50 de longueur, et 30 centimètres de
+// profondeur » — bug réel corrigé : cette fonction répétait « centimètres » sur CHAQUE dimension
+// (indépendamment de formatDimensionsDisplay/dimensionEntries, corrigés eux à l'écrit) alors que
+// l'écrit, lui, ne garde l'unité que sur la dernière dimension renseignée — retour réel (« les cm
+// ont bien disparu à l'écrit mais la voix continue à le dire pour la hauteur »). On réutilise donc
+// dimensionEntries pour rester cohérent avec l'écrit plutôt que de dupliquer sa propre règle.
 function spokenDimensionsPhrase(work) {
-  const parts = [];
-  if (work.hauteur) parts.push(`${withCm(work.hauteur).replace(/\bcm\b/i, 'centimètres')} de hauteur`);
-  if (work.longueur) parts.push(`${withCm(work.longueur).replace(/\bcm\b/i, 'centimètres')} de longueur`);
-  if (work.profondeur) parts.push(`${withCm(work.profondeur).replace(/\bcm\b/i, 'centimètres')} de profondeur`);
+  const labels = { h: 'hauteur', l: 'longueur', p: 'profondeur' };
+  const parts = dimensionEntries(work).map((d) => `${d.text.replace(/\bcm\b/i, 'centimètres')} de ${labels[d.key]}`);
   if (!parts.length) return '';
   if (parts.length === 1) return `de ${parts[0]}`;
   return `de ${parts.slice(0, -1).join(', ')}, et ${parts[parts.length - 1]}`;
@@ -2509,10 +2601,18 @@ function renderCorrection(answer, question) {
   showBottomGallery(question);
   // Cas particulier du lieu : si la réponse ne donnait que la ville (acceptée comme bonne), on le
   // signale à l'oral en encourageant à préciser le musée la prochaine fois.
-  if (state.selectedFieldKeys.includes('location') && locationMatchQuality(answer.location, question) === 'city-only') {
-    const reste = String(question.location || '').split(',').filter((part) => keyName(part) !== keyName(question.ville || '')).join(', ').trim();
-    quizSpeak(`Tu as bien indiqué ${question.ville}. Tu aurais pu préciser${reste ? ' : ' + reste : ' le musée'}.`);
-  }
+  const cityOnlyHint = (state.selectedFieldKeys.includes('location') && locationMatchQuality(answer.location, question) === 'city-only')
+    ? (() => {
+        const reste = String(question.location || '').split(',').filter((part) => keyName(part) !== keyName(question.ville || '')).join(', ').trim();
+        return `Tu as bien indiqué ${question.ville}. Tu aurais pu préciser${reste ? ' : ' + reste : ' le musée'}.`;
+      })()
+    : '';
+  // « Exact » dit à voix haute quand toute la question est juste — jusqu'ici le quiz principal ne
+  // disait jamais rien à l'oral pour confirmer une bonne réponse (seul l'écrit « Exact »/« À
+  // réviser » par rubrique existait), contrairement aux autres jeux — retour de Stéphane, valable
+  // pour tous les jeux.
+  const spokenParts = [isFullyCorrect(answer, question) ? 'Exact.' : '', cityOnlyHint].filter(Boolean);
+  if (spokenParts.length) quizSpeak(spokenParts.join(' '));
 }
 let currentArtistWorksIndex = -1;
 // Galerie du bas : photos complémentaires (portrait de l'artiste, vue du lieu de conservation)
@@ -2655,6 +2755,10 @@ function updateCheckpointRoomDot() {
   if (!dot || nav.classList.contains('hidden')) return;
   const target = $(state.currentRoomIndex === 1 ? 'scale-checkpoint-room-2' : 'scale-checkpoint-room-1');
   if (!target) return;
+  // Surbrillance de la salle active : seul repère, avant de franchir le tourniquet, confirmant
+  // qu'un glissement du point a bien été pris en compte (voir commentaire CSS .active-room).
+  $('scale-checkpoint-room-1')?.classList.toggle('active-room', state.currentRoomIndex !== 1);
+  $('scale-checkpoint-room-2')?.classList.toggle('active-room', state.currentRoomIndex === 1);
   const navRect = nav.getBoundingClientRect();
   const tRect = target.getBoundingClientRect();
   if (!navRect.width || !navRect.height) return;
@@ -2913,9 +3017,19 @@ const TRAP_BOTTOM_RIGHT = { x: 100, y: 100 };
 // virage. On peut ainsi tirer le personnage jusque dans un coin et le voir continuer tout seul sur
 // le mur suivant, sans jamais changer de décor ni de plan — un seul scrollLeft pilote tout du début
 // à la fin, exactement comme un seul mur, simplement 3 fois plus long et « plié » 2 fois.
-const WALL_CORNER_PX = 130; // largeur de la zone d'angle (le temps de « pivoter ») entre 2 murs — assez large pour que le pivotement du panneau (voir updateCornerVisuals) ait le temps de bien se voir
+// Élargi 130 → 300 (retour réel : « on n'a pas l'impression que ça tourne ») — à walkSpeed=4px/im
+// (~240 px/s), 130 px se traversait en un peu plus d'un demi-clin d'œil (~0,5 s), bien trop vite
+// pour qu'un œil qui marche ait le temps de lire une vraie rotation plutôt qu'un flash. 300 px
+// laisse un peu plus d'une seconde pour voir le panneau pivoter (voir updateCornerVisuals).
+const WALL_CORNER_PX = 300;
+// Largeur des deux zones d'ombre qui encadrent le panneau, MORDANT SUR le mur qu'on quitte et celui
+// qu'on rejoint (pas seulement sur le panneau lui-même) — sans elles, les murs plats s'arrêtaient
+// net pile au bord du panneau (aucune annonce du virage qui approche), ce qui isolait le panneau
+// comme un objet à part plutôt que de donner l'impression qu'il fait partie du même mur qui se
+// replie. Voir updateCornerVisuals pour leur opacité, pilotée par le même t que la rotation.
+const WALL_CORNER_SHADOW_PX = 160;
 let wallSegments = []; // [{ key, label, startPx, widthPx, lengthM }, ...] posé par buildContinuousWall
-let wallCorners = []; // [{ startPx, inner }, ...] posé par buildContinuousWall — voir updateCornerVisuals
+let wallCorners = []; // [{ startPx, inner, shadowExit, shadowEnter }, ...] posé par buildContinuousWall — voir updateCornerVisuals
 // Construit un morceau d'œuvres pour UN mur (gauche, fond ou droit), en repartant du point où le
 // mur précédent de la bande s'est arrêté (startPx) plutôt que de zéro à chaque fois — c'est cet
 // enchaînement qui rend la bande continue. currentInfo accumule les infos de l'œuvre actuellement
@@ -3008,10 +3122,17 @@ function buildContinuousWall() {
     // de rester un simple repli d'ombre statique — voir updateCornerVisuals, qui lit wallCorners
     // pour faire tourner .scale-wall-corner-inner selon la position exacte dans cette zone (0° en
     // entrant = face « sortie » visible, 180° en sortant = face « entrée » visible). Bug réel
-    // repéré en même temps : la marche « gelait » pendant ces 70 px (le mur ne semblait plus
+    // repéré en même temps : la marche « gelait » pendant cette zone (le mur ne semblait plus
     // avancer) — comme le personnage tourne bien sur lui-même à cet endroit plutôt que de glisser,
     // ce n'est plus un défaut : l'animation de rotation lui donne enfin un sens visible.
     if (i < legs.length - 1) {
+      // Zones d'ombre AVANT/APRÈS le panneau, mordant sur le mur plat de chaque côté (voir
+      // WALL_CORNER_SHADOW_PX) — posées avant le panneau dans le DOM pour rester sous lui.
+      const shadowExit = document.createElement('div');
+      shadowExit.className = 'scale-wall-corner-shadow scale-wall-corner-shadow-exit';
+      shadowExit.style.left = `${cursor - WALL_CORNER_SHADOW_PX}px`;
+      shadowExit.style.width = `${WALL_CORNER_SHADOW_PX}px`;
+      wall.appendChild(shadowExit);
       const corner = document.createElement('div');
       corner.className = 'scale-wall-corner';
       corner.style.left = `${cursor}px`;
@@ -3026,7 +3147,12 @@ function buildContinuousWall() {
       inner.appendChild(faceEnter);
       corner.appendChild(inner);
       wall.appendChild(corner);
-      wallCorners.push({ startPx: cursor, inner });
+      const shadowEnter = document.createElement('div');
+      shadowEnter.className = 'scale-wall-corner-shadow scale-wall-corner-shadow-enter';
+      shadowEnter.style.left = `${cursor + WALL_CORNER_PX}px`;
+      shadowEnter.style.width = `${WALL_CORNER_SHADOW_PX}px`;
+      wall.appendChild(shadowEnter);
+      wallCorners.push({ startPx: cursor, inner, shadowExit, shadowEnter });
       cursor += WALL_CORNER_PX;
     }
   });
@@ -3271,6 +3397,22 @@ function scrollLeftFromPathPosition(x, y) {
   floorDot.addEventListener('pointerup', stop);
   floorDot.addEventListener('pointercancel', stop);
 })();
+// Filet de sécurité contre la désynchronisation (bug réel repéré, persistant malgré la formule en
+// tiers égaux ci-dessus) : #scale-wall reste un vrai conteneur overflow-x:auto, donc en plus des
+// gestes officiels (tirer la silhouette, glisser le point du plan/du sol), un doigt ou une molette
+// posé directement sur le décor pouvait le faire défiler NATIVEMENT, sans jamais appeler
+// updateDotAlongWall — la silhouette et le point restaient alors figés pendant que le mur, lui,
+// continuait de bouger, avant de se re-synchroniser d'un coup au geste suivant (impression que l'un
+// est « en avance » sur l'autre). 'wheel' est neutralisé ici (molette/trackpad, seule entrée native
+// que touch-action:none, posé en CSS, ne bloque pas) ; 'scroll' resynchronise systématiquement,
+// quelle que soit la cause du défilement — la vraie protection, qui couvre même une entrée non
+// encore identifiée aujourd'hui.
+(function guardWallScrollSync() {
+  const wall = $('scale-wall');
+  if (!wall) return;
+  wall.addEventListener('wheel', (event) => event.preventDefault(), { passive: false });
+  wall.addEventListener('scroll', () => { updateDotAlongWall(); updateDistanceMarker(); });
+})();
 makeSilhouetteDraggable($('scale-overview-silhouette'), {
   onDragEnd: (dx, dy, endX, endY) => {
     if (isNearBottomCorner(endX, endY)) { exitScaleViewCompletely(); return; }
@@ -3307,6 +3449,12 @@ function updateCornerVisuals(scrollLeft) {
   wallCorners.forEach((corner) => {
     const t = Math.min(1, Math.max(0, (scrollLeft - corner.startPx) / WALL_CORNER_PX));
     corner.inner.style.transform = `rotateY(${t * 180}deg)`;
+    // Les deux ombres montent et redescendent en miroir l'une de l'autre (×1.4 pour qu'elles
+    // atteignent déjà leur pleine opacité avant la toute fin du pivotement, pas seulement pile à
+    // t=0/t=1) — le mur qu'on quitte s'assombrit en approchant du pli, celui qu'on rejoint
+    // n'apparaît en pleine lumière qu'une fois le virage bien entamé.
+    if (corner.shadowExit) corner.shadowExit.style.opacity = Math.min(1, t * 1.4);
+    if (corner.shadowEnter) corner.shadowEnter.style.opacity = Math.min(1, (1 - t) * 1.4);
   });
 }
 function updateDotAlongWall() {
@@ -3474,6 +3622,10 @@ function showBottomGallery(work) {
   const items = [];
   if (work.artistImage) items.push({ url: work.artistImage, label: work.artist, caption: work.artist });
   if (work.locationImage) items.push({ url: work.locationImage, label: work.ville || 'Lieu', caption: work.location });
+  // Nouvelle vignette : une photo supplémentaire du même cycle/ensemble (colonne « Images du
+  // cycle » du fichier maître — ex. une autre fresque de la même chapelle, un autre folio du même
+  // manuscrit), jusqu'ici récupérée depuis le fichier Excel mais jamais montrée nulle part.
+  if (work.cycleImage) items.push({ url: work.cycleImage, label: 'Cycle', caption: work.cycle ? `Autre vue de l'ensemble « ${work.cycle} »` : "Autre vue de l'ensemble" });
   if (!items.length) { bar.classList.add('hidden'); bar.innerHTML = ''; return; }
   bar.innerHTML = items.map((item) => `<button type="button" class="bottom-gallery-item" data-url="${escapeHtml(item.url)}" data-caption="${escapeHtml(item.caption)}">
     <img src="${escapeHtml(imageSourceSized(item.url, 100))}" alt="" /><span>${escapeHtml(item.label)}</span>
@@ -3496,7 +3648,9 @@ async function openArtistWorksPage(idx) {
   closeModal('modal-artist-list');
   showPanel('other-works');
   $('other-works-artist-name').textContent = displayName;
-  $('other-works-artist-flag').textContent = artistFlag(row['Nationalité']);
+  // .innerHTML, pas .textContent : artistFlag renvoie désormais un <span class="fi fi-xx"> (voir
+  // flagIconMarkup), qui s'afficherait comme du texte brut littéral avec .textContent.
+  $('other-works-artist-flag').innerHTML = artistFlag(row['Nationalité']);
   $('other-works-artist-dates').textContent = '';
   const list = $('other-works-panel-list');
   list.innerHTML = '<p class="modal-hint">Chargement des œuvres…</p>';
@@ -4087,7 +4241,7 @@ $('open-reconstitution-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('recon');
   suppressSaveLastSelection = true;
   applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
-  showExerciseRules('recon', () => { speakObjective('recon'); $('recon-start-button')?.click(); });
+  speakObjective('recon'); $('recon-start-button')?.click();
 });
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
 $('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
@@ -4104,7 +4258,7 @@ function showVfConfig() {
 $('open-vraifaux-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('vf');
   suppressSaveLastSelection = true;
-  showExerciseRules('vf', () => { speakObjective('vf'); $('vf-start-button')?.click(); });
+  speakObjective('vf'); $('vf-start-button')?.click();
 });
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
@@ -4120,7 +4274,7 @@ function showFamConfig() {
 $('open-famille-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('fam');
   suppressSaveLastSelection = true;
-  showExerciseRules('fam', () => { speakObjective('fam'); $('fam-start-button')?.click(); });
+  speakObjective('fam'); $('fam-start-button')?.click();
 });
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
 $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
@@ -4146,7 +4300,7 @@ function showChronoConfig() {
 $('open-chrono-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('chrono');
   suppressSaveLastSelection = true;
-  showExerciseRules('chrono', () => { speakObjective('chrono'); $('chrono-start-button')?.click(); });
+  speakObjective('chrono'); $('chrono-start-button')?.click();
 });
 $('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('chrono-setup'); });
 $('chrono-hub-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
@@ -4238,6 +4392,7 @@ $('chrono-start-button')?.addEventListener('click', async () => {
     $('chrono-quiz-grid').classList.add('hidden');
     $('bg-mosaic').classList.remove('hidden');
     populateSessionMosaic(CHRONO_SESSION.flatMap((q) => q.works.map((w) => w.image)));
+    populateReadyExplanation('chrono');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -4627,6 +4782,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
     $('fam-quiz-grid').classList.add('hidden');
     $('bg-mosaic').classList.remove('hidden');
     populateSessionMosaic(FAM_SESSION.flatMap((q) => q.images.map((w) => w.image)));
+    populateReadyExplanation('fam');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -4740,7 +4896,9 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
     // La voix dit le surnom quand il existe (ex. « El Greco »), pas le nom complet parfois moins
     // reconnaissable (« Domenikos Theotokopoulos ») — cohérent avec ce qui est écrit à l'écran.
     const spokenArtistName = chronological[0]?.surnomFr || q.artist;
-    famSpeak(`Ces ${famNumberWord(chronological.length)} œuvres sont bien ${deArtist(spokenArtistName)}. ${titleList}.`);
+    // « Exact » en tête, avant d'enchaîner sur le commentaire — plus stimulant à l'oral qu'un
+    // simple texte affiché (retour de Stéphane, valable pour tous les jeux).
+    famSpeak(`Exact. Ces ${famNumberWord(chronological.length)} œuvres sont bien ${deArtist(spokenArtistName)}. ${titleList}.`);
   } else {
     $('fam-image-grid').className = 'fam-result-rows';
     $('fam-image-grid').innerHTML = `
@@ -4756,7 +4914,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
       if (!wrongSelected.length) { next(); return; }
       $('fam-result-bottom').innerHTML = wrongSelected.map((w) => cellHtml(w, true)).join('');
       const intro = wrongSelected.length > 1 ? `Tu as fait ${famNumberWord(wrongSelected.length)} erreurs.` : 'Tu as fait une erreur.';
-      const details = wrongSelected.map((w) => `Ce tableau était ${deArtist(w.surnomFr || w.artist)}, intitulé ${w.title}.`).join(' ');
+      const details = wrongSelected.map((w) => `${artDesignation(w).charAt(0).toUpperCase()}${artDesignation(w).slice(1)} était ${deArtist(w.surnomFr || w.artist)}, intitulé ${w.title}.`).join(' ');
       currentSpeechNationality = wrongSelected[0]?.nationality || '';
       famSpeak(`${intro} ${details}`, next);
     }
@@ -4832,6 +4990,37 @@ function vfActiveFields() {
   const checkboxMap = { artist: 'vf-field-artist', title: 'vf-field-title', date: 'vf-field-date', materials: 'vf-field-materiaux', dimensions: 'vf-field-dimensions', location: 'vf-field-location' };
   const filtered = all.filter((f) => $(checkboxMap[f.key])?.checked);
   return filtered.length ? filtered : all;
+}
+// Désigne oralement une œuvre par son vrai type (« cette fresque », « ce bas-relief »...) plutôt
+// que par le seul duo peinture/sculpture — bug réel repéré en Vrai/Faux : la voix disait
+// systématiquement « ce tableau » à la correction, y compris pour une fresque, faute de lire la
+// colonne « Nature de l'objet ». Cette colonne contient parfois une valeur composée (ex. « Element
+// architectural liturgique, cartouche funéraire ») : on cherche donc un mot-clé reconnu dedans
+// plutôt que d'exiger une correspondance exacte, avec le bon genre grammatical pour l'article.
+const NATURE_DESIGNATIONS = [
+  { match: 'fresque', word: 'fresque', feminine: true },
+  { match: 'haut relief', word: 'haut-relief', feminine: false },
+  { match: 'bas relief', word: 'bas-relief', feminine: false },
+  { match: 'ronde bosse', word: 'ronde-bosse', feminine: true },
+  { match: 'monument funeraire', word: 'monument funéraire', feminine: false },
+  { match: 'medaillon', word: 'médaillon', feminine: false },
+  { match: 'element', word: 'élément', feminine: false },
+  { match: 'sculpture', word: 'sculpture', feminine: true },
+];
+function artDesignation(work) {
+  const natureKey = keyName(work?.nature);
+  if (natureKey) {
+    const found = NATURE_DESIGNATIONS.find((d) => natureKey.includes(d.match));
+    if (found) {
+      // Élision « ce » → « cet » devant un mot masculin commençant par une voyelle (« cet
+      // élément », jamais « ce élément »).
+      const article = found.feminine ? 'cette' : (/^[aeiouhàâéèêëîïôöùûü]/i.test(found.word) ? 'cet' : 'ce');
+      return `${article} ${found.word}`;
+    }
+  }
+  // Repli sur l'ancien critère peinture/sculpture quand « Nature de l'objet » est vide ou pas
+  // reconnue (ex. « Tempera sur bois », qui désigne en réalité un tableau).
+  return work?.artType === 'sculpture' ? 'cette sculpture' : 'ce tableau';
 }
 function vfFieldValue(row, key) {
   if (key === 'dimensions') return formatDimensionsPlainText(row) || [row.hauteur, row.longueur].filter(Boolean).join(' × ');
@@ -4940,6 +5129,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
     $('vf-quiz-grid').classList.add('hidden');
     $('bg-mosaic').classList.remove('hidden');
     populateSessionMosaic(VF_SESSION.map((q) => q.correct.image));
+    populateReadyExplanation('vf');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -5007,7 +5197,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
   if (vfAnswered) return;
   vfAnswered = true;
   const q = VF_SESSION[vfIndex];
-  const artWord = q.correct.artType === 'sculpture' ? 'cette sculpture' : 'ce tableau';
+  const artWord = artDesignation(q.correct);
   $('vf-validate-button').disabled = true;
   document.querySelectorAll('.vf-toggle button').forEach((b) => { b.disabled = true; });
 
@@ -5219,6 +5409,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
     $('recon-quiz-grid').classList.add('hidden');
     $('bg-mosaic').classList.remove('hidden');
     populateSessionMosaic(RECON_SESSION.map((q) => q.correct.image));
+    populateReadyExplanation('recon');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -5292,7 +5483,10 @@ function reconAnswer(chosenIndex) {
   // L'image entière est révélée, avec la référence complète.
   $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSourceSized(q.correct.image, 700))}" alt="" />`;
 
-  reconSpeak(spokenFullReference(q.correct, showFullCorrection ? null : reconExtraFields));
+  // « Exact »/« À réviser » dit à voix haute avant d'enchaîner sur la référence, pas seulement
+  // affiché — plus stimulant à l'oral (retour de Stéphane, valable pour tous les jeux), et
+  // cohérent avec ce que fait déjà Chronologie.
+  reconSpeak(`${isCorrect ? 'Exact' : 'À réviser'}. ${spokenFullReference(q.correct, showFullCorrection ? null : reconExtraFields)}`);
   reconRefreshCorrectionDetails();
   $('recon-correction').classList.remove('hidden');
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex + 1} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
@@ -5454,7 +5648,7 @@ refreshSavedChoiceButton();
 $('open-quiz-setup')?.addEventListener('click', () => {
   applyGlobalDefaultsToQuiz();
   suppressSaveLastSelection = true;
-  showExerciseRules('quiz', () => { speakObjective('quiz'); $('launch-quiz-button')?.click(); });
+  speakObjective('quiz'); $('launch-quiz-button')?.click();
 });
 $('load-saved-choice-button')?.addEventListener('click', () => {
   const raw = localStorage.getItem('savedQuizConfig');
@@ -5886,7 +6080,10 @@ $('open-guided-config')?.addEventListener('click', () => {
   showPanel('guided-config');
   guidedSpeak($('gc-step-intro')?.querySelector('p')?.textContent || '');
 });
-$('gc-intro-find-config')?.addEventListener('click', () => {
+// Remonté depuis l'accueil (voir #open-find-config, ex-gc-intro-find-config qui vivait avant
+// dans le parcours guidé lui-même) : 3e porte d'entrée de la page d'accueil, au même niveau que
+// "débutants" et "joueurs confirmés".
+$('open-find-config')?.addEventListener('click', () => {
   showPanel('profile');
   initProfilePage();
   $('profile-menu-saved-configs')?.click();
@@ -6051,6 +6248,19 @@ function buildGuidedSummary() {
   const gamesPart = allGames ? 'tous les jeux' : [...document.querySelectorAll('.gc-game:checked')].map((el) => el.parentElement.textContent.trim()).join(', ');
   $('gc-summary-sentence').textContent = `Aujourd'hui nous allons jouer avec ${artsPart}${centPart}${zonePart}${levelPart}${artistsPart}, à travers des questionnaires de ${countLabel} questions chacun portant sur ${rubriquePart}, pour ${gamesPart}.`;
 }
+// Remplace l'ancien enchaînement gc-step-games → gc-step-summary → gc-start-button : direct dès
+// la fin de gc-step-rubrique vers la page d'accueil des jeux (retour de Stéphane, voir le
+// commentaire HTML sur gc-step-games). On efface globalGamesDefaults pour repartir sur "tous les
+// jeux" à chaque fois, puisque le tri "certains jeux seulement" n'est plus proposé ici.
+$('gc-rubrique-finish')?.addEventListener('click', () => {
+  saveGuidedFieldAndRubrique();
+  localStorage.removeItem('globalGamesDefaults');
+  guidedModeActive = true;
+  localStorage.setItem('guidedModeActive', 'true');
+  showPanel('training-hub');
+  updateExerciseSummaries();
+  applyFieldLinkedAmbiance();
+});
 $('gc-start-button')?.addEventListener('click', () => {
   if (document.querySelector('input[name="gc-allgames"]:checked')?.value === 'no') {
     const games = [...document.querySelectorAll('.gc-game:checked')].map((el) => el.value);
@@ -6114,7 +6324,7 @@ function showImpConfig() {
 $('open-impregnation-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('imp');
   suppressSaveLastSelection = true;
-  showExerciseRules('imp', () => { speakObjective('imp'); $('imp-start-button')?.click(); });
+  speakObjective('imp'); $('imp-start-button')?.click();
 });
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
 ['imp', 'intrus', 'recon', 'vf', 'fam'].forEach((p) => {
@@ -6202,6 +6412,7 @@ $('imp-start-button')?.addEventListener('click', async () => {
     $('imp-quiz-grid').classList.add('hidden');
     $('bg-mosaic').classList.remove('hidden');
     populateSessionMosaic(IMP_SESSION.map((w) => w.image));
+    populateReadyExplanation('imp');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -6216,6 +6427,14 @@ $('imp-launch-first-button')?.addEventListener('click', () => {
   impShowCurrent();
 });
 
+// Comme Intrus et Famille : la petite loupe (appui maintenu = agrandissement au maximum, voir
+// attachZoomHold) est désormais disponible aussi sur l'œuvre affichée en Imprégnation — elle ne
+// l'avait jamais eue, alors que cet exercice s'y prête particulièrement bien (regarder longuement
+// un détail pendant que la référence se lit à voix haute). L'image de mise en scène est un élément
+// fixe du HTML (seul son « src » change d'une œuvre à l'autre) : on l'attache donc une seule fois
+// ici, plutôt qu'à chaque question comme pour les cases générées dynamiquement de ces deux autres
+// exercices.
+attachZoomHold($('imp-stage-img')?.closest('figure'), $('imp-stage-img'));
 function impShowCurrent() {
   impClearTimers();
   speechSynthesis.cancel();
@@ -6227,6 +6446,10 @@ function impShowCurrent() {
   $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
   $('imp-stage-img').src = imageSourceSized(work.image, 900);
   preloadImage(IMP_SESSION[impIndex + 1]?.image, 900);
+  // Comme sur la correction du quiz final : bandeau de vignettes cliquables pour le portrait de
+  // l'artiste, une photo du lieu, et désormais une autre vue de l'ensemble/cycle (voir
+  // showBottomGallery) quand ces informations existent pour l'œuvre affichée.
+  showBottomGallery(work);
 
   const dims = formatDimensionsDisplay(work);
   const anyFieldChecked = ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].some((k) => $(`imp-field-${k}`)?.checked);
@@ -6310,7 +6533,7 @@ $('open-intrus-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('intrus');
   suppressSaveLastSelection = true;
   applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
-  showExerciseRules('intrus', () => { speakObjective('intrus'); $('intrus-start-button')?.click(); });
+  speakObjective('intrus'); $('intrus-start-button')?.click();
 });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
 $('intrus-scores-link')?.addEventListener('click', () => {
@@ -6466,6 +6689,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     $('intrus-quiz-grid').classList.add('hidden');
     $('bg-mosaic').classList.remove('hidden');
     populateSessionMosaic(INTRUS_SESSION.map((q) => q.correct.image));
+    populateReadyExplanation('intrus');
   } catch (error) {
     feedback.textContent = `Erreur : ${error.message}`;
   }
@@ -6587,7 +6811,8 @@ function intrusAnswer(chosenIndex) {
     $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
   }
 
-  intrusSpeak(spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields));
+  // « Exact »/« À réviser » dit à voix haute avant la référence — même logique que Reconstitution.
+  intrusSpeak(`${isCorrect ? 'Exact' : 'À réviser'}. ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
   intrusRefreshCorrectionDetails();
   $('intrus-correction').classList.remove('hidden');
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
@@ -6847,6 +7072,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     $('quiz-quiz-grid').classList.add('hidden');
     $('bg-mosaic').classList.remove('hidden');
     populateSessionMosaic(state.questions.map((q) => q.image));
+    populateReadyExplanation('quiz');
   } catch (error) {
     // Le message « site en construction » se suffit à lui-même, sans préfixe « Erreur : ».
     feedback.textContent = error.message === 'Ce site est en construction. Le quiz sera bientôt disponible.' ? error.message : `Erreur : ${error.message}`;

@@ -10,7 +10,13 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=165" />
+    <link rel="stylesheet" href="style.css?v=168" />
+    <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
+         certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
+         retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
+         drapeaux n'apparaissent pas, juste l'abréviation du pays »). Voir nationalityFlag/
+         flagIconMarkup dans app.js. -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7/css/flag-icons.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -77,14 +83,21 @@
 
           <p class="intro-banner">Cette application vous propose de jouer avec <a href="#base" target="_blank" rel="noopener">une base de plusieurs milliers d'œuvres d'art</a> — peintures et sculptures en Occident, du 14e au 20e siècle — à travers <a href="#exercices" target="_blank" rel="noopener">des exercices d'entraînement</a> à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. <a href="#" id="intro-account-link">Créez un compte</a> pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
 
+          <!-- Passé de 2 à 3 boutons (retour de Stéphane) : "Retrouver une configuration" vivait
+               avant comme un choix caché à l'intérieur du parcours guidé (gc-step-intro) — remonté
+               ici au même niveau que les deux autres portes d'entrée, pour qu'on puisse y accéder
+               sans d'abord entrer dans le parcours guidé. Du coup gc-step-intro n'a plus besoin de
+               demander à nouveau "retrouver ou créer ?" : un simple "Continuez" suffit désormais
+               (voir plus bas). -->
           <div class="home-mode-buttons account-buttons-row">
             <button type="button" class="home-mode-button" id="open-guided-config">
-              <span class="label">Accès aux exercices guidé</span>
-              <span style="display:block;font-size:.75em;font-weight:400;margin-top:2px;">Pour débuter</span>
+              <span class="label">Accès aux jeux pour débutants</span>
             </button>
             <button type="button" class="home-mode-button" id="open-training">
-              <span class="label">Accès aux exercices par les menus</span>
-              <span style="display:block;font-size:.75em;font-weight:400;margin-top:2px;">Pour joueur confirmé</span>
+              <span class="label">Accès aux jeux pour joueurs confirmés</span>
+            </button>
+            <button type="button" class="home-mode-button" id="open-find-config">
+              <span class="label">Retrouver une configuration de jeux déjà enregistrée</span>
             </button>
           </div>
 
@@ -96,17 +109,28 @@
 
           <div id="gc-step-intro" class="gc-step">
             <p style="line-height:1.5;">Dans ce parcours guidé vous allez choisir vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrerez vous-même par champs (art, siècle, zone géographique, et éventuellement sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez. Vous pourrez le faire quand vous aurez plus d'expérience depuis votre compte (icône 👤). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer. Mais vous pouvez choisir vos exercices indépendamment les uns des autres et adopter la formule qui vous convient le mieux. Si vous voulez retrouver plus tard une configuration d'exercices, vous pouvez l'enregistrer dans votre compte.</p>
+            <!-- Un seul bouton "Continuez" (retour de Stéphane, "page 2" du parcours guidé) :
+                 le choix "retrouver une configuration" se fait maintenant directement depuis la
+                 page d'accueil (voir #open-find-config), donc plus besoin de le redemander ici. -->
             <div class="home-mode-buttons account-buttons-row" style="margin-top:14px;">
-              <button type="button" class="home-mode-button" id="gc-intro-find-config">Retrouver une configuration d'exercices déjà enregistrée</button>
-              <button type="button" class="home-mode-button" id="gc-intro-new-config">Configurer une nouvelle formule d'exercices</button>
+              <button type="button" class="primary-button" id="gc-intro-new-config">Continuez →</button>
             </div>
           </div>
 
           <div id="gc-step-personalize" class="gc-step hidden">
             <p style="line-height:1.5;">Avant de commencer, deux réglages généraux — ils s'appliqueront à tout moment, pas seulement à cette partie :</p>
             <p class="config-table-col-title">Paramètres techniques</p>
-            <p class="modal-hint" style="margin-top:0;">Emplacement des boutons, touche Entrée, chronomètre, drapeaux, voix — réglages sans rapport avec le contenu des exercices. Vous pourrez tout ajuster depuis Mon compte ; pour commencer, activez au moins l'audio si vous voulez que la voix vous accompagne :</p>
-            <label class="rubrique-option"><input type="checkbox" id="gc-personalize-audio" /><span>Lecture audio (voix de synthèse) — y compris pour ce parcours guidé</span></label>
+            <!-- Texte et case à cocher corrigés (retour de Stéphane) : la formulation précédente
+                 (« activez au moins l'audio... — y compris pour ce parcours guidé ») donnait
+                 l'impression qu'on pouvait couper la voix pendant le parcours guidé lui-même, alors
+                 que ce n'est pas possible (seul un passage par le menu des jeux, hors parcours
+                 guidé, permet de jouer sans voix) — voir aussi le bug corrigé sur guidedSpeak()
+                 ci-dessous. La case démarrait en plus décochée alors que la voix est activée par
+                 défaut partout ailleurs dans l'appli (DEFAULT_PREFS.audioOn = true) : un débutant
+                 qui ne la cochait pas se retrouvait donc, sans le savoir, à couper l'audio pour la
+                 SUITE de sa partie (Mon compte, jeux par le menu) dès qu'il cliquait "Continuer". -->
+            <p class="modal-hint" style="margin-top:0;">Emplacement des boutons, touche Entrée, chronomètre, drapeaux, voix — réglages sans rapport avec le contenu des exercices, tous activés par défaut. Vous pourrez les ajuster depuis Mon compte une fois cette partie commencée. La voix, elle, vous accompagne dans tout le parcours guidé quoi qu'il arrive ; la case ci-dessous ne réglera que votre préférence pour la suite (Mon compte, jeux par le menu) :</p>
+            <label class="rubrique-option"><input type="checkbox" id="gc-personalize-audio" checked /><span>Lecture audio (voix de synthèse)</span></label>
             <p class="config-table-col-title" style="margin-top:18px;">Personnalisation de l'interface</p>
             <p class="modal-hint" style="margin-top:0;">Change l'apparence de l'application — fond, cadres des œuvres. Un premier essai, à changer quand vous voulez depuis Mon compte :</p>
             <label class="rubrique-option"><input type="radio" name="gc-personalize-ambiance" value="gothique" /><span>Gothique international — or et bleu lapis-lazuli</span></label>
@@ -126,7 +150,7 @@
             <p class="config-table-col-title">Aujourd'hui, vous voulez jouer avec quel domaine artistique ?</p>
             <label class="rubrique-option"><input type="checkbox" class="gc-art" value="peinture" /><span>Peinture</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-art" value="sculpture" /><span>Sculpture</span></label>
-            <p class="gc-note"><em>Rien coché = tous les domaines sont sélectionnés automatiquement.</em></p>
+            <p class="gc-note"><em>Si rien n'est coché, tous les domaines sont sélectionnés automatiquement.</em></p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-century" style="margin-top:10px;">Continuer →</button>
           </div>
 
@@ -139,7 +163,7 @@
             <label class="rubrique-option"><input type="checkbox" class="gc-century" value="18e" /><span>18e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-century" value="19e" /><span>19e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-century" value="20e" /><span>20e siècle</span></label>
-            <p class="gc-note"><em>Rien coché = tous les siècles sont sélectionnés automatiquement.</em></p>
+            <p class="gc-note"><em>Si rien n'est coché, tous les siècles sont sélectionnés automatiquement.</em></p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-zone" style="margin-top:10px;">Continuer →</button>
           </div>
 
@@ -153,7 +177,7 @@
             <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="europe_centrale_russie" /><span>Europe centrale et Russie</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="europe_nord" /><span>Europe du Nord</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="amerique" /><span>Amérique</span></label>
-            <p class="gc-note"><em>Rien coché = toutes les zones sont sélectionnées automatiquement.</em></p>
+            <p class="gc-note"><em>Si rien n'est coché, toutes les zones sont sélectionnées automatiquement.</em></p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-level" style="margin-top:10px;">Continuer →</button>
           </div>
 
@@ -162,7 +186,7 @@
             <label class="rubrique-option"><input type="checkbox" class="gc-level" value="1" /><span>Les artistes les plus célèbres (niveau 1)</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-level" value="2" /><span>Les artistes connus (niveau 2)</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-level" value="3" /><span>Les artistes moins connus (niveau 3)</span></label>
-            <p class="gc-note"><em>Rien coché = tous les niveaux sont sélectionnés automatiquement.</em></p>
+            <p class="gc-note"><em>Si rien n'est coché, tous les niveaux sont sélectionnés automatiquement.</em></p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-artists" style="margin-top:10px;">Continuer →</button>
           </div>
 
@@ -193,11 +217,20 @@
             <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="materiaux" /><span>Le matériau</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="dimensions" /><span>Les dimensions</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-rubrique" value="location" /><span>Le lieu de conservation</span></label>
-            <p class="gc-note"><em>Rien coché = tout peut être demandé, sans restriction.</em></p>
-            <button type="button" class="primary-button gc-continue" data-next="gc-step-games" style="margin-top:10px;">Continuer →</button>
+            <p class="gc-note"><em>Si rien n'est coché, tout peut être demandé, sans restriction.</em></p>
+            <!-- "Voulez-vous jouer à tous les jeux ?" et l'écran-récapitulatif qui suivait ont été
+                 retirés (retour de Stéphane : "ce panneau ne sert à rien, aller directement à la
+                 page d'accueil des jeux") — le tri "certains jeux seulement" ajoutait une étape
+                 pour un bénéfice qu'on peut déjà obtenir en ne cliquant, sur cette page d'accueil
+                 des jeux, que sur les exercices voulus. Le récapitulatif faisait aussi double
+                 emploi avec le mécanisme d'enregistrement de configuration déjà présent sur cette
+                 même page (#training-hub-save-box), donc rien n'est perdu. -->
+            <button type="button" class="primary-button" id="gc-rubrique-finish" style="margin-top:10px;">Commencer à jouer →</button>
           </div>
 
-          <div id="gc-step-games" class="gc-step hidden">
+          <div id="gc-step-games" class="gc-step hidden" style="display:none">
+            <!-- Conservé mais neutralisé plutôt que supprimé : gc-rubrique-finish ci-dessus
+                 court-circuite ce panneau désormais. Pourrait être nettoyé complètement plus tard. -->
             <p class="config-table-col-title">Voulez-vous jouer à tous les jeux ?</p>
             <label class="rubrique-option"><input type="radio" name="gc-allgames" value="yes" checked /><span>Oui, les 7</span></label>
             <label class="rubrique-option"><input type="radio" name="gc-allgames" value="no" /><span>Non, seulement certains</span></label>
@@ -336,6 +369,7 @@
           <div id="imp-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
             <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
             <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <p id="imp-ready-explanation" class="hidden" style="font-family:Arial,sans-serif;font-size:.85rem;color:#4a4438;max-width:440px;margin:0 auto 22px;line-height:1.45;text-align:left;"></p>
             <button type="button" class="primary-button" id="imp-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
           </div>
 
@@ -444,6 +478,7 @@
           <div id="intrus-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
             <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
             <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <p id="intrus-ready-explanation" class="hidden" style="font-family:Arial,sans-serif;font-size:.85rem;color:#4a4438;max-width:440px;margin:0 auto 22px;line-height:1.45;text-align:left;"></p>
             <button type="button" class="primary-button" id="intrus-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
           </div>
 
@@ -546,6 +581,7 @@
           <div id="recon-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
             <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
             <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <p id="recon-ready-explanation" class="hidden" style="font-family:Arial,sans-serif;font-size:.85rem;color:#4a4438;max-width:440px;margin:0 auto 22px;line-height:1.45;text-align:left;"></p>
             <button type="button" class="primary-button" id="recon-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
           </div>
 
@@ -647,6 +683,7 @@
           <div id="vf-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
             <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
             <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <p id="vf-ready-explanation" class="hidden" style="font-family:Arial,sans-serif;font-size:.85rem;color:#4a4438;max-width:440px;margin:0 auto 22px;line-height:1.45;text-align:left;"></p>
             <button type="button" class="primary-button" id="vf-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
           </div>
 
@@ -747,6 +784,7 @@
           <div id="fam-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
             <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
             <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <p id="fam-ready-explanation" class="hidden" style="font-family:Arial,sans-serif;font-size:.85rem;color:#4a4438;max-width:440px;margin:0 auto 22px;line-height:1.45;text-align:left;"></p>
             <button type="button" class="primary-button" id="fam-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
           </div>
 
@@ -843,6 +881,7 @@
           <div id="chrono-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
             <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
             <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <p id="chrono-ready-explanation" class="hidden" style="font-family:Arial,sans-serif;font-size:.85rem;color:#4a4438;max-width:440px;margin:0 auto 22px;line-height:1.45;text-align:left;"></p>
             <button type="button" class="primary-button" id="chrono-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
           </div>
 
@@ -940,17 +979,6 @@
           <button type="button" class="secondary-button" id="quiz-validate-choice-button" style="width:100%;margin-top:14px;">Valider mon choix pour ce jeu →</button>
           <p id="launch-feedback" class="hint hidden"></p>
         </section>
-
-        <div class="modal-overlay hidden" id="modal-exercise-rules">
-          <div class="modal-box">
-            <h3 id="exercise-rules-title"></h3>
-            <p id="exercise-rules-text"></p>
-            <div class="modal-actions">
-              <button type="button" class="secondary-button" id="exercise-rules-cancel">Annuler</button>
-              <button type="button" class="primary-button" id="exercise-rules-confirm">Commencer →</button>
-            </div>
-          </div>
-        </div>
 
         <div class="modal-overlay hidden" id="modal-exercise-results">
           <div class="modal-box" style="text-align:center;">
@@ -1058,6 +1086,7 @@
           <div id="quiz-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
             <div style="display:inline-block;background:rgba(255,253,249,.94);padding:32px 40px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);">
             <p style="font-family:Georgia,serif;font-size:1.1rem;max-width:480px;margin:0 auto 24px;">Cette galerie vous attend.</p>
+            <p id="quiz-ready-explanation" class="hidden" style="font-family:Arial,sans-serif;font-size:.85rem;color:#4a4438;max-width:440px;margin:0 auto 22px;line-height:1.45;text-align:left;"></p>
             <button type="button" class="primary-button" id="quiz-launch-first-button" style="padding:16px 32px;">Démarrer le jeu →</button></div>
           </div>
 
@@ -1140,7 +1169,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 7</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 9</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1180,10 +1209,20 @@
                    (#scale-minimap) : le fond a pointer-events:none (ne doit jamais bloquer un autre
                    geste — bug réel repéré et corrigé sur l'autre plan), seul le rond a
                    pointer-events:auto. -->
-              <div id="scale-checkpoint-room-nav" class="hidden" style="position:fixed;bottom:16px;right:16px;width:190px;height:90px;background:rgba(20,20,20,.65);border:2px solid rgba(255,255,255,.5);border-radius:6px;z-index:7;pointer-events:none;display:flex;gap:10px;padding:8px;box-sizing:border-box;">
-                <div id="scale-checkpoint-room-1" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;"></div>
-                <div id="scale-checkpoint-room-2" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;"></div>
-                <div id="scale-checkpoint-room-dot" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);cursor:grab;top:50%;left:25%;transform:translate(-50%,-50%);touch-action:none;pointer-events:auto;"></div>
+              <!-- Remonté (bottom:16px → 14vh) et rentré (right:16px → 4vw) : chevauchait le cordon
+                   rouge en bas de l'écran, et débordait sur la tranche du pilier droit — retour réel
+                   (« elle chevauche le cordon... mets-la entre le cordon et le pilier »). Numéros 1/2
+                   dans chaque salle, texte d'aide au-dessus, et surbrillance de la salle active
+                   (voir updateCheckpointRoomDot) ajoutés en même temps : le simple point rouge sans
+                   légende ne se lisait pas comme un vrai choix à faire (« je ne vois pas comment
+                   aller vers la deuxième salle »). -->
+              <div id="scale-checkpoint-room-nav" class="hidden" style="position:fixed;bottom:14vh;right:4vw;width:190px;background:rgba(20,20,20,.72);border:2px solid rgba(255,255,255,.5);border-radius:6px;z-index:7;padding:8px;box-sizing:border-box;pointer-events:none;">
+                <p style="margin:0 0 6px;color:#fff;font-family:Arial,sans-serif;font-size:.65rem;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.03em;">Glissez le point : quelle salle ?</p>
+                <div style="position:relative;height:90px;display:flex;gap:10px;">
+                  <div id="scale-checkpoint-room-1" class="scale-checkpoint-room-box" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">1</div>
+                  <div id="scale-checkpoint-room-2" class="scale-checkpoint-room-box" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">2</div>
+                  <div id="scale-checkpoint-room-dot" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);cursor:grab;top:50%;left:25%;transform:translate(-50%,-50%);touch-action:none;pointer-events:auto;"></div>
+                </div>
               </div>
               <!-- Vraie salle en volume, façon photo de galerie : le mur du fond nous fait face
                    (un simple rectangle plat, pas de déformation puisqu'on le regarde de face), les
@@ -1400,8 +1439,8 @@
             <p class="modal-hint" id="pf-tech-explanation" style="margin-top:0;">Emplacement des boutons, touche Entrée, chronomètre — réglages purement techniques, sans rapport avec le contenu des exercices.</p>
             <label class="rubrique-option"><input type="checkbox" id="pf-show-timer" /><span>Afficher le chronomètre dans les exercices</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-enter-validate" /><span>Valider les réponses dans les jeux avec la touche Entrée</span></label>
-            <label class="rubrique-option"><input type="checkbox" id="pf-show-explanations" /><span>Afficher les explications d'exercice dans leur configuration</span></label>
-            <label class="rubrique-option"><input type="checkbox" id="pf-show-rules" checked /><span>Afficher la fenêtre de règles au démarrage d'un exercice</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="pf-show-explanations" /><span>Afficher les explications d'exercice (configuration et avant de jouer)</span></label>
+            <label class="rubrique-option"><input type="checkbox" id="pf-show-rules" checked /><span>Afficher les conseils d'utilisation du micro avant le début des jeux</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-flags-artists" checked /><span>Faire apparaître les drapeaux nationaux pour les artistes</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-flags-locations" checked /><span>Faire apparaître les drapeaux pour les lieux de conservation</span></label>
             <label class="rubrique-option"><input type="checkbox" id="pf-audio" /><span>Lecture audio (voix de synthèse)</span></label>
@@ -1534,6 +1573,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=244"></script>
+    <script src="app.js?v=246"></script>
   </body>
 </html>
