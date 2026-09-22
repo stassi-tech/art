@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=184" />
+    <link rel="stylesheet" href="style.css?v=185" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 32</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 33</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1231,8 +1231,13 @@
                       <div class="scale-checkpoint-pillar-niche-boxes">
                         <div class="scale-checkpoint-room-box" data-room-index="0">1</div>
                         <div class="scale-checkpoint-room-box" data-room-index="1">2</div>
+                        <!-- v32 : enfant de la rangée (position:relative) plutôt que de la niche —
+                             son left (0 à sous la case 1, jusqu'à sous la case 2) est calculé en JS
+                             au prorata de checkpointProgress (voir updateCheckpointRoomIndicator),
+                             retour de Stéphane : « il faudrait que le point rouge suive l'évolution
+                             du personnage ». -->
+                        <div class="scale-checkpoint-room-dot"></div>
                       </div>
-                      <div class="scale-checkpoint-room-dot"></div>
                     </div>
                   </div>
                   <div id="scale-checkpoint-wall" class="scale-checkpoint-wallpanel">
@@ -1248,8 +1253,13 @@
                       <div class="scale-checkpoint-pillar-niche-boxes">
                         <div class="scale-checkpoint-room-box" data-room-index="0">1</div>
                         <div class="scale-checkpoint-room-box" data-room-index="1">2</div>
+                        <!-- v32 : enfant de la rangée (position:relative) plutôt que de la niche —
+                             son left (0 à sous la case 1, jusqu'à sous la case 2) est calculé en JS
+                             au prorata de checkpointProgress (voir updateCheckpointRoomIndicator),
+                             retour de Stéphane : « il faudrait que le point rouge suive l'évolution
+                             du personnage ». -->
+                        <div class="scale-checkpoint-room-dot"></div>
                       </div>
-                      <div class="scale-checkpoint-room-dot"></div>
                     </div>
                   </div>
                   <!-- Mur du fond de la 2e salle, jumeau de #scale-checkpoint-wall ci-dessus (même
@@ -1270,8 +1280,13 @@
                       <div class="scale-checkpoint-pillar-niche-boxes">
                         <div class="scale-checkpoint-room-box" data-room-index="0">1</div>
                         <div class="scale-checkpoint-room-box" data-room-index="1">2</div>
+                        <!-- v32 : enfant de la rangée (position:relative) plutôt que de la niche —
+                             son left (0 à sous la case 1, jusqu'à sous la case 2) est calculé en JS
+                             au prorata de checkpointProgress (voir updateCheckpointRoomIndicator),
+                             retour de Stéphane : « il faudrait que le point rouge suive l'évolution
+                             du personnage ». -->
+                        <div class="scale-checkpoint-room-dot"></div>
                       </div>
-                      <div class="scale-checkpoint-room-dot"></div>
                     </div>
                   </div>
                 </div>
@@ -1614,6 +1629,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=268"></script>
+    <script src="app.js?v=269"></script>
   </body>
 </html>

@@ -912,11 +912,17 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
   margin:0 0 5px; color:#fff; font-family:Arial,sans-serif; font-size:.5rem; font-weight:700;
   text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;
 }
-.scale-checkpoint-pillar-niche-boxes { display:flex; align-items:center; justify-content:center; gap:8px; }
-/* Le point rouge de progression vit maintenant SOUS les 2 salles (jamais entre les deux) — retour
-   de Stéphane : « on a l'impression qu'il est entre les deux salles ». Un simple bloc en dessous
-   des cases, centré, suffit : plus besoin de calculer sa position X/Y en JS à chaque copie. */
-.scale-checkpoint-room-dot { width:9px; height:9px; border-radius:50%; background:#e2453c; box-shadow:0 0 5px rgba(0,0,0,.6); margin:6px auto 0; }
+/* position:relative : sert de repère de positionnement au point rouge ci-dessous (position:absolute
+   en enfant), padding-bottom : réserve la place sous les cases pour lui, sans quoi il faudrait le
+   sortir de cette rangée (et donc recalculer sa position par rapport à un autre élément). */
+.scale-checkpoint-pillar-niche-boxes { position:relative; display:flex; align-items:center; justify-content:center; gap:8px; padding-bottom:14px; }
+/* v31 : vit SOUS les 2 salles (jamais entre les deux) — retour de Stéphane : « on a l'impression
+   qu'il est entre les deux salles ». v32 : et il GLISSE désormais horizontalement (son left est
+   recalculé en JS à chaque frame de marche, voir updateCheckpointRoomIndicator dans app.js) au lieu
+   de rester centré fixe — retour de Stéphane : « il faudrait que le point rouge suive l'évolution
+   du personnage ». bottom:0 (plutôt que top) le garde bien DANS la niche, dans l'espace réservé par
+   le padding-bottom ci-dessus, quelle que soit sa position horizontale. */
+.scale-checkpoint-room-dot { position:absolute; bottom:0; left:0; width:9px; height:9px; border-radius:50%; background:#e2453c; box-shadow:0 0 5px rgba(0,0,0,.6); }
 .scale-checkpoint-room-box {
   width:26px; height:26px; flex:none; border:2px solid rgba(255,255,255,.4); border-radius:3px;
   display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.65);

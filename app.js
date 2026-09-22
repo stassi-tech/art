@@ -3081,10 +3081,13 @@ function enterScaleView() {
 // contrôle, et puis un autre pilier va apparaître avec un écran de contrôle similaire »). Comme
 // chaque niche est un enfant DOM de son pilier, elle défile et se cache avec lui tout naturellement
 // (voir buildCheckpointTrack) — cette fonction n'a donc plus qu'à synchroniser le CONTENU des 3
-// copies (quelle salle est active), jamais leur position ni leur visibilité de panneau : plus de
-// calcul de rect ni de point positionné en JS, le point rouge est maintenant simplement sous les 2
-// cases via le CSS (.scale-checkpoint-room-dot), demandé par Stéphane pour ne plus donner
-// l'impression d'être entre les deux salles.
+// copies (quelle salle est active), jamais leur position ni leur visibilité de panneau.
+// v32 : le point rouge, lui, ne reste plus figé au centre sous les 2 cases — retour de Stéphane :
+// « quand le personnage bouge, sur les piliers, le point rouge ne bouge pas... il faudrait qu'il
+// suive l'évolution du personnage ». Il glisse maintenant horizontalement SOUS la rangée de cases,
+// de sous la case 1 (checkpointProgress=0) à sous la case 2 (checkpointProgress=1), en continu —
+// cette fonction est donc désormais appelée à chaque frame de marche (voir updateCheckpointWalkVisual)
+// et pas seulement au moment où l'on franchit le pilier.
 function updateCheckpointRoomIndicator() {
   const niches = document.querySelectorAll('.scale-checkpoint-pillar-niche');
   if (!niches.length) return;
@@ -3101,6 +3104,16 @@ function updateCheckpointRoomIndicator() {
     const box2 = niche.querySelector('[data-room-index="1"]');
     if (box1) box1.classList.toggle('active-room', state.currentRoomIndex !== 1);
     if (box2) box2.classList.toggle('active-room', state.currentRoomIndex === 1);
+    // Le point est un enfant de .scale-checkpoint-pillar-niche-boxes (position:relative), lui-même
+    // positionné en absolu sous la rangée — on fait juste varier son left entre 0 (sous la case 1)
+    // et la largeur de la rangée moins la sienne (sous la case 2), au prorata de la progression
+    // réelle du personnage, plutôt qu'un simple centrage fixe.
+    const boxesRow = niche.querySelector('.scale-checkpoint-pillar-niche-boxes');
+    const dot = boxesRow ? boxesRow.querySelector('.scale-checkpoint-room-dot') : null;
+    if (boxesRow && dot) {
+      const travel = Math.max(0, boxesRow.clientWidth - dot.offsetWidth);
+      dot.style.left = `${checkpointProgress * travel}px`;
+    }
   });
 }
 // v24 : Stéphane a confirmé (après plusieurs allers-retours) que le passage salle 1 / salle 2 se
@@ -3162,12 +3175,17 @@ function stopCheckpointWalking() {
 // ouvrira, et le témoin passif) reste sur la même hysteresis qu'avant (CHECKPOINT_PILLAR_START/END)
 // mais ne déclenche plus RIEN de visuel ici : le décor est déjà là, sur le rail, et suit son propre
 // panoramique tout seul.
-// Seuil de disparition de la machine à tickets : « il faut la lier... près du premier pilier »
-// (retour de Stéphane) — elle est réellement fixée à l'endroit du premier pilier (progress=0), donc
-// dès qu'on s'en éloigne pour de bon en marchant, elle sort logiquement du champ (on ne pourrait
-// plus l'utiliser, physiquement, une fois avancé dans la salle). Une petite marge (pas 0 pile) évite
-// qu'elle clignote au tout début du geste de marche.
-const CHECKPOINT_TURNSTILE_VISIBLE_UNTIL = 0.05;
+// v32 : la machine à tickets disparaissait d'un coup (bascule hidden/display:none à un seuil fixe)
+// — retour de Stéphane : « il faudrait qu'elle soit dans le mouvement, qu'elle disparaisse comme
+// disparaît le pilier », c'est-à-dire progressivement, à la même vitesse que le personnage marche,
+// pas d'un coup sec à un instant donné. Elle est réellement fixée à l'endroit du premier pilier
+// (progress=0) : au lieu d'un simple hidden, on lui applique maintenant un fondu ET un léger
+// glissement vers la gauche, tous deux calculés en continu à partir de checkpointProgress lui-même
+// (exactement comme le pilier, qui recule via le transform du rail plutôt que par un événement
+// ponctuel) — sur toute la petite plage 0..CHECKPOINT_TURNSTILE_FADE_END, pas seulement à la toute
+// fin. display:none (hidden) n'intervient qu'une fois le fondu totalement terminé (opacité déjà à
+// 0), uniquement pour la sortir de la mise en page/du clic sans provoquer de saut visuel.
+const CHECKPOINT_TURNSTILE_FADE_END = 0.16;
 function updateCheckpointWalkVisual() {
   const dot = $('scale-checkpoint-floor-dot');
   const sil = $('scale-checkpoint-silhouette');
@@ -3177,7 +3195,13 @@ function updateCheckpointWalkVisual() {
   if (dot) dot.style.transform = `translateX(${tx}px)`;
   if (sil) sil.style.transform = `translateX(${tx}px)`;
   if (track) track.style.transform = `translateX(${-checkpointProgress * checkpointPanTravelPx}px)`;
-  if (turnstile) turnstile.classList.toggle('hidden', checkpointProgress > CHECKPOINT_TURNSTILE_VISIBLE_UNTIL);
+  if (turnstile) {
+    const fadeT = Math.min(1, Math.max(0, checkpointProgress / CHECKPOINT_TURNSTILE_FADE_END));
+    turnstile.style.opacity = String(1 - fadeT);
+    turnstile.style.transform = `translateX(${-fadeT * 50}px)`;
+    turnstile.style.pointerEvents = fadeT > 0 ? 'none' : '';
+    turnstile.classList.toggle('hidden', fadeT >= 1);
+  }
   // Hysteresis : au-delà de la fin de la zone → salle 2 ; avant le début → salle 1 ; À L'INTÉRIEUR
   // de la zone, on ne touche à rien, la salle « logique » reste celle d'avant qu'on y entre (qu'on
   // vienne de la gauche ou de la droite) — évite un aller-retour minuscule pile sur le pilier qui
@@ -3188,8 +3212,11 @@ function updateCheckpointWalkVisual() {
   if (state.allRooms && newRoomIndex !== state.currentRoomIndex) {
     state.currentRoomIndex = newRoomIndex;
     state.roomWalls = state.allRooms[newRoomIndex];
-    updateCheckpointRoomIndicator();
   }
+  // v32 : appelée à CHAQUE frame de marche désormais (plus seulement au franchissement du pilier),
+  // pour que le point rouge de chaque niche suive en continu checkpointProgress (voir plus bas) —
+  // retour de Stéphane : « il faudrait que le point rouge suive l'évolution du personnage ».
+  updateCheckpointRoomIndicator();
 }
 function startCheckpointWalking(direction) {
   stopCheckpointWalking();
