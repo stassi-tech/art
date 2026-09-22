@@ -3114,15 +3114,24 @@ function updateCheckpointRoomIndicator() {
 // celle choisie ici, avant de franchir le tourniquet.
 // Contrainte propre à cet écran : la salle y est un DÉCOR FIXE vu en perspective à travers une
 // porte (une mise en scène quasi photographique, pas un vrai espace qu'on parcourt comme le plan
-// rapproché) — impossible d'y faire défiler un vrai mur de 15 m. Le personnage marche donc sur une
-// distance courte et fixe à l'écran (CHECKPOINT_WALK_RANGE_PX), et le changement de salle se fait
-// en substituant l'œuvre du mur du fond (voir layoutCheckpointRoom) au passage — mais seulement une
-// fois le pilier (voir CHECKPOINT_PILLAR_START/END plus bas) vraiment franchi, pas au milieu du
-// trajet : Stéphane a précisé qu'il faut d'abord marcher jusqu'au pilier, passer devant lui (le
-// tableau de la salle 1 reste visible pendant qu'on le franchit), et SEULEMENT APRÈS voir
-// apparaître la salle 2 — même principe que le pilier du plan rapproché (voir appendStaticPillar),
-// juste sans vrai défilement puisqu'il n'y en a pas ici.
-const CHECKPOINT_WALK_RANGE_PX = 220;
+// rapproché) — impossible d'y faire défiler un vrai mur de 15 m. Le personnage marche donc à
+// l'écran jusqu'au bord droit de la fenêtre (checkpointWalkRangePx, recalculé à chaque entrée sur
+// cet écran selon la place réellement disponible, voir setupCheckpointWalk — PAS une distance
+// fixe : « il va jusqu'au bout de l'écran... il est devant le pilier », retour de Stéphane après
+// une première version bien trop courte), et le changement de salle se fait en substituant
+// l'œuvre du mur du fond (voir layoutCheckpointRoom) au passage — mais seulement une fois le
+// pilier (voir CHECKPOINT_PILLAR_START/END plus bas) vraiment franchi, pas avant : il faut d'abord
+// marcher jusqu'au bord/au pilier, passer devant lui (le tableau de la salle 1 reste visible
+// pendant qu'on le franchit), et SEULEMENT APRÈS voir apparaître la salle 2 — même principe que le
+// pilier du plan rapproché (voir appendStaticPillar), juste sans vrai défilement puisqu'il n'y en
+// a pas ici.
+// Retour de Stéphane après la v26 : le personnage doit marcher jusqu'à VRAIMENT toucher le bord
+// droit de l'écran (pas un petit pas au milieu de l'écran) — c'est cette arrivée au bord qui EST
+// le pilier. La distance n'est donc plus une constante fixe (220 px, bien trop courte sur un grand
+// écran) mais recalculée à chaque entrée sur cet écran (voir setupCheckpointWalk), à partir de la
+// place réellement disponible entre le personnage et le bord de la fenêtre — ainsi la marche va
+// toujours jusqu'au bord, quelle que soit la taille de l'écran.
+let checkpointWalkRangePx = 220; // valeur de repli avant la première mesure réelle
 // Retour de Stéphane après avoir vu la v25 : la salle ne doit PAS changer dès le milieu du trajet —
 // le personnage doit aller jusqu'au pilier, passer DEVANT lui (l'enterrement à Ornans doit encore
 // être visible à ce moment-là, juste partiellement masqué par le pilier), et ce n'est qu'UNE FOIS
@@ -3160,7 +3169,7 @@ function updateCheckpointWalkVisual() {
   const dot = $('scale-checkpoint-floor-dot');
   const sil = $('scale-checkpoint-silhouette');
   const pillar = $('scale-checkpoint-pillar');
-  const tx = checkpointProgress * CHECKPOINT_WALK_RANGE_PX;
+  const tx = checkpointProgress * checkpointWalkRangePx;
   if (dot) dot.style.transform = `translateX(${tx}px)`;
   if (sil) sil.style.transform = `translateX(${tx}px)`;
   if (pillar) pillar.style.opacity = String(checkpointPillarOpacity(checkpointProgress));
@@ -3193,9 +3202,11 @@ function startCheckpointWalking(direction) {
 }
 // Prépare l'écran du contrôle des billets pour la marche salle 1 / salle 2 : positionne le point
 // rouge aux pieds du personnage (mesuré une fois la salle réellement mise en page, même principe
-// que updateCheckpointRoomIndicator) et repart toujours de la salle 1 (state.currentRoomIndex déjà
-// remis à 0 par enterScaleView à chaque passage par l'accueil). N'affiche le point que s'il y a
-// vraiment 2 salles à choisir — sinon rien à marcher, comme pour le petit plan témoin.
+// que updateCheckpointRoomIndicator), calcule la vraie distance jusqu'au bord droit de l'écran
+// (checkpointWalkRangePx — voir commentaire plus haut) et repart toujours de la salle 1
+// (state.currentRoomIndex déjà remis à 0 par enterScaleView à chaque passage par l'accueil).
+// N'affiche le point que s'il y a vraiment 2 salles à choisir — sinon rien à marcher, comme pour
+// le petit plan témoin.
 function setupCheckpointWalk() {
   const dot = $('scale-checkpoint-floor-dot');
   const sil = $('scale-checkpoint-silhouette');
@@ -3204,11 +3215,22 @@ function setupCheckpointWalk() {
   const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
   dot.classList.toggle('hidden', !hasTwoRooms);
   if (!hasTwoRooms) { stopCheckpointWalking(); return; }
+  // Remet à zéro une éventuelle transformation laissée par une marche précédente AVANT de mesurer
+  // les rects ci-dessous — bug réel repéré ici : sans ça, revenir sur cet écran après avoir déjà
+  // marché jusqu'à la salle 2 une fois faussait la mesure (elle aurait inclus ce décalage), et donc
+  // la distance recalculée jusqu'au bord de l'écran.
+  sil.style.transform = 'translateX(0px)';
+  dot.style.transform = 'translateX(0px)';
   const rowRect = row.getBoundingClientRect();
   const silRect = sil.getBoundingClientRect();
   if (!rowRect.width || !silRect.width) return;
   dot.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 14}px`;
   dot.style.top = `${silRect.bottom - rowRect.top - 20}px`;
+  // La vraie distance disponible entre le personnage et le bord DROIT de la fenêtre (pas de la
+  // ligne, qui peut s'arrêter avant) — avec une petite marge (40 px) pour qu'il ne sorte jamais
+  // complètement de l'écran. C'est cette arrivée au bord qui représente le pilier (retour de
+  // Stéphane : « il va jusqu'au bout de l'écran... il est devant le pilier »).
+  checkpointWalkRangePx = Math.max(160, window.innerWidth - silRect.right - 40);
   checkpointProgress = 0;
   updateCheckpointWalkVisual();
 }
@@ -3233,7 +3255,7 @@ function setupCheckpointWalk() {
     if (Math.abs(dx) > DRAG_THRESHOLD) {
       moved = true;
       stopCheckpointWalking();
-      checkpointProgress = Math.min(1, Math.max(0, startProgress + dx / CHECKPOINT_WALK_RANGE_PX));
+      checkpointProgress = Math.min(1, Math.max(0, startProgress + dx / checkpointWalkRangePx));
       updateCheckpointWalkVisual();
     }
   });
