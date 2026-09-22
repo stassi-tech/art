@@ -2758,25 +2758,24 @@ function relativeImageSizes(works, maxPx = 360, minPx = 170, defaultPx = 260) {
 // découverte progressif. Deux modes d'agrandissement :
 // - 'pan' (Imprégnation) : l'image zoome sur elle-même (centrée), déplaçable à la souris/au doigt
 //   — comme avant, mais déclenché par la loupe et non plus par un tap n'importe où sur l'image.
-// - 'span' (Intrus, Famille) : la case déborde sur les cases voisines de la grille de comparaison
-//   (grid-column/grid-row), pour voir l'œuvre bien plus grande sans quitter la vue de comparaison.
-// touch-action:none posé sur la case ET sur l'image (pas seulement l'image comme avant) : c'est ce
-// qui manquait pour empêcher le zoom tactile natif du navigateur d'entrer en conflit avec notre
-// propre geste de glissement une fois très zoomé — la cause probable du « tremblement » signalé
-// sur mobile en mode pan.
+// - 'solo' (Intrus, Famille) : la case passe par-dessus toute la grille de comparaison (plein
+//   cadre) et masque les autres — remplace une première version où elle débordait seulement sur
+//   les cases voisines (grid-column/grid-row), qui ne faisait que les déplacer sans les recouvrir
+//   et bloquait le scroll mobile (signalé par Stéphane). Au palier intermédiaire, l'image remplit
+//   juste sa case solo (pas de zoom optique) ; au palier maximal, elle zoome et se déplace, comme
+//   en mode 'pan' — demandé explicitement par Stéphane (« comme dans Imprégnation »).
+// touch-action:none n'est posé sur la case et l'image que pendant le geste de glissement lui-même
+// (palier où le zoom optique est actif) : sinon, en mode 'solo', on bloquerait le défilement
+// tactile normal de la grille dès qu'une case grossit — précisément le bug mobile signalé.
 function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
   if (!cellEl || !imgEl) return null;
   const maxLevel = options.maxLevel || 2; // nombre de clics pour atteindre le palier maximal
-  const mode = options.mode || 'pan'; // 'pan' (Imprégnation) ou 'span' (Intrus/Famille)
-  const spanFor = options.spanFor || null; // (level) => {columns, rows}, requis en mode 'span'
-  const zoomFor = options.zoomFor || ((level) => 1 + level * 1.1); // facteur de zoom, mode 'pan'
+  const mode = options.mode || 'pan'; // 'pan' (Imprégnation) ou 'solo' (Intrus/Famille)
+  const container = options.container || null; // mode 'solo' uniquement : la grille dont il faut masquer les autres cases pendant que celle-ci est agrandie
+  const zoomFor = options.zoomFor || ((level) => 1 + level * 1.1); // facteur de zoom au palier où le zoom optique s'applique (voir panActive)
   const onLevelChange = options.onLevelChange || null;
 
   cellEl.style.position = cellEl.style.position || 'relative';
-  cellEl.style.touchAction = 'none';
-  // Dans les deux modes, l'image doit rester coupée aux bords de la case (celle-ci s'agrandit
-  // elle-même en mode 'span' — via grid-column/grid-row — donc rien n'est perdu ; en mode 'pan',
-  // c'est ce qui empêche l'image zoomée de déborder visuellement sur le reste de la page).
   cellEl.style.overflow = 'hidden';
   let level = 0, tx = 0, ty = 0, dragging = false, moved = false;
   let startX = 0, startY = 0, startTx = 0, startTy = 0;
@@ -2788,7 +2787,7 @@ function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
   iconsRow.className = 'loupe-progressive-icons';
   wrap.appendChild(iconsRow);
   const arrow = document.createElement('span');
-  arrow.textContent = '\u21b3';
+  arrow.textContent = '↳';
   arrow.setAttribute('aria-hidden', 'true');
   arrow.className = 'loupe-progressive-arrow';
   wrap.appendChild(arrow);
@@ -2807,26 +2806,49 @@ function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
         ? (level < maxLevel ? `Agrandir davantage (palier ${i}/${maxLevel})` : `Palier maximal atteint (${i}/${maxLevel})`)
         : `Revenir au palier ${i}/${maxLevel}`);
       btn.title = lit ? (level < maxLevel ? 'Cliquer pour agrandir encore' : 'Agrandissement maximal') : 'Cliquer pour revenir à ce palier';
-      btn.textContent = '\ud83d\udd0d';
+      btn.textContent = '🔍';
       btn.className = `loupe-progressive-icon${lit ? ' lit' : ' greyed'}`;
       btn.style.width = `${size}px`; btn.style.height = `${size}px`; btn.style.fontSize = `${Math.round(size * 0.55)}px`;
       btn.addEventListener('click', (event) => {
         event.preventDefault(); event.stopPropagation();
         setLevel(i === level ? Math.min(level + 1, maxLevel) : i);
       });
-      // Empêche aussi le pointerdown/up de remonter (utile en mode 'span', où la case entière est
-      // par ailleurs un <button> de sélection/réponse).
+      // Empêche aussi le pointerdown/up de remonter (utile en mode 'solo', où la case entière est
+      // par ailleurs un <button> de sélection).
       ['pointerdown', 'pointerup'].forEach((evt) => btn.addEventListener(evt, (event) => event.stopPropagation()));
       iconsRow.appendChild(btn);
     }
     arrow.classList.toggle('visible', maxLevel > 1);
   }
+
+  // Un même geste de zoom optique + glisser-déplacer dessert les deux modes, mais pas au même
+  // palier : en mode 'pan' (Imprégnation), il est actif dès le palier 1. En mode 'solo'
+  // (Intrus/Famille), le palier intermédiaire se contente de faire passer l'image en solo
+  // plein cadre (voir applySolo) SANS zoom optique — on ne veut le vrai zoom-et-déplacement,
+  // « comme dans Imprégnation », qu'au palier maximal (demandé explicitement par Stéphane).
+  function panActive() {
+    return (mode === 'pan' && level > 0) || (mode === 'solo' && level === maxLevel);
+  }
+  function updateTouchAction() {
+    if (mode === 'pan') { cellEl.style.touchAction = 'none'; imgEl.style.touchAction = 'none'; return; }
+    // Mode 'solo' : ne couper le geste de scroll tactile par défaut qu'une fois le
+    // glisser-déplacer réellement actif (palier maximal). Le laisser sinon, sans quoi on
+    // reproduit le blocage du scroll mobile signalé par Stéphane sur l'ancienne version
+    // (grid-span), qui coupait tout défilement dès qu'une case était agrandie.
+    const none = panActive();
+    cellEl.style.touchAction = none ? 'none' : '';
+    imgEl.style.touchAction = none ? 'none' : '';
+  }
   function applyPan() {
-    if (mode !== 'pan') return;
-    const zoom = zoomFor(level);
-    imgEl.style.transformOrigin = 'center center';
-    imgEl.style.transform = level > 0 ? `scale(${zoom}) translate(${tx / zoom}px, ${ty / zoom}px)` : '';
-    imgEl.style.cursor = level > 0 ? 'grab' : 'zoom-in';
+    if (panActive()) {
+      const zoom = zoomFor(level);
+      imgEl.style.transformOrigin = 'center center';
+      imgEl.style.transform = `scale(${zoom}) translate(${tx / zoom}px, ${ty / zoom}px)`;
+      imgEl.style.cursor = 'grab';
+    } else {
+      imgEl.style.transform = '';
+      imgEl.style.cursor = mode === 'pan' ? 'zoom-in' : '';
+    }
   }
   function clampPan() {
     const zoom = zoomFor(level);
@@ -2835,33 +2857,36 @@ function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
     tx = Math.max(-maxX, Math.min(maxX, tx));
     ty = Math.max(-maxY, Math.min(maxY, ty));
   }
-  function applySpan() {
-    if (mode !== 'span') return;
-    cellEl.classList.toggle('loupe-expanded', level > 0);
-    if (level > 0 && spanFor) {
-      const { columns, rows } = spanFor(level);
-      cellEl.style.gridColumn = `span ${columns}`;
-      cellEl.style.gridRow = `span ${rows}`;
+  // Mode 'solo' : plutôt que de faire grossir la case DANS la grille (ce qui ne faisait que
+  // déplacer les autres cases sans jamais vraiment les recouvrir — signalé par Stéphane pour
+  // Intrus et Famille), on fait passer la case choisie par-dessus toute la grille (plein cadre,
+  // position absolute) et on masque simplement ses voisines tant qu'on est au-dessus du palier 0 ;
+  // elles reviennent, inchangées, dès le retour à ce palier.
+  function applySolo() {
+    if (mode !== 'solo') return;
+    cellEl.classList.toggle('loupe-solo-active', level > 0);
+    if (container) {
+      Array.from(container.children).forEach((child) => {
+        if (child !== cellEl) child.classList.toggle('loupe-sibling-hidden', level > 0);
+      });
+    }
+    if (level > 0) {
       // Intrus et Famille posent une taille relative en style inline sur chaque image (max-width/
-      // max-height, voir relativeImageSizes) pour comparer leurs proportions réelles — une taille
-      // qui, sans cela, continuerait de plafonner l'image une fois la case agrandie et viderait la
-      // loupe de son effet. On l'efface tant qu'on est zoomé (comme déjà fait ailleurs pour la
-      // même raison, voir le « solo » d'Intrus), et on la restaure au retour au palier 0.
+      // max-height, voir relativeImageSizes) pour comparer leurs proportions réelles entre elles —
+      // une taille qui, sans cela, continuerait de plafonner l'image une fois la case passée en
+      // solo et viderait la loupe de son effet. On l'efface tant qu'on est au-dessus du palier 0,
+      // et on la restaure au retour à ce palier.
       if (!('savedMaxWidth' in imgEl.dataset)) {
         imgEl.dataset.savedMaxWidth = imgEl.style.maxWidth || '';
         imgEl.dataset.savedMaxHeight = imgEl.style.maxHeight || '';
       }
       imgEl.style.maxWidth = '100%';
       imgEl.style.maxHeight = '100%';
-    } else {
-      cellEl.style.gridColumn = '';
-      cellEl.style.gridRow = '';
-      if ('savedMaxWidth' in imgEl.dataset) {
-        imgEl.style.maxWidth = imgEl.dataset.savedMaxWidth;
-        imgEl.style.maxHeight = imgEl.dataset.savedMaxHeight;
-        delete imgEl.dataset.savedMaxWidth;
-        delete imgEl.dataset.savedMaxHeight;
-      }
+    } else if ('savedMaxWidth' in imgEl.dataset) {
+      imgEl.style.maxWidth = imgEl.dataset.savedMaxWidth;
+      imgEl.style.maxHeight = imgEl.dataset.savedMaxHeight;
+      delete imgEl.dataset.savedMaxWidth;
+      delete imgEl.dataset.savedMaxHeight;
     }
   }
   function setLevel(newLevel) {
@@ -2869,45 +2894,61 @@ function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
     if (level === 0) { tx = 0; ty = 0; }
     clampPan();
     applyPan();
-    applySpan();
+    applySolo();
+    updateTouchAction();
     buildIcons();
     onLevelChange?.(level);
   }
 
-  if (mode === 'pan') {
-    imgEl.style.touchAction = 'none';
-    imgEl.style.transformOrigin = 'center center';
+  // Tant que la case est agrandie (palier > 0), un tap sur l'image elle-même ne doit jamais
+  // remonter jusqu'au bouton qui la contient : en mode 'solo', ce même bouton sert par ailleurs à
+  // sélectionner l'image (Famille) — un tap qui ne visait qu'à explorer l'image zoomée ne doit pas
+  // déclencher/annuler une sélection par accident, ni pendant ni juste après un glisser. Les clics
+  // sur les loupes elles-mêmes ne sont pas concernés : ils appellent déjà stopPropagation() plus
+  // haut, avant d'atteindre ce gestionnaire (posé sur un ancêtre, donc exécuté après).
+  cellEl.addEventListener('click', (event) => {
+    if (level > 0) { event.preventDefault(); event.stopImmediatePropagation(); }
+  });
+
+  imgEl.style.transformOrigin = 'center center';
+  imgEl.style.transition = 'transform .18s ease-out';
+  // Le déplacement (pointermove/up) s'écoute sur le DOCUMENT plutôt que sur l'image elle-même —
+  // seul le pointerdown de départ est pris sur l'image. Avec setPointerCapture posé sur l'image,
+  // un navigateur peut, dans certaines conditions, arrêter de délivrer les événements suivants dès
+  // que le transform de l'élément capturé change en cours de geste (constaté : le tout premier
+  // déplacement fonctionne, puis plus rien ne remonte — symptôme exact du « ça reste coincé »
+  // signalé pour Imprégnation). Écouter sur document, qui ne bouge jamais lui, contourne le
+  // problème sans dépendre de la capture de pointeur.
+  imgEl.addEventListener('pointerdown', (event) => {
+    if (!panActive()) return;
+    event.preventDefault();
+    dragging = true; moved = false;
+    startX = event.clientX; startY = event.clientY; startTx = tx; startTy = ty;
+  });
+  document.addEventListener('pointermove', (event) => {
+    if (!dragging || !panActive()) return;
+    const dx = event.clientX - startX, dy = event.clientY - startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      moved = true;
+      imgEl.style.transition = 'none';
+      imgEl.style.cursor = 'grabbing';
+      tx = startTx + dx; ty = startTy + dy;
+      clampPan();
+      applyPan();
+    }
+  });
+  const stopDrag = () => {
+    if (!dragging) return;
+    dragging = false;
     imgEl.style.transition = 'transform .18s ease-out';
-    imgEl.addEventListener('pointerdown', (event) => {
-      if (level === 0) return;
-      dragging = true; moved = false;
-      startX = event.clientX; startY = event.clientY; startTx = tx; startTy = ty;
-      imgEl.setPointerCapture?.(event.pointerId);
-    });
-    imgEl.addEventListener('pointermove', (event) => {
-      if (!dragging || level === 0) return;
-      const dx = event.clientX - startX, dy = event.clientY - startY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-        moved = true;
-        imgEl.style.transition = 'none';
-        imgEl.style.cursor = 'grabbing';
-        tx = startTx + dx; ty = startTy + dy;
-        clampPan();
-        applyPan();
-      }
-    });
-    const stopDrag = () => {
-      if (!dragging) return;
-      dragging = false;
-      imgEl.style.transition = 'transform .18s ease-out';
-    };
-    imgEl.addEventListener('pointerup', stopDrag);
-    imgEl.addEventListener('pointercancel', stopDrag);
-    imgEl.addEventListener('pointerleave', stopDrag);
-  }
+    if (panActive()) imgEl.style.cursor = 'grab';
+  };
+  document.addEventListener('pointerup', stopDrag);
+  document.addEventListener('pointercancel', stopDrag);
 
   buildIcons();
-  applySpan();
+  applySolo();
+  updateTouchAction();
   return { setLevel, getLevel: () => level };
 }
 function setLightboxScaleData(work) {
@@ -5055,16 +5096,16 @@ function famShowQuestion() {
   $('fam-image-grid').innerHTML = q.images.map((work, i) =>
     `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" style="max-width:${famSizes[i]}px;max-height:${famSizes[i]}px;" /></button>`
   ).join('');
-  // Grille à 4 colonnes (8 images) ou 3 colonnes (6 images, .fam-count-6) — la loupe s'appuie
-  // sur ce nombre réel de colonnes pour calculer combien de cases elle doit occuper à chaque
-  // palier : palier 1 = un bloc 2×2 (4 cases, demandé par Stéphane), palier 2 = la grille entière
-  // (8 cases pour le cas à 4 colonnes, 6 pour celui à 3 colonnes).
-  const famCols = q.imgCount === 6 ? 3 : 4;
+  // La loupe passe la case choisie en solo plein cadre par-dessus toute la grille (masquant les
+  // autres) au palier 1, puis l'agrandit et la rend déplaçable comme dans Imprégnation au palier
+  // 2 — remplace l'ancienne approche par grid-column/grid-row (span), qui ne faisait que déplacer
+  // les autres cases sans jamais les recouvrir, et bloquait le scroll mobile une fois agrandie.
   $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
     attachProgressiveLoupe(btn, btn.querySelector('img'), {
-      mode: 'span',
+      mode: 'solo',
       maxLevel: 2,
-      spanFor: (level) => (level === 1 ? { columns: Math.min(2, famCols), rows: 2 } : { columns: famCols, rows: 2 }),
+      container: $('fam-image-grid'),
+      zoomFor: (level) => (level === 2 ? 2.2 : 1),
     });
     btn.addEventListener('click', () => {
       if (famStep !== 0) return;
@@ -6735,14 +6776,12 @@ $('imp-launch-first-button')?.addEventListener('click', () => {
   impShowCurrent();
 });
 
-// Contrairement à Intrus/Famille (mode 'span' de attachProgressiveLoupe, qui fait déborder la
-// case sur ses voisines — utile pour comparer vite plusieurs images) : Stéphane a précisé que la
-// loupe d'Imprégnation doit « permettre d'entrer dans le tableau pour agrandir certains détails »,
-// donc un vrai zoom avec déplacement (mode 'pan'), pas seulement une image plus grande dans le
-// même cadre — plus logique ici, où l'œuvre reste affichée longtemps pendant que la référence se
-// lit. L'image de mise en scène est un élément fixe du HTML (seul son « src » change d'une œuvre
-// à l'autre) : on l'attache donc une seule fois ici, et on garde la référence retournée pour
-// remettre le zoom à zéro à chaque nouvelle œuvre (impShowCurrent, plus bas).
+// Mode 'pan' : zoom optique + déplacement dès le premier palier, actif tout le temps (une seule
+// image affichée, contrairement à Intrus/Famille — mode 'solo' de attachProgressiveLoupe, qui
+// masque les autres cases de la grille et ne zoome-et-déplace qu'au palier maximal). L'image de
+// mise en scène est un élément fixe du HTML (seul son « src » change d'une œuvre à l'autre) : on
+// l'attache donc une seule fois ici, et on garde la référence retournée pour remettre le zoom à
+// zéro à chaque nouvelle œuvre (impShowCurrent, plus bas).
 const impLoupe = attachProgressiveLoupe($('imp-stage-img')?.closest('figure'), $('imp-stage-img'), {
   mode: 'pan',
   maxLevel: 2,
@@ -7071,11 +7110,18 @@ function intrusShowQuestion() {
     promptCard.innerHTML = `<div class="intrus-image-choices">${q.choices.map((c, i) =>
       `<button type="button" class="intrus-image-choice" data-index="${i}"><span class="intrus-image-number">${i + 1}</span><img src="${escapeHtml(imageSourceSized(c.image, 300))}" alt="" style="max-width:${sizes[i]}px;max-height:${sizes[i]}px;" /></button>`
     ).join('')}</div>`;
+    // La loupe passe l'image choisie en solo plein cadre par-dessus les deux autres (masquées) au
+    // palier 1, puis l'agrandit et la rend déplaçable comme dans Imprégnation au palier 2 —
+    // remplace l'ancienne approche par grid-column/grid-row (span), qui ne faisait que déplacer
+    // les deux autres images sans jamais les recouvrir, et rétrécissait au lieu d'agrandir au
+    // palier maximal.
+    const intrusImageChoicesEl = promptCard.querySelector('.intrus-image-choices');
     promptCard.querySelectorAll('.intrus-image-choice').forEach((btn) => {
       attachProgressiveLoupe(btn, btn.querySelector('img'), {
-        mode: 'span',
+        mode: 'solo',
         maxLevel: 2,
-        spanFor: (level) => (level === 1 ? { columns: 2, rows: 1 } : { columns: 3, rows: 1 }),
+        container: intrusImageChoicesEl,
+        zoomFor: (level) => (level === 2 ? 2.2 : 1),
       });
     });
     $('intrus-choices').innerHTML = `<div class="correction-details">
