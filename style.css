@@ -805,8 +805,11 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
 .scale-checkpoint-wallpanel, #scale-checkpoint-floor { position:absolute; background-color:#c9b896; background-size:cover; background-position:center; }
 /* Mur du fond : rectangle plat, vu bien en face — aucune déformation à faire puisqu'on le regarde
    de front. C'est ici, et ici seulement, que les œuvres du fond s'affichent (à leur vraie échelle,
-   voir layoutCheckpointRoom dans app.js), centrées sur ce mur de 15 m. */
-#scale-checkpoint-wall { left:var(--room-inner-x); right:var(--room-inner-x); top:0; height:var(--room-horizon-y); }
+   voir buildCheckpointTrack dans app.js). v28 : cette « fenêtre » cache maintenant une bande plus
+   large qu'elle (.scale-checkpoint-wall-works, voir plus bas) qui glisse derrière elle au fur et à
+   mesure de la marche salle 1 / salle 2 — overflow:hidden est ce qui la transforme en fenêtre
+   plutôt que de laisser la bande déborder visuellement de part et d'autre. */
+#scale-checkpoint-wall { left:var(--room-inner-x); right:var(--room-inner-x); top:0; height:var(--room-horizon-y); overflow:hidden; }
 /* Tranches des murs latéraux : bandes fixes et étroites, jamais en perspective. Un dégradé et de
    fines cannelures suggèrent une colonne vue de profil plutôt qu'un vrai mur — décor, pas un
    espace où accrocher quoi que ce soit. Le motif passe par un ::after (plutôt qu'un background-image
@@ -858,12 +861,14 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
                     repeating-linear-gradient(-45deg, transparent 0 12px, rgba(255,255,255,.10) 12px 14px);
   box-shadow:inset 0 8px 14px -6px rgba(0,0,0,.35);
 }
-/* Chaque œuvre du mur du fond est positionnée et dimensionnée individuellement en JS (voir
-   layoutCheckpointRoom dans app.js), en vraie échelle (cm réels de l'œuvre → pixels, à partir d'un
-   mur de référence de 15 m) plutôt qu'ajustée pour « faire joli » : un Courbet de 6,68 m occupe
-   ainsi la vraie proportion d'un mur de 15 m, ni plus petit ni plus grand qu'il ne devrait, et le
-   groupe d'œuvres est centré sur ce mur. */
-.scale-checkpoint-wall-works { position:absolute; inset:0; overflow:hidden; }
+/* v28 : la bande qui porte les œuvres du mur du fond (voir buildCheckpointTrack dans app.js) —
+   salle 1, pilier, salle 2, l'une après l'autre — PLUS LARGE que la fenêtre qui la cache
+   (#scale-checkpoint-wall, avec son overflow:hidden), et glissée horizontalement (transform, voir
+   updateCheckpointWalkVisual) en même temps que le personnage marche, pour un vrai effet de
+   travelling plutôt qu'un changement figé. Largeur et transform posés en JS (pas de largeur ici :
+   elle dépend du nombre de salles), chaque œuvre elle-même en vraie échelle (cm réels → pixels, à
+   partir d'un mur de référence de 15 m) plutôt qu'ajustée pour « faire joli ». */
+.scale-checkpoint-wall-works { position:absolute; top:0; height:100%; left:0; }
 .scale-checkpoint-work { position:absolute; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.35); }
 #scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; }
 #scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
@@ -1007,12 +1012,14 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
                      linear-gradient(90deg, rgba(0,0,0,.5), rgba(255,255,255,.22) 50%, rgba(0,0,0,.5));
   box-shadow: inset 0 0 24px rgba(0,0,0,.4), 4px 0 10px rgba(0,0,0,.3), -4px 0 10px rgba(0,0,0,.3);
 }
-/* v25 : repère de jonction salle 1 / salle 2 sur le plan d'ensemble (voir setupCheckpointWalk/
-   updateCheckpointWalkVisual dans app.js) — posé près de la fin du mur du fond (pas centré : le
-   personnage doit marcher jusque là, passer devant, ET SEULEMENT ENSUITE voir la salle 2, retour
-   de Stéphane), invisible par défaut (opacity:0, pilotée en JS selon la progression de la marche),
-   jamais cliquable. */
-.scale-checkpoint-pillar { left:76%; width:9%; opacity:0; pointer-events:none; }
+/* v28 : repère de jonction salle 1 / salle 2 sur le plan d'ensemble. Depuis la réécriture v28
+   (voir buildCheckpointTrack/updateCheckpointWalkVisual dans app.js), ce pilier est un enfant du
+   "rail" panoramique #scale-checkpoint-wall-works : il défile avec le décor au lieu d'être un
+   calque en fondu au-dessus. left/width/display sont donc posés entièrement en JS par
+   buildCheckpointTrack() (position réelle dans le rail, visible seulement en salle 2, caché en
+   salle unique) — plus aucune valeur ne doit être fixée ici en CSS, sous peine d'entrer en
+   conflit avec le JS. Reste seulement non-cliquable, comme demandé par Stéphane. */
+.scale-checkpoint-pillar { pointer-events:none; }
 /* Point rouge au sol du plan d'ensemble (voir attachCheckpointFloorDotDrag dans app.js) — même
    apparence que #scale-floor-dot, mais position:absolute (pas fixed) puisqu'il vit DANS
    #scale-checkpoint-row plutôt que sur tout l'écran, et sans transform:translateX(-50%) de base :
