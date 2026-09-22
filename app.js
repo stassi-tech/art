@@ -2745,130 +2745,170 @@ function relativeImageSizes(works, maxPx = 360, minPx = 170, defaultPx = 260) {
     return Math.max(minPx, Math.round((h / maxH) * maxPx));
   });
 }
-// Petite loupe posée au coin du cadre de chaque œuvre comparée (Intrus, Famille) : appui maintenu
-// = l'œuvre s'agrandit au maximum dans son propre cadre (ignore un instant sa taille relative),
-// relâchement = elle reprend sa taille relative normale. Ne gêne pas le clic de réponse sur la
-// case elle-même (icône séparée, stopPropagation), et fonctionne aussi bien au doigt qu'à la
-// souris.
-function attachZoomHold(cellEl, imgEl) {
-  if (!cellEl || !imgEl) return;
-  // Un <span role="button">, pas un <button> : la case elle-même (.intrus-image-choice,
-  // .fam-image-cell) est déjà un <button>, et un bouton imbriqué dans un autre est invalide en
-  // HTML (le navigateur le remonte hors de son parent, cassant tout le positionnement).
-  // Bug d'usage repéré : la pastille numérotée de sélection (Famille) est en haut à droite — la
-  // loupe posée juste à côté, même coin, prêtait à confusion au doigt sur petit écran (on visait
-  // l'une, on touchait l'autre). Déplacée en bas à GAUCHE, à l'opposé, avec une zone tampon plus
-  // large autour d'elle (elle aussi insensible au clic de sélection) pour une cible plus fiable.
-  const zone = document.createElement('span');
-  zone.style.cssText = 'position:absolute;bottom:0;left:0;width:40px;height:40px;z-index:3;';
-  const icon = document.createElement('span');
-  icon.setAttribute('role', 'button');
-  icon.setAttribute('aria-label', 'Agrandir cette œuvre au maximum (maintenir appuyé)');
-  icon.title = 'Maintenir pour agrandir au maximum';
-  icon.textContent = '🔍';
-  icon.style.cssText = 'position:absolute;bottom:4px;left:4px;width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.6);background:rgba(0,0,0,.6);color:#fff;font-size:.75rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:none;';
-  zone.appendChild(icon);
+// ============================================================
+// LOUPE PROGRESSIVE — remplace les deux anciens mécanismes (attachZoomHold pour Intrus/Famille,
+// attachDetailZoom pour Imprégnation), tous deux jugés confus par Stéphane : sur Imprégnation, la
+// loupe elle-même ne faisait rien (c'était le tap sur l'image qui zoomait) ; sur Intrus/Famille,
+// zoomer par appui maintenu se confondait avec le tap de sélection.
+// Nouveau principe, identique pour les 3 jeux : au départ une seule petite loupe allumée dans un
+// coin. Cliquer sur la loupe ALLUMÉE (= le palier courant) agrandit l'image et fait apparaître à
+// côté une loupe plus grosse, elle aussi allumée, tandis que celle qu'on vient d'utiliser grise
+// (elle reste cliquable : recliquer sur une loupe grisée revient directement à son palier). Une
+// flèche apparaît sous les icônes dès qu'il y a plus d'une loupe, pour indiquer un chemin de
+// découverte progressif. Deux modes d'agrandissement :
+// - 'pan' (Imprégnation) : l'image zoome sur elle-même (centrée), déplaçable à la souris/au doigt
+//   — comme avant, mais déclenché par la loupe et non plus par un tap n'importe où sur l'image.
+// - 'span' (Intrus, Famille) : la case déborde sur les cases voisines de la grille de comparaison
+//   (grid-column/grid-row), pour voir l'œuvre bien plus grande sans quitter la vue de comparaison.
+// touch-action:none posé sur la case ET sur l'image (pas seulement l'image comme avant) : c'est ce
+// qui manquait pour empêcher le zoom tactile natif du navigateur d'entrer en conflit avec notre
+// propre geste de glissement une fois très zoomé — la cause probable du « tremblement » signalé
+// sur mobile en mode pan.
+function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
+  if (!cellEl || !imgEl) return null;
+  const maxLevel = options.maxLevel || 2; // nombre de clics pour atteindre le palier maximal
+  const mode = options.mode || 'pan'; // 'pan' (Imprégnation) ou 'span' (Intrus/Famille)
+  const spanFor = options.spanFor || null; // (level) => {columns, rows}, requis en mode 'span'
+  const zoomFor = options.zoomFor || ((level) => 1 + level * 1.1); // facteur de zoom, mode 'pan'
+  const onLevelChange = options.onLevelChange || null;
+
   cellEl.style.position = cellEl.style.position || 'relative';
-  cellEl.appendChild(zone);
-  // La zone tampon elle-même intercepte aussi le clic, pas seulement l'icône visible — un tap
-  // juste à côté de la loupe (mais encore dans son coin) ne déclenche donc jamais une sélection.
-  zone.addEventListener('click', (event) => event.stopPropagation());
-  let savedMaxWidth = '', savedMaxHeight = '';
-  const zoomIn = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    savedMaxWidth = imgEl.style.maxWidth;
-    savedMaxHeight = imgEl.style.maxHeight;
-    imgEl.style.maxWidth = '100%';
-    imgEl.style.maxHeight = '100%';
-    icon.setPointerCapture?.(event.pointerId);
-  };
-  const zoomOut = (event) => {
-    event.stopPropagation();
-    imgEl.style.maxWidth = savedMaxWidth;
-    imgEl.style.maxHeight = savedMaxHeight;
-  };
-  icon.addEventListener('pointerdown', zoomIn);
-  icon.addEventListener('pointerup', zoomOut);
-  icon.addEventListener('pointercancel', zoomOut);
-  icon.addEventListener('pointerleave', zoomOut);
-  // Empêche le clic sur l'icône elle-même de compter comme une réponse au jeu.
-  icon.addEventListener('click', (event) => event.stopPropagation());
-}
-// Loupe « détail » (Imprégnation) : un tap zoome l'image (centré sur le point touché) et fait
-// apparaître un badge de rappel ; en zoom, on glisse le doigt/la souris pour se déplacer dessus
-// (translate borné pour ne jamais laisser un bord vide apparaître) ; un nouveau tap simple (sans
-// glissement) dézoome. Contrairement à attachZoomHold (Intrus/Famille), l'interaction porte
-// directement sur l'image elle-même, pas sur une icône séparée — l'image entière est la zone
-// tactile, plus naturel pour « entrer dans le tableau ».
-function attachDetailZoom(cellEl, imgEl, ZOOM = 2.4) {
-  if (!cellEl || !imgEl) return;
-  cellEl.style.position = cellEl.style.position || 'relative';
+  cellEl.style.touchAction = 'none';
+  // Dans les deux modes, l'image doit rester coupée aux bords de la case (celle-ci s'agrandit
+  // elle-même en mode 'span' — via grid-column/grid-row — donc rien n'est perdu ; en mode 'pan',
+  // c'est ce qui empêche l'image zoomée de déborder visuellement sur le reste de la page).
   cellEl.style.overflow = 'hidden';
-  // Empêche le navigateur de gérer lui-même les gestes tactiles sur l'image (double-tap pour
-  // zoomer la page, défilement...) : on veut que pointerdown/move/up nous arrivent tous, sans
-  // interférence, comme pour les autres éléments glissables de l'appli (scale-view, molette).
-  imgEl.style.touchAction = 'none';
-  imgEl.style.transformOrigin = 'center center';
-  imgEl.style.transition = 'transform .18s ease-out';
-  let zoomed = false, tx = 0, ty = 0, dragging = false, moved = false;
+  let level = 0, tx = 0, ty = 0, dragging = false, moved = false;
   let startX = 0, startY = 0, startTx = 0, startTy = 0;
-  const badge = document.createElement('span');
-  badge.setAttribute('aria-hidden', 'true');
-  badge.textContent = '🔍';
-  badge.style.cssText = 'position:absolute;bottom:4px;left:4px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:.75rem;line-height:26px;text-align:center;pointer-events:none;z-index:3;';
-  cellEl.appendChild(badge);
+
+  const wrap = document.createElement('span');
+  wrap.className = 'loupe-progressive';
+  cellEl.appendChild(wrap);
+  const iconsRow = document.createElement('span');
+  iconsRow.className = 'loupe-progressive-icons';
+  wrap.appendChild(iconsRow);
+  const arrow = document.createElement('span');
+  arrow.textContent = '\u21b3';
+  arrow.setAttribute('aria-hidden', 'true');
+  arrow.className = 'loupe-progressive-arrow';
+  wrap.appendChild(arrow);
+
+  function iconSize(i) { return 24 + i * 7; } // chaque loupe suivante est un peu plus grosse
+  function buildIcons() {
+    iconsRow.innerHTML = '';
+    // Une loupe par palier déjà atteint (0..level), la dernière (le palier courant) allumée, les
+    // précédentes grisées — voir le commentaire au-dessus de la fonction.
+    for (let i = 0; i <= level; i++) {
+      const btn = document.createElement('span');
+      const size = iconSize(i);
+      const lit = i === level;
+      btn.setAttribute('role', 'button');
+      btn.setAttribute('aria-label', lit
+        ? (level < maxLevel ? `Agrandir davantage (palier ${i}/${maxLevel})` : `Palier maximal atteint (${i}/${maxLevel})`)
+        : `Revenir au palier ${i}/${maxLevel}`);
+      btn.title = lit ? (level < maxLevel ? 'Cliquer pour agrandir encore' : 'Agrandissement maximal') : 'Cliquer pour revenir à ce palier';
+      btn.textContent = '\ud83d\udd0d';
+      btn.className = `loupe-progressive-icon${lit ? ' lit' : ' greyed'}`;
+      btn.style.width = `${size}px`; btn.style.height = `${size}px`; btn.style.fontSize = `${Math.round(size * 0.55)}px`;
+      btn.addEventListener('click', (event) => {
+        event.preventDefault(); event.stopPropagation();
+        setLevel(i === level ? Math.min(level + 1, maxLevel) : i);
+      });
+      // Empêche aussi le pointerdown/up de remonter (utile en mode 'span', où la case entière est
+      // par ailleurs un <button> de sélection/réponse).
+      ['pointerdown', 'pointerup'].forEach((evt) => btn.addEventListener(evt, (event) => event.stopPropagation()));
+      iconsRow.appendChild(btn);
+    }
+    arrow.classList.toggle('visible', maxLevel > 1);
+  }
+  function applyPan() {
+    if (mode !== 'pan') return;
+    const zoom = zoomFor(level);
+    imgEl.style.transformOrigin = 'center center';
+    imgEl.style.transform = level > 0 ? `scale(${zoom}) translate(${tx / zoom}px, ${ty / zoom}px)` : '';
+    imgEl.style.cursor = level > 0 ? 'grab' : 'zoom-in';
+  }
   function clampPan() {
-    const maxX = (imgEl.clientWidth * (ZOOM - 1)) / 2;
-    const maxY = (imgEl.clientHeight * (ZOOM - 1)) / 2;
+    const zoom = zoomFor(level);
+    const maxX = (imgEl.clientWidth * (zoom - 1)) / 2;
+    const maxY = (imgEl.clientHeight * (zoom - 1)) / 2;
     tx = Math.max(-maxX, Math.min(maxX, tx));
     ty = Math.max(-maxY, Math.min(maxY, ty));
   }
-  function render() {
-    imgEl.style.transform = zoomed ? `scale(${ZOOM}) translate(${tx / ZOOM}px, ${ty / ZOOM}px)` : '';
-    imgEl.style.cursor = zoomed ? 'grab' : 'zoom-in';
-    badge.textContent = zoomed ? '✕' : '🔍';
-    badge.title = zoomed ? 'Dézoomer' : 'Toucher pour zoomer sur un détail, puis glisser pour se déplacer';
-  }
-  render();
-  imgEl.addEventListener('pointerdown', (event) => {
-    dragging = true; moved = false;
-    startX = event.clientX; startY = event.clientY; startTx = tx; startTy = ty;
-    imgEl.setPointerCapture?.(event.pointerId);
-  });
-  imgEl.addEventListener('pointermove', (event) => {
-    if (!dragging || !zoomed) return;
-    const dx = event.clientX - startX, dy = event.clientY - startY;
-    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-      moved = true;
-      imgEl.style.transition = 'none';
-      imgEl.style.cursor = 'grabbing';
-      tx = startTx + dx; ty = startTy + dy;
-      clampPan();
-      render();
-    }
-  });
-  const stop = (event) => {
-    if (!dragging) return;
-    dragging = false;
-    imgEl.style.transition = 'transform .18s ease-out';
-    if (!moved) {
-      // Tap simple (pas de glissement) : bascule le zoom. En zoomant, on centre sur le point
-      // touché plutôt que sur le milieu de l'image — pour vraiment « entrer » là où on a regardé.
-      if (!zoomed) {
-        const rect = imgEl.getBoundingClientRect();
-        tx = rect.width / 2 - (event.clientX - rect.left);
-        ty = rect.height / 2 - (event.clientY - rect.top);
-        clampPan();
-      } else {
-        tx = 0; ty = 0;
+  function applySpan() {
+    if (mode !== 'span') return;
+    cellEl.classList.toggle('loupe-expanded', level > 0);
+    if (level > 0 && spanFor) {
+      const { columns, rows } = spanFor(level);
+      cellEl.style.gridColumn = `span ${columns}`;
+      cellEl.style.gridRow = `span ${rows}`;
+      // Intrus et Famille posent une taille relative en style inline sur chaque image (max-width/
+      // max-height, voir relativeImageSizes) pour comparer leurs proportions réelles — une taille
+      // qui, sans cela, continuerait de plafonner l'image une fois la case agrandie et viderait la
+      // loupe de son effet. On l'efface tant qu'on est zoomé (comme déjà fait ailleurs pour la
+      // même raison, voir le « solo » d'Intrus), et on la restaure au retour au palier 0.
+      if (!('savedMaxWidth' in imgEl.dataset)) {
+        imgEl.dataset.savedMaxWidth = imgEl.style.maxWidth || '';
+        imgEl.dataset.savedMaxHeight = imgEl.style.maxHeight || '';
       }
-      zoomed = !zoomed;
-      render();
+      imgEl.style.maxWidth = '100%';
+      imgEl.style.maxHeight = '100%';
+    } else {
+      cellEl.style.gridColumn = '';
+      cellEl.style.gridRow = '';
+      if ('savedMaxWidth' in imgEl.dataset) {
+        imgEl.style.maxWidth = imgEl.dataset.savedMaxWidth;
+        imgEl.style.maxHeight = imgEl.dataset.savedMaxHeight;
+        delete imgEl.dataset.savedMaxWidth;
+        delete imgEl.dataset.savedMaxHeight;
+      }
     }
-  };
-  imgEl.addEventListener('pointerup', stop);
-  imgEl.addEventListener('pointercancel', stop);
+  }
+  function setLevel(newLevel) {
+    level = Math.max(0, Math.min(maxLevel, newLevel));
+    if (level === 0) { tx = 0; ty = 0; }
+    clampPan();
+    applyPan();
+    applySpan();
+    buildIcons();
+    onLevelChange?.(level);
+  }
+
+  if (mode === 'pan') {
+    imgEl.style.touchAction = 'none';
+    imgEl.style.transformOrigin = 'center center';
+    imgEl.style.transition = 'transform .18s ease-out';
+    imgEl.addEventListener('pointerdown', (event) => {
+      if (level === 0) return;
+      dragging = true; moved = false;
+      startX = event.clientX; startY = event.clientY; startTx = tx; startTy = ty;
+      imgEl.setPointerCapture?.(event.pointerId);
+    });
+    imgEl.addEventListener('pointermove', (event) => {
+      if (!dragging || level === 0) return;
+      const dx = event.clientX - startX, dy = event.clientY - startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        moved = true;
+        imgEl.style.transition = 'none';
+        imgEl.style.cursor = 'grabbing';
+        tx = startTx + dx; ty = startTy + dy;
+        clampPan();
+        applyPan();
+      }
+    });
+    const stopDrag = () => {
+      if (!dragging) return;
+      dragging = false;
+      imgEl.style.transition = 'transform .18s ease-out';
+    };
+    imgEl.addEventListener('pointerup', stopDrag);
+    imgEl.addEventListener('pointercancel', stopDrag);
+    imgEl.addEventListener('pointerleave', stopDrag);
+  }
+
+  buildIcons();
+  applySpan();
+  return { setLevel, getLevel: () => level };
 }
 function setLightboxScaleData(work) {
   currentLightboxWork = work && parseCmValue(work.hauteur) ? work : null;
@@ -5015,8 +5055,17 @@ function famShowQuestion() {
   $('fam-image-grid').innerHTML = q.images.map((work, i) =>
     `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" style="max-width:${famSizes[i]}px;max-height:${famSizes[i]}px;" /></button>`
   ).join('');
+  // Grille à 4 colonnes (8 images) ou 3 colonnes (6 images, .fam-count-6) — la loupe s'appuie
+  // sur ce nombre réel de colonnes pour calculer combien de cases elle doit occuper à chaque
+  // palier : palier 1 = un bloc 2×2 (4 cases, demandé par Stéphane), palier 2 = la grille entière
+  // (8 cases pour le cas à 4 colonnes, 6 pour celui à 3 colonnes).
+  const famCols = q.imgCount === 6 ? 3 : 4;
   $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
-    attachZoomHold(btn, btn.querySelector('img'));
+    attachProgressiveLoupe(btn, btn.querySelector('img'), {
+      mode: 'span',
+      maxLevel: 2,
+      spanFor: (level) => (level === 1 ? { columns: Math.min(2, famCols), rows: 2 } : { columns: famCols, rows: 2 }),
+    });
     btn.addEventListener('click', () => {
       if (famStep !== 0) return;
       const idx = Number(btn.dataset.index);
@@ -5216,6 +5265,12 @@ function artDesignation(work) {
 function vfFieldValue(row, key) {
   if (key === 'dimensions') return formatDimensionsPlainText(row) || [row.hauteur, row.longueur].filter(Boolean).join(' × ');
   if (key === 'materials') return row.materialsPhrase || row.materials || '';
+  // Retour de Stéphane (22/09) : le surnom d'un artiste (« dit LE CARAVAGE ») avait disparu de
+  // Vrai/Faux — cette rubrique utilisait le nom civil brut (row.artist) sans jamais consulter
+  // row.surnomFr, alors que toutes les autres épreuves passent par formatArtistDisplayName(work),
+  // qui l'ajoute. Même convention ici, aussi bien pour la référence affichée à l'écran que pour
+  // celle révélée en correction.
+  if (key === 'artist') return row.surnomFr ? `${row.artist}, dit ${row.surnomFr}` : (row.artist || '');
   return row[key] || '';
 }
 
@@ -6680,15 +6735,21 @@ $('imp-launch-first-button')?.addEventListener('click', () => {
   impShowCurrent();
 });
 
-// Contrairement à Intrus/Famille (attachZoomHold, qui agrandit juste l'image jusqu'aux bords de
-// son propre cadre — utile pour comparer vite plusieurs images) : Stéphane a précisé que la loupe
-// d'Imprégnation doit « permettre d'entrer dans le tableau pour agrandir certains détails », donc
-// un vrai zoom avec déplacement, pas seulement une image plus grande dans le même cadre — plus
-// logique ici, où l'œuvre reste affichée longtemps pendant que la référence se lit. Voir
-// attachDetailZoom ci-dessus. L'image de mise en scène est un élément fixe du HTML (seul son
-// « src » change d'une œuvre à l'autre) : on l'attache donc une seule fois ici.
-attachDetailZoom($('imp-stage-img')?.closest('figure'), $('imp-stage-img'));
+// Contrairement à Intrus/Famille (mode 'span' de attachProgressiveLoupe, qui fait déborder la
+// case sur ses voisines — utile pour comparer vite plusieurs images) : Stéphane a précisé que la
+// loupe d'Imprégnation doit « permettre d'entrer dans le tableau pour agrandir certains détails »,
+// donc un vrai zoom avec déplacement (mode 'pan'), pas seulement une image plus grande dans le
+// même cadre — plus logique ici, où l'œuvre reste affichée longtemps pendant que la référence se
+// lit. L'image de mise en scène est un élément fixe du HTML (seul son « src » change d'une œuvre
+// à l'autre) : on l'attache donc une seule fois ici, et on garde la référence retournée pour
+// remettre le zoom à zéro à chaque nouvelle œuvre (impShowCurrent, plus bas).
+const impLoupe = attachProgressiveLoupe($('imp-stage-img')?.closest('figure'), $('imp-stage-img'), {
+  mode: 'pan',
+  maxLevel: 2,
+  zoomFor: (level) => [1, 1.8, 2.8][level],
+});
 function impShowCurrent() {
+  impLoupe?.setLevel(0); // on repart sans zoom à chaque nouvelle œuvre
   impClearTimers();
   speechSynthesis.cancel();
   impPaused = false;
@@ -6698,6 +6759,16 @@ function impShowCurrent() {
   updateTopBanner('Imprégnation', `Œuvre ${impIndex + 1}/${IMP_SESSION.length}`, impFieldLabel);
   $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
   $('imp-stage-img').src = imageSourceSized(work.image, 900);
+  // Crédits Wikimedia Commons : n'existaient jusqu'ici que pour le Quiz final et la visionneuse —
+  // jamais câblés pour Imprégnation (bug signalé plusieurs fois par Stéphane, voir
+  // NOTES_TABLETTE.md point 1). Pas de restriction « après validation » ici : l'exercice montre
+  // déjà toute la référence en même temps que l'image, il n'y a rien à cacher.
+  const impSourceLink = $('imp-source-link');
+  if (impSourceLink) {
+    const impCommonsUrl = commonsFilePageUrl(imageSourceSized(work.image, 900));
+    if (impCommonsUrl) { impSourceLink.href = impCommonsUrl; impSourceLink.classList.remove('hidden'); }
+    else impSourceLink.classList.add('hidden');
+  }
   preloadImage(IMP_SESSION[impIndex + 1]?.image, 900);
   // Comme sur la correction du quiz final : bandeau de vignettes cliquables pour le portrait de
   // l'artiste, une photo du lieu, et désormais une autre vue de l'ensemble/cycle (voir
@@ -6992,17 +7063,32 @@ function intrusShowQuestion() {
     // maximum) plutôt que 3 vignettes uniformes — on retrouve un peu le sens des proportions
     // réelles entre les œuvres comparées, sans rendre la plus petite illisible.
     const sizes = relativeImageSizes(q.choices);
+    // Bug de confusion signalé par Stéphane : chaque image était à la fois la cible de la loupe
+    // ET le bouton de réponse — un tap visant la loupe pouvait valider une réponse par erreur, et
+    // inversement. Désormais l'image ne fait plus QUE zoomer (via la loupe progressive) ; répondre
+    // se fait via 3 boutons numérotés séparés, plus bas dans la colonne de droite — chaque image
+    // porte le même numéro (pastille en haut à gauche) pour les relier sans ambiguïté.
     promptCard.innerHTML = `<div class="intrus-image-choices">${q.choices.map((c, i) =>
-      `<button type="button" class="intrus-image-choice" data-index="${i}"><img src="${escapeHtml(imageSourceSized(c.image, 300))}" alt="" style="max-width:${sizes[i]}px;max-height:${sizes[i]}px;" /></button>`
+      `<button type="button" class="intrus-image-choice" data-index="${i}"><span class="intrus-image-number">${i + 1}</span><img src="${escapeHtml(imageSourceSized(c.image, 300))}" alt="" style="max-width:${sizes[i]}px;max-height:${sizes[i]}px;" /></button>`
     ).join('')}</div>`;
     promptCard.querySelectorAll('.intrus-image-choice').forEach((btn) => {
-      btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
-      attachZoomHold(btn, btn.querySelector('img'));
+      attachProgressiveLoupe(btn, btn.querySelector('img'), {
+        mode: 'span',
+        maxLevel: 2,
+        spanFor: (level) => (level === 1 ? { columns: 2, rows: 1 } : { columns: 3, rows: 1 }),
+      });
     });
     $('intrus-choices').innerHTML = `<div class="correction-details">
       <span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>
       <span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>
-    </div>`;
+    </div>
+    <p class="intrus-answer-instruction">Appuie sur le bouton qui correspond à la référence annoncée.</p>
+    <div class="intrus-answer-buttons">${q.choices.map((c, i) =>
+      `<button type="button" class="intrus-answer-choice" data-index="${i}">${i + 1}</button>`
+    ).join('')}</div>`;
+    $('intrus-choices').querySelectorAll('.intrus-answer-choice').forEach((btn) => {
+      btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
+    });
     intrusSpeak(`${q.correct.artist} — « ${q.correct.title} »`);
   } else {
     // Image en haut à gauche. Choix à droite : le plus souvent le nom du peintre seul (le cas
