@@ -3318,6 +3318,135 @@ function setupCheckpointWalk() {
   dot.addEventListener('pointerup', stop);
   dot.addEventListener('pointercancel', stop);
 })();
+// v34 : après avoir validé son ticket, le personnage avance dans la salle vers le mur du fond, qui
+// grossit progressivement (effet zoom, voir updateCheckpointApproachVisual) — retour de Stéphane :
+// « quand il arrive au milieu de la salle... on le tire vers le tableau du fond... le mur du fond
+// s'agrandit progressivement comme un effet zoom, et cela nous permettra de rejoindre le plan
+// rapproché ». Remplace l'ancienne bascule instantanée (fondu flou) au clic sur « Ticket » — voir
+// plus bas, le clic sur #scale-barrier lance maintenant CETTE avancée plutôt que enterCloserPlan()
+// directement ; le fondu flou reste utilisé, mais seulement une fois l'avancée terminée (progress=1),
+// pour le dernier raccord vers le système d'affichage différent du plan rapproché.
+let checkpointApproach = 0; // 0 = vient de valider son ticket, 1 = arrivé tout contre le mur du fond
+let checkpointApproachRangePx = 200; // distance de glissement du point, mesurée à chaque entrée
+let checkpointApproachDirection = 0;
+let checkpointApproachAnimationId = null;
+let checkpointApproachDone = false; // garde-fou : ne déclenche qu'UNE fois la suite une fois à 1
+// Zoom max : le mur du fond (et toute la salle avec lui, voir transform-origin sur
+// #scale-checkpoint-room dans style.css) grossit jusqu'à 3,2 fois sa taille de repos — assez pour
+// donner une vraie sensation de s'en approcher, sans devenir absurde ni faire sortir le pilier du
+// cadre trop vite (voir CHECKPOINT_APPROACH_ARROWS_AT plus bas pour le seuil des flèches gauche/droite,
+// pensé pour tomber À PEU PRÈS au milieu visuel de ce zoom).
+const CHECKPOINT_APPROACH_ZOOM_MAX = 2.2;
+function stopCheckpointApproaching() {
+  if (checkpointApproachAnimationId) clearTimeout(checkpointApproachAnimationId);
+  checkpointApproachAnimationId = null;
+  checkpointApproachDirection = 0;
+}
+function updateCheckpointApproachVisual() {
+  const dot = $('scale-checkpoint-approach-dot');
+  const sil = $('scale-checkpoint-silhouette');
+  const room = $('scale-checkpoint-room');
+  const tx = -checkpointApproach * checkpointApproachRangePx; // le point ET le personnage montent
+  if (dot) dot.style.transform = `translateY(${tx}px)`;
+  if (sil) {
+    // Rétrécit et remonte légèrement (voir transform-origin:50% 100% dans style.css, pieds ancrés
+    // au sol) pour suggérer qu'il s'éloigne vers le fond, en même temps que la salle grossit derrière
+    // lui — les deux mouvements (salle qui grossit, personnage qui s'éloigne) se renforcent l'un
+    // l'autre plutôt que de se contredire.
+    sil.style.transform = `translateY(${tx * 0.6}px) scale(${1 - checkpointApproach * 0.5})`;
+  }
+  if (room) room.style.transform = `scale(${1 + checkpointApproach * CHECKPOINT_APPROACH_ZOOM_MAX})`;
+  if (checkpointApproach >= 1 && !checkpointApproachDone) {
+    checkpointApproachDone = true;
+    stopCheckpointApproaching();
+    blurTransition(() => {
+      $('scale-checkpoint').classList.add('hidden');
+      enterCloserPlan();
+    });
+  }
+}
+function startCheckpointApproaching(direction) {
+  stopCheckpointApproaching();
+  checkpointApproachDirection = direction;
+  const step = () => {
+    checkpointApproach = Math.min(1, Math.max(0, checkpointApproach + checkpointApproachDirection * 0.018));
+    updateCheckpointApproachVisual();
+    if ((checkpointApproachDirection > 0 && checkpointApproach >= 1) || (checkpointApproachDirection < 0 && checkpointApproach <= 0)) {
+      stopCheckpointApproaching();
+      return;
+    }
+    checkpointApproachAnimationId = setTimeout(step, 16);
+  };
+  checkpointApproachAnimationId = setTimeout(step, 16);
+}
+// Appelée au clic sur « Ticket » (voir plus bas) au lieu de basculer directement vers le plan
+// rapproché : cache le tourniquet et le point salle 1/salle 2 (plus la peine, le choix est déjà
+// fait), affiche ce nouveau point d'avancée aux pieds du personnage.
+function setupCheckpointApproach() {
+  const dot = $('scale-checkpoint-approach-dot');
+  const sil = $('scale-checkpoint-silhouette');
+  const row = $('scale-checkpoint-row');
+  const room = $('scale-checkpoint-room');
+  if (!dot || !sil || !row) return;
+  checkpointApproach = 0;
+  checkpointApproachDone = false;
+  stopCheckpointApproaching();
+  if (room) room.style.transform = 'scale(1)';
+  sil.style.transform = 'translateX(0px)';
+  $('scale-turnstile')?.classList.add('hidden');
+  $('scale-checkpoint-floor-dot')?.classList.add('hidden');
+  dot.classList.remove('hidden');
+  const rowRect = row.getBoundingClientRect();
+  const silRect = sil.getBoundingClientRect();
+  if (!rowRect.width || !silRect.width) return;
+  dot.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 14}px`;
+  dot.style.top = `${silRect.bottom - rowRect.top - 20}px`;
+  // Distance de glissement disponible avant le haut de la rangée (avec une petite marge) — même
+  // logique que checkpointWalkRangePx pour la marche latérale, mais verticale ici.
+  checkpointApproachRangePx = Math.max(120, rowRect.height - 40);
+  updateCheckpointApproachVisual();
+}
+// Même geste que les autres points de l'appli (tap = avance/arrête, glissement = position directe
+// sous le doigt) — voir attachCheckpointFloorDotDrag ci-dessus, repris ici sur l'axe VERTICAL :
+// « on le tire vers le tableau du fond », qui est en haut de l'écran, pas sur le côté.
+(function attachCheckpointApproachDotDrag() {
+  const dot = $('scale-checkpoint-approach-dot');
+  if (!dot) return;
+  const DRAG_THRESHOLD = 8;
+  let dragging = false, moved = false, downY = 0, startApproach = 0;
+  dot.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    dragging = true; moved = false; downY = event.clientY; startApproach = checkpointApproach;
+    dot.setPointerCapture?.(event.pointerId);
+    dot.style.cursor = 'grabbing';
+  });
+  dot.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const dy = downY - event.clientY; // vers le haut = positif = on avance
+    if (Math.abs(dy) > DRAG_THRESHOLD) {
+      moved = true;
+      stopCheckpointApproaching();
+      checkpointApproach = Math.min(1, Math.max(0, startApproach + dy / checkpointApproachRangePx));
+      updateCheckpointApproachVisual();
+    }
+  });
+  const stop = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    dot.style.cursor = 'grab';
+    if (!moved) {
+      if (checkpointApproachDirection !== 0) {
+        stopCheckpointApproaching();
+      } else {
+        const rect = dot.getBoundingClientRect();
+        const center = rect.top + rect.height / 2;
+        startCheckpointApproaching(event.clientY < center ? 1 : -1);
+      }
+    }
+  };
+  dot.addEventListener('pointerup', stop);
+  dot.addEventListener('pointercancel', stop);
+})();
 // Voile de transition floue entre chaque étape (façade → contrôle des billets → plan rapproché) —
 // évite, pour l'instant, d'avoir à animer un vrai déplacement progressif du personnage à travers
 // l'espace pour CES transitions-là (elles restent une simple coupure floue). Le passage salle 1 /
@@ -3542,14 +3671,12 @@ window.addEventListener('resize', () => {
   }
 });
 $('scale-enter-button')?.addEventListener('click', goThroughDoor);
-// Étape 3 : franchir la barrière (donner son ticket) — transition floue vers le plan rapproché,
-// toujours au mur du fond (celui qu'on vient d'apercevoir depuis le contrôle des billets).
-$('scale-barrier')?.addEventListener('click', () => {
-  blurTransition(() => {
-    $('scale-checkpoint').classList.add('hidden');
-    enterCloserPlan();
-  });
-});
+// v34 : franchir la barrière (donner son ticket) ne bascule plus instantanément (fondu flou) vers le
+// plan rapproché — retour de Stéphane : « il faut arriver de plus en plus à un mouvement qui soit
+// fluide ». On fait maintenant avancer le personnage dans la salle (voir setupCheckpointApproach),
+// avec le mur du fond qui grossit progressivement ; le fondu flou vers enterCloserPlan() n'intervient
+// plus qu'une fois cette avancée terminée (voir updateCheckpointApproachVisual).
+$('scale-barrier')?.addEventListener('click', setupCheckpointApproach);
 // Les œuvres de la session sont réparties sur les 3 murs réellement exploitables d'une salle : le
 // mur du fond et les 2 murs latéraux — jamais le mur côté couloir (là où est la porte), qui reste
 // toujours vide, comme dans une vraie salle où l'on n'accroche rien juste après l'entrée.

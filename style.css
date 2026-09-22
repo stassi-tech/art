@@ -785,7 +785,12 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    fond depuis l'entrée, en retrait (impression d'une distance de 15 m, la même longueur que tous
    les murs de la salle), avant de franchir un tourniquet type métro pour continuer.
    Silhouette à sa taille normale ici (1,70 m), contrairement à la façade. */
-#scale-checkpoint { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:1vh; background:#e8e4d8; padding:20px; padding-top:4vh; }
+/* v34 : overflow:hidden ajouté — #scale-checkpoint-room est maintenant zoomé (transform:scale, voir
+   updateCheckpointApproachVisual dans app.js) pendant qu'on avance vers le mur du fond, retour de
+   Stéphane : « on voit le tableau du fond s'agrandir progressivement comme un effet zoom ». Sans ce
+   overflow:hidden ici, la salle agrandie déborderait visuellement par-dessus #scale-checkpoint-row
+   (la machine à tickets, le cordon) en dessous, au lieu de rester cadrée dans son propre écran. */
+#scale-checkpoint { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:1vh; background:#e8e4d8; padding:20px; padding-top:4vh; overflow:hidden; }
 /* Depuis l'entrée, on ne voit que le mur du fond, bien en face — comme au théâtre, un décor de
    fond plat. Les deux murs latéraux ne sont volontairement PAS montrés en perspective : essayer de
    les faire reculer en trapèze avec leurs propres œuvres déformées correctement s'est révélé trop
@@ -801,6 +806,11 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
      visiteur plutôt qu'une mince tranche collée au bord — voir aussi le dégradé de lumière ajouté
      sur ::after ci-dessous, qui accentue cette impression de relief. */
   --room-inner-x:12%; --room-horizon-y:62%;
+  /* v34 : origine du zoom d'approche (voir updateCheckpointApproachVisual dans app.js) fixée sur la
+     ligne d'horizon plutôt qu'au centre par défaut (50% 50%) — le mur du fond grossit alors depuis
+     ce point de fuite plutôt que depuis le milieu de l'écran, ce qui donne l'impression de s'en
+     approcher plutôt que de simplement l'agrandir sur place. */
+  transform-origin:50% var(--room-horizon-y);
 }
 /* v29 : le rail qui porte TOUT ce qui appartient « à la salle » — les 2 piliers de premier plan ET
    le(s) mur(s) du fond — et qui glisse d'un seul bloc pendant la marche salle 1 / salle 2 (voir
@@ -894,7 +904,12 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    rangée (voire hors de l'écran, provoquant une barre de défilement horizontale indésirable) au lieu
    de disparaître au bord du cadre comme le pilier disparaît au bord de #scale-checkpoint-room. */
 #scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; overflow:hidden; }
-#scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
+/* transform-origin bas-centre (pas le centre par défaut) : pendant l'approche du mur du fond (voir
+   updateCheckpointApproachVisual dans app.js), le personnage rétrécit et remonte légèrement pour
+   suggérer qu'il s'éloigne vers le fond — avec cette origine, ses pieds restent ancrés au sol
+   pendant le rétrécissement au lieu de sembler s'enfoncer dedans (ce qui arriverait avec le centre
+   par défaut, 50% 50%). */
+#scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; }
 /* Cordon rouge à 8 potelets, tracé en un seul SVG continu, vraies vagues entre chaque potelet
    doré — étendu sur toute la largeur disponible (plus de max-width, pour vraiment aller d'un
    bout à l'autre de la pièce, comme un vrai cordon de musée). */
@@ -1080,6 +1095,15 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
    son centrage est déjà calculé en JS au moment de poser left/top (voir setupCheckpointWalk), la
    transform étant ensuite entièrement dédiée à faire avancer le point avec la marche. */
 #scale-checkpoint-floor-dot {
+  position:absolute; width:28px; height:28px; border-radius:50%;
+  background:#e2453c; box-shadow:0 3px 8px rgba(0,0,0,.45), 0 0 0 4px rgba(255,255,255,.5);
+  cursor:grab; z-index:6; touch-action:none;
+}
+/* v34 : point d'AVANCÉE vers le mur du fond — apparaît une fois le ticket validé (voir
+   setupCheckpointApproach dans app.js), remplace #scale-checkpoint-floor-dot ci-dessus qui ne sert
+   plus qu'au choix de la salle. Même apparence, même geste (tirer/taper), mais un axe VERTICAL au
+   lieu d'horizontal : « on le tire vers le tableau du fond » — retour de Stéphane. */
+#scale-checkpoint-approach-dot {
   position:absolute; width:28px; height:28px; border-radius:50%;
   background:#e2453c; box-shadow:0 3px 8px rgba(0,0,0,.45), 0 0 0 4px rgba(255,255,255,.5);
   cursor:grab; z-index:6; touch-action:none;
