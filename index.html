@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=176" />
+    <link rel="stylesheet" href="style.css?v=177" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 20</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 21</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1197,31 +1197,6 @@
                  vrai déplacement progressif du personnage à travers l'espace. -->
             <div id="scale-checkpoint" class="hidden">
               <button type="button" id="scale-checkpoint-back" aria-label="Retour à l'entrée" title="Retour à l'entrée" style="position:absolute;top:16px;left:16px;padding:6px 10px;border-radius:4px;border:2px solid rgba(0,0,0,.3);background:rgba(255,255,255,.85);color:#2b2620;font-size:.72rem;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;">◄ Retour à l'entrée</button>
-              <!-- Plan du bâtiment, uniquement si l'exposition remplit 2 salles (voir splitIntoRooms
-                   côté JS, qui décide state.allRooms) : un rectangle par salle, avec un rond rouge
-                   qu'on glisse (ou qu'on touche) de l'un à l'autre pour choisir celle où l'on va
-                   entrer. Placé ici, au contrôle des billets (et non à la façade), à la demande de
-                   Stéphane : c'est ici, juste avant de franchir le tourniquet, que le choix de la
-                   salle a du sens (dans l'esprit d'origine, se déplacer « le long du cordon »).
-                   Même principe visuel que le petit plan du mur rapproché une fois entré
-                   (#scale-minimap) : le fond a pointer-events:none (ne doit jamais bloquer un autre
-                   geste — bug réel repéré et corrigé sur l'autre plan), seul le rond a
-                   pointer-events:auto. -->
-              <!-- Remonté (bottom:16px → 14vh) et rentré (right:16px → 4vw) : chevauchait le cordon
-                   rouge en bas de l'écran, et débordait sur la tranche du pilier droit — retour réel
-                   (« elle chevauche le cordon... mets-la entre le cordon et le pilier »). Numéros 1/2
-                   dans chaque salle, texte d'aide au-dessus, et surbrillance de la salle active
-                   (voir updateCheckpointRoomDot) ajoutés en même temps : le simple point rouge sans
-                   légende ne se lisait pas comme un vrai choix à faire (« je ne vois pas comment
-                   aller vers la deuxième salle »). -->
-              <div id="scale-checkpoint-room-nav" class="hidden" style="position:fixed;bottom:14vh;right:4vw;width:190px;background:rgba(20,20,20,.72);border:2px solid rgba(255,255,255,.5);border-radius:6px;z-index:7;padding:8px;box-sizing:border-box;pointer-events:none;">
-                <p style="margin:0 0 6px;color:#fff;font-family:Arial,sans-serif;font-size:.65rem;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.03em;">Glissez le point : quelle salle ?</p>
-                <div style="position:relative;height:90px;display:flex;gap:10px;">
-                  <div id="scale-checkpoint-room-1" class="scale-checkpoint-room-box" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">1</div>
-                  <div id="scale-checkpoint-room-2" class="scale-checkpoint-room-box" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">2</div>
-                  <div id="scale-checkpoint-room-dot" style="position:absolute;width:16px;height:16px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);cursor:grab;top:50%;left:25%;transform:translate(-50%,-50%);touch-action:none;pointer-events:auto;"></div>
-                </div>
-              </div>
               <!-- Vraie salle en volume, façon photo de galerie : le mur du fond nous fait face
                    (un simple rectangle plat, pas de déformation puisqu'on le regarde de face), les
                    2 murs latéraux partent réellement en profondeur — leur bord extérieur (côté
@@ -1244,6 +1219,23 @@
                 <div id="scale-checkpoint-floor" aria-hidden="true"></div>
               </div>
               <div id="scale-checkpoint-row">
+                <!-- Petit plan des 2 salles, à la verticale, juste à côté de la machine des tickets
+                     (demande de Stéphane). Il ne se glisse plus : c'est un simple TÉMOIN passif,
+                     qui rappelle dans laquelle des 2 salles on se trouve — le vrai passage d'une
+                     salle à l'autre se fait en marchant tout droit, une fois entré, exactement
+                     comme on passe déjà d'un mur à l'autre (voir buildContinuousWall/
+                     updateDotAlongWall dans app.js, et le pilier fixe entre les 2 salles, sans
+                     rotation, contrairement aux angles à l'intérieur d'une même salle). D'où
+                     pointer-events:none partout ici, y compris sur le point : rien n'est plus
+                     cliquable/glissable dans ce petit plan. -->
+                <div id="scale-checkpoint-room-nav" class="hidden" style="position:relative;width:100px;align-self:center;background:rgba(20,20,20,.72);border:2px solid rgba(255,255,255,.5);border-radius:6px;z-index:7;padding:8px;box-sizing:border-box;pointer-events:none;">
+                  <p style="margin:0 0 6px;color:#fff;font-family:Arial,sans-serif;font-size:.6rem;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.03em;">Salle actuelle</p>
+                  <div style="position:relative;height:150px;display:flex;flex-direction:column;gap:8px;">
+                    <div id="scale-checkpoint-room-1" class="scale-checkpoint-room-box" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">1</div>
+                    <div id="scale-checkpoint-room-2" class="scale-checkpoint-room-box" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">2</div>
+                    <div id="scale-checkpoint-room-dot" style="position:absolute;width:14px;height:14px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);top:25%;left:50%;transform:translate(-50%,-50%);pointer-events:none;"></div>
+                  </div>
+                </div>
                 <div id="scale-turnstile">
                   <div id="scale-turnstile-body">
                     <button type="button" id="scale-barrier" aria-label="Franchir le tourniquet, donner son ticket">Ticket</button>
@@ -1276,24 +1268,9 @@
                 </svg>
               </div>
             </div>
-            <!-- Couloir animé entre 2 salles (essai demandé par Stéphane : « il faut revenir au
-                 déplacement du personnage sur le plan d'ensemble, d'une salle à l'autre... on doit
-                 comme dans un travelling voir la salle 1 disparaître et la salle 2 apparaître » ).
-                 Même principe visuel que le mur rapproché (#scale-wall) : la silhouette
-                 (#scale-silhouette, réutilisée telle quelle, pas dupliquée) reste fixe à l'écran,
-                 c'est le décor qui défile dessous — sauf qu'ici la marche est automatique
-                 (walkCorridorToRoom dans app.js), pas pilotée à la main, puisqu'il s'agit d'un
-                 simple passage d'une salle à l'autre, pas d'une exploration libre. -->
-            <div id="scale-corridor" class="hidden">
-              <div id="scale-corridor-floor" aria-hidden="true"></div>
-              <div id="scale-corridor-wall">
-                <div id="scale-corridor-strip">
-                  <div class="scale-corridor-doorway scale-corridor-doorway-exit" aria-hidden="true"></div>
-                  <div class="scale-corridor-doorway scale-corridor-doorway-enter" aria-hidden="true"></div>
-                </div>
-              </div>
-            </div>
-            <!-- Voile de transition floue entre les étapes. -->
+            <!-- Voile de transition floue entre les étapes. Le passage d'une salle à l'autre,
+                 lui, ne l'utilise plus : il se fait en marchant, sans coupure de décor (voir
+                 buildContinuousWall dans app.js). -->
             <div id="scale-blur-veil" class="hidden"></div>
             <div id="scale-floor" aria-hidden="true"></div>
             <!-- Point rouge dupliqué, au ras du sol, grand format — mêmes gestes que le petit
@@ -1588,6 +1565,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=257"></script>
+    <script src="app.js?v=258"></script>
   </body>
 </html>

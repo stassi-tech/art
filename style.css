@@ -871,10 +871,9 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    doré — étendu sur toute la largeur disponible (plus de max-width, pour vraiment aller d'un
    bout à l'autre de la pièce, comme un vrai cordon de musée). */
 #scale-rope-barrier { flex:1 1 auto; height:11vh; }
-/* Salle active mise en surbrillance sur le petit plan de choix (voir updateCheckpointRoomDot dans
-   app.js) — sans repère visuel autre que le point rouge lui-même, rien ne confirmait qu'un choix
-   avait bien été enregistré avant de franchir le tourniquet (retour réel : « je ne vois pas comment
-   aller vers la deuxième salle »). */
+/* Salle active mise en surbrillance sur le petit plan-témoin (voir updateCheckpointRoomIndicator
+   dans app.js) — sans repère visuel autre que le point rouge lui-même, on ne voyait pas facilement
+   dans laquelle des 2 salles on se trouve. */
 .scale-checkpoint-room-box.active-room { border-color:#e2453c; background:rgba(226,69,60,.22); color:#fff; }
 /* Tourniquet façon métro, maintenant en orientation VERTICALE : pied métallique, "Ticket" en haut,
    "Sortie" en dessous — barres obliques évoquant les bras du tourniquet. */
@@ -899,49 +898,6 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    déplacement progressif du personnage à travers l'espace. */
 #scale-blur-veil { position:fixed; inset:0; z-index:15; background:rgba(20,18,14,0); backdrop-filter:blur(0px); pointer-events:none; transition:background .5s, backdrop-filter .5s; }
 #scale-blur-veil.active { background:rgba(20,18,14,.55); backdrop-filter:blur(14px); }
-/* Couloir animé entre 2 salles (voir walkCorridorToRoom dans app.js) : même z-index que
-   #scale-checkpoint (les deux ne sont jamais visibles en même temps), avec #scale-silhouette
-   au-dessus (z-index:5, réutilisée telle quelle, elle vit déjà en dehors de ce bloc). Le sol et le
-   mur reprennent la texture de l'ambiance active (voir les règles body[data-ambiance=...]
-   #scale-corridor-floor / #scale-corridor-strip plus bas) — même décor que les salles qu'il relie,
-   plutôt qu'un couloir neutre qui ne collerait à aucune ambiance. */
-#scale-corridor { position:fixed; inset:0; z-index:3; overflow:hidden; background:#1a1712; }
-#scale-corridor-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
-  background-color:#6f5638; background-size:cover; background-position:center;
-  box-shadow:0 -3px 8px rgba(0,0,0,.25); }
-#scale-corridor-wall { position:fixed; top:0; left:0; right:0; bottom:16vh; overflow:hidden; }
-/* La bande qu'on fait glisser (translateX, piloté en JS) — bien plus large que l'écran, pour que le
-   trajet dure quelques secondes. L'image de mur de l'ambiance active (voir les règles
-   body[data-ambiance=...] plus bas) se répète horizontalement (background-repeat:repeat-x) plutôt
-   que d'être étirée une seule fois sur toute la largeur — comme une suite de panneaux de mur
-   identiques, qui donne au passage un vrai repère de défilement. */
-#scale-corridor-strip { position:absolute; top:0; bottom:0; left:0; width:2400px;
-  background-color:#c9b896; background-size:auto 100%; background-position:left center; background-repeat:repeat-x; }
-/* Encadrement de porte au tout début (salle qu'on quitte, dans notre dos) et tout à la fin (salle
-   qu'on rejoint, en face) de la bande — sans eux, la traversée n'avait aucun repère de début/fin. */
-.scale-corridor-doorway { position:absolute; top:8%; bottom:0; width:130px;
-  background:#100d09; box-shadow:inset 0 0 40px rgba(0,0,0,.8);
-  border-left:6px solid rgba(255,255,255,.15); border-right:6px solid rgba(255,255,255,.15); }
-.scale-corridor-doorway-exit { left:30px; }
-.scale-corridor-doorway-enter { left:2240px; }
-body[data-ambiance="pitti"] #scale-corridor-floor { background-image:url('assets/salle-pitti-sol.jpg'); }
-body[data-ambiance="bauhaus"] #scale-corridor-floor { background-image:url('assets/salle-bauhaus-sol.jpg'); }
-body[data-ambiance="space"] #scale-corridor-floor { background-image:url('assets/salle-space-sol.jpg'); }
-body[data-ambiance="versailles"] #scale-corridor-floor { background-image:url('assets/salle-versailles-sol.jpg'); }
-body[data-ambiance="wedgwood"] #scale-corridor-floor { background-image:url('assets/salle-wedgwood-sol.jpg'); }
-body[data-ambiance="ermitage"] #scale-corridor-floor { background-image:url('assets/salle-ermitage-sol.jpg'); }
-body[data-ambiance="renaissance"] #scale-corridor-floor { background-image:url('assets/salle-renaissance-sol.jpg'); }
-body[data-ambiance="gothique"] #scale-corridor-floor { background-image:url('assets/salle-gothique-sol.jpg'); }
-body:not([data-ambiance]) #scale-corridor-floor { background-image:url('assets/salle-renoir-sol.jpg'); }
-body[data-ambiance="pitti"] #scale-corridor-strip { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
-body[data-ambiance="bauhaus"] #scale-corridor-strip { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
-body[data-ambiance="space"] #scale-corridor-strip { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
-body[data-ambiance="versailles"] #scale-corridor-strip { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
-body[data-ambiance="wedgwood"] #scale-corridor-strip { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
-body[data-ambiance="ermitage"] #scale-corridor-strip { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
-body[data-ambiance="renaissance"] #scale-corridor-strip { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
-body[data-ambiance="gothique"] #scale-corridor-strip { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
-body:not([data-ambiance]) #scale-corridor-strip { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 #scale-floor { position:fixed; bottom:0; left:0; right:0; height:16vh; min-height:90px; z-index:1;
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a);
   box-shadow:0 -3px 8px rgba(0,0,0,.25); background-size:cover; background-position:center; }
@@ -1040,6 +996,17 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
 }
 .scale-wall-corner-face-exit { background-color:#2a241c; background-image:linear-gradient(90deg, rgba(255,255,255,.22) 0 8%, transparent 8% 100%); box-shadow:inset -14px 0 22px rgba(0,0,0,.5); }
 .scale-wall-corner-face-enter { background-color:#3a3226; background-image:linear-gradient(90deg, transparent 0 92%, rgba(255,255,255,.22) 92% 100%); box-shadow:inset 14px 0 22px rgba(0,0,0,.5); transform:rotateY(180deg); }
+/* Jonction ENTRE 2 salles (appendStaticPillar dans app.js) : un simple pilier fixe, PAS un panneau
+   qui pivote comme .scale-wall-corner ci-dessus — demande de Stéphane : « il y a le pilier qui
+   sépare les deux murs et le personnage ne tourne pas ». Repris du même langage visuel que les
+   piliers déjà utilisés à l'écran du contrôle des billets (cannelures verticales + arête claire),
+   pour rester cohérent visuellement plutôt que d'inventer un 2e style de séparateur. */
+.scale-wall-pillar {
+  position:absolute; top:0; bottom:0; z-index:3; background-color:#3a342a;
+  background-image: repeating-linear-gradient(180deg, rgba(0,0,0,.25) 0 3px, transparent 3px 15px),
+                     linear-gradient(90deg, rgba(0,0,0,.5), rgba(255,255,255,.22) 50%, rgba(0,0,0,.5));
+  box-shadow: inset 0 0 24px rgba(0,0,0,.4), 4px 0 10px rgba(0,0,0,.3), -4px 0 10px rgba(0,0,0,.3);
+}
 .lightbox-scale-caption { position:fixed; bottom:20px; right:24px; color:#4a453c; font-family:Arial,sans-serif; font-size:.9rem; margin:0; background:rgba(255,255,255,.8); padding:6px 12px; border-radius:4px; }
 @media (max-width:640px) {
   #scale-silhouette { height:52vh; left:16px; }

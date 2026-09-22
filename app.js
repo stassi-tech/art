@@ -2960,15 +2960,16 @@ function setLightboxScaleData(work) {
   exitScaleView();
 }
 // ============================================================================
-// RÉGLAGE TEMPORAIRE — essai du couloir animé (demande de Stéphane : « on va faire un essai avec
-// 2 peintres, on laisse courbet dans la 1 et on met David dans le 2e salle avec au fond le Sacre de
-// Napoléon »). Remplace, UNIQUEMENT quand ces deux artistes sont bien présents dans la sélection en
-// cours, la répartition automatique habituelle (splitIntoRooms) par cette configuration fixe et
-// reconnaissable — le temps de tester le nouveau couloir animé, en attendant le vrai outil de
-// placement des tableaux sur les murs (demandé mais pas encore construit, voir Stéphane). À retirer
-// (ou à rendre optionnel) une fois cet outil disponible. Si l'un des deux artistes manque à la
-// sélection en cours, on retombe silencieusement sur splitIntoRooms, comme avant ce réglage.
-function temporaryCorridorTestRooms(candidates) {
+// RÉGLAGE TEMPORAIRE — essai du passage d'une salle à l'autre en marchant (demande de Stéphane :
+// « on va faire un essai avec 2 peintres, on laisse courbet dans la 1 et on met David dans le 2e
+// salle avec au fond le Sacre de Napoléon »). Remplace, UNIQUEMENT quand ces deux artistes sont
+// bien présents dans la sélection en cours, la répartition automatique habituelle (splitIntoRooms)
+// par cette configuration fixe et reconnaissable — le temps de tester le nouveau passage entre
+// salles avec un scénario connu, en attendant le vrai outil de placement des tableaux sur les murs
+// (demandé mais pas encore construit, voir Stéphane). À retirer (ou à rendre optionnel) une fois cet
+// outil disponible. Si l'un des deux artistes manque à la sélection en cours, on retombe
+// silencieusement sur splitIntoRooms, comme avant ce réglage.
+function temporaryTestRoomSplit(candidates) {
   const courbetWorks = candidates.filter((w) => keyName(w.artist).includes('courbet'));
   const davidWorks = candidates.filter((w) => keyName(w.artist).includes('david'));
   if (!courbetWorks.length || !davidWorks.length) return null;
@@ -3007,29 +3008,34 @@ function enterScaleView() {
   // n'est créée que s'il y a assez d'œuvres, voir splitIntoRooms) ; state.roomWalls reste, comme
   // avant, les 4 murs de la salle actuellement visitée — la plupart du code existant (goToWall,
   // enterCloserPlan...) n'a donc pas besoin de savoir qu'il peut exister plusieurs salles.
-  state.allRooms = temporaryCorridorTestRooms(candidates) || splitIntoRooms(candidates);
+  state.allRooms = temporaryTestRoomSplit(candidates) || splitIntoRooms(candidates);
   state.currentRoomIndex = 0;
   state.roomWalls = state.allRooms[0];
 }
-// Positionne le rond rouge du plan du bâtiment (contrôle des billets) sur le centre de la salle
-// actuellement choisie (state.currentRoomIndex) — recalculé à partir des vraies dimensions à
-// l'écran des 2 rectangles plutôt que des pourcentages fixes, pour rester juste quelle que soit la
-// taille de l'écran (même principe que buildContinuousWall/pathPointForScrollLeft pour le mur
-// rapproché). Placé au contrôle des billets (et non à la façade) à la demande de Stéphane : c'est
-// juste avant de franchir le tourniquet que choisir sa salle a du sens.
-function updateCheckpointRoomDot() {
+// Petit plan des 2 salles, désormais un simple TÉMOIN passif (plus aucun glissement possible) —
+// changement demandé par Stéphane : « le point rond à l'intérieur est un simple témoin, ce n'est
+// pas lui qui guide le déplacement, c'est le point au sol qu'on lance en cliquant dessus ». Le vrai
+// passage d'une salle à l'autre se fait maintenant exactement comme on se déplace déjà d'un mur à
+// l'autre à l'intérieur d'une salle (voir buildContinuousWall/updateDotAlongWall plus bas) : on
+// marche tout droit, en cliquant le point au sol (#scale-floor-dot, voir attachFloorDotDrag), et on
+// franchit un simple pilier fixe entre les 2 salles plutôt qu'un panneau qui tourne. Ce petit plan
+// ne sert donc plus qu'à RAPPELER, une fois qu'on est dans une salle donnée, laquelle des deux
+// c'est — d'où sa position repensée, à la verticale, juste à côté du tourniquet (voir le HTML de
+// #scale-checkpoint-room-nav, maintenant un simple élément du groupe #scale-checkpoint-row plutôt
+// qu'un encart flottant en bas à droite).
+function updateCheckpointRoomIndicator() {
   const nav = $('scale-checkpoint-room-nav');
   if (!nav) return;
   // Le plan n'a de sens que s'il existe vraiment 2 salles — cette fonction est aussi celle qui
-  // décide de l'afficher ou non (appelée à chaque passage par le contrôle des billets, voir
-  // goThroughDoor), plutôt qu'un simple recalcul de position d'un widget déjà montré ailleurs.
+  // décide de l'afficher ou non (appelée à chaque passage par le contrôle des billets, et chaque
+  // fois qu'on franchit le pilier vers l'autre salle en marchant, voir updateDotAlongWall).
   nav.classList.toggle('hidden', !state.allRooms || state.allRooms.length < 2);
   const dot = $('scale-checkpoint-room-dot');
   if (!dot || nav.classList.contains('hidden')) return;
   const target = $(state.currentRoomIndex === 1 ? 'scale-checkpoint-room-2' : 'scale-checkpoint-room-1');
   if (!target) return;
-  // Surbrillance de la salle active : seul repère, avant de franchir le tourniquet, confirmant
-  // qu'un glissement du point a bien été pris en compte (voir commentaire CSS .active-room).
+  // Surbrillance de la salle active : seul repère (avec la position du point) indiquant dans
+  // laquelle des deux salles on se trouve actuellement (voir commentaire CSS .active-room).
   $('scale-checkpoint-room-1')?.classList.toggle('active-room', state.currentRoomIndex !== 1);
   $('scale-checkpoint-room-2')?.classList.toggle('active-room', state.currentRoomIndex === 1);
   const navRect = nav.getBoundingClientRect();
@@ -3038,58 +3044,11 @@ function updateCheckpointRoomDot() {
   dot.style.left = `${((tRect.left + tRect.width / 2 - navRect.left) / navRect.width) * 100}%`;
   dot.style.top = `${((tRect.top + tRect.height / 2 - navRect.top) / navRect.height) * 100}%`;
 }
-// Glisser (ou simplement toucher/relâcher) le rond d'un rectangle à l'autre choisit la salle dans
-// laquelle on ira. Pendant le geste, le point suit juste le doigt/curseur (retour visuel immédiat,
-// sans encore rien changer à la salle actuelle) ; c'est seulement au RELÂCHEMENT, une fois la
-// destination définitive connue, que la vraie marche démarre — un vrai couloir traversé (voir
-// walkCorridorToRoom ci-dessous), pas un simple échange d'état instantané comme avant. Changement
-// demandé par Stéphane : « il faut revenir au déplacement du personnage sur le plan d'ensemble,
-// d'une salle à l'autre... on doit comme dans un travelling voir la salle 1 disparaître et la
-// salle 2 apparaître. »
-(function attachCheckpointRoomNavDrag() {
-  const dot = $('scale-checkpoint-room-dot');
-  const nav = $('scale-checkpoint-room-nav');
-  if (!dot || !nav) return;
-  let dragging = false;
-  const followClientX = (clientX) => {
-    const navRect = nav.getBoundingClientRect();
-    if (!navRect.width) return;
-    const targetIndex = (clientX - navRect.left) / navRect.width < 0.5 ? 0 : 1;
-    const target = $(targetIndex === 1 ? 'scale-checkpoint-room-2' : 'scale-checkpoint-room-1');
-    if (!target) return;
-    const tRect = target.getBoundingClientRect();
-    dot.style.left = `${((tRect.left + tRect.width / 2 - navRect.left) / navRect.width) * 100}%`;
-    dot.style.top = `${((tRect.top + tRect.height / 2 - navRect.top) / navRect.height) * 100}%`;
-    dot.dataset.pendingRoom = String(targetIndex);
-  };
-  dot.addEventListener('pointerdown', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (corridorWalking) return; // un couloir est déjà en cours : on ignore ce nouveau geste
-    dragging = true;
-    dot.setPointerCapture?.(event.pointerId);
-    dot.style.cursor = 'grabbing';
-    followClientX(event.clientX); // couvre aussi le simple toucher/relâcher, sans glisser
-  });
-  dot.addEventListener('pointermove', (event) => { if (dragging) followClientX(event.clientX); });
-  const stop = () => {
-    if (!dragging) return;
-    dragging = false;
-    dot.style.cursor = 'grab';
-    const targetIndex = dot.dataset.pendingRoom != null ? Number(dot.dataset.pendingRoom) : state.currentRoomIndex;
-    delete dot.dataset.pendingRoom;
-    if (state.allRooms && state.allRooms[targetIndex] && state.currentRoomIndex !== targetIndex) {
-      walkCorridorToRoom(targetIndex);
-    } else {
-      updateCheckpointRoomDot(); // pas de changement : le point revient à sa vraie position actuelle
-    }
-  };
-  dot.addEventListener('pointerup', stop);
-  dot.addEventListener('pointercancel', stop);
-})();
 // Voile de transition floue entre chaque étape (façade → contrôle des billets → plan rapproché) —
 // évite, pour l'instant, d'avoir à animer un vrai déplacement progressif du personnage à travers
-// l'espace : le voile masque le changement de décor pendant sa courte durée.
+// l'espace : le voile masque le changement de décor pendant sa courte durée. Le passage d'une salle
+// à l'autre, lui, N'utilise PAS ce voile : il se fait maintenant en marchant, sans coupure de décor
+// (voir buildContinuousWall ci-dessous), exactement comme on passe déjà d'un mur à l'autre.
 function blurTransition(swap) {
   const veil = $('scale-blur-veil');
   if (!veil) { swap(); return; }
@@ -3103,74 +3062,6 @@ function blurTransition(swap) {
     });
   }, 500);
 }
-// Couloir animé entre 2 salles (« un vrai couloir traversé », demandé par Stéphane à la place du
-// changement instantané précédent) : même principe visuel que la marche dans la salle rapprochée
-// (une bande de décor défile pendant que la silhouette reste fixe à l'écran), mais ici la marche est
-// AUTOMATIQUE — il s'agit juste de rejoindre l'autre salle, pas d'une exploration libre — donc on
-// avance le décor via un simple transform plutôt que de réutiliser tout l'appareillage de #scale-wall
-// (scrollLeft, minimap, murs latéraux...), qui ne concerne que la vraie visite. La silhouette
-// réutilisée est #scale-silhouette elle-même (normalement masquée à l'étape du contrôle des billets)
-// plutôt qu'une silhouette dupliquée : elle est déjà position:fixed, donc visible aussi bien ici.
-let corridorWalking = false;
-let corridorWalkId = null;
-const CORRIDOR_STRIP_PX = 2400; // largeur totale du couloir, bien plus large que l'écran
-const CORRIDOR_WALK_SPEED = 5; // px/image — même esprit que walkSpeed (startWalking), marche non pilotée
-function walkCorridorToRoom(targetIndex) {
-  const corridor = $('scale-corridor');
-  const wall = $('scale-corridor-wall');
-  const strip = $('scale-corridor-strip');
-  const sil = $('scale-silhouette');
-  if (!corridor || !wall || !strip || !sil || corridorWalking) {
-    // Filet de sécurité (décor de couloir absent — ex. page pas encore rechargée après cette
-    // livraison — ou marche déjà en cours) : on retombe sur l'ancien échange instantané plutôt que
-    // de laisser le geste sans aucun effet.
-    if (state.allRooms && state.allRooms[targetIndex]) {
-      state.currentRoomIndex = targetIndex;
-      state.roomWalls = state.allRooms[targetIndex];
-    }
-    updateCheckpointRoomDot();
-    return;
-  }
-  corridorWalking = true;
-  $('scale-checkpoint').classList.add('hidden');
-  corridor.classList.remove('hidden');
-  sil.classList.remove('hidden');
-  sil.style.pointerEvents = 'none'; // pas de glisser accidentel pendant que la marche est automatique
-  sil.style.left = '50%'; // reste centrée à l'écran tout le couloir, comme sur le mur rapproché
-  strip.style.transition = 'none';
-  strip.style.transform = 'translateX(0px)';
-  requestAnimationFrame(() => {
-    const maxOffset = Math.max(0, CORRIDOR_STRIP_PX - wall.getBoundingClientRect().width);
-    let offset = 0;
-    sil.classList.add('walking-right');
-    const step = () => {
-      offset = Math.min(maxOffset, offset + CORRIDOR_WALK_SPEED);
-      strip.style.transform = `translateX(-${offset}px)`;
-      if (offset >= maxOffset) {
-        sil.classList.remove('walking-right');
-        arriveInRoomAfterCorridor(targetIndex);
-        return;
-      }
-      corridorWalkId = setTimeout(step, 16); // ~60 images/seconde, comme startWalking
-    };
-    corridorWalkId = setTimeout(step, 16);
-  });
-}
-function arriveInRoomAfterCorridor(targetIndex) {
-  if (corridorWalkId) clearTimeout(corridorWalkId);
-  corridorWalkId = null;
-  state.currentRoomIndex = targetIndex;
-  state.roomWalls = state.allRooms[targetIndex];
-  blurTransition(() => {
-    $('scale-corridor').classList.add('hidden');
-    const sil = $('scale-silhouette');
-    sil.classList.add('hidden'); // redevient masquée au contrôle des billets, comme avant d'entrer dans le couloir
-    sil.style.pointerEvents = '';
-    $('scale-checkpoint').classList.remove('hidden');
-    corridorWalking = false;
-    requestAnimationFrame(() => { layoutCheckpointRoom(); updateCheckpointRoomDot(); });
-  });
-}
 // Étape 2 : pousser la porte — transition floue vers le contrôle des billets, qui montre le mur du
 // fond depuis l'entrée avant de le franchir.
 function goThroughDoor() {
@@ -3179,12 +3070,12 @@ function goThroughDoor() {
     $('scale-checkpoint').classList.remove('hidden');
     // Depuis l'entrée, on ne voit que le mur du fond, bien en face — les murs latéraux ne sont ici
     // que des tranches décoratives (en CSS), sans œuvres : le joueur ne les découvrira qu'en se
-    // retournant une fois entré (voir buildContinuousWall, la vraie bande continue des 3 murs, pas
+    // retournant une fois entré (voir buildContinuousWall, la vraie bande continue des murs, pas
     // touchée ici). On attend une frame (le temps que la salle, tout juste démasquée, soit vraiment
     // mise en page — sinon ses dimensions mesureraient encore zéro) puis on positionne les œuvres du
-    // mur du fond à leur vraie échelle (voir layoutCheckpointRoom), et on affiche/positionne le
-    // plan de choix de salle (uniquement si state.allRooms en compte 2, voir updateCheckpointRoomDot).
-    requestAnimationFrame(() => { layoutCheckpointRoom(); updateCheckpointRoomDot(); });
+    // mur du fond à leur vraie échelle (voir layoutCheckpointRoom), et on met à jour le témoin de
+    // salle (uniquement visible si state.allRooms en compte 2, voir updateCheckpointRoomIndicator).
+    requestAnimationFrame(() => { layoutCheckpointRoom(); updateCheckpointRoomIndicator(); });
   });
 }
 // Lit une variable CSS numérique (en %) posée sur #scale-checkpoint-room, plutôt que coder en dur
@@ -3387,7 +3278,13 @@ const WALL_CORNER_PX = 300;
 // comme un objet à part plutôt que de donner l'impression qu'il fait partie du même mur qui se
 // replie. Voir updateCornerVisuals pour leur opacité, pilotée par le même t que la rotation.
 const WALL_CORNER_SHADOW_PX = 160;
-let wallSegments = []; // [{ key, label, startPx, widthPx, lengthM }, ...] posé par buildContinuousWall
+// Jonction ENTRE deux salles (pas à l'intérieur d'une même salle) : un simple pilier fixe, qu'on
+// longe tout droit sans jamais tourner — contrairement à l'angle pivotant ci-dessus. Demande de
+// Stéphane : « il faudrait reprendre le système de déplacement de la salle... la seule différence
+// c'est qu'il y a le pilier qui sépare les deux murs et que le personnage ne tourne pas ». Plus
+// étroit que WALL_CORNER_PX (pas besoin d'y voir tourner un panneau, juste de longer un pilier).
+const WALL_PILLAR_PX = 120;
+let wallSegments = []; // [{ key, label, startPx, widthPx, lengthM, roomIndex }, ...] posé par buildContinuousWall
 let wallCorners = []; // [{ startPx, inner, shadowExit, shadowEnter }, ...] posé par buildContinuousWall — voir updateCornerVisuals
 // Construit un morceau d'œuvres pour UN mur (gauche, fond ou droit), en repartant du point où le
 // mur précédent de la bande s'est arrêté (startPx) plutôt que de zéro à chaque fois — c'est cet
@@ -3435,10 +3332,60 @@ function buildWallSegment(wall, candidates, startPx, pxPerCm, maxPx, eyeLevelFro
   });
   return cursorLeft;
 }
-// Construit toute la bande continue (les 3 murs mis bout à bout) dans #scale-wall, et renvoie le
-// scrollLeft du tout début du mur du fond — c'est là qu'on arrive toujours en entrant dans la salle
-// (comme avant : face au mur du fond), sauf qu'on peut désormais aussi reculer vers la gauche ou
-// avancer vers la droite pour rejoindre les murs latéraux sans aucune coupure.
+// Angle À L'INTÉRIEUR d'une même salle, entre 2 de ses 3 murs : un vrai panneau en 3D (CSS
+// perspective + rotateY) qui pivote au fur et à mesure qu'on avance dans cette zone — voir
+// updateCornerVisuals, qui lit wallCorners pour faire tourner .scale-wall-corner-inner selon la
+// position exacte dans cette zone (0° en entrant = face « sortie » visible, 180° en sortant = face
+// « entrée » visible). Renvoie le nouveau curseur, après la zone.
+function appendRotatingCorner(wall, cursor) {
+  // Zones d'ombre AVANT/APRÈS le panneau, mordant sur le mur plat de chaque côté (voir
+  // WALL_CORNER_SHADOW_PX) — posées avant le panneau dans le DOM pour rester sous lui.
+  const shadowExit = document.createElement('div');
+  shadowExit.className = 'scale-wall-corner-shadow scale-wall-corner-shadow-exit';
+  shadowExit.style.left = `${cursor - WALL_CORNER_SHADOW_PX}px`;
+  shadowExit.style.width = `${WALL_CORNER_SHADOW_PX}px`;
+  wall.appendChild(shadowExit);
+  const corner = document.createElement('div');
+  corner.className = 'scale-wall-corner';
+  corner.style.left = `${cursor}px`;
+  corner.style.width = `${WALL_CORNER_PX}px`;
+  const inner = document.createElement('div');
+  inner.className = 'scale-wall-corner-inner';
+  const faceExit = document.createElement('div');
+  faceExit.className = 'scale-wall-corner-face scale-wall-corner-face-exit';
+  const faceEnter = document.createElement('div');
+  faceEnter.className = 'scale-wall-corner-face scale-wall-corner-face-enter';
+  inner.appendChild(faceExit);
+  inner.appendChild(faceEnter);
+  corner.appendChild(inner);
+  wall.appendChild(corner);
+  const shadowEnter = document.createElement('div');
+  shadowEnter.className = 'scale-wall-corner-shadow scale-wall-corner-shadow-enter';
+  shadowEnter.style.left = `${cursor + WALL_CORNER_PX}px`;
+  shadowEnter.style.width = `${WALL_CORNER_SHADOW_PX}px`;
+  wall.appendChild(shadowEnter);
+  wallCorners.push({ startPx: cursor, inner, shadowExit, shadowEnter });
+  return cursor + WALL_CORNER_PX;
+}
+// Jonction ENTRE deux salles : un simple pilier fixe (même langage visuel que les piliers déjà
+// utilisés à l'écran du contrôle des billets, #scale-checkpoint-wall-left/-right) — jamais de
+// panneau qui pivote ici, le personnage le longe tout droit sans changer de direction. Renvoie le
+// nouveau curseur, après le pilier.
+function appendStaticPillar(wall, cursor) {
+  const pillar = document.createElement('div');
+  pillar.className = 'scale-wall-pillar';
+  pillar.style.left = `${cursor}px`;
+  pillar.style.width = `${WALL_PILLAR_PX}px`;
+  wall.appendChild(pillar);
+  return cursor + WALL_PILLAR_PX;
+}
+// Construit toute la bande continue dans #scale-wall — TOUTES les salles de state.allRooms mises
+// bout à bout (pas seulement la salle actuelle), chacune avec ses 3 murs (gauche → fond → droit,
+// avec le panneau qui pivote entre eux, comme avant), et un simple pilier fixe entre 2 salles
+// successives, sans jamais pivoter (voir appendStaticPillar) — changement demandé par Stéphane :
+// on rejoint l'autre salle en marchant tout droit, exactement comme on passe déjà d'un mur à
+// l'autre, plutôt que par un écran ou un choix séparé. Renvoie le scrollLeft du tout début du mur
+// du fond de la PREMIÈRE salle — c'est là qu'on arrive toujours en poussant le tourniquet.
 function buildContinuousWall() {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
   // réelle après affichage pour placer chaque œuvre en conséquence, plutôt que de deviner des
@@ -3454,82 +3401,62 @@ function buildContinuousWall() {
   const eyeLevelFromBottom = silhRect.height * 0.92;
   const wall = $('scale-wall');
   wall.innerHTML = '';
-  const rooms3 = state.roomWalls || [[], [], [], []];
-  const legs = [
-    { key: 'left', label: 'Mur gauche', items: rooms3[3] || [] },
-    { key: 'back', label: 'Mur du fond', items: rooms3[0] || [] },
-    { key: 'right', label: 'Mur droit', items: rooms3[1] || [] },
-  ];
+  const rooms = (state.allRooms && state.allRooms.length ? state.allRooms : [state.roomWalls || [[], [], [], []]]);
+  const multiRoom = rooms.length > 1;
   const currentInfo = { note: '', hCm: 0 };
   let cursor = silhRect.right + 28; // marge de départ réservée à la silhouette, une seule fois (au
   // tout début de la bande) plutôt qu'à chaque mur : au milieu de la bande, la silhouette reste
   // fixe à l'écran pendant que le mur défile dessous, aucun espace supplémentaire n'y est need.
   wallSegments = [];
   wallCorners = [];
-  legs.forEach((leg, i) => {
-    const startPx = cursor;
-    const endPx = buildWallSegment(wall, leg.items, startPx, pxPerCm, maxPx, eyeLevelFromBottom, currentInfo);
-    // Longueur adaptative comme avant (largeur réellement occupée + 2 m de recul, minimum 8 m),
-    // calculée par mur puisque chacun peut contenir un nombre d'œuvres différent.
-    const naturalWidthCm = (endPx - startPx) / pxPerCm;
-    const legLengthM = Math.round(Math.max(800, naturalWidthCm + 200) / 100);
-    const widthPx = Math.max(endPx - startPx, legLengthM * 100 * pxPerCm);
-    wallSegments.push({ key: leg.key, label: leg.label, startPx, widthPx, lengthM: legLengthM });
-    cursor = startPx + widthPx;
-    // Angle entre ce mur et le suivant (jamais après le dernier) : un vrai panneau en 3D (CSS
-    // perspective + rotateY), qui pivote au fur et à mesure qu'on avance dans cette zone plutôt que
-    // de rester un simple repli d'ombre statique — voir updateCornerVisuals, qui lit wallCorners
-    // pour faire tourner .scale-wall-corner-inner selon la position exacte dans cette zone (0° en
-    // entrant = face « sortie » visible, 180° en sortant = face « entrée » visible). Bug réel
-    // repéré en même temps : la marche « gelait » pendant cette zone (le mur ne semblait plus
-    // avancer) — comme le personnage tourne bien sur lui-même à cet endroit plutôt que de glisser,
-    // ce n'est plus un défaut : l'animation de rotation lui donne enfin un sens visible.
-    if (i < legs.length - 1) {
-      // Zones d'ombre AVANT/APRÈS le panneau, mordant sur le mur plat de chaque côté (voir
-      // WALL_CORNER_SHADOW_PX) — posées avant le panneau dans le DOM pour rester sous lui.
-      const shadowExit = document.createElement('div');
-      shadowExit.className = 'scale-wall-corner-shadow scale-wall-corner-shadow-exit';
-      shadowExit.style.left = `${cursor - WALL_CORNER_SHADOW_PX}px`;
-      shadowExit.style.width = `${WALL_CORNER_SHADOW_PX}px`;
-      wall.appendChild(shadowExit);
-      const corner = document.createElement('div');
-      corner.className = 'scale-wall-corner';
-      corner.style.left = `${cursor}px`;
-      corner.style.width = `${WALL_CORNER_PX}px`;
-      const inner = document.createElement('div');
-      inner.className = 'scale-wall-corner-inner';
-      const faceExit = document.createElement('div');
-      faceExit.className = 'scale-wall-corner-face scale-wall-corner-face-exit';
-      const faceEnter = document.createElement('div');
-      faceEnter.className = 'scale-wall-corner-face scale-wall-corner-face-enter';
-      inner.appendChild(faceExit);
-      inner.appendChild(faceEnter);
-      corner.appendChild(inner);
-      wall.appendChild(corner);
-      const shadowEnter = document.createElement('div');
-      shadowEnter.className = 'scale-wall-corner-shadow scale-wall-corner-shadow-enter';
-      shadowEnter.style.left = `${cursor + WALL_CORNER_PX}px`;
-      shadowEnter.style.width = `${WALL_CORNER_SHADOW_PX}px`;
-      wall.appendChild(shadowEnter);
-      wallCorners.push({ startPx: cursor, inner, shadowExit, shadowEnter });
-      cursor += WALL_CORNER_PX;
-    }
+  let firstRoomBackStartPx = null;
+  rooms.forEach((roomWalls, roomIndex) => {
+    // Le nom de salle n'est ajouté au repère de distance (voir updateDistanceMarker) que s'il y a
+    // vraiment plusieurs salles — sinon "Mur du fond" seul reste comme avant.
+    const roomSuffix = multiRoom ? ` — Salle ${roomIndex + 1}` : '';
+    const legs = [
+      { key: 'left', label: `Mur gauche${roomSuffix}`, items: roomWalls[3] || [] },
+      { key: 'back', label: `Mur du fond${roomSuffix}`, items: roomWalls[0] || [] },
+      { key: 'right', label: `Mur droit${roomSuffix}`, items: roomWalls[1] || [] },
+    ];
+    legs.forEach((leg, i) => {
+      const startPx = cursor;
+      const endPx = buildWallSegment(wall, leg.items, startPx, pxPerCm, maxPx, eyeLevelFromBottom, currentInfo);
+      // Longueur adaptative comme avant (largeur réellement occupée + 2 m de recul, minimum 8 m),
+      // calculée par mur puisque chacun peut contenir un nombre d'œuvres différent.
+      const naturalWidthCm = (endPx - startPx) / pxPerCm;
+      const legLengthM = Math.round(Math.max(800, naturalWidthCm + 200) / 100);
+      const widthPx = Math.max(endPx - startPx, legLengthM * 100 * pxPerCm);
+      wallSegments.push({ key: leg.key, label: leg.label, startPx, widthPx, lengthM: legLengthM, roomIndex });
+      if (leg.key === 'back' && roomIndex === 0) firstRoomBackStartPx = startPx;
+      cursor = startPx + widthPx;
+      const isLastLegOfLastRoom = roomIndex === rooms.length - 1 && i === legs.length - 1;
+      if (!isLastLegOfLastRoom) {
+        // Bug réel repéré en même temps que l'angle pivotant : la marche « gelait » visuellement
+        // pendant cette zone — comme le personnage tourne bien sur lui-même à cet endroit plutôt
+        // que de glisser, ce n'est plus un défaut, mais ça ne doit arriver QUE dans un angle à
+        // l'intérieur d'une même salle (i < legs.length - 1) : entre 2 salles, on longe le pilier
+        // tout droit, sans jamais tourner (voir appendStaticPillar).
+        cursor = (i < legs.length - 1) ? appendRotatingCorner(wall, cursor) : appendStaticPillar(wall, cursor);
+      }
+    });
   });
   const spacer = document.createElement('div');
   spacer.style.cssText = `position:absolute;left:${cursor}px;width:1px;height:1px;`;
   wall.appendChild(spacer);
   $('lightbox-scale-caption').textContent = `Hauteur réelle : ${currentInfo.hCm} cm${currentInfo.note}`;
-  const backSeg = wallSegments.find((s) => s.key === 'back');
-  return backSeg ? backSeg.startPx : silhRect.right + 28;
+  return firstRoomBackStartPx !== null ? firstRoomBackStartPx : silhRect.right + 28;
 }
 function enterCloserPlan() {
-  // state.roomWalls est déjà calculé dès l'entrée en vue d'ensemble (voir enterScaleView), pour
+  // state.allRooms est déjà calculé dès l'entrée en vue d'ensemble (voir enterScaleView), pour
   // connaître l'œuvre du mur du fond à montrer en aperçu à travers la porte.
-  if (!state.roomWalls) {
-    state.allRooms = state.allRooms || splitIntoRooms(state.scaleViewCandidates || []);
-    state.currentRoomIndex = state.currentRoomIndex || 0;
-    state.roomWalls = state.allRooms[state.currentRoomIndex];
-  }
+  if (!state.allRooms) state.allRooms = splitIntoRooms(state.scaleViewCandidates || []);
+  // Le tourniquet mène toujours à la salle 1 : on la rejoint en marchant tout droit, jamais en la
+  // choisissant avant d'entrer (voir buildContinuousWall, qui enchaîne toutes les salles dans
+  // l'ordre) — donc à chaque entrée fraîche, on repart bien du début, même si on avait déjà marché
+  // jusqu'à la salle 2 lors d'une précédente visite.
+  state.currentRoomIndex = 0;
+  state.roomWalls = state.allRooms[0];
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
   ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
@@ -3642,27 +3569,42 @@ function isNearBottomCorner(clientX, clientY) {
 // on glisse le point où l'on veut se trouver, il y va directement (pas de marche automatique
 // animée), plutôt que de le pousser dans une direction et attendre. Il n'y a plus de notion de
 // « changer de mur » à gérer à part : un seul scrollLeft continu couvre toute la bande.
-// Point (x%, y%) sur le plan vu de dessus correspondant à une position absolue le long de la bande
-// (en pixels de scrollLeft) — mur gauche puis mur du fond puis mur droit, chacun sur son propre
-// segment de wallSegments (posé par buildContinuousWall). Remplace l'ancienne trapezoidPointForWall
-// (un mur à la fois, indépendants) : tout tient maintenant sur un seul repère continu, cohérent avec
-// le fait qu'on peut marcher d'un bout à l'autre de la salle sans coupure.
+// Les 3 murs (gauche/fond/droit) d'UNE salle donnée, dans l'ordre, parmi tous les wallSegments de
+// la bande complète (qui peut désormais couvrir plusieurs salles, voir buildContinuousWall).
+function roomLegSegments(roomIndex) {
+  return wallSegments.filter((s) => s.roomIndex === roomIndex);
+}
+// Salle à laquelle appartient une position donnée le long de la bande complète.
+function roomIndexForScrollLeft(scrollLeft) {
+  const seg = wallSegments.find((s) => scrollLeft < s.startPx + s.widthPx);
+  if (seg) return seg.roomIndex;
+  return wallSegments.length ? wallSegments[wallSegments.length - 1].roomIndex : 0;
+}
+// Point (x%, y%) sur le petit plan vu de dessus correspondant à une position absolue le long de la
+// bande (en pixels de scrollLeft). Le plan ne représente TOUJOURS que la salle où l'on se trouve
+// actuellement (déterminée par roomIndexForScrollLeft) — pas l'ensemble des salles à la fois — donc
+// on retrouve exactement le même repère qu'avant l'ajout d'une 2e salle : mur gauche puis mur du
+// fond puis mur droit, chacun sur son propre segment PARMI CEUX DE CETTE SALLE (roomLegSegments).
 function pathPointForScrollLeft(scrollLeft) {
   const lerp = (a, b, t) => a + (b - a) * t;
   if (!wallSegments.length) return { x: 50, y: 50 };
-  const seg = wallSegments.find((s) => scrollLeft < s.startPx + s.widthPx) || wallSegments[wallSegments.length - 1];
+  const legs = roomLegSegments(roomIndexForScrollLeft(scrollLeft));
+  const seg = legs.find((s) => scrollLeft < s.startPx + s.widthPx) || legs[legs.length - 1] || wallSegments[wallSegments.length - 1];
   const t = Math.min(1, Math.max(0, (scrollLeft - seg.startPx) / Math.max(1, seg.widthPx)));
   if (seg.key === 'left') return { x: lerp(TRAP_BOTTOM_LEFT.x, TRAP_TOP_LEFT.x, t), y: lerp(TRAP_BOTTOM_LEFT.y, TRAP_TOP_LEFT.y, t) };
   if (seg.key === 'back') return { x: lerp(TRAP_TOP_LEFT.x, TRAP_TOP_RIGHT.x, t), y: lerp(TRAP_TOP_LEFT.y, TRAP_TOP_RIGHT.y, t) };
   return { x: lerp(TRAP_TOP_RIGHT.x, TRAP_BOTTOM_RIGHT.x, t), y: lerp(TRAP_TOP_RIGHT.y, TRAP_BOTTOM_RIGHT.y, t) };
 }
 // Inverse de la fonction ci-dessus : à partir d'une position brute (x,y en 0..1) glissée sur le
-// plan, trouve le point le plus proche sur le tracé (les 3 murs mis bout à bout, en forme de U
-// ouvert côté couloir) et renvoie le scrollLeft correspondant — on peut ainsi glisser le point
-// n'importe où sur le plan, il retombe toujours sur le mur le plus proche, sans jamais avoir besoin
-// de détecter explicitement un « changement de mur ».
+// plan, trouve le point le plus proche sur le tracé DE LA SALLE ACTUELLE (state.currentRoomIndex —
+// le plan ne montre jamais qu'une salle à la fois, voir pathPointForScrollLeft) et renvoie le
+// scrollLeft correspondant — on peut ainsi glisser le point n'importe où sur le plan, il retombe
+// toujours sur le mur le plus proche DE CETTE SALLE, sans jamais avoir besoin de détecter
+// explicitement un « changement de mur ».
 function scrollLeftFromPathPosition(x, y) {
   if (!wallSegments.length) return 0;
+  const legs = roomLegSegments(state.currentRoomIndex || 0);
+  if (!legs.length) return 0;
   const project = (ax, ay, bx, by) => {
     const abx = bx - ax, aby = by - ay;
     const len2 = abx * abx + aby * aby || 1;
@@ -3677,7 +3619,7 @@ function scrollLeftFromPathPosition(x, y) {
   };
   let bestKey = 'back';
   Object.keys(edges).forEach((k) => { if (edges[k].dist < edges[bestKey].dist) bestKey = k; });
-  const seg = wallSegments.find((s) => s.key === bestKey) || wallSegments[0];
+  const seg = legs.find((s) => s.key === bestKey) || legs[0];
   return seg.startPx + edges[bestKey].t * seg.widthPx;
 }
 (function attachMinimapDrag() {
@@ -3823,7 +3765,17 @@ function updateDotAlongWall() {
   const silhouette = $('scale-silhouette');
   if (!wall || !dot || !wallSegments.length) return;
   updateCornerVisuals(wall.scrollLeft);
-  // Position du point sur le plan, à l'endroit correspondant de la bande continue (voir
+  // On vient peut-être de franchir le pilier vers l'autre salle en marchant tout droit — pas de
+  // sélection à part, comme demandé par Stéphane : on met simplement à jour l'état (et le témoin
+  // passif du contrôle des billets, invisible ici mais à jour pour la prochaine fois qu'on le
+  // reverra) dès que la position réelle change de salle.
+  const roomIndex = roomIndexForScrollLeft(wall.scrollLeft);
+  if (roomIndex !== state.currentRoomIndex) {
+    state.currentRoomIndex = roomIndex;
+    state.roomWalls = state.allRooms[roomIndex];
+    updateCheckpointRoomIndicator();
+  }
+  // Position du point sur le petit plan, à l'endroit correspondant DANS LA SALLE ACTUELLE (voir
   // pathPointForScrollLeft) — plus besoin de savoir « sur quel mur » on se trouve : un seul point
   // d'entrée (scrollLeft) suffit, qu'on soit sur un mur ou en train de tourner dans un angle.
   const p = pathPointForScrollLeft(wall.scrollLeft);
@@ -3835,13 +3787,15 @@ function updateDotAlongWall() {
   // silhouette bien plus vite en proportion que le point — au bout du mur (t=1 pour ce mur), la
   // silhouette avait déjà parcouru une bien plus grande fraction de l'écran que le point, qui lui
   // n'était encore qu'au premier tiers. Correctif : calculer la même fraction « en tiers égaux »
-  // (segment + position locale dans ce segment) que celle utilisée pour placer le point sur le
-  // trapèze, afin que les deux terminent CHAQUE mur exactement ensemble.
-  const segIndex = wallSegments.findIndex((s) => wall.scrollLeft < s.startPx + s.widthPx);
-  const idx = segIndex === -1 ? wallSegments.length - 1 : segIndex;
-  const seg = wallSegments[idx];
+  // (segment + position locale dans ce segment), PARMI LES MURS DE LA SALLE ACTUELLE seulement
+  // (roomLegSegments), que celle utilisée pour placer le point sur le trapèze, afin que les deux
+  // terminent CHAQUE mur exactement ensemble.
+  const legs = roomLegSegments(roomIndex);
+  const segIndex = legs.findIndex((s) => wall.scrollLeft < s.startPx + s.widthPx);
+  const idx = segIndex === -1 ? legs.length - 1 : segIndex;
+  const seg = legs[idx];
   const localT = Math.min(1, Math.max(0, (wall.scrollLeft - seg.startPx) / Math.max(1, seg.widthPx)));
-  const progress = (idx + localT) / wallSegments.length; // 0..1, un tiers exact par mur
+  const progress = (idx + localT) / legs.length; // 0..1, un tiers exact par mur DE CETTE SALLE
   // Point dupliqué sur le sol, ET la silhouette elle-même : même progression, répartie sur toute
   // la largeur de l'écran (5 % à 95 %). La silhouette est maintenant « attachée » au point —
   // c'est elle qui se déplace visiblement à l'écran, plutôt qu'une illusion où seul le mur
