@@ -1831,31 +1831,52 @@ function findColumn(row, names) {
   const keys = Object.keys(row);
   return keys.find((column) => names.includes(keyName(column)));
 }
+// Jointure ligne ŒUVRE -> ligne du fichier maître ARTISTES, par Prénom+Patronyme exact (les deux
+// sont déjà les champs les plus fiables disponibles à cet endroit — pas besoin de la recherche par
+// paliers utilisée par findArtistRow plus bas, pensée elle pour une saisie libre au clavier).
+// Retourne null tant que le fichier maître n'a pas été chargé (voir loadArtistListIfNeeded) : dans
+// ce cas, les champs concernés restent simplement vides, comme n'importe quelle donnée manquante.
+function findArtistMasterRow(prenom, patronyme) {
+  if (!artistListLoaded) return null;
+  const q = keyName(`${prenom} ${patronyme}`);
+  if (!q) return null;
+  return artistListRows.find((row) => keyName(`${row['Prénom'] || ''} ${row['Patronyme'] || ''}`) === q) || null;
+}
 function normaliseRows(rows) {
   return rows.map((row, rowIndex) => {
-    const imageKey = findColumn(row, ['image', 'url image', 'image url', 'lien image', 'visuel']);
+    // "image de l oeuvre" : nom de colonne du nouveau modèle ŒUVRES (restructuration V11, fichier
+    // « Image de l'œuvre ») — ajouté à côté de « image », l'ancien nom, toujours accepté.
+    const imageKey = findColumn(row, ['image', 'image de l oeuvre', 'url image', 'image url', 'lien image', 'visuel']);
     if (!imageKey) throw new Error("La colonne « image » est introuvable dans ce fichier.");
     // Trois colonnes optionnelles de photos supplémentaires (portrait de l'artiste, vue du lieu de
     // conservation, autre photo du cycle) — absentes des anciens fichiers, ignorées sans erreur si
-    // non trouvées.
+    // non trouvées. Depuis la restructuration V11, le portrait de l'artiste n'est plus dans ce
+    // fichier du tout (il vit dans l'onglet « Images » du fichier maître) — artistImageKey restera
+    // donc introuvable pour ces nouveaux fichiers, et la valeur sera récupérée plus bas par
+    // jointure avec le fichier maître, comme la nationalité, les surnoms et les dates.
     const artistImageKey = findColumn(row, ["image de l artiste", 'portrait artiste', 'photo artiste']);
+    // "image 1 du cycle" : nom de colonne du nouveau modèle (la 2e image, « image 2 du cycle »,
+    // n'est pas encore exploitée par l'appli — récupérable plus tard si besoin).
     const locationImageKey = findColumn(row, ['images du lieu', 'image du lieu', 'photo lieu', 'photo musee', 'photo musée']);
-    const cycleImageKey = findColumn(row, ['images du cycle', 'image du cycle', 'photo cycle']);
-    const artistImage = artistImageKey ? String(row[artistImageKey] || '').trim() : '';
+    const cycleImageKey = findColumn(row, ['images du cycle', 'image 1 du cycle', 'image du cycle', 'photo cycle']);
+    let artistImage = artistImageKey ? String(row[artistImageKey] || '').trim() : '';
     const locationImage = locationImageKey ? String(row[locationImageKey] || '').trim() : '';
     const cycleImage = cycleImageKey ? String(row[cycleImageKey] || '').trim() : '';
 
     // --- Identité de l'artiste : nouvelle structure (Prénom/Patronyme/Surnom) si présente,
     // sinon on retombe sur l'ancienne colonne unique « Artiste » pour rester compatible avec
     // d'anciens fichiers pas encore convertis.
-    const prenomKey = findColumn(row, ['prenom']);
-    const patronymeKey = findColumn(row, ['patronyme']);
+    // "prenom artiste"/"patronyme artiste" : noms de colonnes du nouveau modèle ŒUVRES
+    // (restructuration V11) — l'ancien fichier utilisait directement "Prénom"/"Patronyme", toujours
+    // accepté pour ne pas casser d'anciens fichiers pas encore convertis.
+    const prenomKey = findColumn(row, ['prenom', 'prenom artiste']);
+    const patronymeKey = findColumn(row, ['patronyme', 'patronyme artiste']);
     const surnomFrKey = findColumn(row, ['surnom francais', 'surnom']);
     const surnomOrigKey = findColumn(row, ["surnom langue d origine", 'surnom original', 'surnom origine']);
     const prenom = prenomKey ? String(row[prenomKey] || '').trim() : '';
     const patronyme = patronymeKey ? String(row[patronymeKey] || '').trim() : '';
-    const surnomFr = surnomFrKey ? String(row[surnomFrKey] || '').trim() : '';
-    const surnomOrig = surnomOrigKey ? String(row[surnomOrigKey] || '').trim() : '';
+    let surnomFr = surnomFrKey ? String(row[surnomFrKey] || '').trim() : '';
+    let surnomOrig = surnomOrigKey ? String(row[surnomOrigKey] || '').trim() : '';
     let artist;
     if (prenomKey || patronymeKey || surnomFrKey) {
       artist = [prenom, patronyme].filter(Boolean).join(' ') || surnomFr;
@@ -1885,7 +1906,7 @@ function normaliseRows(rows) {
 
     // --- Lieu : nouvelle structure Ville/Lieu précis/Sous-lieu si présente, sinon ancienne
     // colonne unique « lieu de conservation ». Affichage : Sous-lieu, Lieu précis, Ville.
-    const villeKey = findColumn(row, ['ville', 'ville de creation', 'lieu de conservation']);
+    const villeKey = findColumn(row, ['ville', 'ville de creation', 'ville de conservation', 'lieu de conservation']);
     const lieuPrecisKey = findColumn(row, ['lieu precis', 'lieu precis de conservation']);
     const sousLieuKey = findColumn(row, ['sous lieu', 'sous lieu de conservation']);
     let location, ville = '';
@@ -1956,9 +1977,28 @@ function normaliseRows(rows) {
     }
 
     const nationalityKey = findColumn(row, ['nationalite', 'nationalite artiste', 'pays', 'nationality']);
-    const nationality = nationalityKey ? String(row[nationalityKey] || '').trim() : '';
+    let nationality = nationalityKey ? String(row[nationalityKey] || '').trim() : '';
     const niveauKey = findColumn(row, ['niveau']);
     const niveau = niveauKey ? (parseInt(row[niveauKey], 10) || 1) : 1;
+
+    // --- Depuis la restructuration V11, les fichiers ŒUVRES ne portent plus la nationalité, les
+    // surnoms, les dates de naissance/mort ni le portrait de l'artiste : pour ne plus les dupliquer
+    // sur chaque œuvre (et risquer qu'ils divergent d'un tableau à l'autre du même peintre), ces
+    // informations ne vivent plus que dans le fichier maître artistes-nationalites-maitre.xlsx. On
+    // les récupère donc ici par une jointure sur Prénom+Patronyme — uniquement pour les champs
+    // absents de la ligne elle-même, ce qui laisse les anciens fichiers (pas encore convertis, qui
+    // portent encore ces colonnes inline) parfaitement inchangés.
+    if (!surnomFrKey || !surnomOrigKey || !naissanceKey || !mortKey || !nationalityKey || !artistImageKey) {
+      const masterRow = findArtistMasterRow(prenom, patronyme);
+      if (masterRow) {
+        if (!surnomFrKey && masterRow['Surnom']) surnomFr = String(masterRow['Surnom']).trim();
+        if (!naissanceKey && !mortKey && masterRow['Année de naissance'] && masterRow['Année de mort']) {
+          artistDates = `${masterRow['Année de naissance']}-${masterRow['Année de mort']}`;
+        }
+        if (!nationalityKey && masterRow['Nationalité']) nationality = String(masterRow['Nationalité']).trim();
+        if (!artistImageKey && masterRow["Image de l'artiste"]) artistImage = String(masterRow["Image de l'artiste"]).trim();
+      }
+    }
 
     return {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
@@ -3881,6 +3921,7 @@ $('excel-file')?.addEventListener('change', async (event) => {
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé. Vérifiez votre connexion Internet et rechargez la page.');
     const data = await file.arrayBuffer(); const book = XLSX.read(data, { type: 'array' }); const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
+    await loadArtistListIfNeeded(); // même raison que dans fetchQuizRows : un fichier importé au nouveau format a besoin du fichier maître pour la jointure artiste
     const questions = normaliseRows(rows); if (!questions.length) throw new Error('Aucune question utilisable n’a été trouvée dans le premier onglet.');
     state.selectedFieldKeys = chosenKeys;
     state.mode = 'normal';
@@ -4024,6 +4065,26 @@ async function loadArtistListIfNeeded() {
     const book = XLSX.read(buffer, { type: 'array' });
     const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
     if (!rows.length) throw new Error('liste vide');
+    // Restructuration V11 : la photo de l'artiste n'est plus une colonne de cette première feuille,
+    // elle vit dans un onglet séparé « Images » (colonne « Photo 1 »), pour permettre d'en stocker
+    // plusieurs par artiste plus tard. On la refusionne ici sous l'ancien nom de champ ("Image de
+    // l'artiste") par Prénom+Patronyme, pour que le reste du code (fiche artiste, jointure dans
+    // normaliseRows) continue de la trouver au même endroit qu'avant, sans rien savoir de ce
+    // nouvel onglet. Absent sur un ancien fichier maître pas encore converti : simplement ignoré.
+    const imagesSheet = book.Sheets['Images'];
+    if (imagesSheet) {
+      const imageRows = XLSX.utils.sheet_to_json(imagesSheet, { defval: '' });
+      const photoByKey = new Map();
+      imageRows.forEach((r) => {
+        const key = keyName(`${r['Prénom'] || ''} ${r['Patronyme'] || ''}`);
+        if (key && r['Photo 1']) photoByKey.set(key, String(r['Photo 1']).trim());
+      });
+      rows.forEach((r) => {
+        const key = keyName(`${r['Prénom'] || ''} ${r['Patronyme'] || ''}`);
+        const photo = photoByKey.get(key);
+        if (photo) r["Image de l'artiste"] = photo;
+      });
+    }
     artistListRows = rows;
     artistListLoaded = true;
     return true;
@@ -7043,6 +7104,12 @@ async function fetchQuizRows(art, century) {
     const buffer = await response.arrayBuffer();
     const book = XLSX.read(buffer, { type: 'array' });
     const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
+    // Nécessaire depuis la restructuration V11 : les nouveaux fichiers ŒUVRES n'ont plus la
+    // nationalité/les surnoms/les dates de l'artiste inline, normaliseRows() doit pouvoir les
+    // rejoindre depuis le fichier maître, donc celui-ci doit être chargé avant. Sans effet (déjà en
+    // cache) si un autre appel l'a déjà chargé ; silencieux si indisponible (hors-ligne...), les
+    // champs concernés restent alors simplement vides plutôt que de faire échouer le quiz.
+    await loadArtistListIfNeeded();
     return normaliseRows(rows).map((q) => ({ ...q, art }));
   })();
   quizRowsCache.set(cacheKey, promise);
