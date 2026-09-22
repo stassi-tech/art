@@ -4248,8 +4248,12 @@ function findArtistRow(query) {
 async function fetchWorksForArtistRow(row) {
   const artistName = [row['Prénom'], row['Patronyme']].filter(Boolean).join(' ').trim();
   // La salle se limite pour l'instant à la peinture (les sculptures y reviendront une fois le
-  // détourage et le rail travaillés) — même si l'artiste pratique aussi la sculpture.
-  const arts = String(row['Art(s)'] || '').split(',').map((s) => s.trim().toLocaleLowerCase('fr-FR')).filter((a) => a === 'peinture');
+  // détourage et le rail travaillés) — même si l'artiste pratique aussi la sculpture. Ceci se
+  // basait sur la colonne « Art(s) » du fichier maître, qui a disparu lors d'une restructuration
+  // (bug réel repéré : plus aucun artiste ne renvoyait la moindre œuvre, la case étant désormais
+  // toujours vide) — on fixe donc directement le filtre à la peinture, sans dépendre d'une colonne
+  // qui n'existe plus dans le fichier.
+  const arts = ['peinture'];
   const centuries = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   const works = [];
   for (const art of arts) {
