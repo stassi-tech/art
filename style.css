@@ -887,7 +887,13 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    partir d'un mur de référence de 15 m) plutôt qu'ajustée pour « faire joli ». */
 .scale-checkpoint-wall-works { position:absolute; top:0; height:100%; left:0; }
 .scale-checkpoint-work { position:absolute; object-fit:contain; box-shadow:0 2px 6px rgba(0,0,0,.35); }
-#scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; }
+/* v33 : overflow:hidden ajouté — la machine à tickets suit maintenant EXACTEMENT le même transform
+   que le pilier gauche (voir updateCheckpointWalkVisual dans app.js, retour de Stéphane : « il faut
+   que ce soit deux éléments... qui fonctionnent exactement de la même façon »), donc elle glisse
+   loin vers la gauche pendant la marche ; sans ce overflow:hidden, elle resterait visible hors de sa
+   rangée (voire hors de l'écran, provoquant une barre de défilement horizontale indésirable) au lieu
+   de disparaître au bord du cadre comme le pilier disparaît au bord de #scale-checkpoint-room. */
+#scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; overflow:hidden; }
 #scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
 /* Cordon rouge à 8 potelets, tracé en un seul SVG continu, vraies vagues entre chaque potelet
    doré — étendu sur toute la largeur disponible (plus de max-width, pour vraiment aller d'un

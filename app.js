@@ -3175,17 +3175,18 @@ function stopCheckpointWalking() {
 // ouvrira, et le témoin passif) reste sur la même hysteresis qu'avant (CHECKPOINT_PILLAR_START/END)
 // mais ne déclenche plus RIEN de visuel ici : le décor est déjà là, sur le rail, et suit son propre
 // panoramique tout seul.
-// v32 : la machine à tickets disparaissait d'un coup (bascule hidden/display:none à un seuil fixe)
-// — retour de Stéphane : « il faudrait qu'elle soit dans le mouvement, qu'elle disparaisse comme
-// disparaît le pilier », c'est-à-dire progressivement, à la même vitesse que le personnage marche,
-// pas d'un coup sec à un instant donné. Elle est réellement fixée à l'endroit du premier pilier
-// (progress=0) : au lieu d'un simple hidden, on lui applique maintenant un fondu ET un léger
-// glissement vers la gauche, tous deux calculés en continu à partir de checkpointProgress lui-même
-// (exactement comme le pilier, qui recule via le transform du rail plutôt que par un événement
-// ponctuel) — sur toute la petite plage 0..CHECKPOINT_TURNSTILE_FADE_END, pas seulement à la toute
-// fin. display:none (hidden) n'intervient qu'une fois le fondu totalement terminé (opacité déjà à
-// 0), uniquement pour la sortir de la mise en page/du clic sans provoquer de saut visuel.
-const CHECKPOINT_TURNSTILE_FADE_END = 0.16;
+// v33 : le fondu en transparence (v32) faisait une machine à tickets « bizarre » selon Stéphane —
+// son retour : « il faut le lier au pilier qui est à gauche... il faut que ce soit deux éléments,
+// même s'ils sont séparés physiquement, qui fonctionnent exactement de la même façon. Le pilier
+// gauche s'en va et la machine à tickets s'en va avec lui. » Autrement dit : pas un effet propre à
+// la machine (fondu, glissement inventé), mais EXACTEMENT le même mouvement que le pilier gauche —
+// qui recule via le transform de #scale-checkpoint-track, translateX(-checkpointProgress *
+// checkpointPanTravelPx). On applique donc cette translation, telle quelle, à la machine à
+// tickets : les deux avancent au même rythme, à la même distance, comme un seul bloc — même s'ils
+// vivent dans deux conteneurs différents (le rail de la salle / la rangée du bas). Comme
+// #scale-checkpoint-row a maintenant overflow:hidden (voir style.css), la machine sort du cadre
+// exactement comme le pilier sort du cadre de #scale-checkpoint-room : plus de fondu ni de
+// display:none à gérer nous-mêmes, la disparition est purement géométrique.
 function updateCheckpointWalkVisual() {
   const dot = $('scale-checkpoint-floor-dot');
   const sil = $('scale-checkpoint-silhouette');
@@ -3194,13 +3195,14 @@ function updateCheckpointWalkVisual() {
   const tx = checkpointProgress * checkpointWalkRangePx;
   if (dot) dot.style.transform = `translateX(${tx}px)`;
   if (sil) sil.style.transform = `translateX(${tx}px)`;
-  if (track) track.style.transform = `translateX(${-checkpointProgress * checkpointPanTravelPx}px)`;
+  const pillarTx = -checkpointProgress * checkpointPanTravelPx;
+  if (track) track.style.transform = `translateX(${pillarTx}px)`;
   if (turnstile) {
-    const fadeT = Math.min(1, Math.max(0, checkpointProgress / CHECKPOINT_TURNSTILE_FADE_END));
-    turnstile.style.opacity = String(1 - fadeT);
-    turnstile.style.transform = `translateX(${-fadeT * 50}px)`;
-    turnstile.style.pointerEvents = fadeT > 0 ? 'none' : '';
-    turnstile.classList.toggle('hidden', fadeT >= 1);
+    turnstile.style.transform = `translateX(${pillarTx}px)`;
+    // Cliquable seulement tout près du pilier de départ (progress≈0) — une fois qu'on s'en est
+    // éloigné, elle n'est plus visible (cf. overflow:hidden ci-dessus) donc plus utilisable de toute
+    // façon ; ceci est juste une sécurité contre un clic sur un élément déjà sorti du cadre.
+    turnstile.style.pointerEvents = checkpointProgress > 0 ? 'none' : '';
   }
   // Hysteresis : au-delà de la fin de la zone → salle 2 ; avant le début → salle 1 ; À L'INTÉRIEUR
   // de la zone, on ne touche à rien, la salle « logique » reste celle d'avant qu'on y entre (qu'on
@@ -3253,10 +3255,12 @@ function setupCheckpointWalk() {
   sil.style.transform = 'translateX(0px)';
   dot.style.transform = 'translateX(0px)';
   checkpointProgress = 0;
-  // Toujours visible en revenant ici avec progress remis à 0 (l'entrée se fait forcément devant
-  // elle) — sinon un état caché resté d'un passage précédent à 2 salles pourrait persister à tort
-  // si la branche salle unique ci-dessous sort avant d'appeler updateCheckpointWalkVisual.
-  $('scale-turnstile')?.classList.remove('hidden');
+  // Remet aussi la machine à tickets à sa position/cliquabilité de départ (voir
+  // updateCheckpointWalkVisual, où elle suit désormais EXACTEMENT le même transform que le pilier
+  // gauche) — sinon un décalage resté d'un passage précédent à 2 salles pourrait persister à tort
+  // si la branche salle unique ci-dessous sort avant d'atteindre updateCheckpointWalkVisual.
+  const turnstileReset = $('scale-turnstile');
+  if (turnstileReset) { turnstileReset.style.transform = 'translateX(0px)'; turnstileReset.style.pointerEvents = ''; }
   const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
   dot.classList.toggle('hidden', !hasTwoRooms);
   if (!hasTwoRooms) { stopCheckpointWalking(); return; }
