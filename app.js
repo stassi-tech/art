@@ -8,15 +8,24 @@ const $ = (id) => document.getElementById(id);
 // Volontairement tout en styles inline (pas de dépendance à style.css, pour qu'il fonctionne même si
 // la feuille de style elle-même est en cause) et posé tout en haut du fichier, avant Firebase et tout
 // le reste, pour capter aussi les erreurs les plus précoces au chargement.
+// v23 : bandeau posé, mais Stéphane confirme "pas de point rouge au sol, pas de bandeau" en
+// VERSION 23 — donc aucune exception JS ne se produit chez lui, mais le point reste quand même
+// invisible : le bug n'est PAS un plantage, c'est que quelque chose (mise en page, une classe qui ne
+// se retire pas, un élément qui recouvre le point, ...) rend le point différemment sur sa machine que
+// dans tous mes tests automatisés. Comme il n'a pas la console, `show` sert maintenant aussi à
+// afficher un rapport d'état (pas seulement des erreurs) : un vrai bandeau de diagnostic, en bleu
+// pour le distinguer d'une vraie erreur en rouge, déclenché AUTOMATIQUEMENT dès qu'on entre dans le
+// plan rapproché (voir enterCloserPlan) — donc Stéphane n'a plus rien à faire de spécial pour nous
+// faire remonter ce qu'il se passe réellement chez lui à cet instant précis.
 (function installErrorBanner() {
   let banner = null;
   let count = 0;
-  const show = (text) => {
+  const show = (text, kind) => {
     count += 1;
     if (!banner) {
       banner = document.createElement('div');
       banner.id = 'debug-error-banner';
-      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:#b3261e;color:#fff;font-family:monospace;font-size:12px;line-height:1.4;padding:8px 40px 8px 10px;max-height:35vh;overflow:auto;white-space:pre-wrap;box-shadow:0 2px 10px rgba(0,0,0,.5);';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;color:#fff;font-family:monospace;font-size:12px;line-height:1.4;padding:8px 40px 8px 10px;max-height:45vh;overflow:auto;white-space:pre-wrap;box-shadow:0 2px 10px rgba(0,0,0,.5);';
       const closeBtn = document.createElement('button');
       closeBtn.textContent = '✕';
       closeBtn.style.cssText = 'position:absolute;top:4px;right:8px;background:transparent;color:#fff;border:1px solid #fff;border-radius:3px;width:26px;height:26px;font-size:14px;cursor:pointer;';
@@ -27,6 +36,10 @@ const $ = (id) => document.getElementById(id);
       banner.appendChild(list);
       (document.body || document.documentElement).appendChild(banner);
     }
+    // Rouge pour une vraie erreur JS, bleu pour un simple rapport d'état (rien de cassé, juste des
+    // mesures) — un fond rouge sans erreur JS aurait fait craindre à Stéphane un bug plus grave que
+    // ce que c'est réellement.
+    banner.style.background = kind === 'info' ? '#1a4b8c' : '#b3261e';
     const list = banner.querySelector('#debug-error-banner-list');
     const line = document.createElement('div');
     line.textContent = `#${count} — ${text}`;
@@ -34,11 +47,14 @@ const $ = (id) => document.getElementById(id);
   };
   window.addEventListener('error', (event) => {
     const loc = event.filename ? ` (${event.filename.split('/').pop()}:${event.lineno}:${event.colno})` : '';
-    show(`ERREUR JS : ${event.message}${loc}`);
+    show(`ERREUR JS : ${event.message}${loc}`, 'error');
   });
   window.addEventListener('unhandledrejection', (event) => {
-    show(`PROMESSE REJETÉE : ${event.reason && event.reason.message ? event.reason.message : event.reason}`);
+    show(`PROMESSE REJETÉE : ${event.reason && event.reason.message ? event.reason.message : event.reason}`, 'error');
   });
+  // Exposée globalement pour que le reste du code (voir enterCloserPlan) puisse aussi y déposer un
+  // rapport de diagnostic, pas seulement les erreurs JS captées ci-dessus.
+  window.__debugBanner = show;
 })();
 const state = {
   questions: [],
@@ -3519,6 +3535,31 @@ function enterCloserPlan() {
     lastShownWallKey = '';
     updateDotAlongWall();
     updateDistanceMarker();
+    // Diagnostic automatique (voir installErrorBanner) : Stéphane rapporte que le point rouge au
+    // sol reste invisible SANS qu'aucune erreur JS ne s'affiche — donc ce n'est pas un plantage,
+    // c'est que le point se retrouve rendu autrement chez lui. On mesure son état réel un instant
+    // après la mise en page (un délai supplémentaire, au cas où une image très grande mettrait plus
+    // longtemps à se mettre en page sur sa machine que dans mes tests) et on l'affiche directement à
+    // l'écran, pour savoir enfin ce qui diffère sans qu'il ait besoin d'ouvrir la console.
+    setTimeout(() => {
+      try {
+        const fd = $('scale-floor-dot');
+        if (!fd) { window.__debugBanner?.('DIAGNOSTIC point rouge : élément #scale-floor-dot introuvable dans la page', 'error'); return; }
+        const r = fd.getBoundingClientRect();
+        const cs = getComputedStyle(fd);
+        const topEl = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        const report = [
+          `hidden=${fd.classList.contains('hidden')}`,
+          `rect=${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)}x${Math.round(r.height)}`,
+          `display=${cs.display} visibility=${cs.visibility} opacity=${cs.opacity} z-index=${cs.zIndex} pointerEvents=${cs.pointerEvents}`,
+          `élément au même endroit=${topEl ? (topEl.id || topEl.className || topEl.tagName) : 'aucun'}`,
+          `fenêtre=${window.innerWidth}x${window.innerHeight}`,
+        ].join(' | ');
+        window.__debugBanner?.(`DIAGNOSTIC point rouge (plan rapproché) : ${report}`, 'info');
+      } catch (e) {
+        window.__debugBanner?.(`DIAGNOSTIC point rouge : échec de la mesure — ${e.message}`, 'error');
+      }
+    }, 400);
   });
 }
 // (l'entrée se fait maintenant via #scale-enter-button → goThroughDoor → #scale-barrier, voir
