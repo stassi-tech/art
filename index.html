@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=170" />
+    <link rel="stylesheet" href="style.css?v=171" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -63,15 +63,6 @@
 
       <main class="main-content">
         <section id="welcome-panel" class="welcome-panel">
-          <div id="account-bar" class="account-bar">
-            <span id="account-status">Non connecté</span>
-          </div>
-          <div class="home-mode-buttons account-buttons-row">
-            <button type="button" id="account-login-button" class="home-mode-button account-slot">Se connecter / Créer un compte</button>
-            <button type="button" id="account-page-button" class="home-mode-button account-slot hidden">Mon compte</button>
-            <button type="button" id="account-logout-button" class="home-mode-button account-slot hidden">Se déconnecter</button>
-          </div>
-
           <p class="app-brand-name">MNEMART</p>
           <p class="eyebrow home-eyebrow">Peinture et sculpture en Occident<br>14e au 20e siècle</p>
           <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
@@ -81,24 +72,30 @@
             <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
           </figure>
 
-          <p class="intro-banner">Cette application vous propose de jouer avec <a href="#base" target="_blank" rel="noopener">une base de plusieurs milliers d'œuvres d'art</a> — peintures et sculptures en Occident, du 14e au 20e siècle — à travers <a href="#exercices" target="_blank" rel="noopener">des exercices d'entraînement</a> à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. <a href="#" id="intro-account-link">Créez un compte</a> pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
+          <p class="intro-banner">Cette application vous propose de jouer avec <a href="#base" target="_blank" rel="noopener">une base de plusieurs milliers d'œuvres d'art</a> — peintures et sculptures en Occident, du 14e au 20e siècle (actuellement <span id="intro-stats-counter">un chargement de la base est en cours…</span>) — à travers <a href="#exercices" target="_blank" rel="noopener">des exercices d'entraînement</a> à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. <a href="#" id="intro-account-link">Créez un compte</a> pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
 
-          <!-- Passé de 2 à 3 boutons (retour de Stéphane) : "Retrouver une configuration" vivait
-               avant comme un choix caché à l'intérieur du parcours guidé (gc-step-intro) — remonté
-               ici au même niveau que les deux autres portes d'entrée, pour qu'on puisse y accéder
-               sans d'abord entrer dans le parcours guidé. Du coup gc-step-intro n'a plus besoin de
-               demander à nouveau "retrouver ou créer ?" : un simple "Continuez" suffit désormais
-               (voir plus bas). -->
+          <!-- Retour de Stéphane : 4 boutons en grille 2x2 plutôt que 2 rangées séparées (3 portes
+               d'entrée aux jeux + les boutons de compte tout en haut) — "Mon compte" rejoint donc
+               ici les 3 autres, avec un interrupteur connecté/déconnecté intégré (home-account-*)
+               qui remplace l'ancienne rangée account-bar/account-login-button/account-page-button/
+               account-logout-button supprimée d'ici (logique reprise dans updateAccountBar, app.js). -->
           <div class="home-mode-buttons account-buttons-row">
             <button type="button" class="home-mode-button" id="open-guided-config">
-              <span class="label">Accès aux jeux pour débutants</span>
+              <span class="label">Accès guidé aux jeux</span>
             </button>
             <button type="button" class="home-mode-button" id="open-training">
-              <span class="label">Accès aux jeux pour joueurs confirmés</span>
+              <span class="label">Accès rapide aux jeux</span>
             </button>
             <button type="button" class="home-mode-button" id="open-find-config">
-              <span class="label">Retrouver une configuration de jeux déjà enregistrée</span>
+              <span class="label">Retrouver une configuration enregistrée</span>
             </button>
+            <div class="home-mode-button account-hub-slot" id="home-account-slot" role="button" tabindex="0">
+              <span class="label" id="home-account-label">Se connecter / Créer un compte</span>
+              <span class="account-slot-email hidden" id="home-account-email"></span>
+              <span class="account-connect-switch hidden" id="home-account-switch" role="switch" tabindex="0" aria-checked="false" aria-label="Connecté / déconnecté — cliquez pour vous déconnecter" title="Se déconnecter">
+                <span class="account-connect-knob"></span>
+              </span>
+            </div>
           </div>
 
           <p class="copyright-notice">© 2026 MNEMART, Tours, France — <button type="button" class="link-label copyright-more-link" id="open-mentions-legales">mentions légales</button></p>
@@ -388,7 +385,7 @@
                 <button type="button" id="imp-next-button" class="nav-arrow-button" aria-label="Suivant">→</button>
               </div>
               <div style="text-align:center;margin-top:14px;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="imp-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
+                <button type="button" class="exercise-hub-text-button" id="imp-hub-link" aria-label="Retour au menu des jeux" title="Retour au menu des jeux">Retour au menu des jeux</button>
                 <button type="button" class="secondary-button imp-full-correction-button" id="imp-full-correction-button" style="padding:4px 10px;font-size:.72rem;">Voir la correction complète</button>
               </div>
             </section>
@@ -496,7 +493,7 @@
                 <button type="button" class="primary-button" id="intrus-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="intrus-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
+                <button type="button" class="exercise-hub-text-button" id="intrus-hub-link" aria-label="Retour au menu des jeux" title="Retour au menu des jeux">Retour au menu des jeux</button>
                 <button type="button" class="secondary-button intrus-full-correction-button" id="intrus-full-correction-button" style="padding:4px 10px;font-size:.72rem;">Voir la correction complète</button>
               </div>
             </section>
@@ -597,7 +594,7 @@
                 <button type="button" class="primary-button" id="recon-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="recon-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
+                <button type="button" class="exercise-hub-text-button" id="recon-hub-link" aria-label="Retour au menu des jeux" title="Retour au menu des jeux">Retour au menu des jeux</button>
                 <button type="button" class="secondary-button recon-full-correction-button" id="recon-full-correction-button" style="padding:4px 10px;font-size:.72rem;">Voir la correction complète</button>
               </div>
             </section>
@@ -701,7 +698,7 @@
                 <button type="button" class="primary-button" id="vf-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="vf-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
+                <button type="button" class="exercise-hub-text-button" id="vf-hub-link" aria-label="Retour au menu des jeux" title="Retour au menu des jeux">Retour au menu des jeux</button>
                 <button type="button" class="secondary-button vf-full-correction-button" id="vf-full-correction-button" style="padding:4px 10px;font-size:.72rem;">Voir la correction complète</button>
               </div>
             </section>
@@ -805,7 +802,7 @@
                 <button type="button" class="primary-button" id="fam-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="fam-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
+                <button type="button" class="exercise-hub-text-button" id="fam-hub-link" aria-label="Retour au menu des jeux" title="Retour au menu des jeux">Retour au menu des jeux</button>
               </div>
             </section>
           </div>
@@ -901,7 +898,7 @@
                 <button type="button" class="primary-button" id="chrono-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
               <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:8px;justify-content:center;">
-                <button type="button" class="home-icon-button exercise-icon-button exercise-icon-hub" id="chrono-hub-link" aria-label="Retour au menu des exercices" title="Retour au menu des exercices">🏠</button>
+                <button type="button" class="exercise-hub-text-button" id="chrono-hub-link" aria-label="Retour au menu des jeux" title="Retour au menu des jeux">Retour au menu des jeux</button>
               </div>
             </section>
           </div>
@@ -1169,7 +1166,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 11</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 12</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1573,6 +1570,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=248"></script>
+    <script src="app.js?v=249"></script>
   </body>
 </html>

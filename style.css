@@ -345,9 +345,19 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intro-icon-sync { display:inline-block; animation:introIconPulse 1s ease-in-out 3; }
 .account-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:6px; font-family:Arial,sans-serif; font-size:.85rem; color:var(--muted); }
 .account-buttons-row { margin-bottom:14px; }
-.account-slot { grid-column:2; }
-#account-login-button, #account-page-button { grid-column:1; }
 .account-slot-email { font-size:.68rem; font-weight:400; opacity:.85; word-break:break-all; }
+/* Bouton 4 de la grille d'accueil (« Mon compte ») : le bloc entier (home-account-slot) hérite
+   déjà de l'apparence .home-mode-button ; on ajoute juste la place pour l'interrupteur
+   connecté/déconnecté (home-account-switch) sous le libellé, plus un état "désactivé" pour le
+   cas où les comptes ne sont pas configurés (firebaseReady === false). */
+.account-hub-slot { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.account-hub-slot.is-disabled { cursor:default; opacity:.6; }
+.account-hub-slot.is-disabled:hover { background:var(--cta); border-color:var(--cta); }
+.account-connect-switch { position:relative; display:inline-flex; align-items:center; width:42px; height:22px; border-radius:11px; background:rgba(255,255,255,.35); border:1px solid rgba(255,255,255,.6); transition:background .2s, border-color .2s; flex-shrink:0; }
+.account-connect-switch:hover { background:rgba(255,255,255,.5); }
+.account-connect-switch.is-connected { background:var(--ok); border-color:var(--ok); }
+.account-connect-knob { position:absolute; top:1px; left:1px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .2s; }
+.account-connect-switch.is-connected .account-connect-knob { transform:translateX(20px); }
 .account-error { color:var(--wrong); font-family:Arial,sans-serif; font-size:.85rem; margin:6px 0 0; }
 .account-notice { color:var(--ok); font-family:Arial,sans-serif; font-size:.85rem; margin:6px 0 0; line-height:1.4; }
 #account-form { display:flex; flex-direction:column; gap:12px; }
@@ -459,6 +469,12 @@ body.lefty .hamburger-menu { right:auto; left:16px; }
 .exercise-icon-button:hover { background:var(--accent-dark); border-color:var(--accent-dark); }
 .exercise-icon-hub { background:var(--cta); border-color:var(--cta); }
 .exercise-icon-hub:hover { background:var(--cta-dark); border-color:var(--cta-dark); }
+/* Retour de Stéphane : le bouton "retour au menu des jeux", jusqu'ici une simple icône 🏠 ronde et
+   colorée, devient un vrai bouton texte — fond blanc, texte bien visible — posé sur la même ligne
+   que "Voir/Arrêter la correction complète" (même hauteur/police, cf. le style inline de ce dernier
+   :padding:4px 10px;font-size:.72rem, volontairement inchangé). */
+.exercise-hub-text-button { display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; font-size:.72rem; font-weight:700; font-family:Arial,sans-serif; border-radius:5px; border:1px solid var(--cta); background:#fff; color:var(--cta-dark); cursor:pointer; transition:background .15s, color .15s; }
+.exercise-hub-text-button:hover { background:var(--cta); color:#fff; }
 .exercise-icon-scores { background:#8a2be2; border-color:#8a2be2; }
 .exercise-icon-scores:hover { background:#6f1fb8; border-color:#6f1fb8; }
 .home-icon-button:hover { opacity:1; background:#f7f2ea; }

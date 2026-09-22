@@ -60,33 +60,39 @@ function updateRememberCheckboxesAvailability() {
   });
 }
 function updateAccountBar() {
-  const statusEl = $('account-status');
-  const loginBtn = $('account-login-button');
-  const logoutBtn = $('account-logout-button');
-  const pageBtn = $('account-page-button');
+  const slotEl = $('home-account-slot');
+  const labelEl = $('home-account-label');
+  const emailEl = $('home-account-email');
+  const switchEl = $('home-account-switch');
   updateRememberCheckboxesAvailability();
-  if (!statusEl) return;
+  if (!slotEl) return;
   if (!firebaseReady) {
-    statusEl.textContent = "Comptes non configurés pour l'instant";
-    loginBtn.classList.add('hidden');
-    logoutBtn.classList.add('hidden');
-    pageBtn.classList.add('hidden');
+    labelEl.textContent = "Comptes non configurés pour l'instant";
+    emailEl.classList.add('hidden');
+    switchEl.classList.add('hidden');
+    slotEl.classList.add('is-disabled');
     return;
   }
+  slotEl.classList.remove('is-disabled');
+  switchEl.classList.remove('hidden');
   if (currentUser) {
-    statusEl.textContent = '';
-    statusEl.classList.add('hidden');
-    loginBtn.classList.add('hidden');
-    logoutBtn.classList.remove('hidden');
-    pageBtn.classList.remove('hidden');
-    pageBtn.innerHTML = `Mon compte<br><span class="account-slot-email">${escapeHtml(currentUser.email)}</span>`;
+    labelEl.textContent = 'Mon compte';
+    emailEl.textContent = currentUser.email;
+    emailEl.classList.remove('hidden');
+    switchEl.classList.add('is-connected');
+    switchEl.setAttribute('aria-checked', 'true');
+    switchEl.setAttribute('aria-label', 'Connecté — cliquez pour vous déconnecter');
+    switchEl.title = 'Se déconnecter';
   } else {
-    statusEl.textContent = 'Non connecté';
-    statusEl.classList.remove('hidden');
-    loginBtn.classList.remove('hidden');
-    logoutBtn.classList.add('hidden');
-    pageBtn.classList.add('hidden');
-    if (!$('account-panel')?.classList.contains('hidden')) showPanel('welcome'); // déconnecté pendant qu'on consultait « Mon compte »
+    labelEl.textContent = 'Se connecter / Créer un compte';
+    emailEl.textContent = '';
+    emailEl.classList.add('hidden');
+    switchEl.classList.remove('is-connected');
+    switchEl.setAttribute('aria-checked', 'false');
+    switchEl.setAttribute('aria-label', 'Déconnecté — cliquez pour vous connecter');
+    switchEl.title = 'Se connecter';
+    // Déconnecté alors qu'on consultait « Mon compte » ou « Mes résultats » : retour à l'accueil.
+    if (!$('profile-panel')?.classList.contains('hidden') || !$('account-panel')?.classList.contains('hidden')) showPanel('welcome');
   }
   // La page de résultats affiche « Voir mes résultats » / « Télécharger mon bilan » selon la connexion.
   $('view-my-results-button')?.classList.toggle('hidden', !firebaseReady || !currentUser);
@@ -105,8 +111,25 @@ function setAccountMode(mode) {
 }
 
 if (firebaseReady) {
-  $('account-login-button')?.addEventListener('click', () => { setAccountMode('login'); openModal('modal-account'); });
-  $('account-logout-button')?.addEventListener('click', () => auth.signOut());
+  // Bloc « Mon compte » (home-account-slot, 4e bouton de la grille d'accueil) : le bloc entier
+  // ouvre la connexion (déconnecté) ou la page « Mon compte » (connecté) ; l'interrupteur qu'il
+  // contient (home-account-switch) ne sert lui qu'à basculer connecté/déconnecté — son clic est
+  // isolé (stopPropagation) pour ne pas déclencher aussi le clic du bloc entier.
+  $('home-account-slot')?.addEventListener('click', () => {
+    if (currentUser) { showPanel('profile'); initProfilePage(); }
+    else { setAccountMode('login'); openModal('modal-account'); }
+  });
+  $('home-account-slot')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $('home-account-slot').click(); }
+  });
+  $('home-account-switch')?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (currentUser) auth.signOut();
+    else { setAccountMode('login'); openModal('modal-account'); }
+  });
+  $('home-account-switch')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); $('home-account-switch').click(); }
+  });
   $('account-toggle-mode')?.addEventListener('click', () => setAccountMode(accountMode === 'login' ? 'register' : 'login'));
   $('account-forgot-button')?.addEventListener('click', async () => {
     const email = $('account-email').value.trim();
@@ -412,7 +435,6 @@ async function deleteScore(docId) {
     alert('Impossible de supprimer ce résultat pour le moment.');
   }
 }
-$('account-page-button')?.addEventListener('click', () => { showPanel('profile'); initProfilePage(); });
 $('profile-back-button')?.addEventListener('click', () => showPanel('welcome'));
 // --- Page « Mon compte » à deux niveaux : le tableau de bord (les 6 boutons + le bouton vert,
 // sans aucune case à cocher visible) et une page dédiée par choix (une seule section à la fois,
@@ -976,7 +998,7 @@ function currentActivePanelName() {
 $('global-account-button')?.addEventListener('click', () => {
   // Sans compte, pas de mémorisation possible : on redirige vers la connexion plutôt que
   // d'ouvrir une page « Mon compte » dont les réglages ne pourraient de toute façon rien retenir.
-  if (!currentUser) { showPanel('welcome'); $('account-login-button')?.scrollIntoView({ block: 'center' }); return; }
+  if (!currentUser) { showPanel('welcome'); $('home-account-slot')?.scrollIntoView({ block: 'center' }); return; }
   // Si on est en plein exercice, on garde le fil pour pouvoir y revenir exactement là où on
   // était après avoir changé un réglage (la voix, par exemple) — sans relancer la question.
   const active = currentActivePanelName();
@@ -1031,6 +1053,20 @@ function populateReadyExplanation(prefix) {
   const show = getGlobalPrefs().showExplanations && !!rules;
   el.classList.toggle('hidden', !show);
   if (show) el.textContent = rules.texte;
+  // Retour de Stéphane : le bouton qui lance l'exercice répond parfois avec un peu de retard
+  // (chargement des données) — plutôt que de laisser ce temps d'attente inoccupé, la voix lit
+  // maintenant la règle du jeu affichée ci-dessus sur cette même page d'attente, exactement
+  // comme elle lisait déjà l'objectif court de l'écran de configuration précédent (voir
+  // speakObjective). En parcours guidé la voix reste obligatoire (guidedModeActive, comme pour
+  // guidedSpeak) ; hors parcours guidé elle suit la préférence audioOn, comme partout ailleurs.
+  if (show && window.speechSynthesis && (guidedModeActive || getGlobalPrefs().audioOn)) {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(rules.texte));
+    u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
+    const voice = getGlobalVoice();
+    if (voice) u.voice = voice;
+    speechSynthesis.speak(u);
+  }
 }
 // Fenêtre de fin d'exercice : score, message encourageant, retour au menu des exercices — plutôt
 // que de renvoyer directement à la page de configuration, ce qui déroutait des joueurs (un
@@ -1538,6 +1574,10 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // Retour de Stéphane : « BaKST », sans é final — un « t » final isolé se prononce mal ou reste
+  // muet en français (comme dans « chat »). Doubler la consonne suivie d'un « e » muet (même
+  // procédé que 'gaudenss' plus bas) force la prononciation du « t » sans ajouter de son « é ».
+  'bakst': 'bakstte',
   'guidi': 'gwidi',
   'ilya': 'riya',
   'fountain': 'fwaountaïne',
@@ -5367,63 +5407,93 @@ $('vf-validate-button')?.addEventListener('click', () => {
   $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''}`;
   updateTopBannerScore(`${vfScore} pt${Math.abs(vfScore) >= 2 ? 's' : ''}`);
 
-  const naturalPhrase = (key, value) => {
-    const phrases = {
-      artist: `L'auteur exact de ${artWord} est : ${value}`,
-      title: `Le titre exact de ${artWord} est : « ${value} »`,
-      date: `La date exacte de ${artWord} est : ${value}`,
-      materials: `Le matériau exact de ${artWord} est : ${value}`,
-      dimensions: `Les dimensions exactes de ${artWord} sont ${spokenDimensionsPhrase(q.correct)}`,
-      location: `Le lieu exact de ${artWord} est : ${value}`,
-    };
-    return phrases[key] || `${value}`;
-  };
-
-  // Correction directement dans les rubriques initiales : chaque champ faux se réécrit en vert
-  // au fur et à mesure, en attendant la fin réelle de chaque phrase (pas de minuteur à durée
-  // fixe) pour ne jamais couper la voix au milieu d'une explication.
-  function speakNextCorrection(i) {
-    if (i >= q.errorFields.length) return;
-    const key = q.errorFields[i];
-    const correctVal = vfFieldValue(q.correct, key) || '—';
-    const shownCorrect = key === 'title' ? `<em>« ${escapeHtml(correctVal)} »</em>` : key === 'dimensions' ? (formatDimensionsDisplay(q.correct) || escapeHtml(correctVal)) : escapeHtml(correctVal);
-    const el = $(`vf-value-${key}`);
-    if (el) el.classList.add('vf-was-wrong');
-    vfTimers.push(setTimeout(() => {
-      if (el) {
-        el.innerHTML = shownCorrect;
-        el.classList.remove('vf-was-wrong');
-        el.classList.add('vf-updated');
+  // Correction vocale rubrique par rubrique (retour de Stéphane) : chaque rubrique cochée reçoit
+  // maintenant son propre commentaire, qui distingue deux choses indépendantes — la véracité de
+  // ce qui était affiché (« la référence est bonne » si la référence affichée n'a pas été
+  // modifiée, « la référence est fausse » si elle a été substituée) et le jugement du joueur sur
+  // cette rubrique (« Exact » s'il a deviné juste, « Tu as fait une erreur » sinon — ces deux
+  // notions sont bien distinctes : on peut se tromper sur une référence qui était bonne, comme la
+  // repérer à tort). S'il y a plusieurs rubriques cochées, chacune est d'abord annoncée par son
+  // nom (« Pour l'artiste, ... ») ; s'il n'y en a qu'une, ce préfixe est omis.
+  const artVerb = q.correct?.artType === 'sculpture' ? 'sculpté' : 'peint';
+  const VF_RUBRIQUE_LABELS = { artist: "l'artiste", title: 'le titre', date: 'la date', materials: 'le matériau', dimensions: 'les dimensions', location: 'le lieu' };
+  function vfFieldCorrectionContent(key, isBonne, wrongValue, trueValue) {
+    switch (key) {
+      case 'artist':
+        return isBonne ? `C'est bien ${trueValue} qui a ${artVerb} ${artWord}.` : `Ce n'est pas ${wrongValue} qui a ${artVerb} ${artWord}, mais bien ${trueValue}.`;
+      case 'title':
+        return isBonne ? `Le titre est bien « ${trueValue} ».` : `Le titre n'est pas « ${wrongValue} », mais bien « ${trueValue} ».`;
+      case 'date':
+        return isBonne ? `La date est bien ${trueValue}.` : `La date n'est pas ${wrongValue}, mais bien ${trueValue}.`;
+      case 'materials':
+        return isBonne ? `Le matériau est bien ${trueValue}.` : `Le matériau n'est pas ${wrongValue}, mais bien ${trueValue}.`;
+      case 'dimensions': {
+        const trueSpoken = spokenDimensionsPhrase(q.correct) || trueValue;
+        return isBonne ? `Les dimensions sont bien ${trueSpoken}.` : `Les dimensions ne sont pas ${wrongValue}, mais bien ${trueSpoken}.`;
       }
-      vfSpeak(naturalPhrase(key, correctVal), () => speakNextCorrection(i + 1));
-    }, 2200));
+      case 'location':
+        return isBonne ? `Le lieu est bien ${trueValue}.` : `Le lieu n'est pas ${wrongValue}, mais bien ${trueValue}.`;
+      default:
+        return trueValue;
+    }
   }
-  if (q.errorFields.length) {
-    vfSpeak(q.errorFields.length > 1 ? 'Deux références étaient fausses.' : 'Une référence était fausse.', () => speakNextCorrection(0));
-  } else {
-    vfSpeak(q.activeFields.length > 1 ? 'Exact. Bonnes références.' : 'Exact. Bonne référence.');
+  function vfFieldCorrectionSentence(f) {
+    const key = f.key;
+    const actuallyWrong = q.errorFields.includes(key);
+    const isBonne = !actuallyWrong;
+    const activeBtn = document.querySelector(`.vf-toggle[data-key="${key}"] button.active`);
+    const playerSaysFalse = activeBtn?.dataset.val === 'false';
+    const playerCorrect = playerSaysFalse === actuallyWrong;
+    const trueValue = vfFieldValue(q.correct, key) || '—';
+    const wrongValue = actuallyWrong ? (vfFieldValue(q.displayedSource[key], key) || '—') : null;
+    const content = vfFieldCorrectionContent(key, isBonne, wrongValue, trueValue);
+    const prefix = playerCorrect ? 'Exact' : 'Tu as fait une erreur';
+    const rubriquePrefix = q.activeFields.length > 1 ? `Pour ${VF_RUBRIQUE_LABELS[key] || key}, ` : '';
+    const mainStart = rubriquePrefix ? prefix.charAt(0).toLowerCase() + prefix.slice(1) : prefix;
+    return `${rubriquePrefix}${mainStart}, la référence est ${isBonne ? 'bonne' : 'fausse'}. ${content}`;
   }
-
-  // Fausses alertes : rubrique marquée Faux par le joueur alors qu'elle est exacte. Le bouton
-  // reste sur Faux sans jamais se corriger, ce qui est ambigu — on le fait donc revenir sur Vrai
-  // (avec la même temporisation que les vraies erreurs) et on l'explique.
-  q.activeFields.forEach((f) => {
-    const btn = document.querySelector(`.vf-toggle[data-key="${f.key}"] button[data-val="false"].active`);
-    if (btn && !q.errorFields.includes(f.key)) {
-      const trueBtn = document.querySelector(`.vf-toggle[data-key="${f.key}"] button[data-val="true"]`);
-      const row = btn.closest('.vf-field-row');
+  // Chaque rubrique est traitée l'une après l'autre, en attendant la fin réelle de la phrase
+  // précédente (pas de minuteur à durée fixe) pour ne jamais couper la voix au milieu d'une
+  // explication. Les champs réellement faux restent surlignés un peu plus longtemps avant de se
+  // réécrire en vert (suspense visuel avant la révélation), les champs vrais se règlent tout de
+  // suite (rien à révéler, juste la fausse alerte éventuelle à annuler).
+  function speakFieldCorrection(i) {
+    if (i >= q.activeFields.length) return;
+    const f = q.activeFields[i];
+    const key = f.key;
+    const actuallyWrong = q.errorFields.includes(key);
+    const el = $(`vf-value-${key}`);
+    if (actuallyWrong && el) el.classList.add('vf-was-wrong');
+    // Fausse alerte : rubrique marquée Faux par le joueur alors qu'elle est exacte — le bouton
+    // reste sur Faux sans jamais se corriger tout seul, ce qui est ambigu, donc on le fait
+    // revenir sur Vrai et on le signale par une note discrète en plus du commentaire vocal.
+    const falseAlarmBtn = !actuallyWrong ? document.querySelector(`.vf-toggle[data-key="${key}"] button[data-val="false"].active`) : null;
+    if (falseAlarmBtn) {
+      const row = falseAlarmBtn.closest('.vf-field-row');
       if (row && !row.querySelector('.vf-false-alarm-note')) {
         const note = document.createElement('span');
         note.className = 'vf-false-alarm-note';
         note.textContent = 'Cette rubrique était en fait exacte.';
         row.appendChild(note);
       }
-      vfTimers.push(setTimeout(() => {
-        btn.classList.remove('active');
-        trueBtn?.classList.add('active');
-      }, 2200));
     }
-  });
+    vfTimers.push(setTimeout(() => {
+      if (actuallyWrong && el) {
+        const correctVal = vfFieldValue(q.correct, key) || '—';
+        const shownCorrect = key === 'title' ? `<em>« ${escapeHtml(correctVal)} »</em>` : key === 'dimensions' ? (formatDimensionsDisplay(q.correct) || escapeHtml(correctVal)) : escapeHtml(correctVal);
+        el.innerHTML = shownCorrect;
+        el.classList.remove('vf-was-wrong');
+        el.classList.add('vf-updated');
+      }
+      if (falseAlarmBtn) {
+        const trueBtn = document.querySelector(`.vf-toggle[data-key="${key}"] button[data-val="true"]`);
+        falseAlarmBtn.classList.remove('active');
+        trueBtn?.classList.add('active');
+      }
+      vfSpeak(vfFieldCorrectionSentence(f), () => speakFieldCorrection(i + 1));
+    }, actuallyWrong ? 2200 : 300));
+  }
+  speakFieldCorrection(0);
 
   $('vf-correction').classList.remove('hidden');
   $('vf-next-button').textContent = vfIndex === VF_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
@@ -7340,12 +7410,47 @@ window.addEventListener('popstate', (event) => {
   suppressHistoryPush = false;
 });
 
-// Le lien « Créez un compte » du texte d'accueil met en évidence le vrai bouton de connexion
-// plutôt que de dupliquer sa logique.
+// Le lien « Créez un compte » du texte d'accueil met en évidence le vrai bloc « Mon compte »
+// (4e bouton de la grille d'accueil) plutôt que de dupliquer sa logique.
 $('intro-account-link')?.addEventListener('click', (event) => {
   event.preventDefault();
-  const loginBtn = $('account-login-button');
-  loginBtn?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  loginBtn?.classList.add('intro-highlight');
-  setTimeout(() => loginBtn?.classList.remove('intro-highlight'), 2000);
+  const slotEl = $('home-account-slot');
+  slotEl?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  slotEl?.classList.add('intro-highlight');
+  setTimeout(() => slotEl?.classList.remove('intro-highlight'), 2000);
 });
+
+// Compteur d'accueil (« ... actuellement N artistes y sont représentés et M œuvres ») : calculé
+// en direct depuis les vrais fichiers plutôt qu'écrit en dur dans le texte, pour ne jamais devenir
+// faux au fil des mises à jour de la base (retour de Stéphane : « un compteur qui enregistre en
+// direct les modifications numériques de la base »). Le fichier maître (déjà nécessaire ailleurs)
+// donne le nombre d'artistes ; le nombre d'œuvres suppose de télécharger chaque fichier ŒUVRES
+// (art × siècle), ce qui est plus lourd — donc différé après le premier rendu (la page d'accueil
+// s'affiche tout de suite avec le texte d'attente déjà présent dans le HTML) et lancé une seule
+// fois. Chaque fichier ainsi téléchargé reste dans le cache habituel (quizRowsCache) : si le
+// joueur lance un exercice dans la foulée, rien n'est retéléchargé.
+let homeStatsCounterStarted = false;
+async function updateHomeStatsCounter() {
+  if (homeStatsCounterStarted) return;
+  homeStatsCounterStarted = true;
+  const counterEl = $('intro-stats-counter');
+  if (!counterEl) return;
+  try {
+    const arts = ['peinture', 'sculpture'];
+    const centuries = ['14e', '15e', '16e', '17e', '18e', '19e', '20e'];
+    const [artistsOk, ...workResults] = await Promise.all([
+      loadArtistListIfNeeded(),
+      ...arts.flatMap((art) => centuries.map((century) => fetchQuizRows(art, century).catch(() => []))),
+    ]);
+    if (!artistsOk) throw new Error('liste des artistes indisponible');
+    const artistCount = artistListRows.length;
+    const workCount = workResults.reduce((total, rows) => total + rows.length, 0);
+    counterEl.textContent = `${artistCount} artiste${artistCount > 1 ? 's' : ''} y sont représentés et ${workCount} œuvre${workCount > 1 ? 's' : ''}`;
+  } catch (error) {
+    // Repli silencieux (hors-ligne, fichier temporairement indisponible...) : la phrase reste
+    // correcte grammaticalement même sans chiffres à jour, plutôt que de laisser le texte
+    // d'attente affiché indéfiniment.
+    counterEl.textContent = "plusieurs milliers d'œuvres et de nombreux artistes";
+  }
+}
+setTimeout(updateHomeStatsCounter, 400);
