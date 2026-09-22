@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=180" />
+    <link rel="stylesheet" href="style.css?v=182" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 28</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 30</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1207,20 +1207,40 @@
                    perspective. Le mur d'entrée (dans le dos du joueur, ici) n'a logiquement pas de
                    pan. Chaque mur garde ses œuvres sur une seule ligne, jamais empilées. -->
               <div id="scale-checkpoint-room">
-                <div id="scale-checkpoint-wall-left" class="scale-checkpoint-wallpanel" aria-hidden="true">
-                  <div id="scale-checkpoint-wall-left-works" class="scale-checkpoint-wall-works"></div>
-                </div>
-                <div id="scale-checkpoint-wall-right" class="scale-checkpoint-wallpanel" aria-hidden="true">
-                  <div id="scale-checkpoint-wall-right-works" class="scale-checkpoint-wall-works"></div>
-                </div>
-                <div id="scale-checkpoint-wall" class="scale-checkpoint-wallpanel">
-                  <div id="scale-checkpoint-wall-works" class="scale-checkpoint-wall-works"></div>
-                  <!-- v24 : repère de jonction salle 1 / salle 2 sur CET écran (voir
-                       setupCheckpointWalk/updateCheckpointWalkVisual dans app.js) — invisible tant
-                       qu'on n'est pas près du milieu du trajet de marche, où il apparaît
-                       brièvement, même langage visuel que le pilier du plan rapproché
-                       (.scale-wall-pillar). -->
-                  <div id="scale-checkpoint-pillar" class="scale-checkpoint-pillar" aria-hidden="true"></div>
+                <!-- v29 : tout ce qui appartient « à la salle » — les 2 piliers de premier plan ET
+                     le(s) mur(s) du fond — vit maintenant DANS ce rail, retour de Stéphane après
+                     captures d'écran comparées à son Photoshop de référence : les piliers marquent
+                     la limite de la salle, donc ils doivent défiler avec elle, pas rester plantés à
+                     l'écran pendant que le mur bouge derrière eux. Seul le sol
+                     (#scale-checkpoint-floor, pur décor, jamais positionné en fonction de la salle)
+                     reste hors de ce rail. left/width/transform posés en JS (voir
+                     buildCheckpointTrack/updateCheckpointWalkVisual dans app.js) — ces 4 éléments
+                     ne sont jamais recréés ni détruits, seulement repositionnés à chaque appel. -->
+                <div id="scale-checkpoint-track">
+                  <!-- Tout premier pilier : la salle est à SA droite, voir .scale-checkpoint-pillar-lit-right
+                       dans style.css (arête claire du côté de la salle). -->
+                  <div id="scale-checkpoint-wall-left" class="scale-checkpoint-wallpanel scale-checkpoint-side-pillar scale-checkpoint-pillar-lit-right" aria-hidden="true"></div>
+                  <div id="scale-checkpoint-wall" class="scale-checkpoint-wallpanel">
+                    <div id="scale-checkpoint-wall-works" class="scale-checkpoint-wall-works"></div>
+                  </div>
+                  <!-- Ce pilier joue AUSSI le rôle de repère salle 1 / salle 2 en marchant (remplace
+                       le pilier séparé de la v28, retiré : « ça n'a aucun intérêt » — retour de
+                       Stéphane). La salle qu'il borde (salle 1) est à SA gauche, voir
+                       .scale-checkpoint-pillar-lit-left dans style.css. -->
+                  <div id="scale-checkpoint-wall-right" class="scale-checkpoint-wallpanel scale-checkpoint-side-pillar scale-checkpoint-pillar-lit-left" aria-hidden="true"></div>
+                  <!-- Mur du fond de la 2e salle, jumeau de #scale-checkpoint-wall ci-dessus (même
+                       thème d'ambiance — voir .scale-checkpoint-wall-window dans style.css) :
+                       n'existe que pour être révélé en marchant, jamais visible tant qu'il n'y a
+                       qu'une seule salle (voir buildCheckpointTrack). -->
+                  <div id="scale-checkpoint-wall-2" class="scale-checkpoint-wallpanel scale-checkpoint-wall-window">
+                    <div id="scale-checkpoint-wall-2-works" class="scale-checkpoint-wall-works"></div>
+                  </div>
+                  <!-- v29b : pilier de CLÔTURE de la dernière salle affichée — retour de Stéphane
+                       avec un montage de référence : une fois arrivé devant la salle 2, « on
+                       retrouve les deux piliers de chaque côté », exactement comme pour la salle 1.
+                       Comme #scale-checkpoint-wall-right, cette salle (2) est à SA gauche. Caché
+                       (jamais retiré) tant qu'il n'y a qu'une seule salle, voir buildCheckpointTrack. -->
+                  <div id="scale-checkpoint-pillar-end" class="scale-checkpoint-wallpanel scale-checkpoint-side-pillar scale-checkpoint-pillar-lit-left" aria-hidden="true"></div>
                 </div>
                 <div id="scale-checkpoint-floor" aria-hidden="true"></div>
               </div>
@@ -1587,6 +1607,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=265"></script>
+    <script src="app.js?v=267"></script>
   </body>
 </html>

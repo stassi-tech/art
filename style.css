@@ -771,15 +771,15 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
 #scale-overview-floor { position:absolute; bottom:0; left:0; right:0; height:6vh; min-height:40px; z-index:1;
   clip-path:polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
   background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a); }
-body[data-ambiance="pitti"] #scale-facade, body[data-ambiance="pitti"] #scale-checkpoint-wall, body[data-ambiance="pitti"] #scale-checkpoint-wall-left, body[data-ambiance="pitti"] #scale-checkpoint-wall-right { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
-body[data-ambiance="bauhaus"] #scale-facade, body[data-ambiance="bauhaus"] #scale-checkpoint-wall, body[data-ambiance="bauhaus"] #scale-checkpoint-wall-left, body[data-ambiance="bauhaus"] #scale-checkpoint-wall-right { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
-body[data-ambiance="space"] #scale-facade, body[data-ambiance="space"] #scale-checkpoint-wall, body[data-ambiance="space"] #scale-checkpoint-wall-left, body[data-ambiance="space"] #scale-checkpoint-wall-right { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
-body[data-ambiance="versailles"] #scale-facade, body[data-ambiance="versailles"] #scale-checkpoint-wall, body[data-ambiance="versailles"] #scale-checkpoint-wall-left, body[data-ambiance="versailles"] #scale-checkpoint-wall-right { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
-body[data-ambiance="wedgwood"] #scale-facade, body[data-ambiance="wedgwood"] #scale-checkpoint-wall, body[data-ambiance="wedgwood"] #scale-checkpoint-wall-left, body[data-ambiance="wedgwood"] #scale-checkpoint-wall-right { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
-body[data-ambiance="ermitage"] #scale-facade, body[data-ambiance="ermitage"] #scale-checkpoint-wall, body[data-ambiance="ermitage"] #scale-checkpoint-wall-left, body[data-ambiance="ermitage"] #scale-checkpoint-wall-right { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
-body[data-ambiance="renaissance"] #scale-facade, body[data-ambiance="renaissance"] #scale-checkpoint-wall, body[data-ambiance="renaissance"] #scale-checkpoint-wall-left, body[data-ambiance="renaissance"] #scale-checkpoint-wall-right { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
-body[data-ambiance="gothique"] #scale-facade, body[data-ambiance="gothique"] #scale-checkpoint-wall, body[data-ambiance="gothique"] #scale-checkpoint-wall-left, body[data-ambiance="gothique"] #scale-checkpoint-wall-right { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
-body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) #scale-checkpoint-wall-left, body:not([data-ambiance]) #scale-checkpoint-wall-right { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
+body[data-ambiance="pitti"] #scale-facade, body[data-ambiance="pitti"] #scale-checkpoint-wall, body[data-ambiance="pitti"] .scale-checkpoint-wall-window, body[data-ambiance="pitti"] .scale-checkpoint-side-pillar { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
+body[data-ambiance="bauhaus"] #scale-facade, body[data-ambiance="bauhaus"] #scale-checkpoint-wall, body[data-ambiance="bauhaus"] .scale-checkpoint-wall-window, body[data-ambiance="bauhaus"] .scale-checkpoint-side-pillar { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
+body[data-ambiance="space"] #scale-facade, body[data-ambiance="space"] #scale-checkpoint-wall, body[data-ambiance="space"] .scale-checkpoint-wall-window, body[data-ambiance="space"] .scale-checkpoint-side-pillar { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
+body[data-ambiance="versailles"] #scale-facade, body[data-ambiance="versailles"] #scale-checkpoint-wall, body[data-ambiance="versailles"] .scale-checkpoint-wall-window, body[data-ambiance="versailles"] .scale-checkpoint-side-pillar { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
+body[data-ambiance="wedgwood"] #scale-facade, body[data-ambiance="wedgwood"] #scale-checkpoint-wall, body[data-ambiance="wedgwood"] .scale-checkpoint-wall-window, body[data-ambiance="wedgwood"] .scale-checkpoint-side-pillar { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
+body[data-ambiance="ermitage"] #scale-facade, body[data-ambiance="ermitage"] #scale-checkpoint-wall, body[data-ambiance="ermitage"] .scale-checkpoint-wall-window, body[data-ambiance="ermitage"] .scale-checkpoint-side-pillar { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
+body[data-ambiance="renaissance"] #scale-facade, body[data-ambiance="renaissance"] #scale-checkpoint-wall, body[data-ambiance="renaissance"] .scale-checkpoint-wall-window, body[data-ambiance="renaissance"] .scale-checkpoint-side-pillar { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
+body[data-ambiance="gothique"] #scale-facade, body[data-ambiance="gothique"] #scale-checkpoint-wall, body[data-ambiance="gothique"] .scale-checkpoint-wall-window, body[data-ambiance="gothique"] .scale-checkpoint-side-pillar { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
+body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .scale-checkpoint-wall-window, body:not([data-ambiance]) .scale-checkpoint-side-pillar { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
 /* Étape 2 : le contrôle des billets, entre la façade et le plan rapproché — on découvre le mur du
    fond depuis l'entrée, en retrait (impression d'une distance de 15 m, la même longueur que tous
@@ -802,50 +802,60 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
      sur ::after ci-dessous, qui accentue cette impression de relief. */
   --room-inner-x:12%; --room-horizon-y:62%;
 }
+/* v29 : le rail qui porte TOUT ce qui appartient « à la salle » — les 2 piliers de premier plan ET
+   le(s) mur(s) du fond — et qui glisse d'un seul bloc pendant la marche salle 1 / salle 2 (voir
+   buildCheckpointTrack/updateCheckpointWalkVisual dans app.js, et le retour de Stéphane après
+   captures d'écran : « les piliers marquent la limite de la salle, ils doivent défiler avec elle »).
+   Largeur/transform posés en JS (dépendent du nombre de salles) ; c'est #scale-checkpoint-room
+   ci-dessus, avec son overflow:hidden, qui fait disparaître piliers/murs une fois sortis du cadre —
+   plus besoin d'un overflow séparé ici. z-index au-dessus de #scale-checkpoint-floor (déclaré après
+   lui dans le HTML, alors que le rail l'est avant) : sans ça, le sol, peint après, recouvrirait la
+   partie basse des piliers — voir le commentaire sur #scale-checkpoint-floor plus bas. */
+#scale-checkpoint-track { position:absolute; top:0; left:0; height:100%; z-index:2; }
 .scale-checkpoint-wallpanel, #scale-checkpoint-floor { position:absolute; background-color:#c9b896; background-size:cover; background-position:center; }
-/* Mur du fond : rectangle plat, vu bien en face — aucune déformation à faire puisqu'on le regarde
-   de front. C'est ici, et ici seulement, que les œuvres du fond s'affichent (à leur vraie échelle,
-   voir buildCheckpointTrack dans app.js). v28 : cette « fenêtre » cache maintenant une bande plus
-   large qu'elle (.scale-checkpoint-wall-works, voir plus bas) qui glisse derrière elle au fur et à
-   mesure de la marche salle 1 / salle 2 — overflow:hidden est ce qui la transforme en fenêtre
-   plutôt que de laisser la bande déborder visuellement de part et d'autre. */
-#scale-checkpoint-wall { left:var(--room-inner-x); right:var(--room-inner-x); top:0; height:var(--room-horizon-y); overflow:hidden; }
-/* Tranches des murs latéraux : bandes fixes et étroites, jamais en perspective. Un dégradé et de
-   fines cannelures suggèrent une colonne vue de profil plutôt qu'un vrai mur — décor, pas un
-   espace où accrocher quoi que ce soit. Le motif passe par un ::after (plutôt qu'un background-image
-   direct sur l'élément) pour ne jamais se faire écraser par les règles d'ambiance ci-dessus, qui
-   ciblent ce même #id avec une spécificité CSS plus forte (body[...] #id > #id seul). */
+/* Mur(s) du fond : rectangle plat, vu bien en face — aucune déformation à faire puisqu'on le
+   regarde de front. C'est ici que les œuvres du fond s'affichent (à leur vraie échelle, voir
+   buildCheckpointTrack dans app.js) : #scale-checkpoint-wall pour la salle 1, son jumeau
+   .scale-checkpoint-wall-window (#scale-checkpoint-wall-2) pour la salle 2 — même thème d'ambiance
+   (voir les règles body[data-ambiance=...] plus haut, étendues à cette classe). left/width posés en
+   JS (leur place dans le rail dépend du nombre de salles) ; overflow:hidden garde chaque tableau
+   dans son propre cadre. */
+#scale-checkpoint-wall, .scale-checkpoint-wall-window { top:0; height:var(--room-horizon-y); overflow:hidden; }
 /* Piliers au premier plan : bande verticale DROITE (pas en trapèze) qui court sur toute la hauteur
-   de l'écran, posée AU-DESSUS du sol (z-index supérieur à #scale-checkpoint-floor, alors qu'ils
-   sont pourtant déclarés avant lui dans le HTML — sans ce z-index, le sol, peint après eux,
-   recouvrirait leur partie basse). Comme le sol s'évase en trapèze jusqu'à occuper toute la largeur
-   de l'écran en bas, et que le pilier occupe exactement la même tranche verticale (0 à
-   --room-inner-x) sur toute la hauteur, il cache entièrement le coin évasé du sol de son côté —
-   comme un vrai pilier posé devant la salle, entre le visiteur et le mur du fond, plutôt qu'un pan
-   de mur qui s'éloignerait en perspective avec la salle. Plus besoin d'y placer des œuvres en
-   perspective : elles resteraient de toute façon invisibles, cachées derrière ce pilier. */
-#scale-checkpoint-wall-left, #scale-checkpoint-wall-right {
-  top:0; width:var(--room-inner-x); height:100%; overflow:hidden; z-index:2;
-}
-#scale-checkpoint-wall-left { left:0; }
-#scale-checkpoint-wall-right { right:0; }
-/* Le dégradé va du sombre (bord extérieur, côté écran) vers une arête bien éclairée juste avant de
-   rejoindre le mur du fond, puis se rassombrit légèrement en s'en approchant — cette arête claire
+   de l'écran (donc plus bas que le mur du fond, qui s'arrête à --room-horizon-y — cet écart de
+   hauteur est ce qui suggère la profondeur : piliers proches/hauts, mur du fond loin/plus haut dans
+   le cadre). Comme le sol s'évase en trapèze jusqu'à occuper toute la largeur de l'écran en bas, et
+   que chaque pilier occupe exactement la même tranche verticale sur toute la hauteur, il cache
+   entièrement le coin évasé du sol de son côté — comme un vrai pilier posé devant la salle, entre
+   le visiteur et le mur du fond. left/width posés en JS.
+   v29b : retour de Stéphane avec un montage de référence — une fois arrivé devant la salle 2, « on
+   retrouve les deux piliers de chaque côté », exactement comme pour la salle 1, et ce principe
+   « continuerait » s'il y avait une salle de plus. #scale-checkpoint-wall-left/-right ne suffisaient
+   donc plus (2 piliers ne peuvent fermer que 2 salles côte à côte, pas clôturer la DERNIÈRE des
+   deux) : #scale-checkpoint-pillar-end s'ajoute comme 3e pilier, visuellement identique aux 2
+   premiers via cette classe partagée plutôt que de dupliquer leurs règles CSS — ce qui permettrait
+   d'ajouter un 4e pilier sans y retoucher si l'appli composait un jour 3 salles (elle n'en compose
+   jamais plus de 2 pour l'instant, voir splitIntoRooms). */
+.scale-checkpoint-side-pillar { top:0; height:100%; overflow:hidden; }
+/* Le dégradé va du sombre (bord extérieur) vers une arête bien éclairée juste avant de rejoindre le
+   mur du fond qui le borde, puis se rassombrit légèrement en s'en approchant — cette arête claire
    est ce qui fait « avancer » visuellement le pilier vers le visiteur (comme un vrai relief pris
-   dans la lumière), plutôt qu'un dégradé plat sans direction. Sens du dégradé inversé entre les
-   deux côtés (90deg à gauche, 270deg à droite) : l'arête claire doit toujours tomber côté mur du
-   fond (à droite du pilier gauche, à gauche du pilier droit), jamais côté bord d'écran. */
-#scale-checkpoint-wall-left::after, #scale-checkpoint-wall-right::after {
+   dans la lumière), plutôt qu'un dégradé plat sans direction. L'arête claire doit toujours tomber du
+   côté où se trouve LA salle que ce pilier borde : à droite pour le tout premier pilier (la salle
+   est à sa droite), à gauche pour tous les autres (chaque pilier suivant clôt ou divise une salle
+   qui se trouve à SA gauche) — deux classes plutôt qu'une par id, pour rester valables quel que soit
+   le nombre de piliers. */
+.scale-checkpoint-side-pillar::after {
   content:''; position:absolute; inset:0;
   background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 3px, transparent 3px 15px);
   box-shadow: inset 0 0 24px rgba(0,0,0,.3);
 }
-#scale-checkpoint-wall-left::after {
+.scale-checkpoint-pillar-lit-right::after {
   background-image:
     repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 3px, transparent 3px 15px),
     linear-gradient(90deg, rgba(0,0,0,.5), rgba(255,255,255,.2) 55%, rgba(255,255,255,.32) 78%, rgba(0,0,0,.35) 92%, rgba(0,0,0,.55));
 }
-#scale-checkpoint-wall-right::after {
+.scale-checkpoint-pillar-lit-left::after {
   background-image:
     repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 3px, transparent 3px 15px),
     linear-gradient(270deg, rgba(0,0,0,.5), rgba(255,255,255,.2) 55%, rgba(255,255,255,.32) 78%, rgba(0,0,0,.35) 92%, rgba(0,0,0,.55));
@@ -1006,20 +1016,16 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
    sépare les deux murs et le personnage ne tourne pas ». Repris du même langage visuel que les
    piliers déjà utilisés à l'écran du contrôle des billets (cannelures verticales + arête claire),
    pour rester cohérent visuellement plutôt que d'inventer un 2e style de séparateur. */
-.scale-wall-pillar, .scale-checkpoint-pillar {
+.scale-wall-pillar {
   position:absolute; top:0; bottom:0; z-index:3; background-color:#3a342a;
   background-image: repeating-linear-gradient(180deg, rgba(0,0,0,.25) 0 3px, transparent 3px 15px),
                      linear-gradient(90deg, rgba(0,0,0,.5), rgba(255,255,255,.22) 50%, rgba(0,0,0,.5));
   box-shadow: inset 0 0 24px rgba(0,0,0,.4), 4px 0 10px rgba(0,0,0,.3), -4px 0 10px rgba(0,0,0,.3);
 }
-/* v28 : repère de jonction salle 1 / salle 2 sur le plan d'ensemble. Depuis la réécriture v28
-   (voir buildCheckpointTrack/updateCheckpointWalkVisual dans app.js), ce pilier est un enfant du
-   "rail" panoramique #scale-checkpoint-wall-works : il défile avec le décor au lieu d'être un
-   calque en fondu au-dessus. left/width/display sont donc posés entièrement en JS par
-   buildCheckpointTrack() (position réelle dans le rail, visible seulement en salle 2, caché en
-   salle unique) — plus aucune valeur ne doit être fixée ici en CSS, sous peine d'entrer en
-   conflit avec le JS. Reste seulement non-cliquable, comme demandé par Stéphane. */
-.scale-checkpoint-pillar { pointer-events:none; }
+/* v29 : le pilier séparé inventé en v28 pour marquer la jonction salle 1 / salle 2 sur le plan
+   d'ensemble a été retiré (« ça n'a aucun intérêt » — retour de Stéphane) : ce rôle est maintenant
+   tenu par le vrai #scale-checkpoint-wall-right, désormais lié au rail panoramique
+   #scale-checkpoint-track et qui défile avec lui — voir buildCheckpointTrack dans app.js. */
 /* Point rouge au sol du plan d'ensemble (voir attachCheckpointFloorDotDrag dans app.js) — même
    apparence que #scale-floor-dot, mais position:absolute (pas fixed) puisqu'il vit DANS
    #scale-checkpoint-row plutôt que sur tout l'écran, et sans transform:translateX(-50%) de base :

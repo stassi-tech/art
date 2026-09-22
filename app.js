@@ -3156,19 +3156,20 @@ function stopCheckpointWalking() {
 }
 // Applique la progression courante (0..1) au personnage ET au point qui le suit (même translation
 // pour les deux, afin que le point reste bien « attaché » à ses pieds pendant qu'il marche), ET —
-// v28 — fait glisser la bande du décor (#scale-checkpoint-wall-works, voir buildCheckpointTrack)
-// À LA MÊME PROGRESSION, en sens inverse (le décor recule visuellement pendant qu'on avance,
-// exactement comme #scale-wall défile dans le plan rapproché) : le tableau de la salle 1, le
-// pilier (qui fait maintenant partie de la bande, plus de fondu d'opacité séparé à gérer) puis le
-// tableau de la salle 2 apparaissent progressivement, au fur et à mesure des pas, plutôt qu'un
-// changement figé à un instant donné. La bascule réelle de salle (state.currentRoomIndex, pour la
-// suite — quelle salle le tourniquet ouvrira, et le témoin passif) reste sur la même hysteresis
-// qu'avant (CHECKPOINT_PILLAR_START/END) mais ne déclenche plus RIEN de visuel ici : le décor est
-// déjà là, sur la bande, et suit son propre panoramique tout seul.
+// v29 — fait glisser #scale-checkpoint-track (voir buildCheckpointTrack) À LA MÊME PROGRESSION, en
+// sens inverse (le décor recule visuellement pendant qu'on avance, exactement comme #scale-wall
+// défile dans le plan rapproché). Ce rail porte maintenant TOUT ce qui appartient à la salle — les
+// 2 piliers de premier plan ET le(s) mur(s) du fond — retour de Stéphane après captures d'écran :
+// « les piliers marquent la limite de la salle, il faut les lier au mur du fond, ils doivent
+// défiler avec lui » — donc plus de pilier séparé à gérer ici, tout bouge d'un seul bloc. La
+// bascule réelle de salle (state.currentRoomIndex, pour la suite — quelle salle le tourniquet
+// ouvrira, et le témoin passif) reste sur la même hysteresis qu'avant (CHECKPOINT_PILLAR_START/END)
+// mais ne déclenche plus RIEN de visuel ici : le décor est déjà là, sur le rail, et suit son propre
+// panoramique tout seul.
 function updateCheckpointWalkVisual() {
   const dot = $('scale-checkpoint-floor-dot');
   const sil = $('scale-checkpoint-silhouette');
-  const track = $('scale-checkpoint-wall-works');
+  const track = $('scale-checkpoint-track');
   const tx = checkpointProgress * checkpointWalkRangePx;
   if (dot) dot.style.transform = `translateX(${tx}px)`;
   if (sil) sil.style.transform = `translateX(${tx}px)`;
@@ -3379,18 +3380,20 @@ function checkpointBackWallWorks(roomIndex = state.currentRoomIndex) {
   const headliner = all.reduce((biggest, w) => (estimateWorkWidthCm(w) > estimateWorkWidthCm(biggest) ? w : biggest), all[0]);
   return [headliner];
 }
-// v28 : retour de Stéphane après avoir vu la v27 en situation réelle — un tableau qui change d'un
-// coup (même précédé d'un pilier en fondu) donne l'impression que tout se passe dans la même
-// salle, comme un simple changement de diapositive. « Il faut retrouver la logique du plan
-// rapproché : le personnage progresse, MAIS IL FAUT AUSSI QUE LE MUR PROGRESSE, synchronisés » —
-// donc plus de contenu qui se reconstruit à un instant donné : la fenêtre du mur du fond
-// (#scale-checkpoint-wall, avec désormais overflow:hidden — voir CSS) cache une bande plus large
-// qu'elle (#scale-checkpoint-wall-works) portant le tableau de la salle 1, le pilier, PUIS le
-// tableau de la salle 2, posés une fois pour toutes (voir buildCheckpointTrack, appelée une seule
-// fois par entrée sur cet écran, pas à chaque image de la marche). Il ne reste plus qu'à faire
-// glisser cette bande en continu (translateX), exactement à la même progression que le personnage
-// — voir updateCheckpointWalkVisual — comme #scale-wall défile déjà dans le plan rapproché.
-function placeCheckpointWork(track, work, centerXPx, pxPerCm, winHeightPx) {
+// v29 : retour de Stéphane, cette fois avec des captures d'écran comparées à un Photoshop de
+// référence — la v28 (bande de tableaux + pilier inventé, seul à bouger) donnait l'impression que
+// les 2 vrais piliers gris du plan d'ensemble (#scale-checkpoint-wall-left/-right, ceux qui
+// marquent le bord du parquet) restaient plantés à l'écran pendant que le reste défilait derrière
+// eux — alors que « ces deux piliers bougent avec le mur du fond, ils sont liés au mur du fond
+// puisqu'ils marquent la limite de la même pièce ». Le pilier inventé en v28
+// (#scale-checkpoint-pillar) est donc supprimé : ça n'avait aucun intérêt de doubler ce que les
+// vrais piliers font déjà. Nouvelle construction, confirmée par la capture d'écran envoyée : au
+// repos, exactement l'agencement d'avant la marche (pilier gauche, mur de la salle 1, pilier
+// droit) ; en marchant, cet ensemble ENTIER glisse comme un seul bloc — le pilier gauche sort de
+// l'écran par la gauche en premier, puis, une fois le pilier droit franchi (il joue le rôle de
+// repère salle 1 / salle 2), la salle 2 arrive avec son propre tableau, jusqu'à occuper exactement
+// la même place que la salle 1 occupait au repos (« on sera en plein dans la deuxième salle »).
+function placeCheckpointWork(container, work, centerXPx, pxPerCm, winHeightPx) {
   if (!work) return;
   const { hCm, lCm } = checkpointSanitizedSizeCm(work);
   const heightPx = Math.max(4, hCm * pxPerCm);
@@ -3405,61 +3408,81 @@ function placeCheckpointWork(track, work, centerXPx, pxPerCm, winHeightPx) {
   img.style.top = `${winHeightPx / 2 - heightPx / 2}px`;
   img.style.width = `${widthPx}px`;
   img.style.height = `${heightPx}px`;
-  track.appendChild(img);
+  container.appendChild(img);
 }
-// Construit toute la bande (salle 1 → pilier → salle 2) et renvoie la distance de panoramique
-// (« travel », en px) qui sépare le repos salle 1 (progress=0) du repos salle 2 (progress=1) —
-// stockée dans checkpointPanTravelPx (voir setupCheckpointWalk) pour que
-// updateCheckpointWalkVisual sache de combien faire glisser la bande à chaque image. S'il n'y a
-// qu'une seule salle, la bande fait exactement la largeur de la fenêtre (rien à faire défiler).
+// Pose (ou remplace) le tableau du mur du fond DANS son propre cadre (windowEl, un
+// .scale-checkpoint-wallpanel) — centré à l'intérieur de ce cadre, pas d'une bande partagée : voir
+// buildCheckpointTrack, qui décide lui de la position du CADRE dans le rail.
+function buildCheckpointWindowWorks(windowEl, work, windowWidthPx, pxPerCm, winHeightPx) {
+  const worksEl = windowEl.querySelector('.scale-checkpoint-wall-works');
+  if (!worksEl) return;
+  worksEl.innerHTML = '';
+  placeCheckpointWork(worksEl, work, windowWidthPx / 2, pxPerCm, winHeightPx);
+}
+// Construit #scale-checkpoint-track (pilier gauche, mur salle 1, pilier droit, mur salle 2, pilier
+// de clôture — les 5 éléments FIXES du HTML, jamais recréés ni détruits, seulement repositionnés à
+// chaque appel : plus aucun risque de perdre un pilier en route, contrairement au bug de la v28) et
+// renvoie la distance de panoramique (« travel », en px) qui sépare le repos salle 1 (progress=0)
+// du repos salle 2 (progress=1) — stockée dans checkpointPanTravelPx (voir setupCheckpointWalk)
+// pour que updateCheckpointWalkVisual sache de combien faire glisser le rail à chaque image. S'il
+// n'y a qu'une seule salle, le rail fait exactement la largeur de la salle (rien à faire défiler),
+// comme avant l'apparition de cette marche.
+// v29b : retour de Stéphane avec un montage de référence — une fois arrivé devant la salle 2, « on
+// retrouve les deux piliers de chaque côté », et ce principe « continuerait » s'il y avait une
+// salle de plus (un pilier de clôture par salle supplémentaire). #scale-checkpoint-pillar-end joue
+// ce rôle pour la salle 2 (la seule qui en ait besoin ici, l'appli ne composant jamais plus de 2
+// salles — voir splitIntoRooms) : #scale-checkpoint-wall-right sert de pilier de clôture À LA
+// SALLE 1 au repos, ET de pilier d'ouverture À LA SALLE 2 une fois la marche terminée — exactement
+// comme #scale-checkpoint-wall-left pour la salle 1 au tout début.
 function buildCheckpointTrack() {
-  const wall = $('scale-checkpoint-wall');
-  const track = $('scale-checkpoint-wall-works');
-  const pillar = $('scale-checkpoint-pillar');
-  if (!wall || !track) return 0;
-  const winRect = wall.getBoundingClientRect();
-  if (!winRect.width || !winRect.height) return 0; // pas encore mis en page (voir requestAnimationFrame à l'appel)
-  const winW = winRect.width;
-  const winH = winRect.height;
-  const pxPerCm = winW / CHECKPOINT_WALL_LENGTH_CM;
-  // On ne vide que les tableaux posés au tour précédent — jamais avec track.innerHTML='' (bug réel
-  // trouvé en test Playwright) : dès que le pilier a été déplacé une première fois DANS le rail
-  // (track.appendChild(pillar) plus bas), il devient un enfant de track, et innerHTML='' le
-  // détruirait pour de bon (plus jamais retrouvable ensuite par $('scale-checkpoint-pillar')) — le
-  // pilier disparaissait ainsi dès le 2e passage par cet écran après un changement du nombre de
-  // salles (par ex. salle unique -> 2 salles, ou un simple resize). On retire donc seulement les
-  // œuvres, et on repositionne le pilier explicitement (jamais on ne le laisse orphelin).
-  track.querySelectorAll('.scale-checkpoint-work').forEach((el) => el.remove());
-  const room1Center = winW / 2; // au repos (progress=0), le tableau de la salle 1 est centré, comme avant la v28
-  placeCheckpointWork(track, checkpointBackWallWorks(0)[0], room1Center, pxPerCm, winH);
+  const room = $('scale-checkpoint-room');
+  const track = $('scale-checkpoint-track');
+  const pillarLeft = $('scale-checkpoint-wall-left');
+  const pillarRight = $('scale-checkpoint-wall-right'); // aussi le repère salle 1 / salle 2 en marchant
+  const pillarEnd = $('scale-checkpoint-pillar-end'); // clôture la salle 2, symétrique au pilier gauche
+  const wall1 = $('scale-checkpoint-wall');
+  const wall2 = $('scale-checkpoint-wall-2');
+  if (!room || !track || !pillarLeft || !pillarRight || !pillarEnd || !wall1 || !wall2) return 0;
+  const roomRect = room.getBoundingClientRect();
+  if (!roomRect.width || !roomRect.height) return 0; // pas encore mis en page (voir requestAnimationFrame à l'appel)
+  const roomW = roomRect.width;
+  const roomH = roomRect.height;
+  // Lit --room-inner-x directement dans le CSS plutôt que de dupliquer sa valeur ici en dur, pour
+  // ne jamais désynchroniser JS et CSS si l'un des deux change un jour.
+  const innerXPercent = parseFloat(getComputedStyle(room).getPropertyValue('--room-inner-x')) || 12;
+  const pillarW = roomW * (innerXPercent / 100);
+  const windowW = roomW - 2 * pillarW;
+  const pxPerCm = windowW / CHECKPOINT_WALL_LENGTH_CM;
+  const place = (el, left, width) => { el.style.left = `${left}px`; el.style.width = `${width}px`; };
+
+  place(pillarLeft, 0, pillarW);
+  place(wall1, pillarW, windowW);
+  place(pillarRight, pillarW + windowW, pillarW);
+  buildCheckpointWindowWorks(wall1, checkpointBackWallWorks(0)[0], windowW, pxPerCm, roomH);
+
   const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
   if (!hasTwoRooms) {
-    track.style.width = `${winW}px`;
+    // Salle unique : pilier gauche - mur - pilier droit suffit déjà à la fermer des deux côtés,
+    // comme avant cette marche — pas besoin du pilier de clôture.
+    wall2.style.display = 'none';
+    pillarEnd.style.display = 'none';
+    track.style.width = `${roomW}px`;
     track.style.transform = 'translateX(0px)';
-    if (pillar) {
-      pillar.style.display = 'none';
-      // Rendu à sa place d'origine (sibling de track dans #scale-checkpoint-wall) plutôt que laissé
-      // dans le rail vidé — pour toujours rester retrouvable au prochain appel.
-      if (pillar.parentElement !== wall) wall.appendChild(pillar);
-    }
     return 0;
   }
-  // Distance de panoramique : un choix simple (1,15 fois la largeur de la fenêtre), ajustable si
-  // le trajet se sent trop court ou trop long une fois vu en situation réelle.
-  const travel = winW * 1.15;
-  const room2Center = room1Center + travel;
-  placeCheckpointWork(track, checkpointBackWallWorks(1)[0], room2Center, pxPerCm, winH);
-  if (pillar) {
-    pillar.style.display = '';
-    const pillarWidthPx = winW * 0.07;
-    // Centré au milieu de la zone CHECKPOINT_PILLAR_START/END (voir plus haut), pour que le pilier
-    // apparaisse pile pendant qu'on la traverse, ni avant ni après.
-    const pillarCenter = room1Center + travel * ((CHECKPOINT_PILLAR_START + CHECKPOINT_PILLAR_END) / 2);
-    pillar.style.left = `${pillarCenter - pillarWidthPx / 2}px`;
-    pillar.style.width = `${pillarWidthPx}px`;
-    track.appendChild(pillar); // fait partie de la bande désormais : il défile avec elle, pas fixe
-  }
-  track.style.width = `${room2Center + winW / 2}px`;
+  wall2.style.display = '';
+  pillarEnd.style.display = '';
+  place(wall2, pillarW + windowW + pillarW, windowW);
+  buildCheckpointWindowWorks(wall2, checkpointBackWallWorks(1)[0], windowW, pxPerCm, roomH);
+  place(pillarEnd, pillarW + windowW + pillarW + windowW, pillarW);
+  track.style.width = `${pillarW + windowW + pillarW + windowW + pillarW}px`;
+  // Trajet : amène la salle 2 exactement dans le créneau que la salle 1 occupait au repos — aussi
+  // symétrique que si on venait d'entrer dans une salle toute pareille (« on sera en plein dans la
+  // deuxième salle ») : le pilier droit (partagé) se retrouve alors au bord gauche de l'écran,
+  // comme le pilier gauche l'était pour la salle 1, ET le pilier de clôture prend exactement la
+  // place que le pilier droit occupait au repos — la salle 2 se retrouve donc flanquée de ses deux
+  // piliers, tout comme la salle 1 l'était.
+  const travel = windowW + pillarW;
   return travel;
 }
 // Recalcule tout si la fenêtre change de taille pendant que ce plan est affiché (sinon la mise à
