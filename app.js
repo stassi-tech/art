@@ -1774,6 +1774,17 @@ const PRONUNCIATION_FIXES = {
   'laye': 'lè',
   // Mount Rushmore : nom anglais, "mount" ne se prononce pas comme le mot français "mont".
   'mount': 'maounnte',
+  // Juan de Pareja (portrait peint par Vélasquez) : confirmé par Stéphane. Règle qu'il a donnée
+  // pour l'espagnol — le "j" (jota, un son guttural absent du français) s'approche par un "r"
+  // français, le son le plus proche dans notre alphabet — d'où "Rouanne" (Juan) et "Parera"
+  // (Pareja). Double "nn" + "e" final sur "Rouanne" pour éviter la nasalisation du françois
+  // "an" (même astuce que zurbaranne/kanonne/sammesonne ci-dessus) : on veut "rwane", pas "rwan"
+  // nasalisé comme la ville de Rouen.
+  'juan de pareja': 'rouanne de parera',
+  // Pajarito (« petit oiseau » en espagnol) : même règle jota→r. Repère laissé par Stéphane sans
+  // certitude sur l'œuvre exacte — corrigé au cas où ce nom apparaît quelque part dans les
+  // données (surnom, titre...), sans effet sinon.
+  'pajarito': 'pararito',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2699,6 +2710,81 @@ function attachZoomHold(cellEl, imgEl) {
   icon.addEventListener('pointerleave', zoomOut);
   // Empêche le clic sur l'icône elle-même de compter comme une réponse au jeu.
   icon.addEventListener('click', (event) => event.stopPropagation());
+}
+// Loupe « détail » (Imprégnation) : un tap zoome l'image (centré sur le point touché) et fait
+// apparaître un badge de rappel ; en zoom, on glisse le doigt/la souris pour se déplacer dessus
+// (translate borné pour ne jamais laisser un bord vide apparaître) ; un nouveau tap simple (sans
+// glissement) dézoome. Contrairement à attachZoomHold (Intrus/Famille), l'interaction porte
+// directement sur l'image elle-même, pas sur une icône séparée — l'image entière est la zone
+// tactile, plus naturel pour « entrer dans le tableau ».
+function attachDetailZoom(cellEl, imgEl, ZOOM = 2.4) {
+  if (!cellEl || !imgEl) return;
+  cellEl.style.position = cellEl.style.position || 'relative';
+  cellEl.style.overflow = 'hidden';
+  // Empêche le navigateur de gérer lui-même les gestes tactiles sur l'image (double-tap pour
+  // zoomer la page, défilement...) : on veut que pointerdown/move/up nous arrivent tous, sans
+  // interférence, comme pour les autres éléments glissables de l'appli (scale-view, molette).
+  imgEl.style.touchAction = 'none';
+  imgEl.style.transformOrigin = 'center center';
+  imgEl.style.transition = 'transform .18s ease-out';
+  let zoomed = false, tx = 0, ty = 0, dragging = false, moved = false;
+  let startX = 0, startY = 0, startTx = 0, startTy = 0;
+  const badge = document.createElement('span');
+  badge.setAttribute('aria-hidden', 'true');
+  badge.textContent = '🔍';
+  badge.style.cssText = 'position:absolute;bottom:4px;left:4px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:.75rem;line-height:26px;text-align:center;pointer-events:none;z-index:3;';
+  cellEl.appendChild(badge);
+  function clampPan() {
+    const maxX = (imgEl.clientWidth * (ZOOM - 1)) / 2;
+    const maxY = (imgEl.clientHeight * (ZOOM - 1)) / 2;
+    tx = Math.max(-maxX, Math.min(maxX, tx));
+    ty = Math.max(-maxY, Math.min(maxY, ty));
+  }
+  function render() {
+    imgEl.style.transform = zoomed ? `scale(${ZOOM}) translate(${tx / ZOOM}px, ${ty / ZOOM}px)` : '';
+    imgEl.style.cursor = zoomed ? 'grab' : 'zoom-in';
+    badge.textContent = zoomed ? '✕' : '🔍';
+    badge.title = zoomed ? 'Dézoomer' : 'Toucher pour zoomer sur un détail, puis glisser pour se déplacer';
+  }
+  render();
+  imgEl.addEventListener('pointerdown', (event) => {
+    dragging = true; moved = false;
+    startX = event.clientX; startY = event.clientY; startTx = tx; startTy = ty;
+    imgEl.setPointerCapture?.(event.pointerId);
+  });
+  imgEl.addEventListener('pointermove', (event) => {
+    if (!dragging || !zoomed) return;
+    const dx = event.clientX - startX, dy = event.clientY - startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      moved = true;
+      imgEl.style.transition = 'none';
+      imgEl.style.cursor = 'grabbing';
+      tx = startTx + dx; ty = startTy + dy;
+      clampPan();
+      render();
+    }
+  });
+  const stop = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    imgEl.style.transition = 'transform .18s ease-out';
+    if (!moved) {
+      // Tap simple (pas de glissement) : bascule le zoom. En zoomant, on centre sur le point
+      // touché plutôt que sur le milieu de l'image — pour vraiment « entrer » là où on a regardé.
+      if (!zoomed) {
+        const rect = imgEl.getBoundingClientRect();
+        tx = rect.width / 2 - (event.clientX - rect.left);
+        ty = rect.height / 2 - (event.clientY - rect.top);
+        clampPan();
+      } else {
+        tx = 0; ty = 0;
+      }
+      zoomed = !zoomed;
+      render();
+    }
+  };
+  imgEl.addEventListener('pointerup', stop);
+  imgEl.addEventListener('pointercancel', stop);
 }
 function setLightboxScaleData(work) {
   currentLightboxWork = work && parseCmValue(work.hauteur) ? work : null;
@@ -6427,14 +6513,14 @@ $('imp-launch-first-button')?.addEventListener('click', () => {
   impShowCurrent();
 });
 
-// Comme Intrus et Famille : la petite loupe (appui maintenu = agrandissement au maximum, voir
-// attachZoomHold) est désormais disponible aussi sur l'œuvre affichée en Imprégnation — elle ne
-// l'avait jamais eue, alors que cet exercice s'y prête particulièrement bien (regarder longuement
-// un détail pendant que la référence se lit à voix haute). L'image de mise en scène est un élément
-// fixe du HTML (seul son « src » change d'une œuvre à l'autre) : on l'attache donc une seule fois
-// ici, plutôt qu'à chaque question comme pour les cases générées dynamiquement de ces deux autres
-// exercices.
-attachZoomHold($('imp-stage-img')?.closest('figure'), $('imp-stage-img'));
+// Contrairement à Intrus/Famille (attachZoomHold, qui agrandit juste l'image jusqu'aux bords de
+// son propre cadre — utile pour comparer vite plusieurs images) : Stéphane a précisé que la loupe
+// d'Imprégnation doit « permettre d'entrer dans le tableau pour agrandir certains détails », donc
+// un vrai zoom avec déplacement, pas seulement une image plus grande dans le même cadre — plus
+// logique ici, où l'œuvre reste affichée longtemps pendant que la référence se lit. Voir
+// attachDetailZoom ci-dessus. L'image de mise en scène est un élément fixe du HTML (seul son
+// « src » change d'une œuvre à l'autre) : on l'attache donc une seule fois ici.
+attachDetailZoom($('imp-stage-img')?.closest('figure'), $('imp-stage-img'));
 function impShowCurrent() {
   impClearTimers();
   speechSynthesis.cancel();
@@ -6467,6 +6553,13 @@ function impShowCurrent() {
     { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },
     { key: 'location', label: 'Lieu', value: cityFlag(work.ville) ? `${escapeHtml(work.location)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${cityFlag(work.ville)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
+    // Nouvelle rubrique demandée par Stéphane : quand l'œuvre appartient à un ensemble plus vaste
+    // (un cycle de fresques, un manuscrit...), le texte qui le décrit (déjà récupéré dans
+    // work.cycle — jusqu'ici seulement glissé dans le titre via formatTitleWithCycle) s'affiche
+    // maintenant aussi comme sa propre ligne juste sous le lieu, et se lit à voix haute. Volontairement
+    // pas soumis à fieldOn/aux cases à cocher de rubriques : comme l'auteur et le titre, c'est une
+    // information contextuelle sur l'œuvre elle-même, pas un choix de ce qui est testé.
+    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: !!work.cycle },
   ].filter((f) => f.on);
 
   $('imp-correction-details').innerHTML = fields.map((f) =>
