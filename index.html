@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 21</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 22</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1228,12 +1228,21 @@
                      rotation, contrairement aux angles à l'intérieur d'une même salle). D'où
                      pointer-events:none partout ici, y compris sur le point : rien n'est plus
                      cliquable/glissable dans ce petit plan. -->
-                <div id="scale-checkpoint-room-nav" class="hidden" style="position:relative;width:100px;align-self:center;background:rgba(20,20,20,.72);border:2px solid rgba(255,255,255,.5);border-radius:6px;z-index:7;padding:8px;box-sizing:border-box;pointer-events:none;">
+                <div id="scale-checkpoint-room-nav" class="hidden" style="position:relative;align-self:center;background:rgba(20,20,20,.72);border:2px solid rgba(255,255,255,.5);border-radius:6px;z-index:7;padding:8px;box-sizing:border-box;pointer-events:none;">
                   <p style="margin:0 0 6px;color:#fff;font-family:Arial,sans-serif;font-size:.6rem;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.03em;">Salle actuelle</p>
-                  <div style="position:relative;height:150px;display:flex;flex-direction:column;gap:8px;">
-                    <div id="scale-checkpoint-room-1" class="scale-checkpoint-room-box" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">1</div>
-                    <div id="scale-checkpoint-room-2" class="scale-checkpoint-room-box" style="flex:1;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">2</div>
-                    <div id="scale-checkpoint-room-dot" style="position:absolute;width:14px;height:14px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);top:25%;left:50%;transform:translate(-50%,-50%);pointer-events:none;"></div>
+                  <!-- À l'horizontale (salle 1 à gauche, salle 2 à droite) : les 2 salles sont
+                       vraiment l'une à côté de l'autre, pas l'une au-dessus de l'autre (retour de
+                       Stéphane). Le témoin (le point) se tient dans l'espace ENTRE les 2 cases,
+                       juste à l'extérieur de celle où l'on se trouve, du côté de l'autre — jamais
+                       DANS une case — pour bien lire « je suis ici, prêt à rejoindre l'autre »
+                       (voir updateCheckpointRoomIndicator dans app.js, qui recalcule sa position
+                       exacte). Ce n'est PAS lui qui déclenche le déplacement (confirmé par
+                       Stéphane) : c'est un simple témoin, le vrai déplacement se fait avec le gros
+                       point rouge au sol, une fois entré dans la salle (#scale-floor-dot). -->
+                  <div style="position:relative;height:56px;display:flex;align-items:center;gap:34px;">
+                    <div id="scale-checkpoint-room-1" class="scale-checkpoint-room-box" style="width:56px;height:56px;flex:none;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">1</div>
+                    <div id="scale-checkpoint-room-2" class="scale-checkpoint-room-box" style="width:56px;height:56px;flex:none;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">2</div>
+                    <div id="scale-checkpoint-room-dot" style="position:absolute;width:12px;height:12px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;"></div>
                   </div>
                 </div>
                 <div id="scale-turnstile">
@@ -1565,6 +1574,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=258"></script>
+    <script src="app.js?v=259"></script>
   </body>
 </html>

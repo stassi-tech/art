@@ -3012,17 +3012,18 @@ function enterScaleView() {
   state.currentRoomIndex = 0;
   state.roomWalls = state.allRooms[0];
 }
-// Petit plan des 2 salles, désormais un simple TÉMOIN passif (plus aucun glissement possible) —
-// changement demandé par Stéphane : « le point rond à l'intérieur est un simple témoin, ce n'est
-// pas lui qui guide le déplacement, c'est le point au sol qu'on lance en cliquant dessus ». Le vrai
-// passage d'une salle à l'autre se fait maintenant exactement comme on se déplace déjà d'un mur à
-// l'autre à l'intérieur d'une salle (voir buildContinuousWall/updateDotAlongWall plus bas) : on
-// marche tout droit, en cliquant le point au sol (#scale-floor-dot, voir attachFloorDotDrag), et on
-// franchit un simple pilier fixe entre les 2 salles plutôt qu'un panneau qui tourne. Ce petit plan
-// ne sert donc plus qu'à RAPPELER, une fois qu'on est dans une salle donnée, laquelle des deux
-// c'est — d'où sa position repensée, à la verticale, juste à côté du tourniquet (voir le HTML de
-// #scale-checkpoint-room-nav, maintenant un simple élément du groupe #scale-checkpoint-row plutôt
-// qu'un encart flottant en bas à droite).
+// Petit plan des 2 salles, un simple TÉMOIN passif — confirmé par Stéphane : « le point rouge du
+// petit plan ne déclenche rien, c'est un témoin du déplacement qu'on déclenche par un gros point
+// rouge au sol qui entraîne le personnage (comme dans la salle) ». Le vrai passage d'une salle à
+// l'autre se fait avec CE point-là — #scale-floor-dot, le gros point au sol, déjà utilisé pour
+// marcher à l'intérieur d'une salle (voir attachFloorDotDrag/startWalking) — en marchant tout droit
+// jusqu'au pilier fixe entre les 2 salles (voir buildContinuousWall/updateDotAlongWall plus bas).
+// Ce petit plan ne sert donc qu'à RAPPELER, une fois dans une salle donnée, laquelle des deux
+// c'est — à l'horizontale (salle 1 à gauche, salle 2 à droite, comme les vraies salles, l'une à
+// côté de l'autre — pas l'une au-dessus de l'autre), le témoin se tenant dans l'espace ENTRE les 2
+// cases, juste à l'extérieur de celle où l'on se trouve, du côté de l'autre (retour de Stéphane :
+// « il faudrait que le point rouge soit à l'extérieur de la salle 1, juste devant, pour aller vers
+// la salle 2 »).
 function updateCheckpointRoomIndicator() {
   const nav = $('scale-checkpoint-room-nav');
   if (!nav) return;
@@ -3031,18 +3032,23 @@ function updateCheckpointRoomIndicator() {
   // fois qu'on franchit le pilier vers l'autre salle en marchant, voir updateDotAlongWall).
   nav.classList.toggle('hidden', !state.allRooms || state.allRooms.length < 2);
   const dot = $('scale-checkpoint-room-dot');
-  if (!dot || nav.classList.contains('hidden')) return;
-  const target = $(state.currentRoomIndex === 1 ? 'scale-checkpoint-room-2' : 'scale-checkpoint-room-1');
-  if (!target) return;
+  const room1 = $('scale-checkpoint-room-1');
+  const room2 = $('scale-checkpoint-room-2');
+  if (!dot || !room1 || !room2 || nav.classList.contains('hidden')) return;
   // Surbrillance de la salle active : seul repère (avec la position du point) indiquant dans
   // laquelle des deux salles on se trouve actuellement (voir commentaire CSS .active-room).
-  $('scale-checkpoint-room-1')?.classList.toggle('active-room', state.currentRoomIndex !== 1);
-  $('scale-checkpoint-room-2')?.classList.toggle('active-room', state.currentRoomIndex === 1);
+  room1.classList.toggle('active-room', state.currentRoomIndex !== 1);
+  room2.classList.toggle('active-room', state.currentRoomIndex === 1);
   const navRect = nav.getBoundingClientRect();
-  const tRect = target.getBoundingClientRect();
   if (!navRect.width || !navRect.height) return;
-  dot.style.left = `${((tRect.left + tRect.width / 2 - navRect.left) / navRect.width) * 100}%`;
-  dot.style.top = `${((tRect.top + tRect.height / 2 - navRect.top) / navRect.height) * 100}%`;
+  const r1 = room1.getBoundingClientRect();
+  const r2 = room2.getBoundingClientRect();
+  // Jamais centré DANS une case : le témoin se tient dans l'espacement entre les 2 cases, contre le
+  // bord de la salle actuelle qui fait face à l'autre — « juste devant » elle, comme demandé.
+  const x = state.currentRoomIndex === 1 ? r2.left - 8 : r1.right + 8;
+  const y = (r1.top + r1.bottom) / 2;
+  dot.style.left = `${((x - navRect.left) / navRect.width) * 100}%`;
+  dot.style.top = `${((y - navRect.top) / navRect.height) * 100}%`;
 }
 // Voile de transition floue entre chaque étape (façade → contrôle des billets → plan rapproché) —
 // évite, pour l'instant, d'avoir à animer un vrai déplacement progressif du personnage à travers
@@ -3764,6 +3770,12 @@ function updateDotAlongWall() {
   const floorDot = $('scale-floor-dot');
   const silhouette = $('scale-silhouette');
   if (!wall || !dot || !wallSegments.length) return;
+  // Bug réel repéré : cacher #scale-wall (voir backToOverview) fait retomber son scrollLeft à 0 et
+  // déclenche un événement 'scroll' natif (via guardWallScrollSync) — sans ce garde-fou, cette
+  // remise à 0 était interprétée comme « on est revenu à la salle 1 » et écrasait à tort
+  // state.currentRoomIndex juste après une vraie marche jusqu'à la salle 2. Rien à recalculer tant
+  // que le mur n'est pas visible.
+  if (wall.classList.contains('hidden')) return;
   updateCornerVisuals(wall.scrollLeft);
   // On vient peut-être de franchir le pilier vers l'autre salle en marchant tout droit — pas de
   // sélection à part, comme demandé par Stéphane : on met simplement à jour l'état (et le témoin
