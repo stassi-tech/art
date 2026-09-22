@@ -3107,11 +3107,133 @@ function updateCheckpointRoomIndicator() {
   dot.style.left = `${((x - navRect.left) / navRect.width) * 100}%`;
   dot.style.top = `${((y - navRect.top) / navRect.height) * 100}%`;
 }
+// v24 : Stéphane a confirmé (après plusieurs allers-retours) que le passage salle 1 / salle 2 se
+// choisit ICI, sur le plan d'ensemble (l'écran du contrôle des billets) — « c'est sur ce plan-là
+// que je veux que le personnage aille sur sa droite vers la salle numéro 2 » — et non dans le plan
+// rapproché, qui redevient donc une seule salle à la fois (voir buildContinuousWall plus bas),
+// celle choisie ici, avant de franchir le tourniquet.
+// Contrainte propre à cet écran : la salle y est un DÉCOR FIXE vu en perspective à travers une
+// porte (une mise en scène quasi photographique, pas un vrai espace qu'on parcourt comme le plan
+// rapproché) — impossible d'y faire défiler un vrai mur de 15 m. Le personnage marche donc sur une
+// distance courte et fixe à l'écran (CHECKPOINT_WALK_RANGE_PX), et le changement de salle se fait
+// en substituant l'œuvre du mur du fond (voir layoutCheckpointRoom) au passage, avec un pilier qui
+// apparaît brièvement au milieu du trajet pour marquer la jonction — même principe que le pilier
+// du plan rapproché (voir appendStaticPillar), juste sans vrai défilement puisqu'il n'y en a pas
+// ici. Première version : la distance/le rythme de marche pourront être ajustés selon le retour de
+// Stéphane une fois vus en situation réelle.
+const CHECKPOINT_WALK_RANGE_PX = 220;
+let checkpointProgress = 0; // 0 = salle 1, 1 = salle 2
+let checkpointWalkDirection = 0;
+let checkpointWalkAnimationId = null;
+function stopCheckpointWalking() {
+  if (checkpointWalkAnimationId) clearTimeout(checkpointWalkAnimationId);
+  checkpointWalkAnimationId = null;
+  checkpointWalkDirection = 0;
+}
+// Applique la progression courante (0..1) au personnage ET au point qui le suit (même translation
+// pour les deux, afin que le point reste bien « attaché » à ses pieds pendant qu'il marche), fait
+// apparaître le pilier près du croisement (~50 % du trajet), et bascule réellement de salle dès
+// qu'on a franchi la moitié — en remplaçant l'œuvre affichée sur le mur du fond (layoutCheckpointRoom)
+// et en mettant à jour le témoin passif (updateCheckpointRoomIndicator), exactement ce qui se
+// passait déjà en franchissant le pilier dans le plan rapproché avant ce changement.
+function updateCheckpointWalkVisual() {
+  const dot = $('scale-checkpoint-floor-dot');
+  const sil = $('scale-checkpoint-silhouette');
+  const pillar = $('scale-checkpoint-pillar');
+  const tx = checkpointProgress * CHECKPOINT_WALK_RANGE_PX;
+  if (dot) dot.style.transform = `translateX(${tx}px)`;
+  if (sil) sil.style.transform = `translateX(${tx}px)`;
+  if (pillar) pillar.style.opacity = String(Math.max(0, 1 - Math.abs(checkpointProgress - 0.5) * 6));
+  const newRoomIndex = checkpointProgress < 0.5 ? 0 : 1;
+  if (state.allRooms && newRoomIndex !== state.currentRoomIndex) {
+    state.currentRoomIndex = newRoomIndex;
+    state.roomWalls = state.allRooms[newRoomIndex];
+    layoutCheckpointRoom(newRoomIndex);
+    updateCheckpointRoomIndicator();
+  }
+}
+function startCheckpointWalking(direction) {
+  stopCheckpointWalking();
+  checkpointWalkDirection = direction;
+  const step = () => {
+    checkpointProgress = Math.min(1, Math.max(0, checkpointProgress + checkpointWalkDirection * 0.018));
+    updateCheckpointWalkVisual();
+    if ((checkpointWalkDirection > 0 && checkpointProgress >= 1) || (checkpointWalkDirection < 0 && checkpointProgress <= 0)) {
+      stopCheckpointWalking();
+      return;
+    }
+    checkpointWalkAnimationId = setTimeout(step, 16);
+  };
+  checkpointWalkAnimationId = setTimeout(step, 16);
+}
+// Prépare l'écran du contrôle des billets pour la marche salle 1 / salle 2 : positionne le point
+// rouge aux pieds du personnage (mesuré une fois la salle réellement mise en page, même principe
+// que updateCheckpointRoomIndicator) et repart toujours de la salle 1 (state.currentRoomIndex déjà
+// remis à 0 par enterScaleView à chaque passage par l'accueil). N'affiche le point que s'il y a
+// vraiment 2 salles à choisir — sinon rien à marcher, comme pour le petit plan témoin.
+function setupCheckpointWalk() {
+  const dot = $('scale-checkpoint-floor-dot');
+  const sil = $('scale-checkpoint-silhouette');
+  const row = $('scale-checkpoint-row');
+  if (!dot || !sil || !row) return;
+  const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
+  dot.classList.toggle('hidden', !hasTwoRooms);
+  if (!hasTwoRooms) { stopCheckpointWalking(); return; }
+  const rowRect = row.getBoundingClientRect();
+  const silRect = sil.getBoundingClientRect();
+  if (!rowRect.width || !silRect.width) return;
+  dot.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 14}px`;
+  dot.style.top = `${silRect.bottom - rowRect.top - 20}px`;
+  checkpointProgress = 0;
+  updateCheckpointWalkVisual();
+}
+// Même geste que le point du plan rapproché (attachFloorDotDrag) : un tap simple avance/arrête la
+// marche dans la direction tapée, un vrai glissement positionne directement la progression sous le
+// doigt — reprendre exactement le même geste ici, plutôt qu'en inventer un autre, pour que
+// Stéphane reconnaisse tout de suite comment s'en servir.
+(function attachCheckpointFloorDotDrag() {
+  const dot = $('scale-checkpoint-floor-dot');
+  if (!dot) return;
+  const DRAG_THRESHOLD = 8;
+  let dragging = false, moved = false, downX = 0, startProgress = 0;
+  dot.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    dragging = true; moved = false; downX = event.clientX; startProgress = checkpointProgress;
+    dot.setPointerCapture?.(event.pointerId);
+    dot.style.cursor = 'grabbing';
+  });
+  dot.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const dx = event.clientX - downX;
+    if (Math.abs(dx) > DRAG_THRESHOLD) {
+      moved = true;
+      stopCheckpointWalking();
+      checkpointProgress = Math.min(1, Math.max(0, startProgress + dx / CHECKPOINT_WALK_RANGE_PX));
+      updateCheckpointWalkVisual();
+    }
+  });
+  const stop = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    dot.style.cursor = 'grab';
+    if (!moved) {
+      if (checkpointWalkDirection !== 0) {
+        stopCheckpointWalking();
+      } else {
+        const rect = dot.getBoundingClientRect();
+        const center = rect.left + rect.width / 2;
+        startCheckpointWalking(event.clientX < center ? -1 : 1);
+      }
+    }
+  };
+  dot.addEventListener('pointerup', stop);
+  dot.addEventListener('pointercancel', stop);
+})();
 // Voile de transition floue entre chaque étape (façade → contrôle des billets → plan rapproché) —
 // évite, pour l'instant, d'avoir à animer un vrai déplacement progressif du personnage à travers
-// l'espace : le voile masque le changement de décor pendant sa courte durée. Le passage d'une salle
-// à l'autre, lui, N'utilise PAS ce voile : il se fait maintenant en marchant, sans coupure de décor
-// (voir buildContinuousWall ci-dessous), exactement comme on passe déjà d'un mur à l'autre.
+// l'espace pour CES transitions-là (elles restent une simple coupure floue). Le passage salle 1 /
+// salle 2, lui, N'utilise PAS ce voile : il se fait en marchant, juste au-dessus (voir
+// setupCheckpointWalk/updateCheckpointWalkVisual) — voile et marche sont deux mécanismes distincts.
 function blurTransition(swap) {
   const veil = $('scale-blur-veil');
   if (!veil) { swap(); return; }
@@ -3136,9 +3258,15 @@ function goThroughDoor() {
     // retournant une fois entré (voir buildContinuousWall, la vraie bande continue des murs, pas
     // touchée ici). On attend une frame (le temps que la salle, tout juste démasquée, soit vraiment
     // mise en page — sinon ses dimensions mesureraient encore zéro) puis on positionne les œuvres du
-    // mur du fond à leur vraie échelle (voir layoutCheckpointRoom), et on met à jour le témoin de
-    // salle (uniquement visible si state.allRooms en compte 2, voir updateCheckpointRoomIndicator).
-    requestAnimationFrame(() => { layoutCheckpointRoom(); updateCheckpointRoomIndicator(); });
+    // mur du fond à leur vraie échelle (voir layoutCheckpointRoom), on met à jour le témoin de salle
+    // (uniquement visible si state.allRooms en compte 2, voir updateCheckpointRoomIndicator), et on
+    // prépare la marche salle 1 / salle 2 sur CET écran (voir setupCheckpointWalk — v24, suite à la
+    // confirmation de Stéphane que c'est ICI, pas dans le plan rapproché, que ce choix se fait).
+    requestAnimationFrame(() => {
+      layoutCheckpointRoom(state.currentRoomIndex);
+      updateCheckpointRoomIndicator();
+      setupCheckpointWalk();
+    });
   });
 }
 // Lit une variable CSS numérique (en %) posée sur #scale-checkpoint-room, plutôt que coder en dur
@@ -3189,21 +3317,28 @@ function checkpointSanitizedSizeCm(w) {
 // œuvre là-bas. Cet aperçu depuis l'entrée est une simple mise en scène (comme un rideau de
 // théâtre qui s'ouvre sur l'œuvre vedette) : il peut donc très bien montrer une autre œuvre que
 // celle qu'on croisera vraiment sur ce mur une fois entré, sans que ça pose problème.
-function checkpointBackWallWorks() {
-  const all = state.scaleViewCandidates && state.scaleViewCandidates.length
-    ? state.scaleViewCandidates
-    : (state.roomWalls || []).flat();
+// v24 : Stéphane a confirmé que le passage salle 1 / salle 2 se choisit ICI, sur le plan
+// d'ensemble (voir setupCheckpointWalk/attachCheckpointFloorDotDrag plus bas), avant même de
+// franchir le tourniquet — donc cet aperçu doit pouvoir montrer le clou DE LA SALLE VERS LAQUELLE
+// on marche (pas systématiquement celui de toute l'exposition, comme avant), pour que ce qu'on
+// voit ici corresponde à la salle où l'on s'apprête réellement à entrer. roomIndex par défaut =
+// la salle actuelle (comportement inchangé quand il n'y a qu'une seule salle).
+function checkpointBackWallWorks(roomIndex = state.currentRoomIndex) {
+  const room = state.allRooms && state.allRooms[roomIndex];
+  const all = room && room.flat().length
+    ? room.flat()
+    : (state.scaleViewCandidates && state.scaleViewCandidates.length ? state.scaleViewCandidates : (state.roomWalls || []).flat());
   if (!all.length) return [];
   const headliner = all.reduce((biggest, w) => (estimateWorkWidthCm(w) > estimateWorkWidthCm(biggest) ? w : biggest), all[0]);
   return [headliner];
 }
-function layoutCheckpointRoom() {
+function layoutCheckpointRoom(roomIndex = state.currentRoomIndex) {
   const room = $('scale-checkpoint-room');
   const backWorks = $('scale-checkpoint-wall-works');
   if (!room || !backWorks) return;
   const rect = room.getBoundingClientRect();
   if (!rect.width || !rect.height) return; // salle pas encore mise en page (voir requestAnimationFrame à l'appel)
-  const works = checkpointBackWallWorks();
+  const works = checkpointBackWallWorks(roomIndex);
   const innerX = checkpointRoomVarPercent('--room-inner-x');
   const horizonY = checkpointRoomVarPercent('--room-horizon-y');
   const innerXPx = (innerX / 100) * rect.width;
@@ -3252,7 +3387,7 @@ function layoutCheckpointRoom() {
 // Recalcule tout si la fenêtre change de taille pendant que ce plan est affiché (sinon la mise à
 // l'échelle, calculée une seule fois à l'entrée, ne correspondrait plus à la nouvelle salle).
 window.addEventListener('resize', () => {
-  if (!$('scale-checkpoint')?.classList.contains('hidden')) layoutCheckpointRoom();
+  if (!$('scale-checkpoint')?.classList.contains('hidden')) layoutCheckpointRoom(state.currentRoomIndex);
 });
 $('scale-enter-button')?.addEventListener('click', goThroughDoor);
 // Étape 3 : franchir la barrière (donner son ticket) — transition floue vers le plan rapproché,
@@ -3442,13 +3577,17 @@ function appendStaticPillar(wall, cursor) {
   wall.appendChild(pillar);
   return cursor + WALL_PILLAR_PX;
 }
-// Construit toute la bande continue dans #scale-wall — TOUTES les salles de state.allRooms mises
-// bout à bout (pas seulement la salle actuelle), chacune avec ses 3 murs (gauche → fond → droit,
-// avec le panneau qui pivote entre eux, comme avant), et un simple pilier fixe entre 2 salles
-// successives, sans jamais pivoter (voir appendStaticPillar) — changement demandé par Stéphane :
-// on rejoint l'autre salle en marchant tout droit, exactement comme on passe déjà d'un mur à
-// l'autre, plutôt que par un écran ou un choix séparé. Renvoie le scrollLeft du tout début du mur
-// du fond de la PREMIÈRE salle — c'est là qu'on arrive toujours en poussant le tourniquet.
+// Construit toute la bande continue dans #scale-wall — UNIQUEMENT la salle actuelle
+// (state.roomWalls, choisie sur le plan d'ensemble avant de franchir le tourniquet, voir
+// enterCloserPlan), avec ses 3 murs (gauche → fond → droit, le panneau qui pivote entre eux). v24 :
+// avant, cette bande enchaînait TOUTES les salles de state.allRooms avec un pilier fixe entre elles
+// — Stéphane a depuis confirmé que le passage salle 1 / salle 2 se choisit sur le plan d'ensemble,
+// pas ici en marchant à l'intérieur ; il n'y a donc plus jamais qu'une seule salle à la fois dans
+// cette bande, et jamais de pilier à y traverser (appendStaticPillar reste défini, au cas où, mais
+// n'est plus jamais appelé avec une seule salle dans la liste). roomIndex est étiqueté avec
+// state.currentRoomIndex (pas un simple compteur local) pour rester cohérent avec le reste du code
+// (updateDotAlongWall, updateCheckpointRoomIndicator) qui compare à cette même valeur. Renvoie le
+// scrollLeft du tout début du mur du fond — c'est là qu'on arrive toujours en poussant le tourniquet.
 function buildContinuousWall() {
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
   // réelle après affichage pour placer chaque œuvre en conséquence, plutôt que de deviner des
@@ -3464,8 +3603,8 @@ function buildContinuousWall() {
   const eyeLevelFromBottom = silhRect.height * 0.92;
   const wall = $('scale-wall');
   wall.innerHTML = '';
-  const rooms = (state.allRooms && state.allRooms.length ? state.allRooms : [state.roomWalls || [[], [], [], []]]);
-  const multiRoom = rooms.length > 1;
+  const rooms = [state.roomWalls || [[], [], [], []]]; // v24 : toujours une seule salle ici (voir commentaire ci-dessus)
+  const multiRoom = rooms.length > 1; // toujours faux désormais — laissé tel quel, ça ne coûte rien et ça évite de toucher au reste
   const currentInfo = { note: '', hCm: 0 };
   let cursor = silhRect.right + 28; // marge de départ réservée à la silhouette, une seule fois (au
   // tout début de la bande) plutôt qu'à chaque mur : au milieu de la bande, la silhouette reste
@@ -3490,7 +3629,11 @@ function buildContinuousWall() {
       const naturalWidthCm = (endPx - startPx) / pxPerCm;
       const legLengthM = Math.round(Math.max(800, naturalWidthCm + 200) / 100);
       const widthPx = Math.max(endPx - startPx, legLengthM * 100 * pxPerCm);
-      wallSegments.push({ key: leg.key, label: leg.label, startPx, widthPx, lengthM: legLengthM, roomIndex });
+      // Étiqueté avec state.currentRoomIndex (la vraie salle choisie sur le plan d'ensemble), pas
+      // le compteur local `roomIndex` du forEach (toujours 0 puisque `rooms` n'a qu'un élément) —
+      // sans ça, updateDotAlongWall (qui compare à state.currentRoomIndex) se remettrait à tort à
+      // croire qu'on est « revenu » en salle 1 dès la salle 2 choisie sur le plan d'ensemble.
+      wallSegments.push({ key: leg.key, label: leg.label, startPx, widthPx, lengthM: legLengthM, roomIndex: state.currentRoomIndex });
       if (leg.key === 'back' && roomIndex === 0) firstRoomBackStartPx = startPx;
       cursor = startPx + widthPx;
       const isLastLegOfLastRoom = roomIndex === rooms.length - 1 && i === legs.length - 1;
@@ -3514,12 +3657,13 @@ function enterCloserPlan() {
   // state.allRooms est déjà calculé dès l'entrée en vue d'ensemble (voir enterScaleView), pour
   // connaître l'œuvre du mur du fond à montrer en aperçu à travers la porte.
   if (!state.allRooms) state.allRooms = splitIntoRooms(state.scaleViewCandidates || []);
-  // Le tourniquet mène toujours à la salle 1 : on la rejoint en marchant tout droit, jamais en la
-  // choisissant avant d'entrer (voir buildContinuousWall, qui enchaîne toutes les salles dans
-  // l'ordre) — donc à chaque entrée fraîche, on repart bien du début, même si on avait déjà marché
-  // jusqu'à la salle 2 lors d'une précédente visite.
-  state.currentRoomIndex = 0;
-  state.roomWalls = state.allRooms[0];
+  // v24 : le tourniquet mène désormais à la salle où l'on se trouvait EN MARCHANT sur le plan
+  // d'ensemble (voir setupCheckpointWalk/updateCheckpointWalkVisual) — state.currentRoomIndex/
+  // state.roomWalls ont déjà été mis à jour là-bas pendant la marche, on n'y touche plus ici. Avant
+  // ce changement, on repartait toujours de force de la salle 1 ; ce n'est plus le cas, le choix se
+  // fait avant de franchir le tourniquet, pas après. (state.roomWalls est réaffirmé par sécurité,
+  // au cas où currentRoomIndex existerait sans lui — ex. un état repris d'ailleurs.)
+  state.roomWalls = state.allRooms[state.currentRoomIndex] || state.allRooms[0];
   $('scale-overview').classList.add('hidden');
   $('scale-wall-line').classList.remove('hidden');
   ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
@@ -3565,6 +3709,7 @@ function enterCloserPlan() {
 // (l'entrée se fait maintenant via #scale-enter-button → goThroughDoor → #scale-barrier, voir
 // plus haut — plus une entrée directe au clic sur la porte elle-même)
 function backToOverview() {
+  stopCheckpointWalking(); // sinon une marche encore en cours sur le plan d'ensemble continuerait en fond, invisible, après en être sorti
   $('scale-overview').classList.remove('hidden');
   $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets — cache aussi avec lui le plan de choix de salle, qui y vit désormais
   $('scale-wall-line').classList.add('hidden');

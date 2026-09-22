@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=177" />
+    <link rel="stylesheet" href="style.css?v=178" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 24</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 25</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1215,6 +1215,12 @@
                 </div>
                 <div id="scale-checkpoint-wall" class="scale-checkpoint-wallpanel">
                   <div id="scale-checkpoint-wall-works" class="scale-checkpoint-wall-works"></div>
+                  <!-- v24 : repère de jonction salle 1 / salle 2 sur CET écran (voir
+                       setupCheckpointWalk/updateCheckpointWalkVisual dans app.js) — invisible tant
+                       qu'on n'est pas près du milieu du trajet de marche, où il apparaît
+                       brièvement, même langage visuel que le pilier du plan rapproché
+                       (.scale-wall-pillar). -->
+                  <div id="scale-checkpoint-pillar" class="scale-checkpoint-pillar" aria-hidden="true"></div>
                 </div>
                 <div id="scale-checkpoint-floor" aria-hidden="true"></div>
               </div>
@@ -1255,6 +1261,13 @@
                 <svg id="scale-checkpoint-silhouette" viewBox="0 0 100 340" aria-hidden="true">
                   <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
                 </svg>
+                <!-- v24 : point rouge au sol pour marcher vers la salle 2 SUR CET écran (demande de
+                     Stéphane : « c'est sur ce plan-là que je veux que le personnage aille sur sa
+                     droite vers la salle numéro 2 ») — même geste que celui du plan rapproché
+                     (voir attachCheckpointFloorDotDrag dans app.js). Positionné en JS (aux pieds
+                     du personnage, une fois la salle mise en page), caché tant qu'il n'y a qu'une
+                     seule salle (voir setupCheckpointWalk). -->
+                <div id="scale-checkpoint-floor-dot" class="hidden" aria-hidden="true"></div>
                 <!-- Cordon rouge à 8 potelets dorés (espacés, sur toute la largeur de la pièce),
                      en vagues d'un potelet à l'autre — un seul tracé SVG continu, plus de corde
                      visuellement disjointe des potelets. -->
@@ -1574,6 +1587,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=261"></script>
+    <script src="app.js?v=262"></script>
   </body>
 </html>
