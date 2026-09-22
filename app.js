@@ -3075,37 +3075,33 @@ function enterScaleView() {
 // l'autre se fait avec CE point-là — #scale-floor-dot, le gros point au sol, déjà utilisé pour
 // marcher à l'intérieur d'une salle (voir attachFloorDotDrag/startWalking) — en marchant tout droit
 // jusqu'au pilier fixe entre les 2 salles (voir buildContinuousWall/updateDotAlongWall plus bas).
-// Ce petit plan ne sert donc qu'à RAPPELER, une fois dans une salle donnée, laquelle des deux
-// c'est — à l'horizontale (salle 1 à gauche, salle 2 à droite, comme les vraies salles, l'une à
-// côté de l'autre — pas l'une au-dessus de l'autre), le témoin se tenant dans l'espace ENTRE les 2
-// cases, juste à l'extérieur de celle où l'on se trouve, du côté de l'autre (retour de Stéphane :
-// « il faudrait que le point rouge soit à l'extérieur de la salle 1, juste devant, pour aller vers
-// la salle 2 »).
+// v31 : ce petit témoin n'est plus un panneau unique posé près de la machine à tickets, mais une
+// « niche » IDENTIQUE posée dans chacun des 3 piliers (retour de Stéphane : « chaque pilier, il y
+// avait une niche dans le pilier... le personnage avance, le pilier disparaît avec l'écran de
+// contrôle, et puis un autre pilier va apparaître avec un écran de contrôle similaire »). Comme
+// chaque niche est un enfant DOM de son pilier, elle défile et se cache avec lui tout naturellement
+// (voir buildCheckpointTrack) — cette fonction n'a donc plus qu'à synchroniser le CONTENU des 3
+// copies (quelle salle est active), jamais leur position ni leur visibilité de panneau : plus de
+// calcul de rect ni de point positionné en JS, le point rouge est maintenant simplement sous les 2
+// cases via le CSS (.scale-checkpoint-room-dot), demandé par Stéphane pour ne plus donner
+// l'impression d'être entre les deux salles.
 function updateCheckpointRoomIndicator() {
-  const nav = $('scale-checkpoint-room-nav');
-  if (!nav) return;
-  // Le plan n'a de sens que s'il existe vraiment 2 salles — cette fonction est aussi celle qui
+  const niches = document.querySelectorAll('.scale-checkpoint-pillar-niche');
+  if (!niches.length) return;
+  // Le témoin n'a de sens que s'il existe vraiment 2 salles — cette fonction est aussi celle qui
   // décide de l'afficher ou non (appelée à chaque passage par le contrôle des billets, et chaque
   // fois qu'on franchit le pilier vers l'autre salle en marchant, voir updateDotAlongWall).
-  nav.classList.toggle('hidden', !state.allRooms || state.allRooms.length < 2);
-  const dot = $('scale-checkpoint-room-dot');
-  const room1 = $('scale-checkpoint-room-1');
-  const room2 = $('scale-checkpoint-room-2');
-  if (!dot || !room1 || !room2 || nav.classList.contains('hidden')) return;
-  // Surbrillance de la salle active : seul repère (avec la position du point) indiquant dans
-  // laquelle des deux salles on se trouve actuellement (voir commentaire CSS .active-room).
-  room1.classList.toggle('active-room', state.currentRoomIndex !== 1);
-  room2.classList.toggle('active-room', state.currentRoomIndex === 1);
-  const navRect = nav.getBoundingClientRect();
-  if (!navRect.width || !navRect.height) return;
-  const r1 = room1.getBoundingClientRect();
-  const r2 = room2.getBoundingClientRect();
-  // Jamais centré DANS une case : le témoin se tient dans l'espacement entre les 2 cases, contre le
-  // bord de la salle actuelle qui fait face à l'autre — « juste devant » elle, comme demandé.
-  const x = state.currentRoomIndex === 1 ? r2.left - 8 : r1.right + 8;
-  const y = (r1.top + r1.bottom) / 2;
-  dot.style.left = `${((x - navRect.left) / navRect.width) * 100}%`;
-  dot.style.top = `${((y - navRect.top) / navRect.height) * 100}%`;
+  const show = !!(state.allRooms && state.allRooms.length >= 2);
+  niches.forEach((niche) => {
+    niche.classList.toggle('hidden', !show);
+    if (!show) return;
+    // Surbrillance de la salle active : seul repère (avec le numéro) indiquant dans laquelle des
+    // deux salles on se trouve actuellement (voir commentaire CSS .active-room).
+    const box1 = niche.querySelector('[data-room-index="0"]');
+    const box2 = niche.querySelector('[data-room-index="1"]');
+    if (box1) box1.classList.toggle('active-room', state.currentRoomIndex !== 1);
+    if (box2) box2.classList.toggle('active-room', state.currentRoomIndex === 1);
+  });
 }
 // v24 : Stéphane a confirmé (après plusieurs allers-retours) que le passage salle 1 / salle 2 se
 // choisit ICI, sur le plan d'ensemble (l'écran du contrôle des billets) — « c'est sur ce plan-là
@@ -3166,14 +3162,22 @@ function stopCheckpointWalking() {
 // ouvrira, et le témoin passif) reste sur la même hysteresis qu'avant (CHECKPOINT_PILLAR_START/END)
 // mais ne déclenche plus RIEN de visuel ici : le décor est déjà là, sur le rail, et suit son propre
 // panoramique tout seul.
+// Seuil de disparition de la machine à tickets : « il faut la lier... près du premier pilier »
+// (retour de Stéphane) — elle est réellement fixée à l'endroit du premier pilier (progress=0), donc
+// dès qu'on s'en éloigne pour de bon en marchant, elle sort logiquement du champ (on ne pourrait
+// plus l'utiliser, physiquement, une fois avancé dans la salle). Une petite marge (pas 0 pile) évite
+// qu'elle clignote au tout début du geste de marche.
+const CHECKPOINT_TURNSTILE_VISIBLE_UNTIL = 0.05;
 function updateCheckpointWalkVisual() {
   const dot = $('scale-checkpoint-floor-dot');
   const sil = $('scale-checkpoint-silhouette');
   const track = $('scale-checkpoint-track');
+  const turnstile = $('scale-turnstile');
   const tx = checkpointProgress * checkpointWalkRangePx;
   if (dot) dot.style.transform = `translateX(${tx}px)`;
   if (sil) sil.style.transform = `translateX(${tx}px)`;
   if (track) track.style.transform = `translateX(${-checkpointProgress * checkpointPanTravelPx}px)`;
+  if (turnstile) turnstile.classList.toggle('hidden', checkpointProgress > CHECKPOINT_TURNSTILE_VISIBLE_UNTIL);
   // Hysteresis : au-delà de la fin de la zone → salle 2 ; avant le début → salle 1 ; À L'INTÉRIEUR
   // de la zone, on ne touche à rien, la salle « logique » reste celle d'avant qu'on y entre (qu'on
   // vienne de la gauche ou de la droite) — évite un aller-retour minuscule pile sur le pilier qui
@@ -3222,6 +3226,10 @@ function setupCheckpointWalk() {
   sil.style.transform = 'translateX(0px)';
   dot.style.transform = 'translateX(0px)';
   checkpointProgress = 0;
+  // Toujours visible en revenant ici avec progress remis à 0 (l'entrée se fait forcément devant
+  // elle) — sinon un état caché resté d'un passage précédent à 2 salles pourrait persister à tort
+  // si la branche salle unique ci-dessous sort avant d'appeler updateCheckpointWalkVisual.
+  $('scale-turnstile')?.classList.remove('hidden');
   const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
   dot.classList.toggle('hidden', !hasTwoRooms);
   if (!hasTwoRooms) { stopCheckpointWalking(); return; }
@@ -3447,18 +3455,25 @@ function buildCheckpointTrack() {
   if (!roomRect.width || !roomRect.height) return 0; // pas encore mis en page (voir requestAnimationFrame à l'appel)
   const roomW = roomRect.width;
   const roomH = roomRect.height;
-  // Lit --room-inner-x directement dans le CSS plutôt que de dupliquer sa valeur ici en dur, pour
-  // ne jamais désynchroniser JS et CSS si l'un des deux change un jour.
+  // Lit --room-inner-x et --room-horizon-y directement dans le CSS plutôt que de dupliquer leurs
+  // valeurs ici en dur, pour ne jamais désynchroniser JS et CSS si l'un des deux change un jour.
   const innerXPercent = parseFloat(getComputedStyle(room).getPropertyValue('--room-inner-x')) || 12;
+  const horizonYPercent = parseFloat(getComputedStyle(room).getPropertyValue('--room-horizon-y')) || 62;
   const pillarW = roomW * (innerXPercent / 100);
   const windowW = roomW - 2 * pillarW;
+  // v29c : bug réel repéré par Stéphane (« les deux tableaux sont baissés ») — #scale-checkpoint-wall
+  // ne fait que --room-horizon-y (62%) de la hauteur de la salle, pas sa hauteur ENTIÈRE (roomH) ;
+  // buildCheckpointWindowWorks centrait pourtant chaque tableau sur roomH tout entier, ce qui les
+  // poussait vers le bas puisque roomH/2 dépasse largement le milieu réel de la fenêtre (62%/2=31%
+  // de la salle). windowH (la vraie hauteur de la fenêtre) est la bonne référence pour ce centrage.
+  const windowH = roomH * (horizonYPercent / 100);
   const pxPerCm = windowW / CHECKPOINT_WALL_LENGTH_CM;
   const place = (el, left, width) => { el.style.left = `${left}px`; el.style.width = `${width}px`; };
 
   place(pillarLeft, 0, pillarW);
   place(wall1, pillarW, windowW);
   place(pillarRight, pillarW + windowW, pillarW);
-  buildCheckpointWindowWorks(wall1, checkpointBackWallWorks(0)[0], windowW, pxPerCm, roomH);
+  buildCheckpointWindowWorks(wall1, checkpointBackWallWorks(0)[0], windowW, pxPerCm, windowH);
 
   const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
   if (!hasTwoRooms) {
@@ -3473,7 +3488,7 @@ function buildCheckpointTrack() {
   wall2.style.display = '';
   pillarEnd.style.display = '';
   place(wall2, pillarW + windowW + pillarW, windowW);
-  buildCheckpointWindowWorks(wall2, checkpointBackWallWorks(1)[0], windowW, pxPerCm, roomH);
+  buildCheckpointWindowWorks(wall2, checkpointBackWallWorks(1)[0], windowW, pxPerCm, windowH);
   place(pillarEnd, pillarW + windowW + pillarW + windowW, pillarW);
   track.style.width = `${pillarW + windowW + pillarW + windowW + pillarW}px`;
   // Trajet : amène la salle 2 exactement dans le créneau que la salle 1 occupait au repos — aussi

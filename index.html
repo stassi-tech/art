@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=182" />
+    <link rel="stylesheet" href="style.css?v=184" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 30</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 32</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1219,7 +1219,22 @@
                 <div id="scale-checkpoint-track">
                   <!-- Tout premier pilier : la salle est à SA droite, voir .scale-checkpoint-pillar-lit-right
                        dans style.css (arête claire du côté de la salle). -->
-                  <div id="scale-checkpoint-wall-left" class="scale-checkpoint-wallpanel scale-checkpoint-side-pillar scale-checkpoint-pillar-lit-right" aria-hidden="true"></div>
+                  <div id="scale-checkpoint-wall-left" class="scale-checkpoint-wallpanel scale-checkpoint-side-pillar scale-checkpoint-pillar-lit-right" aria-hidden="true">
+                    <!-- v31 : écran de contrôle en « niche », posé DANS le pilier plutôt qu'à côté de
+                         la machine à tickets (retour de Stéphane : « c'est comme si chaque pilier, il
+                         y avait une niche dans le pilier »). Étant un enfant du pilier, il défile et
+                         disparaît avec lui automatiquement, sans synchronisation séparée à écrire :
+                         les 3 piliers portent une copie identique (voir updateCheckpointRoomIndicator
+                         dans app.js), seul l'état actif (.active-room) change d'une copie à l'autre. -->
+                    <div class="scale-checkpoint-pillar-niche" aria-hidden="true">
+                      <p class="scale-checkpoint-pillar-niche-title">Salle actuelle</p>
+                      <div class="scale-checkpoint-pillar-niche-boxes">
+                        <div class="scale-checkpoint-room-box" data-room-index="0">1</div>
+                        <div class="scale-checkpoint-room-box" data-room-index="1">2</div>
+                      </div>
+                      <div class="scale-checkpoint-room-dot"></div>
+                    </div>
+                  </div>
                   <div id="scale-checkpoint-wall" class="scale-checkpoint-wallpanel">
                     <div id="scale-checkpoint-wall-works" class="scale-checkpoint-wall-works"></div>
                   </div>
@@ -1227,7 +1242,16 @@
                        le pilier séparé de la v28, retiré : « ça n'a aucun intérêt » — retour de
                        Stéphane). La salle qu'il borde (salle 1) est à SA gauche, voir
                        .scale-checkpoint-pillar-lit-left dans style.css. -->
-                  <div id="scale-checkpoint-wall-right" class="scale-checkpoint-wallpanel scale-checkpoint-side-pillar scale-checkpoint-pillar-lit-left" aria-hidden="true"></div>
+                  <div id="scale-checkpoint-wall-right" class="scale-checkpoint-wallpanel scale-checkpoint-side-pillar scale-checkpoint-pillar-lit-left" aria-hidden="true">
+                    <div class="scale-checkpoint-pillar-niche" aria-hidden="true">
+                      <p class="scale-checkpoint-pillar-niche-title">Salle actuelle</p>
+                      <div class="scale-checkpoint-pillar-niche-boxes">
+                        <div class="scale-checkpoint-room-box" data-room-index="0">1</div>
+                        <div class="scale-checkpoint-room-box" data-room-index="1">2</div>
+                      </div>
+                      <div class="scale-checkpoint-room-dot"></div>
+                    </div>
+                  </div>
                   <!-- Mur du fond de la 2e salle, jumeau de #scale-checkpoint-wall ci-dessus (même
                        thème d'ambiance — voir .scale-checkpoint-wall-window dans style.css) :
                        n'existe que pour être révélé en marchant, jamais visible tant qu'il n'y a
@@ -1240,37 +1264,20 @@
                        retrouve les deux piliers de chaque côté », exactement comme pour la salle 1.
                        Comme #scale-checkpoint-wall-right, cette salle (2) est à SA gauche. Caché
                        (jamais retiré) tant qu'il n'y a qu'une seule salle, voir buildCheckpointTrack. -->
-                  <div id="scale-checkpoint-pillar-end" class="scale-checkpoint-wallpanel scale-checkpoint-side-pillar scale-checkpoint-pillar-lit-left" aria-hidden="true"></div>
+                  <div id="scale-checkpoint-pillar-end" class="scale-checkpoint-wallpanel scale-checkpoint-side-pillar scale-checkpoint-pillar-lit-left" aria-hidden="true">
+                    <div class="scale-checkpoint-pillar-niche" aria-hidden="true">
+                      <p class="scale-checkpoint-pillar-niche-title">Salle actuelle</p>
+                      <div class="scale-checkpoint-pillar-niche-boxes">
+                        <div class="scale-checkpoint-room-box" data-room-index="0">1</div>
+                        <div class="scale-checkpoint-room-box" data-room-index="1">2</div>
+                      </div>
+                      <div class="scale-checkpoint-room-dot"></div>
+                    </div>
+                  </div>
                 </div>
                 <div id="scale-checkpoint-floor" aria-hidden="true"></div>
               </div>
               <div id="scale-checkpoint-row">
-                <!-- Petit plan des 2 salles, à la verticale, juste à côté de la machine des tickets
-                     (demande de Stéphane). Il ne se glisse plus : c'est un simple TÉMOIN passif,
-                     qui rappelle dans laquelle des 2 salles on se trouve — le vrai passage d'une
-                     salle à l'autre se fait en marchant tout droit, une fois entré, exactement
-                     comme on passe déjà d'un mur à l'autre (voir buildContinuousWall/
-                     updateDotAlongWall dans app.js, et le pilier fixe entre les 2 salles, sans
-                     rotation, contrairement aux angles à l'intérieur d'une même salle). D'où
-                     pointer-events:none partout ici, y compris sur le point : rien n'est plus
-                     cliquable/glissable dans ce petit plan. -->
-                <div id="scale-checkpoint-room-nav" class="hidden" style="position:relative;align-self:center;background:rgba(20,20,20,.72);border:2px solid rgba(255,255,255,.5);border-radius:6px;z-index:7;padding:8px;box-sizing:border-box;pointer-events:none;">
-                  <p style="margin:0 0 6px;color:#fff;font-family:Arial,sans-serif;font-size:.6rem;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.03em;">Salle actuelle</p>
-                  <!-- À l'horizontale (salle 1 à gauche, salle 2 à droite) : les 2 salles sont
-                       vraiment l'une à côté de l'autre, pas l'une au-dessus de l'autre (retour de
-                       Stéphane). Le témoin (le point) se tient dans l'espace ENTRE les 2 cases,
-                       juste à l'extérieur de celle où l'on se trouve, du côté de l'autre — jamais
-                       DANS une case — pour bien lire « je suis ici, prêt à rejoindre l'autre »
-                       (voir updateCheckpointRoomIndicator dans app.js, qui recalcule sa position
-                       exacte). Ce n'est PAS lui qui déclenche le déplacement (confirmé par
-                       Stéphane) : c'est un simple témoin, le vrai déplacement se fait avec le gros
-                       point rouge au sol, une fois entré dans la salle (#scale-floor-dot). -->
-                  <div style="position:relative;height:56px;display:flex;align-items:center;gap:34px;">
-                    <div id="scale-checkpoint-room-1" class="scale-checkpoint-room-box" style="width:56px;height:56px;flex:none;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">1</div>
-                    <div id="scale-checkpoint-room-2" class="scale-checkpoint-room-box" style="width:56px;height:56px;flex:none;border:2px solid rgba(255,255,255,.4);border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.65);font-family:Arial,sans-serif;font-weight:800;font-size:1.3rem;">2</div>
-                    <div id="scale-checkpoint-room-dot" style="position:absolute;width:12px;height:12px;border-radius:50%;background:#e2453c;box-shadow:0 0 5px rgba(0,0,0,.6);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;"></div>
-                  </div>
-                </div>
                 <div id="scale-turnstile">
                   <div id="scale-turnstile-body">
                     <button type="button" id="scale-barrier" aria-label="Franchir le tourniquet, donner son ticket">Ticket</button>
@@ -1607,6 +1614,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=267"></script>
+    <script src="app.js?v=268"></script>
   </body>
 </html>

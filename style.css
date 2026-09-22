@@ -860,12 +860,19 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
     repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 3px, transparent 3px 15px),
     linear-gradient(270deg, rgba(0,0,0,.5), rgba(255,255,255,.2) 55%, rgba(255,255,255,.32) 78%, rgba(0,0,0,.35) 92%, rgba(0,0,0,.55));
 }
-/* Sol en trapèze (parquet à chevrons, même texture que le mur rapproché) : étroit à l'endroit où
-   il rejoint le mur du fond, plein écran au premier plan, côté joueur — seul élément qui garde une
-   perspective, en pur décor (rien n'y est positionné en fonction de sa forme). */
+/* v31 : bande plate (parquet à chevrons, même texture que le mur rapproché), plus de trapèze en
+   perspective — retour de Stéphane après capture d'écran en cours de marche : « le parquet à un
+   moment, il y a une espèce de ligne oblique... il faut trois bandes, sans ligne qui partent en
+   diagonale ». La forme trapézoïdale d'origine (étroite en haut, pleine largeur en bas) restait
+   invisible AU REPOS — les 2 piliers, opaques et sur toute la hauteur de l'écran (voir
+   .scale-checkpoint-side-pillar), cachaient exactement les coins évasés du trapèze de leur côté —
+   mais pas PENDANT la marche : le sol ne fait jamais partie de #scale-checkpoint-track et ne
+   panoramique donc jamais (lui seul reste fixe, pur décor), alors que les piliers qui le
+   recouvraient, eux, glissent avec le reste du décor — ce qui découvrait les bords obliques
+   normalement cachés dès qu'un pilier s'écartait de sa position de repos. Un simple rectangle
+   plein, sans clip-path, est correct à TOUT moment de la marche, plus seulement au repos. */
 #scale-checkpoint-floor {
-  inset:0;
-  clip-path:polygon(var(--room-inner-x) var(--room-horizon-y), calc(100% - var(--room-inner-x)) var(--room-horizon-y), 100% 100%, 0% 100%);
+  top:var(--room-horizon-y); left:0; right:0; bottom:0;
   background-color:#b9895a;
   background-image:repeating-linear-gradient(45deg, transparent 0 12px, rgba(0,0,0,.14) 12px 14px),
                     repeating-linear-gradient(-45deg, transparent 0 12px, rgba(255,255,255,.10) 12px 14px);
@@ -886,7 +893,36 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    doré — étendu sur toute la largeur disponible (plus de max-width, pour vraiment aller d'un
    bout à l'autre de la pièce, comme un vrai cordon de musée). */
 #scale-rope-barrier { flex:1 1 auto; height:11vh; }
-/* Salle active mise en surbrillance sur le petit plan-témoin (voir updateCheckpointRoomIndicator
+/* v31 : écran de contrôle en « niche », un enfant DANS chaque pilier (retour de Stéphane : « c'est
+   comme si chaque pilier, il y avait une niche dans le pilier, que les écrans de contrôle étaient
+   fixés au pilier » : étant un enfant, il défile et disparaît avec son pilier hôte automatiquement,
+   sans code de synchronisation séparé). Les 3 piliers portent une copie IDENTIQUE de cette niche
+   (voir #scale-checkpoint-wall-left/-right/-end dans index.html) ; seul l'état actif de chaque
+   copie change, via updateCheckpointRoomIndicator dans app.js. Remplace l'ancien petit plan unique
+   posé près de la machine à tickets (#scale-checkpoint-room-nav, retiré). Le pilier lui-même est
+   déjà position:absolute (voir .scale-checkpoint-wallpanel) : ça suffit comme repère de
+   positionnement pour cette niche, pas besoin d'ajouter position:relative ailleurs. */
+.scale-checkpoint-pillar-niche {
+  position:absolute; top:38%; left:50%; transform:translateX(-50%);
+  background:rgba(20,20,20,.72); border:2px solid rgba(255,255,255,.5); border-radius:6px;
+  z-index:5; padding:6px; box-sizing:border-box; pointer-events:none; text-align:center;
+  width:max-content; max-width:90%;
+}
+.scale-checkpoint-pillar-niche-title {
+  margin:0 0 5px; color:#fff; font-family:Arial,sans-serif; font-size:.5rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;
+}
+.scale-checkpoint-pillar-niche-boxes { display:flex; align-items:center; justify-content:center; gap:8px; }
+/* Le point rouge de progression vit maintenant SOUS les 2 salles (jamais entre les deux) — retour
+   de Stéphane : « on a l'impression qu'il est entre les deux salles ». Un simple bloc en dessous
+   des cases, centré, suffit : plus besoin de calculer sa position X/Y en JS à chaque copie. */
+.scale-checkpoint-room-dot { width:9px; height:9px; border-radius:50%; background:#e2453c; box-shadow:0 0 5px rgba(0,0,0,.6); margin:6px auto 0; }
+.scale-checkpoint-room-box {
+  width:26px; height:26px; flex:none; border:2px solid rgba(255,255,255,.4); border-radius:3px;
+  display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,.65);
+  font-family:Arial,sans-serif; font-weight:800; font-size:.78rem; background:rgba(0,0,0,.25);
+}
+/* Salle active mise en surbrillance sur chaque copie de la niche (voir updateCheckpointRoomIndicator
    dans app.js) — sans repère visuel autre que le point rouge lui-même, on ne voyait pas facilement
    dans laquelle des 2 salles on se trouve. */
 .scale-checkpoint-room-box.active-room { border-color:#e2453c; background:rgba(226,69,60,.22); color:#fff; }
