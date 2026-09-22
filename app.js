@@ -1022,7 +1022,7 @@ const EXERCISE_RULES = {
   },
   vf: {
     titre: 'Vrai/Faux — comment ça marche',
-    texte: "Une image s'affiche avec sa référence complète (artiste, titre, date, lieu…). Cette référence est soit entièrement exacte, soit comporte un ou deux détails inventés. Jugez chaque élément un par un, en cliquant sur Vrai ou Faux pour chacun. La correction affiche la bonne réponse en vert là où vous vous êtes trompé.",
+    texte: "Une image s'affiche avec sa ou ses références complètes (artiste, titre, date, lieu…). Sont-elles authentiques ? Elles peuvent comporter jusqu'à deux fausses informations. Si vous les repérez, cliquez sur Faux en face de chacune, puis validez l'ensemble. Si vous pensez que toutes les informations sont bonnes, validez directement.",
   },
   fam: {
     titre: 'Famille — comment ça marche',
@@ -5411,14 +5411,15 @@ $('vf-validate-button')?.addEventListener('click', () => {
   $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''}`;
   updateTopBannerScore(`${vfScore} pt${Math.abs(vfScore) >= 2 ? 's' : ''}`);
 
-  // Correction vocale rubrique par rubrique (retour de Stéphane) : chaque rubrique cochée reçoit
-  // maintenant son propre commentaire, qui distingue deux choses indépendantes — la véracité de
-  // ce qui était affiché (« la référence est bonne » si la référence affichée n'a pas été
-  // modifiée, « la référence est fausse » si elle a été substituée) et le jugement du joueur sur
-  // cette rubrique (« Exact » s'il a deviné juste, « Tu as fait une erreur » sinon — ces deux
-  // notions sont bien distinctes : on peut se tromper sur une référence qui était bonne, comme la
-  // repérer à tort). S'il y a plusieurs rubriques cochées, chacune est d'abord annoncée par son
-  // nom (« Pour l'artiste, ... ») ; s'il n'y en a qu'une, ce préfixe est omis.
+  // Correction vocale (retour de Stéphane, 22/09) : on ne raconte plus systématiquement chaque
+  // rubrique cochée — seulement ce qu'il y a d'intéressant à dire. Si tout est bon partout (aucune
+  // référence fausse, aucune fausse alerte du joueur), une seule phrase de synthèse suffit, sans
+  // repasser une par une sur des rubriques sans rien à signaler. Sinon, on ne parle que des
+  // rubriques « notables » : une référence fausse (repérée ou manquée par le joueur) ou une fausse
+  // alerte (rubrique bonne signalée à tort comme fausse) — une rubrique bonne et laissée telle
+  // quelle par le joueur reste silencieuse. S'il y a plusieurs rubriques cochées, chacune notable
+  // est d'abord annoncée par son nom (« Pour l'artiste, ... ») ; s'il n'y en a qu'une, ce préfixe
+  // est omis.
   const artVerb = q.correct?.artType === 'sculpture' ? 'sculpté' : 'peint';
   const VF_RUBRIQUE_LABELS = { artist: "l'artiste", title: 'le titre', date: 'la date', materials: 'le matériau', dimensions: 'les dimensions', location: 'le lieu' };
   function vfFieldCorrectionContent(key, isBonne, wrongValue, trueValue) {
@@ -5426,7 +5427,7 @@ $('vf-validate-button')?.addEventListener('click', () => {
       case 'artist':
         return isBonne ? `C'est bien ${trueValue} qui a ${artVerb} ${artWord}.` : `Ce n'est pas ${wrongValue} qui a ${artVerb} ${artWord}, mais bien ${trueValue}.`;
       case 'title':
-        return isBonne ? `Le titre est bien « ${trueValue} ».` : `Le titre n'est pas « ${wrongValue} », mais bien « ${trueValue} ».`;
+        return isBonne ? `Le titre est bien « ${trueValue} ».` : `Le titre n'est pas « ${wrongValue} », mais bien « ${trueValue} ».`;
       case 'date':
         return isBonne ? `La date est bien ${trueValue}.` : `La date n'est pas ${wrongValue}, mais bien ${trueValue}.`;
       case 'materials':
@@ -5441,63 +5442,94 @@ $('vf-validate-button')?.addEventListener('click', () => {
         return trueValue;
     }
   }
-  function vfFieldCorrectionSentence(f) {
-    const key = f.key;
+  // Une rubrique est « notable » (mérite un commentaire vocal) si sa référence est fausse (qu'elle
+  // ait été repérée ou non) ou si le joueur l'a signalée à tort comme fausse alors qu'elle est
+  // bonne (fausse alerte) — dans tous les autres cas (bonne, laissée telle quelle) il n'y a rien à
+  // dire.
+  function vfFieldIsNoteworthy(key) {
     const actuallyWrong = q.errorFields.includes(key);
-    const isBonne = !actuallyWrong;
     const activeBtn = document.querySelector(`.vf-toggle[data-key="${key}"] button.active`);
     const playerSaysFalse = activeBtn?.dataset.val === 'false';
-    const playerCorrect = playerSaysFalse === actuallyWrong;
-    const trueValue = vfFieldValue(q.correct, key) || '—';
-    const wrongValue = actuallyWrong ? (vfFieldValue(q.displayedSource[key], key) || '—') : null;
-    const content = vfFieldCorrectionContent(key, isBonne, wrongValue, trueValue);
-    const prefix = playerCorrect ? 'Exact' : 'Tu as fait une erreur';
-    const rubriquePrefix = q.activeFields.length > 1 ? `Pour ${VF_RUBRIQUE_LABELS[key] || key}, ` : '';
-    const mainStart = rubriquePrefix ? prefix.charAt(0).toLowerCase() + prefix.slice(1) : prefix;
-    return `${rubriquePrefix}${mainStart}, la référence est ${isBonne ? 'bonne' : 'fausse'}. ${content}`;
+    return actuallyWrong || playerSaysFalse;
   }
-  // Chaque rubrique est traitée l'une après l'autre, en attendant la fin réelle de la phrase
-  // précédente (pas de minuteur à durée fixe) pour ne jamais couper la voix au milieu d'une
-  // explication. Les champs réellement faux restent surlignés un peu plus longtemps avant de se
-  // réécrire en vert (suspense visuel avant la révélation), les champs vrais se règlent tout de
-  // suite (rien à révéler, juste la fausse alerte éventuelle à annuler).
-  function speakFieldCorrection(i) {
-    if (i >= q.activeFields.length) return;
-    const f = q.activeFields[i];
+  function vfNoteworthySentence(f) {
     const key = f.key;
     const actuallyWrong = q.errorFields.includes(key);
-    const el = $(`vf-value-${key}`);
-    if (actuallyWrong && el) el.classList.add('vf-was-wrong');
-    // Fausse alerte : rubrique marquée Faux par le joueur alors qu'elle est exacte — le bouton
-    // reste sur Faux sans jamais se corriger tout seul, ce qui est ambigu, donc on le fait
-    // revenir sur Vrai et on le signale par une note discrète en plus du commentaire vocal.
-    const falseAlarmBtn = !actuallyWrong ? document.querySelector(`.vf-toggle[data-key="${key}"] button[data-val="false"].active`) : null;
-    if (falseAlarmBtn) {
-      const row = falseAlarmBtn.closest('.vf-field-row');
-      if (row && !row.querySelector('.vf-false-alarm-note')) {
-        const note = document.createElement('span');
-        note.className = 'vf-false-alarm-note';
-        note.textContent = 'Cette rubrique était en fait exacte.';
-        row.appendChild(note);
-      }
+    const activeBtn = document.querySelector(`.vf-toggle[data-key="${key}"] button.active`);
+    const playerSaysFalse = activeBtn?.dataset.val === 'false';
+    const trueValue = vfFieldValue(q.correct, key) || '—';
+    const wrongValue = actuallyWrong ? (vfFieldValue(q.displayedSource[key], key) || '—') : null;
+    const rubriqueLabel = VF_RUBRIQUE_LABELS[key] || key;
+    const rubriquePrefix = q.activeFields.length > 1 ? `Pour ${rubriqueLabel}, ` : '';
+    if (actuallyWrong && playerSaysFalse) {
+      // Repérée : « [Pour X,] exact, cette référence est fausse. <détail> »
+      const content = vfFieldCorrectionContent(key, false, wrongValue, trueValue);
+      const start = rubriquePrefix ? 'exact' : 'Exact';
+      return `${rubriquePrefix}${start}, cette référence est fausse. ${content}`;
     }
-    vfTimers.push(setTimeout(() => {
-      if (actuallyWrong && el) {
-        const correctVal = vfFieldValue(q.correct, key) || '—';
-        const shownCorrect = key === 'title' ? `<em>« ${escapeHtml(correctVal)} »</em>` : key === 'dimensions' ? (formatDimensionsDisplay(q.correct) || escapeHtml(correctVal)) : escapeHtml(correctVal);
-        el.innerHTML = shownCorrect;
-        el.classList.remove('vf-was-wrong');
-        el.classList.add('vf-updated');
-      }
-      if (falseAlarmBtn) {
-        const trueBtn = document.querySelector(`.vf-toggle[data-key="${key}"] button[data-val="true"]`);
-        falseAlarmBtn.classList.remove('active');
-        trueBtn?.classList.add('active');
-      }
-      vfSpeak(vfFieldCorrectionSentence(f), () => speakFieldCorrection(i + 1));
-    }, actuallyWrong ? 2200 : 300));
+    if (actuallyWrong && !playerSaysFalse) {
+      // Manquée : « Vous n'avez pas vu la fausse référence pour X : <détail> » — le nom de la
+      // rubrique fait partie de cette phrase même s'il n'y en a qu'une (demande explicite de
+      // Stéphane), donc pas de rubriquePrefix séparé ici.
+      const content = vfFieldCorrectionContent(key, false, wrongValue, trueValue);
+      return `Vous n'avez pas vu la fausse référence pour ${rubriqueLabel}. ${content}`;
+    }
+    // Fausse alerte : référence bonne, signalée à tort comme fausse par le joueur.
+    const content = vfFieldCorrectionContent(key, true, null, trueValue);
+    const start = rubriquePrefix ? 'vous avez signalé cette référence comme fausse, mais elle est bonne' : 'Vous avez signalé cette référence comme fausse, mais elle est bonne';
+    return `${rubriquePrefix}${start}. ${content}`;
   }
-  speakFieldCorrection(0);
+  // Si aucune rubrique cochée n'est notable (tout est bon et rien n'a été signalé à tort), une
+  // seule phrase de synthèse suffit — pas besoin de dérouler chaque rubrique une par une.
+  const anyNoteworthy = q.activeFields.some((f) => vfFieldIsNoteworthy(f.key));
+  if (!anyNoteworthy) {
+    vfTimers.push(setTimeout(() => { vfSpeak("Exact, l'ensemble des références sont bonnes."); }, 300));
+  } else {
+    // Chaque rubrique notable est traitée l'une après l'autre, en attendant la fin réelle de la
+    // phrase précédente (pas de minuteur à durée fixe) pour ne jamais couper la voix au milieu
+    // d'une explication ; les rubriques sans rien à signaler sont sautées sans délai. Les champs
+    // réellement faux restent surlignés un peu plus longtemps avant de se réécrire en vert
+    // (suspense visuel avant la révélation), les fausses alertes se règlent tout de suite (rien à
+    // révéler, juste le bouton à ramener sur Vrai).
+    function speakFieldCorrection(i) {
+      if (i >= q.activeFields.length) return;
+      const f = q.activeFields[i];
+      const key = f.key;
+      if (!vfFieldIsNoteworthy(key)) { speakFieldCorrection(i + 1); return; }
+      const actuallyWrong = q.errorFields.includes(key);
+      const el = $(`vf-value-${key}`);
+      if (actuallyWrong && el) el.classList.add('vf-was-wrong');
+      // Fausse alerte : rubrique marquée Faux par le joueur alors qu'elle est exacte — le bouton
+      // reste sur Faux sans jamais se corriger tout seul, ce qui est ambigu, donc on le fait
+      // revenir sur Vrai et on le signale par une note discrète en plus du commentaire vocal.
+      const falseAlarmBtn = !actuallyWrong ? document.querySelector(`.vf-toggle[data-key="${key}"] button[data-val="false"].active`) : null;
+      if (falseAlarmBtn) {
+        const row = falseAlarmBtn.closest('.vf-field-row');
+        if (row && !row.querySelector('.vf-false-alarm-note')) {
+          const note = document.createElement('span');
+          note.className = 'vf-false-alarm-note';
+          note.textContent = 'Cette rubrique était en fait exacte.';
+          row.appendChild(note);
+        }
+      }
+      vfTimers.push(setTimeout(() => {
+        if (actuallyWrong && el) {
+          const correctVal = vfFieldValue(q.correct, key) || '—';
+          const shownCorrect = key === 'title' ? `<em>« ${escapeHtml(correctVal)} »</em>` : key === 'dimensions' ? (formatDimensionsDisplay(q.correct) || escapeHtml(correctVal)) : escapeHtml(correctVal);
+          el.innerHTML = shownCorrect;
+          el.classList.remove('vf-was-wrong');
+          el.classList.add('vf-updated');
+        }
+        if (falseAlarmBtn) {
+          const trueBtn = document.querySelector(`.vf-toggle[data-key="${key}"] button[data-val="true"]`);
+          falseAlarmBtn.classList.remove('active');
+          trueBtn?.classList.add('active');
+        }
+        vfSpeak(vfNoteworthySentence(f), () => speakFieldCorrection(i + 1));
+      }, actuallyWrong ? 2200 : 300));
+    }
+    speakFieldCorrection(0);
+  }
 
   $('vf-correction').classList.remove('hidden');
   $('vf-next-button').textContent = vfIndex === VF_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
