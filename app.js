@@ -3199,10 +3199,25 @@ function updateCheckpointWalkVisual() {
   if (track) track.style.transform = `translateX(${pillarTx}px)`;
   if (turnstile) {
     turnstile.style.transform = `translateX(${pillarTx}px)`;
-    // Cliquable seulement tout près du pilier de départ (progress≈0) — une fois qu'on s'en est
-    // éloigné, elle n'est plus visible (cf. overflow:hidden ci-dessus) donc plus utilisable de toute
-    // façon ; ceci est juste une sécurité contre un clic sur un élément déjà sorti du cadre.
-    turnstile.style.pointerEvents = checkpointProgress > 0 ? 'none' : '';
+    // BUG corrigé ici (retour de Stéphane v35 : « il n'y a pas de point rouge qui permet
+    // d'entrer dans la salle », alors même que la marche latérale fonctionnait) : la version
+    // précédente désactivait le clic dès que checkpointProgress dépassait 0, et ne le
+    // réactivait QUE si checkpointProgress revenait à EXACTEMENT 0 — ce qui n'arrive quasiment
+    // jamais avec un drag à la souris (on relâche toujours avec un tout petit reste, genre
+    // 0.013). Résultat : dès qu'on avait marché un peu vers la salle 2, le bouton Ticket restait
+    // cliqué-mort pour de bon, donc plus aucun moyen de déclencher setupCheckpointApproach (le
+    // nouveau point d'avancée n'apparaissait jamais). On teste maintenant la visibilité RÉELLE
+    // de la machine (est-ce qu'elle chevauche encore la zone visible de la rangée, compte tenu du
+    // overflow:hidden) plutôt qu'une égalité à 0 : elle redevient cliquable dès qu'elle est ne
+    // serait-ce que partiellement revisible, exactement comme on la voit à l'écran.
+    let turnstileVisible = true;
+    const rowEl = $('scale-checkpoint-row');
+    if (rowEl) {
+      const rowRect = rowEl.getBoundingClientRect();
+      const tRect = turnstile.getBoundingClientRect();
+      turnstileVisible = tRect.width === 0 || (tRect.right > rowRect.left && tRect.left < rowRect.right);
+    }
+    turnstile.style.pointerEvents = turnstileVisible ? '' : 'none';
   }
   // Hysteresis : au-delà de la fin de la zone → salle 2 ; avant le début → salle 1 ; À L'INTÉRIEUR
   // de la zone, on ne touche à rien, la salle « logique » reste celle d'avant qu'on y entre (qu'on
@@ -3260,7 +3275,18 @@ function setupCheckpointWalk() {
   // gauche) — sinon un décalage resté d'un passage précédent à 2 salles pourrait persister à tort
   // si la branche salle unique ci-dessous sort avant d'atteindre updateCheckpointWalkVisual.
   const turnstileReset = $('scale-turnstile');
-  if (turnstileReset) { turnstileReset.style.transform = 'translateX(0px)'; turnstileReset.style.pointerEvents = ''; }
+  if (turnstileReset) {
+    turnstileReset.style.transform = 'translateX(0px)';
+    turnstileReset.style.pointerEvents = '';
+    // Deuxième bug trouvé en corrigeant le premier : setupCheckpointApproach (déclenchée par le
+    // clic sur Ticket) masque la machine avec classList.add('hidden') pour laisser la place au
+    // point d'avancée — mais rien ne la réaffichait jamais après coup. Résultat, une fois qu'on
+    // avait cliqué sur Ticket une première fois, la machine restait invisible pour de bon à
+    // chaque nouvelle entrée sur cet écran (retour à l'accueil puis on repasse la porte). On la
+    // réaffiche donc ici, à chaque entrée fraîche sur l'écran du contrôle des billets.
+    turnstileReset.classList.remove('hidden');
+  }
+  $('scale-checkpoint-approach-dot')?.classList.add('hidden');
   const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
   dot.classList.toggle('hidden', !hasTwoRooms);
   if (!hasTwoRooms) { stopCheckpointWalking(); return; }
