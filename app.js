@@ -3861,6 +3861,7 @@ function setCheckpointFacing(facing) {
   checkpointFacing = facing;
   const wall1 = $('scale-checkpoint-wall');
   const worksEl = wall1?.querySelector('.scale-checkpoint-wall-works');
+  updateCheckpointPillarFraming(facing);
   if (!wall1 || !worksEl || !checkpointWindowWpx) { updateCheckpointTurnButtons(); return; }
   worksEl.style.transition = 'opacity .18s ease';
   worksEl.style.opacity = '0';
@@ -3872,6 +3873,34 @@ function setCheckpointFacing(facing) {
   if (label) label.textContent = facing === -1 ? 'Mur gauche' : facing === 1 ? 'Mur droit' : 'Mur du fond';
   updateCheckpointTurnButtons();
 }
+// v49 (retour de Stéphane, capture à l'appui : « quand le personnage se tourne à gauche et qu'il
+// voit le mur de gauche, il est évident qu'il n'y a plus qu'un pilier gris à gauche. Puisqu'à
+// droite, ce sera le mur du fond, il n'y a pas de pilier sur le mur du fond ») : jusqu'ici, v48
+// laissait les 2 piliers (#scale-checkpoint-wall-left/-right) inchangés quel que soit checkpointFacing
+// — or ces 2 piliers marquent chacun un vrai coin de la salle DU FOND (fond/gauche pour pillarLeft,
+// fond/droit pour pillarRight, voir buildCheckpointTrack). En se tournant pour regarder le mur
+// gauche, seul le coin fond/gauche (pillarLeft) reste un coin réel dans ce qu'on regarde
+// maintenant ; le coin fond/droit (pillarRight) n'a rien à faire dans cette vue et disparaît. Par
+// symétrie, en regardant le mur droit, seul pillarRight reste, pillarLeft disparaît. Le pilier qui
+// reste porte en plus la classe -folded (voir style.css, .scale-checkpoint-pillar-folded) : un
+// simple repli d'ombre pour suggérer qu'on en voit maintenant « l'autre partie » (celle qui donne
+// sur le mur latéral) plutôt que la face montrée au repos, sans aller jusqu'à un vrai panneau 3D
+// qui pivote (trop proche de ce qui a déjà été essayé puis abandonné ici pour les murs latéraux
+// eux-mêmes, voir le commentaire sur #scale-checkpoint-room dans style.css).
+function updateCheckpointPillarFraming(facing) {
+  const pillarLeft = $('scale-checkpoint-wall-left');
+  const pillarRight = $('scale-checkpoint-wall-right');
+  if (!pillarLeft || !pillarRight) return;
+  pillarLeft.classList.remove('scale-checkpoint-pillar-hidden', 'scale-checkpoint-pillar-folded');
+  pillarRight.classList.remove('scale-checkpoint-pillar-hidden', 'scale-checkpoint-pillar-folded');
+  if (facing === -1) {
+    pillarRight.classList.add('scale-checkpoint-pillar-hidden');
+    pillarLeft.classList.add('scale-checkpoint-pillar-folded');
+  } else if (facing === 1) {
+    pillarLeft.classList.add('scale-checkpoint-pillar-hidden');
+    pillarRight.classList.add('scale-checkpoint-pillar-folded');
+  }
+}
 // Désactive la flèche qui ne mènerait nulle part (déjà tout à gauche, ou déjà tout à droite) —
 // repère simple pour savoir qu'on a bien atteint le bout, plutôt que de cliquer dans le vide.
 function updateCheckpointTurnButtons() {
@@ -3879,6 +3908,30 @@ function updateCheckpointTurnButtons() {
   const right = $('scale-checkpoint-turn-right');
   if (left) left.disabled = checkpointFacing <= -1;
   if (right) right.disabled = checkpointFacing >= 1;
+}
+// v49 (retour de Stéphane : « les deux flèches que tu as mises ne vont pas bien parce que le
+// problème, c'est que d'abord, il faut les mettre près du personnage ») : jusqu'ici, les 2 flèches
+// avaient une position fixée en dur dans le CSS/HTML (aux 2 bords de l'écran, style="left:16px"/
+// "right:16px") — sans aucun rapport avec l'endroit où le personnage se trouve réellement à
+// l'écran (lui-même positionné en JS, voir setupCheckpointApproach). On calcule maintenant leur
+// position à partir de la vraie boîte de la silhouette d'arrivée (#scale-checkpoint-approach-
+// silhouette, position:fixed elle aussi), juste avant/après ses pieds, pour qu'elles encadrent le
+// personnage plutôt que l'écran entier — exactement comme des flèches qu'on afficherait à côté de
+// soi, pas à côté de la fenêtre. Rappelée à chaque fois que les commandes d'arrivée s'affichent, et
+// au redimensionnement pendant qu'elles le restent (voir le resize plus bas).
+function positionCheckpointArrivalControls() {
+  const sil = $('scale-checkpoint-approach-silhouette');
+  const left = $('scale-checkpoint-turn-left');
+  const right = $('scale-checkpoint-turn-right');
+  if (!sil || !left || !right) return;
+  const rect = sil.getBoundingClientRect();
+  if (!rect.width || !rect.height) return; // pas encore mise en page à cet instant
+  const midY = rect.top + rect.height * 0.55; // un peu au-dessus des pieds plutôt qu'au niveau du sol
+  const gap = 14;
+  left.style.top = `${midY}px`;
+  left.style.left = `${Math.max(8, rect.left - left.offsetWidth - gap)}px`;
+  right.style.top = `${midY}px`;
+  right.style.left = `${rect.right + gap}px`;
 }
 // Une fois l'avancée terminée (voir updateCheckpointApproachVisual plus bas), on ne bascule plus
 // tout de suite vers le plan rapproché — retour de Stéphane : « on devrait travailler le mouvement
@@ -3889,18 +3942,21 @@ function updateCheckpointTurnButtons() {
 function revealCheckpointArrivalControls() {
   checkpointFacing = 0;
   updateCheckpointTurnButtons();
+  updateCheckpointPillarFraming(0);
   $('scale-checkpoint-turn-left')?.classList.remove('hidden');
   $('scale-checkpoint-turn-right')?.classList.remove('hidden');
   $('scale-checkpoint-zoom-button')?.classList.remove('hidden');
   $('scale-checkpoint-facing-label')?.classList.remove('hidden');
   const label = $('scale-checkpoint-facing-label');
   if (label) label.textContent = 'Mur du fond';
+  positionCheckpointArrivalControls();
 }
 function hideCheckpointArrivalControls() {
   $('scale-checkpoint-turn-left')?.classList.add('hidden');
   $('scale-checkpoint-turn-right')?.classList.add('hidden');
   $('scale-checkpoint-zoom-button')?.classList.add('hidden');
   $('scale-checkpoint-facing-label')?.classList.add('hidden');
+  updateCheckpointPillarFraming(0);
 }
 // Déclenchée par le bouton loupe (voir plus haut) : reprend exactement l'ancien fondu automatique
 // (blurTransition → enterCloserPlan), simplement décidé par le visiteur maintenant plutôt que par
@@ -4059,8 +4115,20 @@ function buildCheckpointTrack() {
 // de remettre la marche à zéro juste parce que la fenêtre a changé de taille.
 window.addEventListener('resize', () => {
   if (!$('scale-checkpoint')?.classList.contains('hidden')) {
-    checkpointPanTravelPx = buildCheckpointTrack();
+    checkpointPanTravelPx = buildCheckpointTrack(); // remet aussi checkpointFacing à 0, voir plus haut
     updateCheckpointWalkVisual();
+    // v49 : les flèches de rotation suivent le personnage (voir positionCheckpointArrivalControls),
+    // et comme buildCheckpointTrack ci-dessus vient de remettre le regard de face (mur du fond), on
+    // réaligne aussi l'étiquette et les piliers sur ce même état — sans ça, un redimensionnement
+    // pendant qu'on regardait un mur latéral aurait laissé l'étiquette/les piliers d'un côté, alors
+    // que le contenu affiché serait déjà revenu au mur du fond.
+    if (!$('scale-checkpoint-turn-left')?.classList.contains('hidden')) {
+      updateCheckpointTurnButtons();
+      updateCheckpointPillarFraming(0);
+      const label = $('scale-checkpoint-facing-label');
+      if (label) label.textContent = 'Mur du fond';
+      positionCheckpointArrivalControls();
+    }
   }
 });
 $('scale-enter-button')?.addEventListener('click', goThroughDoor);
@@ -4261,44 +4329,29 @@ function appendStaticPillar(wall, cursor) {
 // (updateDotAlongWall, updateCheckpointRoomIndicator) qui compare à cette même valeur. Renvoie le
 // scrollLeft du tout début du mur du fond — c'est là qu'on arrive toujours en poussant le tourniquet.
 function buildContinuousWall() {
-  // v47 (retour de Stéphane après le fondu vers cette vue : « il y a quelque chose qui ne va pas
-  // dans la connexion des deux plans... ce qu'il faudrait, c'est qu'on reste sur ce plan-là [celui
-  // de l'arrivée, à l'échelle réelle] et que de ce plan-là on reprenne le principe de déplacement
-  // latéral ») : jusqu'ici, cette vue avait sa PROPRE échelle, dérivée de la hauteur CSS fixe de
-  // #scale-silhouette (70vh, jusqu'à 560px) — une échelle « dramatisée », pensée à l'origine pour
-  // ressentir la taille d'une œuvre en très grand, mais SANS AUCUN RAPPORT avec l'échelle
-  // architecturale réelle établie pendant l'avancée du contrôle des billets (checkpointPxPerCm,
-  // voir setupCheckpointApproach — mur de CHECKPOINT_WALL_LENGTH_CM=15 m, personnage de
-  // CHECKPOINT_PERSON_HEIGHT_CM=1,70 m). Mesuré : au moment précis du fondu vers cette vue, le
-  // personnage ET le tableau grossissaient d'un coup d'environ 2,5 à 3 fois — c'était ÇA, la
-  // « connexion qui ne va pas », même en partie masquée par le flou du fondu. En reprenant
-  // EXACTEMENT checkpointPxPerCm (quand elle est connue, c'est-à-dire qu'on arrive bien depuis le
-  // contrôle des billets — sinon repli sur l'ancien calcul, ex. un futur chemin d'entrée qui ne
-  // passerait plus par là) plutôt que de la recalculer depuis la silhouette, le personnage et le
-  // tableau gardent EXACTEMENT la même taille à l'écran des deux côtés du fondu : seul le cadrage
-  // se « débloque » (on peut désormais glisser latéralement le long des murs, voir plus bas — le
-  // système de défilement continu existe déjà ici, wallSegments/wallCorners/appendStaticPillar,
-  // c'est bien LE « principe de déplacement latéral » que Stéphane demande de reprendre), sans plus
-  // aucun saut de zoom. #scale-silhouette (hauteur fixée en CSS jusqu'ici) est donc réécrite ici
-  // pour représenter, elle aussi, EXACTEMENT CHECKPOINT_PERSON_HEIGHT_CM à cette même échelle —
-  // sinon elle resterait à sa taille CSS d'origine (70vh) alors que tout le reste (murs, œuvres)
-  // aurait changé d'échelle autour d'elle, ce qui casserait justement la cohérence qu'on cherche.
+  // v47 avait fait reprendre ICI l'échelle réelle du contrôle des billets (checkpointPxPerCm),
+  // pour que le fondu vers cette vue ne fasse plus sauter la taille du personnage/du tableau —
+  // MAIS retour de Stéphane après coup, capture à l'appui : « sur le PR, les proportions sont
+  // complètement détruites, les tableaux sont en dessous... il faut retrouver le PR tel qu'il
+  // était, il était bien ». Cause exacte : eyeLevelFromBottom (juste plus bas) est une fraction
+  // FIXE (92%) de la hauteur de la silhouette — avec l'échelle réelle bien plus petite (~160px de
+  // haut au lieu de ~560px), ce repère de hauteur des yeux s'écrasait à quelques dizaines de
+  // pixels du sol, collant les tableaux tout en bas de l'écran au lieu de les accrocher à hauteur
+  // des yeux. v48 a de toute façon rendu le passage à ce plan volontaire (bouton loupe, plus un
+  // fondu automatique dès l'arrivée) — Stéphane a confirmé que forcer la continuité d'échelle
+  // n'était donc plus une priorité (« ce n'est peut-être pas la peine de vouloir forcément lier
+  // les deux [plans] »). On revient donc à l'échelle dédiée d'origine de cette vue, dérivée de la
+  // hauteur CSS fixe de #scale-silhouette (70vh, jusqu'à 560px) — pensée pour ressentir la taille
+  // d'une œuvre en très grand, sans rapport avec l'échelle du contrôle des billets, mais qui
+  // fonctionnait bien avant qu'on y touche.
   const silh = $('scale-silhouette');
-  let pxPerCm;
-  if (checkpointPxPerCm > 0) {
-    pxPerCm = checkpointPxPerCm;
-    silh.style.maxHeight = 'none';
-    silh.style.height = `${CHECKPOINT_PERSON_HEIGHT_CM * pxPerCm}px`;
-  } else {
-    silh.style.height = '';
-    silh.style.maxHeight = '';
-    pxPerCm = silh.getBoundingClientRect().height / 170;
-  }
+  silh.style.height = '';
+  silh.style.maxHeight = '';
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
-  // réelle après affichage (et après avoir éventuellement réécrit sa hauteur ci-dessus) pour
-  // placer chaque œuvre en conséquence, plutôt que de deviner des chiffres qui se déréglent au
-  // moindre changement de mise en page.
+  // réelle après affichage pour placer chaque œuvre en conséquence, plutôt que de deviner des
+  // chiffres qui se déréglent au moindre changement de mise en page.
   const silhRect = silh.getBoundingClientRect();
+  const pxPerCm = silhRect.height / 170;
   // Bug réel repéré : ce plafond dépendait de la hauteur d'écran (70% de window.innerHeight) —
   // sur mobile, bien plus petit que sur PC, beaucoup plus d'œuvres finissaient plafonnées à cette
   // même valeur, écrasant leurs vraies différences de taille (« toutes les œuvres à égalité »).
@@ -4589,6 +4642,30 @@ function scrollLeftFromPathPosition(x, y) {
   dot.addEventListener('pointerup', stop);
   dot.addEventListener('pointercancel', stop);
 })();
+// BUG corrigé v49 (retour de Stéphane, capture à l'appui — le même retour qui a révélé le décalage
+// CSS corrigé juste au-dessus dans style.css : « le point rouge reste en fait très loin du
+// personnage ») : moveTo ci-dessous convertissait la position du doigt en scrollLeft avec une
+// règle de trois BRUTE sur toute la largeur défilable (progress * maxScroll) — alors que
+// updateDotAlongWall AFFICHE le point (et la silhouette) avec une tout autre règle, EN TIERS
+// ÉGAUX par mur de la salle actuelle (voir son commentaire complet : chaque mur, quelle que soit
+// sa largeur réelle en pixels, occupe exactement un tiers du trajet). Les deux réglages ne
+// coïncident que si les 3 murs font exactement la même largeur en pixels — sinon, poser le doigt à
+// X % de l'écran plaçait le point à une fraction différente de X % une fois affiché, un
+// deuxième décalage (variable, celui-ci, pas constant comme celui de la silhouette) qui
+// s'ajoutait au premier. scrollLeftFromFloorProgress inverse EXACTEMENT la formule
+// d'updateDotAlongWall (mêmes tiers égaux) plutôt que la règle de trois d'origine, pour que le
+// point (et donc la silhouette, tous deux pilotés par le même scrollLeft) suivent enfin le doigt
+// au pixel près.
+function scrollLeftFromFloorProgress(progress) {
+  const legs = roomLegSegments(state.currentRoomIndex || 0);
+  if (!legs.length) return 0;
+  progress = Math.min(1, Math.max(0, progress));
+  const scaled = progress * legs.length;
+  const idx = Math.min(legs.length - 1, Math.floor(scaled));
+  const localT = Math.min(1, Math.max(0, scaled - idx));
+  const seg = legs[idx];
+  return seg.startPx + localT * seg.widthPx;
+}
 // Point dupliqué sur le sol : mêmes gestes, mais cette fois sur toute la largeur de l'écran — pas
 // de changement de mur ici (c'est le rôle du petit point de l'écran de contrôle), juste avancer/
 // reculer le long du mur courant, en plus grand et plus facile à manier.
@@ -4601,8 +4678,7 @@ function scrollLeftFromPathPosition(x, y) {
   const moveTo = (clientX) => {
     const x = Math.min(0.95, Math.max(0.05, clientX / window.innerWidth));
     const progress = Math.min(1, Math.max(0, (x - 0.05) / 0.90));
-    const maxScroll = Math.max(1, wall.scrollWidth - wall.clientWidth);
-    wall.scrollLeft = progress * maxScroll;
+    wall.scrollLeft = scrollLeftFromFloorProgress(progress);
     updateDotAlongWall();
     updateDistanceMarker();
   };

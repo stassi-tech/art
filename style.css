@@ -879,7 +879,7 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    premiers via cette classe partagée plutôt que de dupliquer leurs règles CSS — ce qui permettrait
    d'ajouter un 4e pilier sans y retoucher si l'appli composait un jour 3 salles (elle n'en compose
    jamais plus de 2 pour l'instant, voir splitIntoRooms). */
-.scale-checkpoint-side-pillar { top:0; height:100%; overflow:hidden; }
+.scale-checkpoint-side-pillar { top:0; height:100%; overflow:hidden; transition:opacity .18s ease; }
 /* Le dégradé va du sombre (bord extérieur) vers une arête bien éclairée juste avant de rejoindre le
    mur du fond qui le borde, puis se rassombrit légèrement en s'en approchant — cette arête claire
    est ce qui fait « avancer » visuellement le pilier vers le visiteur (comme un vrai relief pris
@@ -902,6 +902,36 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
   background-image:
     repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 3px, transparent 3px 15px),
     linear-gradient(270deg, rgba(0,0,0,.5), rgba(255,255,255,.2) 55%, rgba(255,255,255,.32) 78%, rgba(0,0,0,.35) 92%, rgba(0,0,0,.55));
+}
+/* v49 (retour de Stéphane, capture à l'appui : « quand le personnage se tourne, par exemple, à
+   gauche et qu'il voit le mur de gauche, il est évident qu'il n'y a plus qu'un pilier gris à
+   gauche. Puisqu'à droite, ce sera le mur du fond, il n'y a pas de pilier sur le mur du fond ») :
+   #scale-checkpoint-wall-left/-right marquent chacun un vrai coin de la salle DU FOND (voir
+   buildCheckpointTrack dans app.js) — en se tournant pour regarder un mur latéral (voir
+   setCheckpointFacing), seul le coin du côté qu'on regarde reste un coin réel ; l'autre disparaît
+   en s'estompant (transition déjà posée sur .scale-checkpoint-side-pillar plus haut) plutôt que de
+   rester affiché sans raison géométrique. */
+.scale-checkpoint-pillar-hidden { opacity:0; pointer-events:none; }
+/* Le pilier qui reste change de face : Stéphane demande « une espèce de retour, qu'on comprenne
+   qu'on voit en fait l'autre partie du pilier » — un simple repli d'ombre au centre (même langage
+   que .scale-wall-corner-face, réutilisé ici en version statique puisqu'il n'y a pas de vraie
+   rotation 3D à animer, juste un changement d'état au clic sur une flèche) plutôt qu'un panneau qui
+   pivote pour de vrai. z-index:3 : au-dessus du dégradé ::after existant (posé sans z-index propre,
+   donc en dessous dès qu'un z-index explicite entre en jeu), pour bien se voir par-dessus.
+   v49b (vérifié aux captures Playwright) : un simple bandeau sombre se lisait mal — la moitié du
+   pilier DÉJÀ assombrie par son propre dégradé (.scale-checkpoint-pillar-lit-right/-left ci-dessus)
+   recouvre presque exactement la zone où ce repli se dessine, le rendant quasi invisible. Repris en
+   repli à 2 tons — sombre, puis une FINE ARÊTE CLAIRE au centre, puis sombre à nouveau — comme une
+   vraie arête de pli qui accroche la lumière, pour rester lisible quel que soit le dégradé de fond
+   déjà en place sur le pilier. */
+.scale-checkpoint-pillar-folded::before {
+  content:''; position:absolute; inset:0; z-index:3; pointer-events:none;
+  background:linear-gradient(90deg,
+    transparent 0 42%,
+    rgba(0,0,0,.8) 42% 48%,
+    rgba(255,255,255,.65) 48% 51%,
+    rgba(0,0,0,.8) 51% 57%,
+    transparent 57% 100%);
 }
 /* v31 : bande plate (parquet à chevrons, même texture que le mur rapproché), plus de trapèze en
    perspective — retour de Stéphane après capture d'écran en cours de marche : « le parquet à un
@@ -1081,8 +1111,20 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
 #scale-wall-line { position:fixed; bottom:16vh; left:0; right:0; height:3px; background:rgba(0,0,0,.35); z-index:1; box-shadow:0 1px 2px rgba(255,255,255,.15); }
 /* Position horizontale fixée en JS désormais (attachée au point, voir updateDotAlongWall) plutôt
    qu'une valeur fixe — la silhouette se déplace maintenant réellement à l'écran plutôt que de
-   rester immobile pendant que seul le mur défilait derrière elle. */
-#scale-silhouette { position:fixed; bottom:0; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); z-index:5; touch-action:none; transform-origin:bottom center; }
+   rester immobile pendant que seul le mur défilait derrière elle.
+   BUG corrigé v49 (retour de Stéphane, capture à l'appui : « le point rouge est accroché au
+   personnage... là, le point rouge reste en fait très loin du personnage ») : #scale-floor-dot
+   (juste au-dessus) se centre sur son `left` via translateX(-50%) — mais #scale-silhouette n'avait
+   AUCUNE transform équivalente : son `left` (posé en JS, voir updateDotAlongWall, IDENTIQUE en % à
+   celui du point) positionnait donc son bord GAUCHE, pas son centre. Cet élément fait width:auto à
+   une hauteur pouvant aller jusqu'à 560px (viewBox 100×340, donc jusqu'à environ 165px de large) :
+   même avec un `left` numériquement identique au point, son centre réel se retrouvait décalé d'à
+   peu près la moitié de cette largeur (~80px) vers la droite — l'écart constant, à toute position,
+   que Stéphane décrit. translateX(-50%) ajouté ici centre enfin la silhouette sur son `left`
+   exactement comme le point, les deux restant désormais bien superposés à l'écran quel que soit
+   scrollLeft. Aucun autre code ne pose de transform sur cet élément (confirmé) : rien à composer
+   avec celle-ci. */
+#scale-silhouette { position:fixed; bottom:0; height:70vh; max-height:560px; width:auto; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.15)); z-index:5; touch-action:none; transform-origin:bottom center; transform:translateX(-50%); }
 /* Léger balancement pendant la marche — seul repère visuel disponible avec une silhouette fixe à
    l'écran (c'est le mur qui défile en dessous) : sans lui, rien à l'image ne suggère qu'elle
    avance vraiment, seulement le décor qui glisse tout seul. */

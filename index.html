@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=195" />
+    <link rel="stylesheet" href="style.css?v=196" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 48</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 49</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1360,9 +1360,14 @@
                    fois arrivé au mur du fond (voir revealCheckpointArrivalControls dans app.js),
                    ces 2 flèches remplacent le mur affiché dans #scale-checkpoint-wall par celui de
                    gauche/droite — jamais 2 murs à la fois, jamais en perspective (voir
-                   checkpointFacing dans app.js). Cachées le reste du temps (avant l'arrivée). -->
-              <button type="button" id="scale-checkpoint-turn-left" class="hidden nav-arrow-button" aria-label="Se tourner vers le mur de gauche" title="Voir le mur de gauche" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:40;">◄</button>
-              <button type="button" id="scale-checkpoint-turn-right" class="hidden nav-arrow-button" aria-label="Se tourner vers le mur de droite" title="Voir le mur de droite" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:40;">►</button>
+                   checkpointFacing dans app.js). Cachées le reste du temps (avant l'arrivée).
+                   v49 (retour de Stéphane : « il faut les mettre près du personnage ») : plus de
+                   left/right fixé en dur ici (jusque-là plantées aux 2 bords de l'écran, sans
+                   rapport avec la position réelle du personnage) — seul top:50% reste comme repli
+                   avant le premier calcul ; leur vraie position (left/top) est posée en JS juste à
+                   côté de la silhouette d'arrivée, voir positionCheckpointArrivalControls. -->
+              <button type="button" id="scale-checkpoint-turn-left" class="hidden nav-arrow-button" aria-label="Se tourner vers le mur de gauche" title="Voir le mur de gauche" style="position:absolute;top:50%;transform:translateY(-50%);z-index:40;">◄</button>
+              <button type="button" id="scale-checkpoint-turn-right" class="hidden nav-arrow-button" aria-label="Se tourner vers le mur de droite" title="Voir le mur de droite" style="position:absolute;top:50%;transform:translateY(-50%);z-index:40;">►</button>
               <!-- top:56px (pas 16px) : la bannière globale de l'appli (#global-topbar, position:
                    fixed, z-index:200, ~44px de haut) couvre tout le haut de l'écran — un repère
                    posé plus haut se retrouverait rendu SOUS elle, donc invisible malgré un
@@ -1670,6 +1675,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=284"></script>
+    <script src="app.js?v=285"></script>
   </body>
 </html>
