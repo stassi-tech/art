@@ -912,27 +912,58 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    en s'estompant (transition déjà posée sur .scale-checkpoint-side-pillar plus haut) plutôt que de
    rester affiché sans raison géométrique. */
 .scale-checkpoint-pillar-hidden { opacity:0; pointer-events:none; }
-/* Le pilier qui reste change de face : Stéphane demande « une espèce de retour, qu'on comprenne
-   qu'on voit en fait l'autre partie du pilier » — un simple repli d'ombre au centre (même langage
-   que .scale-wall-corner-face, réutilisé ici en version statique puisqu'il n'y a pas de vraie
-   rotation 3D à animer, juste un changement d'état au clic sur une flèche) plutôt qu'un panneau qui
-   pivote pour de vrai. z-index:3 : au-dessus du dégradé ::after existant (posé sans z-index propre,
-   donc en dessous dès qu'un z-index explicite entre en jeu), pour bien se voir par-dessus.
-   v49b (vérifié aux captures Playwright) : un simple bandeau sombre se lisait mal — la moitié du
-   pilier DÉJÀ assombrie par son propre dégradé (.scale-checkpoint-pillar-lit-right/-left ci-dessus)
-   recouvre presque exactement la zone où ce repli se dessine, le rendant quasi invisible. Repris en
-   repli à 2 tons — sombre, puis une FINE ARÊTE CLAIRE au centre, puis sombre à nouveau — comme une
-   vraie arête de pli qui accroche la lumière, pour rester lisible quel que soit le dégradé de fond
-   déjà en place sur le pilier. */
-.scale-checkpoint-pillar-folded::before {
-  content:''; position:absolute; inset:0; z-index:3; pointer-events:none;
-  background:linear-gradient(90deg,
-    transparent 0 42%,
-    rgba(0,0,0,.8) 42% 48%,
-    rgba(255,255,255,.65) 48% 51%,
-    rgba(0,0,0,.8) 51% 57%,
-    transparent 57% 100%);
+/* v50 (retour de Stéphane, 2 tours de suite : « on n'a pas l'impression d'être sur le mur de
+   gauche ni sur le mur de droite... il manque un élément visuel fort ») : le simple repli d'ombre
+   du v49 (2 tons, sombre/clair/sombre — voir son historique juste au-dessus, gardé ici en
+   commentaire pour mémoire) s'est confirmé trop discret à l'usage. Remplacé par un vrai décor,
+   proposé par Stéphane lui-même (montage Photoshop puis photo Wikicommons de référence) : un
+   escalier rouge, vu DE PROFIL (en biais, pas de face), qui suggère que chaque salle est « en
+   contrebas » par rapport à un couloir plus haut — « l'escalier est à gauche quand on se tourne à
+   gauche, ce qui veut dire que le couloir est à gauche » (et symétriquement à droite). Dessiné en
+   CSS (dégradés + clip-path) plutôt qu'en image, comme le reste du décor (piliers, cordon) : reste
+   net à toute échelle, pas de fichier à charger. Cet élément (.scale-checkpoint-pillar-stairs, voir
+   son markup dans index.html) est un ENFANT du pilier, caché par défaut — révélé seulement quand
+   .scale-checkpoint-pillar-folded s'applique, c'est-à-dire QUE pendant la rotation à l'arrivée
+   (setCheckpointFacing dans app.js), JAMAIS pendant la marche entre les salles
+   (buildCheckpointTrack) : ce même pilier DOM sert aux deux écrans, l'escalier ne doit se voir que
+   dans le second. */
+.scale-checkpoint-pillar-stairs { display:none; position:absolute; inset:0; overflow:hidden; z-index:3; pointer-events:none; }
+.scale-checkpoint-pillar-folded .scale-checkpoint-pillar-stairs { display:block; }
+/* Silhouette en biais (pas un escalier vu de face) : découpée en trapèze irrégulier qui part de
+   tout le bas du pilier (là où le personnage se trouve) et se referme en montant, comme s'il
+   s'éloignait en profondeur vers le couloir — la zone hors de ce polygone reste transparente,
+   laissant voir le pilier gris tel qu'il est déjà (bande verticale striée) juste à côté. Le
+   dégradé de fond (rouge sombre, plus sombre encore en haut) + les 2 bandes répétées (une
+   diagonale, une horizontale) suggèrent le tapis et les marches sans avoir à dessiner chaque
+   marche une par une. */
+/* v50b (vérifié aux captures Playwright) : un simple triangle à rayures diagonales se lisait comme
+   un chevron/une brique, pas comme un escalier. Le polygone découpe maintenant un vrai profil « en
+   marches d'escalier » (zigzag : chaque marche un peu moins large que la précédente en montant),
+   ET un peu moins haute (repeating-linear-gradient horizontal, 0deg, calé sur le même pas que les
+   marches du polygone) — les 2 ensemble donnent enfin la silhouette d'un escalier vu de côté, pas
+   d'un simple triangle plein. */
+.scale-checkpoint-pillar-stairs-shape {
+  position:absolute; inset:0;
+  clip-path: polygon(
+    0% 100%, 60% 100%, 60% 85%, 50% 85%, 50% 70%, 40% 70%, 40% 55%,
+    30% 55%, 30% 40%, 20% 40%, 20% 25%, 10% 25%, 10% 10%, 0% 10%
+  );
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.22) 0 3px, transparent 3px 15%),
+    linear-gradient(0deg, #8a1a1a 0%, #6a1010 55%, #460b0e 100%);
+  box-shadow: inset 0 -12px 16px rgba(0,0,0,.35);
 }
+/* Petit aperçu du cordon de velours (voir #scale-rope-barrier) tout en haut de l'escalier, comme
+   suggéré par Stéphane (« on revoit un tout petit peu le cordon, mais de l'autre côté ») — un
+   indice supplémentaire, discret, que ce qu'on aperçoit là-haut communique avec le même couloir
+   que celui du contrôle des billets. Placé juste AU-DESSUS de la marche la plus haute (hors du
+   clip-path ci-dessus, dans la zone restée transparente), comme si on l'apercevait plus loin en
+   haut des marches plutôt que dessiné par-dessus l'escalier lui-même. */
+.scale-checkpoint-pillar-stairs-rope { position:absolute; top:0; left:2%; width:36%; height:9%; overflow:visible; z-index:1; }
+/* Miroir pour le pilier droit (mur droit) : même dessin, symétrisé en un seul transform plutôt
+   qu'en dupliquant le clip-path et les dégradés — l'escalier « part » alors vers le haut-droite
+   plutôt que le haut-gauche, exactement comme demandé (« il serait de l'autre côté »). */
+.scale-checkpoint-pillar-lit-left .scale-checkpoint-pillar-stairs { transform:scaleX(-1); }
 /* v31 : bande plate (parquet à chevrons, même texture que le mur rapproché), plus de trapèze en
    perspective — retour de Stéphane après capture d'écran en cours de marche : « le parquet à un
    moment, il y a une espèce de ligne oblique... il faut trois bandes, sans ligne qui partent en

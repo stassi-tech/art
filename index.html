@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=196" />
+    <link rel="stylesheet" href="style.css?v=197" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 49</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 50</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1239,6 +1239,24 @@
                         <div class="scale-checkpoint-room-dot"></div>
                       </div>
                     </div>
+                    <!-- v50 (retour de Stéphane, avec un montage Photoshop puis une photo Wikicommons
+                         de référence : « il manque un élément visuel fort qui permette de distinguer
+                         le mur du fond des murs latéraux... un escalier rouge, comme si la salle était
+                         en contrebas ») : ce même pilier sert aussi bien à l'écran du couloir (marche
+                         entre les salles) qu'à l'écran d'arrivée qui se tourne (voir setCheckpointFacing
+                         dans app.js) — CET escalier n'est donc affiché QUE dans ce 2e cas (voir
+                         .scale-checkpoint-pillar-folded dans style.css, qui ne s'applique jamais
+                         pendant la marche). Vu « de profil » (en biais, comme s'il montait et
+                         s'éloignait vers le couloir), pas de face — voir le commentaire complet dans
+                         style.css. -->
+                    <div class="scale-checkpoint-pillar-stairs" aria-hidden="true">
+                      <div class="scale-checkpoint-pillar-stairs-shape"></div>
+                      <svg class="scale-checkpoint-pillar-stairs-rope" viewBox="0 0 100 40" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+                        <circle cx="10" cy="10" r="7" fill="#a8862e" />
+                        <circle cx="90" cy="26" r="7" fill="#a8862e" />
+                        <path d="M10 10 Q50 36 90 26" stroke="#b3231f" stroke-width="5" fill="none" />
+                      </svg>
+                    </div>
                   </div>
                   <div id="scale-checkpoint-wall" class="scale-checkpoint-wallpanel">
                     <div id="scale-checkpoint-wall-works" class="scale-checkpoint-wall-works"></div>
@@ -1260,6 +1278,18 @@
                              du personnage ». -->
                         <div class="scale-checkpoint-room-dot"></div>
                       </div>
+                    </div>
+                    <!-- v50 : même escalier que #scale-checkpoint-wall-left (voir son commentaire
+                         complet là-bas) — markup identique, la version « mur droit » est obtenue en
+                         miroir par pur CSS (voir .scale-checkpoint-pillar-lit-left .scale-checkpoint-
+                         pillar-stairs dans style.css), pas en dupliquant le dessin. -->
+                    <div class="scale-checkpoint-pillar-stairs" aria-hidden="true">
+                      <div class="scale-checkpoint-pillar-stairs-shape"></div>
+                      <svg class="scale-checkpoint-pillar-stairs-rope" viewBox="0 0 100 40" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+                        <circle cx="10" cy="10" r="7" fill="#a8862e" />
+                        <circle cx="90" cy="26" r="7" fill="#a8862e" />
+                        <path d="M10 10 Q50 36 90 26" stroke="#b3231f" stroke-width="5" fill="none" />
+                      </svg>
                     </div>
                   </div>
                   <!-- Mur du fond de la 2e salle, jumeau de #scale-checkpoint-wall ci-dessus (même
