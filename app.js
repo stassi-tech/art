@@ -3395,7 +3395,15 @@ function updateCheckpointApproachVisual() {
     // à tickets s'en va avec lui »). Même remède ici : plus de disparition brutale, elle s'estompe et
     // rétrécit progressivement AVEC le personnage, comme si elle aussi restait derrière à mesure
     // qu'on avance — visible à checkpointApproach=0 (juste après le clic), invisible à l'arrivée.
-    turnstile.style.transform = `translateY(${tx * 0.6}px) scale(${1 - checkpointApproach * 0.3})`;
+    // BUG corrige v39 (retour de Stephane, capture a l'appui : la machine et le personnage
+    // "passent sous le parquet et disparaissent") : le translateY(tx*0.6) qui etait ici faisait
+    // monter la machine bien plus haut que ce que #scale-checkpoint-row (overflow:hidden, et
+    // dimensionnee au plus juste pour la machine/le personnage au repos) pouvait contenir : son
+    // bord superieur depassait le haut de la rangee et se faisait couper net, comme avale par le
+    // sol plus sombre de la salle juste au-dessus. Le retrecissement seul (scale, pieds ancres en
+    // bas via transform-origin) suffit deja a donner l'impression de s'eloigner ; plus de montee
+    // verticale ici, qui n'apportait rien et cassait le cadrage.
+    turnstile.style.transform = `scale(${1 - checkpointApproach * 0.3})`;
     turnstile.style.opacity = String(Math.max(0, 1 - checkpointApproach));
     turnstile.style.pointerEvents = checkpointApproach > 0.02 ? 'none' : '';
   }
@@ -3409,7 +3417,11 @@ function updateCheckpointApproachVisual() {
     // 6 fois plus petit que le mur en comparaison), d'où le « complètement minuscule » signalé par
     // Stéphane. Rétrécissement ramené à 0,8× (perte de 20% seulement) : on voit toujours qu'il
     // s'éloigne, sans qu'il disparaisse à côté d'un mur désormais bien plus raisonnable (1,8×).
-    sil.style.transform = `translateY(${tx * 0.6}px) scale(${1 - checkpointApproach * 0.2})`;
+    // BUG corrige v39 : meme correctif que sur la machine juste au-dessus (voir son commentaire) —
+    // ce translateY faisait deborder le personnage hors du haut de #scale-checkpoint-row, coupe net
+    // par son overflow:hidden, donnant l'impression qu'il "passe sous le sol et disparait". Le
+    // retrecissement seul suffit, plus de montee verticale.
+    sil.style.transform = `scale(${1 - checkpointApproach * 0.2})`;
   }
   if (room) room.style.transform = `scale(${1 + checkpointApproach * CHECKPOINT_APPROACH_ZOOM_MAX})`;
   if (checkpointApproach >= 1 && !checkpointApproachDone) {
@@ -3675,6 +3687,18 @@ function buildCheckpointTrack() {
   const wall1 = $('scale-checkpoint-wall');
   const wall2 = $('scale-checkpoint-wall-2');
   if (!room || !track || !pillarLeft || !pillarRight || !pillarEnd || !wall1 || !wall2) return 0;
+  // BUG corrigé v39 (retour de Stéphane, capture à l'appui : « le tableau est descendu dans le
+  // parquet, ça ne se rétablit pas, il faut fermer toute l'application ») : room.style.transform
+  // reste à sa dernière valeur de zoom d'approche (scale(1.8) par exemple) une fois arrivé au plan
+  // rapproché — rien ne le remet à scale(1) après coup (setupCheckpointApproach ne le fait qu'AU
+  // DÉBUT d'une nouvelle approche, pas au retour). Or buildCheckpointTrack mesure room via
+  // getBoundingClientRect() pour calculer TOUTE la mise en page (largeur des piliers, position et
+  // taille du tableau...) : si la salle est encore visuellement zoomée au moment de la mesure, ces
+  // calculs partent d'une taille fausse et RESTENT faux tant qu'on ne recharge pas la page (la
+  // prochaine mesure repart du même transform corrompu). On remet donc systématiquement le zoom à
+  // zéro ICI, avant de mesurer quoi que ce soit — quel que soit l'appelant (première entrée, retour
+  // sur cet écran, redimensionnement de la fenêtre).
+  room.style.transform = 'scale(1)';
   const roomRect = room.getBoundingClientRect();
   if (!roomRect.width || !roomRect.height) return 0; // pas encore mis en page (voir requestAnimationFrame à l'appel)
   const roomW = roomRect.width;
