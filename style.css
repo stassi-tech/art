@@ -934,60 +934,17 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    maintenant CE pilier repeint, pas un filet posé sur le bord du mur (v51, abandonné). La classe
    -hidden reste posée par updateCheckpointPillarFraming (app.js) par simple continuité de nom,
    mais n'a plus cet effet d'opacité : voir .scale-checkpoint-pillar-colorfill. */
-/* v50 (retour de Stéphane, 2 tours de suite : « on n'a pas l'impression d'être sur le mur de
-   gauche ni sur le mur de droite... il manque un élément visuel fort ») : un escalier rouge, vu DE
-   PROFIL, suggérant que chaque salle est « en contrebas » par rapport à un couloir plus haut.
-   v51 : dessiné en CSS pur (clip-path généré en JS), posé comme élément indépendant pour pouvoir
-   descendre jusqu'au cordon. Confirmé mauvais à l'usage par Stéphane une fois vu dans son vrai
-   navigateur (« cela ne va pas ») : à l'échelle réelle de l'écran, le clip-path généré donnait un
-   pic/triangle plein, pas un escalier reconnaissable.
-   v52 (retour de Stéphane : « est-ce que tu peux partir de mes montages Photoshop pour créer le
-   décor ? ») : fini le dessin en CSS pur. Chaque escalier est maintenant une vraie image, DÉCOUPÉE
-   directement dans SES propres montages Photoshop (voir assets/salle expo/escalier-*.png) — le calque rouge
-   isolé du reste du montage (fond/pilier retirés par transparence), pour réutiliser exactement son
-   dessin plutôt que d'essayer de le reproduire en formes CSS. Un pilier porte maintenant 2 images
-   distinctes (voir plus bas), affichées l'une ou l'autre selon checkpointFacing plutôt que
-   fusionnées en une seule forme qui devrait s'adapter aux 3 cas. */
-/* Escalier de COIN (visible sur le plan de face, mur du fond) : petit, callé au pied du pilier
-   pile à sa largeur (width:100%) — mesuré sur le montage Photoshop de Stéphane, l'escalier qu'il a
-   dessiné fait exactement la largeur du pilier, ni plus ni moins. bottom:0 + left:0 : ses propres
-   pixels sont déjà alignés au bord extérieur (gauche pour ce pilier, symétrique à droite pour
-   l'autre), pas besoin d'un 2e réglage ici. Caché dès qu'on se tourne de côté (voir
-   updateCheckpointPillarFraming) — c'est alors l'escalier « de côté » juste après qui prend le
-   relais. */
-.scale-checkpoint-pillar-corner-stairs { position:absolute; left:0; bottom:0; width:100%; z-index:3; pointer-events:none; display:block; }
-.scale-checkpoint-pillar-folded .scale-checkpoint-pillar-corner-stairs,
-.scale-checkpoint-pillar-hidden .scale-checkpoint-pillar-corner-stairs { display:none; }
-/* Escalier « DE CÔTÉ » (mur gauche/droit) : plein cadre sur TOUTE la surface du pilier (inset:0,
-   100%/100%, comme l'aplat de couleur juste après), avec object-fit:cover pour remplir ce cadre sans
-   déformer l'image — exactement comme un fond `background-size:cover`, mais en gardant un vrai <img>.
-   object-position:right center choisit QUELLE partie de l'image on garde visible une fois le rognage
-   fait : sur le montage « mur droit » de Stéphane, la marche la plus large/la plus proche est callée
-   contre le bord droit du fichier source, donc « right » garde bien cette marche-là visible et rogne
-   plutôt le haut de l'escalier (la partie qui « part » en perspective, moins importante).
-   Pourquoi pas top:0;right:0;height:100%;width:auto (le réglage v52 initial) : ce réglage laissait le
-   cadre de l'image déborder du pilier vers la GAUCHE (le pilier est plus étroit que l'image mise à la
-   hauteur du pilier), et ce débordement se faisait rogner par le overflow:hidden du pilier — jusque
-   là correct. Mais transform:scaleX(-1) (juste en dessous, pour le pilier gauche) inverse l'image À
-   L'INTÉRIEUR de son cadre SANS déplacer ce cadre : la marche large qui était callée au bord droit du
-   cadre se retrouvait donc visuellement projetée vers son bord GAUCHE — précisément la partie qui
-   débordait et se faisait rogner. Résultat vu à l'écran (v52_left_zoom.png) : seul un mince filet de
-   l'escalier restait visible, presque tout rogné. object-fit:cover n'a pas ce problème car le cadre
-   lui-même fait exactement 100%/100% du pilier (plus de débordement à rogner), donc le rognage se
-   fait DANS le calcul de object-position, pas après le miroir — le résultat reste correct une fois
-   inversé. Cette image garde son fond transparent : la texture grise striée du pilier reste visible
-   autour de l'escalier (comme sur le montage). Caché par défaut (de face) — révélé seulement par
-   updateCheckpointPillarFraming quand CE pilier devient le vrai coin de la salle qu'on regarde. */
-.scale-checkpoint-pillar-side-stairs { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:right center; z-index:4; pointer-events:none; display:none; }
-.scale-checkpoint-pillar-folded .scale-checkpoint-pillar-side-stairs { display:block; }
-/* Miroir pour le pilier GAUCHE (mur gauche) : même image que le pilier droit (un seul fichier,
-   assets/salle expo/escalier-lateral-droite.png, pas 2 dessins à maintenir), symétrisée en CSS. Le rognage
-   object-position:right est calculé sur l'image SOURCE avant transform (transform ne fait que peindre
-   le résultat déjà rogné à l'envers) — la marche large reste donc bien celle qu'on garde, simplement
-   affichée du côté gauche du pilier une fois inversée, exactement ce qu'il faut puisque
-   .scale-checkpoint-pillar-lit-right marque justement le pilier gauche (voir son commentaire plus
-   haut dans ce fichier). */
-.scale-checkpoint-pillar-lit-right .scale-checkpoint-pillar-side-stairs { transform:scaleX(-1); }
+/* v50→v52 : les piliers ont porté un escalier rouge (d'abord dessiné en CSS pur, puis découpé
+   dans les montages Photoshop de Stéphane) comme marqueur visuel de la limite de salle. v57
+   (retour de Stéphane, décision définitive et étendue à TOUS les plans de l'app : « on ne verra
+   plus d'escalier, on verra simplement un tapis rouge et ça permettra aux gens de se repérer ») :
+   Stéphane a abandonné l'escalier comme concept de décor (le personnage n'a pas à le monter/
+   descendre) au profit d'un simple tapis rouge, posé au sol — voir la bande #scale-checkpoint-floor
+   plus bas, qui porte maintenant ce tapis (::after) à la place de ces 2 images retirées ici. Les 2
+   <img class="scale-checkpoint-pillar-corner-stairs">/<img class="scale-checkpoint-pillar-side-
+   stairs"> et leurs règles ont été supprimés d'index.html et de ce fichier ; seul l'aplat de
+   couleur ci-dessous (qui n'a jamais représenté l'escalier, juste la « fausse perspective de mur
+   de retour » du pilier non regardé) reste inchangé. */
 /* v52 : l'aplat de couleur qui remplace la disparition (opacity:0) de l'AUTRE pilier — voir le
    commentaire d'ensemble plus haut. inset:0 (toute la surface du pilier, pas un simple filet) +
    z-index au-dessus de la texture grise ET de la niche, pour bien la recouvrir entièrement comme
@@ -1012,6 +969,31 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
   background-image:repeating-linear-gradient(45deg, transparent 0 12px, rgba(0,0,0,.14) 12px 14px),
                     repeating-linear-gradient(-45deg, transparent 0 12px, rgba(255,255,255,.10) 12px 14px);
   box-shadow:inset 0 8px 14px -6px rgba(0,0,0,.35);
+}
+/* v57 (retour de Stéphane, décision étendue à « tous les plans » : « on ne verra plus d'escalier,
+   on verra simplement un tapis rouge et ça permettra aux gens de se repérer ») : le tapis rouge qui
+   remplace ici les images d'escalier retirées des piliers (voir le commentaire d'ensemble plus haut,
+   au-dessus de .scale-checkpoint-pillar-colorfill). Posé en ::after plutôt qu'en nouvel élément
+   HTML : #scale-checkpoint-floor reste un simple <div> vide comme avant, aucune modification
+   d'index.html ni d'app.js nécessaire, et #scale-checkpoint-row (juste en dessous) garde EXACTEMENT
+   sa hauteur d'origine — un vrai nouvel enfant à cet endroit l'aurait changée, ce que Stéphane a
+   demandé très explicitement de ne jamais refaire (voir le long historique v40→v43 juste au-dessus
+   de #scale-checkpoint-row). #scale-checkpoint-floor est déjà position:absolute (règle partagée
+   .scale-checkpoint-wallpanel, #scale-checkpoint-floor plus haut) : ce ::after se positionne donc
+   par rapport à SA boîte à lui, pas à celle de #scale-checkpoint-room. bottom:0 le colle exactement
+   à la limite sol/rangée beige — l'endroit précis où l'escalier marquait autrefois cette même
+   limite. Hauteur (12%) choisie pour rester un band visuel net, proche de l'espace qu'occupait la
+   marche la plus large de l'ancien escalier, sans manger une part disproportionnée du parquet.
+   z-index non précisé (reste au niveau par défaut du sol, comme avant) : les piliers
+   (#scale-checkpoint-track, z-index:2) continuent donc à se peindre PAR-DESSUS ce tapis à leur
+   emplacement, exactement comme ils le faisaient déjà par-dessus le sol nu — le tapis traverse
+   ainsi visuellement toute la largeur de la salle, en passant derrière chaque pilier comme un vrai
+   tapis le ferait au sol. */
+#scale-checkpoint-floor::after {
+  content:''; position:absolute; left:0; right:0; bottom:0; height:12%;
+  background-color:#b72532;
+  background-image:linear-gradient(180deg, rgba(255,255,255,.12), transparent 40%, rgba(0,0,0,.18));
+  box-shadow:0 -2px 6px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.15);
 }
 /* v28 : la bande qui porte les œuvres du mur du fond (voir buildCheckpointTrack dans app.js) —
    salle 1, pilier, salle 2, l'une après l'autre — PLUS LARGE que la fenêtre qui la cache
