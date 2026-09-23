@@ -4405,8 +4405,16 @@ function buildContinuousWall() {
   const eyeLevelFromBottom = silhRect.height * 0.92;
   const wall = $('scale-wall');
   wall.innerHTML = '';
-  const rooms = [state.roomWalls || [[], [], [], []]]; // v24 : toujours une seule salle ici (voir commentaire ci-dessus)
-  const multiRoom = rooms.length > 1; // toujours faux désormais — laissé tel quel, ça ne coûte rien et ça évite de toucher au reste
+  // v56 : essai demandé par Stéphane (« on va faire un petit essai... moi je fais les décors, toi
+  // les animations » + « refaire l'animation du personnage qui se déplace latéralement de la salle
+  // 1 vers la salle 2 »). window.__testMultiRoomWalls, posé UNIQUEMENT par le test Playwright dédié
+  // (jamais par le vrai jeu), fait repasser `rooms` à plusieurs salles — exactement le mécanisme
+  // qu'utilisait déjà cette fonction avant v24 (voir commentaire plus haut), simplement réactivé de
+  // façon isolée le temps de cet essai plutôt que de revenir sur la décision de Stéphane de choisir
+  // la salle sur le plan d'ensemble. Tant que ce global n'est pas posé (tout le temps, en vrai jeu),
+  // `rooms` reste identique à avant : AUCUN changement de comportement pour un vrai joueur.
+  const rooms = window.__testMultiRoomWalls || [state.roomWalls || [[], [], [], []]];
+  const multiRoom = rooms.length > 1; // vrai seulement pendant l'essai (voir ci-dessus)
   const currentInfo = { note: '', hCm: 0 };
   let cursor = silhRect.right + 28; // marge de départ réservée à la silhouette, une seule fois (au
   // tout début de la bande) plutôt qu'à chaque mur : au milieu de la bande, la silhouette reste
@@ -4423,6 +4431,11 @@ function buildContinuousWall() {
       { key: 'back', label: `Mur du fond${roomSuffix}`, items: roomWalls[0] || [] },
       { key: 'right', label: `Mur droit${roomSuffix}`, items: roomWalls[1] || [] },
     ];
+    // v56 : point de départ du fond de mur de CETTE salle (voir window.__testRoomWallColors plus
+    // bas) — capturé ici, avant le premier mur, jamais modifié par un pilier/angle qui ne sont
+    // ajoutés qu'APRÈS le dernier mur de la salle.
+    const roomStartPx = cursor;
+    let roomEndPx = cursor;
     legs.forEach((leg, i) => {
       const startPx = cursor;
       const endPx = buildWallSegment(wall, leg.items, startPx, pxPerCm, maxPx, eyeLevelFromBottom, currentInfo);
@@ -4438,6 +4451,11 @@ function buildContinuousWall() {
       wallSegments.push({ key: leg.key, label: leg.label, startPx, widthPx, lengthM: legLengthM, roomIndex: state.currentRoomIndex });
       if (leg.key === 'back' && roomIndex === 0) firstRoomBackStartPx = startPx;
       cursor = startPx + widthPx;
+      // v56 : capturé ici (dernier mur de la salle), AVANT que appendStaticPillar n'avance encore
+      // le curseur juste en dessous — le fond de mur de cette salle doit s'arrêter pile avant le
+      // pilier, pas déborder dessus (voir montage de Stéphane : le pilier reste dans SA propre
+      // couleur grise, jamais dans celle d'une salle).
+      if (i === legs.length - 1) roomEndPx = cursor;
       const isLastLegOfLastRoom = roomIndex === rooms.length - 1 && i === legs.length - 1;
       if (!isLastLegOfLastRoom) {
         // Bug réel repéré en même temps que l'angle pivotant : la marche « gelait » visuellement
@@ -4448,6 +4466,21 @@ function buildContinuousWall() {
         cursor = (i < legs.length - 1) ? appendRotatingCorner(wall, cursor) : appendStaticPillar(wall, cursor);
       }
     });
+    // v56 : fond de mur de CETTE salle, coloré depuis le montage de Stéphane (voir
+    // window.__testRoomWallColors, jamais posé par le vrai jeu — sans lui, rien n'est créé ici,
+    // comportement identique à avant). Il défile AVEC le mur (position:absolute DANS #scale-wall,
+    // mêmes pixels que les œuvres/piliers) plutôt que de rester un fond d'écran fixe : c'est ce qui
+    // permet à la couleur de changer réellement quand on franchit le pilier vers la salle suivante,
+    // ce que #scale-facade (fixe, un seul fond pour toute la visite) ne pourrait pas faire seul.
+    // Inséré en premier enfant (insertBefore) pour rester sous les œuvres/piliers/angles déjà posés.
+    if (window.__testRoomWallColors && window.__testRoomWallColors[roomIndex]) {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'scale-wall-test-room-backdrop';
+      backdrop.style.left = `${roomStartPx}px`;
+      backdrop.style.width = `${Math.max(0, roomEndPx - roomStartPx)}px`;
+      backdrop.style.backgroundColor = window.__testRoomWallColors[roomIndex];
+      wall.insertBefore(backdrop, wall.firstChild);
+    }
   });
   const spacer = document.createElement('div');
   spacer.style.cssText = `position:absolute;left:${cursor}px;width:1px;height:1px;`;

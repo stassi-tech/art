@@ -1446,3 +1446,70 @@ body.has-other-works .correction-label { font-size:.76rem; }
   .other-works-panel-list { grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; }
   .other-works-panel-list .other-work-card-big img { max-height:140px; }
 }
+
+/* =========================================================================================
+   v56 : essai demandé par Stéphane (« on va faire un petit essai... moi je fais les décors, toi
+   les animations » — décor envoyé : salle-1-2.jpg, 2 salles + pilier fixe entre les deux, mur/sol/
+   bande rouge/bande beige/cordon). Tout ce bloc est scoped sous body.stephane-test-decor, posée
+   UNIQUEMENT par le test Playwright dédié à cet essai — jamais par le vrai jeu. Sans cette classe,
+   ces règles n'ont RIGOUREUSEMENT AUCUN EFFET : #scale-floor/#scale-wall-line/#scale-floor-dot/
+   #scale-silhouette gardent exactement leur apparence et leurs proportions actuelles pour un vrai
+   joueur. Couleurs et proportions mesurées directement, pixel par pixel, sur le fichier de Stéphane
+   (script Python/PIL) plutôt qu'estimées à l'œil :
+   Sur son fichier : mur 0-42,44 % de la hauteur, sol tan 42,44-69 %, bande rouge 69-77,22 %, bande
+   beige 77,22-100 % — soit une zone de sol (sol+rouge+beige) qui occupe 57,56 % de tout l'écran.
+   Reprendre cette proportion telle quelle aurait réduit le mur (donc les tableaux) à moins de la
+   moitié de l'écran ; le mur est ici conservé à 57,56 % (comme sur son fichier, mais appliqué à la
+   zone du HAUT plutôt que du bas), ce qui laisse une zone de sol de 42,44 % — les proportions
+   RELATIVES entre sol/bande rouge/bande beige, elles, restent identiques à son fichier.
+   Concrètement, ci-dessous, la zone de sol (mur exclu) est redécoupée aux MÊMES proportions
+   relatives que sur son fichier (sol 46,2 % / bande rouge 14,3 % / bande beige 39,6 % de cette
+   zone), appliquée à une zone de sol de 42,44vh (au lieu de ses 57,56vh d'origine) pour ne pas
+   réduire le mur à moins de la moitié de l'écran. */
+body.stephane-test-decor #scale-floor, body.stephane-test-decor #scale-wall-line { display:none; }
+#scale-wall-test-floor, #scale-wall-test-stripe, #scale-wall-test-beige, #scale-wall-test-rope { display:none; }
+body.stephane-test-decor #scale-wall-test-floor {
+  display:block; position:fixed; left:0; right:0; bottom:22.86vh; height:19.59vh; z-index:1;
+  background:repeating-linear-gradient(100deg, #ddd0b4 0 38px, #d7ccb0 38px 40px), linear-gradient(#e0d5ba, #d7ccb0);
+  box-shadow:0 -3px 8px rgba(0,0,0,.2);
+}
+body.stephane-test-decor #scale-wall-test-stripe {
+  display:block; position:fixed; left:0; right:0; bottom:16.8vh; height:6.06vh; z-index:1;
+  background:#b72532; box-shadow:0 -2px 6px rgba(0,0,0,.25), 0 2px 6px rgba(0,0,0,.25);
+}
+body.stephane-test-decor #scale-wall-test-beige {
+  display:block; position:fixed; left:0; right:0; bottom:0; height:16.8vh; z-index:1;
+  background:#e8e4d8;
+}
+/* Cordon repris tel quel de #scale-rope-barrier (même viewBox, mêmes potelets dorés espacés
+   régulièrement) — juste un id distinct pour ne jamais interférer avec l'original de l'écran
+   d'arrivée. z-index:2 (sous la silhouette ET le point rouge, voir plus bas) : sur le montage, le
+   personnage marche AU-DESSUS du cordon (entre lui et la bande rouge), pas derrière. Hauteur (9vh)
+   choisie pour laisser, au-dessus, encore de la bande beige libre où le personnage se tient. */
+body.stephane-test-decor #scale-wall-test-rope {
+  display:block; position:fixed; left:0; right:0; bottom:0; height:9vh; z-index:2; pointer-events:none;
+}
+/* #scale-wall repasse devant (z-index) ce nouveau sol : le pilier et les œuvres qu'il contient
+   doivent rester visibles par-dessus, exactement comme sur le montage où le pilier traverse mur +
+   sol + bande rouge + bande beige d'un seul tenant, sans jamais être coupé par elles. */
+body.stephane-test-decor #scale-wall { z-index:4; }
+/* Personnage repositionné pour marcher DANS la bande beige, entre le cordon et la bande rouge —
+   retour de Stéphane : « il marche... entre le cordon rouge et le tapis rouge sur la bande beige
+   clair ». Proportions différentes de l'écran normal (voir plus haut), d'où un repositionnement
+   dédié ici plutôt que de réutiliser bottom:calc(16vh - 14px) tel quel. Pieds posés à 9vh (juste au
+   sommet du cordon) : le personnage reste bien devant lui, jamais derrière/dedans. */
+body.stephane-test-decor #scale-floor-dot { bottom:calc(16.8vh - 14px); }
+body.stephane-test-decor #scale-silhouette { bottom:9vh; }
+/* Fond de mur par salle (voir buildContinuousWall dans app.js, window.__testRoomWallColors) : DANS
+   #scale-wall, donc défile avec les œuvres/le pilier — c'est ce qui permet à la couleur de
+   réellement changer en passant le pilier, plutôt qu'un fond d'écran fixe unique pour toute la
+   visite (voir #scale-facade, qui reste inchangé et continue de gérer la vraie ambiance du jeu). */
+.scale-wall-test-room-backdrop { position:absolute; top:0; height:57.56vh; z-index:0; pointer-events:none; }
+/* Pilier : même geste que l'original (.scale-wall-pillar, cannelures + arête claire), mais teinté
+   dans le bleu-gris exact mesuré sur le pilier du montage de Stéphane (plutôt que le brun-gris
+   utilisé ailleurs) — sa propre couleur, jamais celle d'une salle voisine. */
+body.stephane-test-decor .scale-wall-pillar {
+  background-color:#7f93a5;
+  background-image: repeating-linear-gradient(180deg, rgba(0,0,0,.2) 0 3px, transparent 3px 15px),
+                     linear-gradient(90deg, rgba(0,0,0,.45), rgba(255,255,255,.28) 50%, rgba(0,0,0,.45));
+}

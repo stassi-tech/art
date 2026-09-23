@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=202" />
+    <link rel="stylesheet" href="style.css?v=203" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 55</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 56</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1428,6 +1428,30 @@
                  buildContinuousWall dans app.js). -->
             <div id="scale-blur-veil" class="hidden"></div>
             <div id="scale-floor" aria-hidden="true"></div>
+            <!-- v56 : essai décor Stéphane (voir style.css, tout scoped sous body.stephane-test-decor
+                 — posée uniquement par le test Playwright dédié, jamais en vrai jeu, donc ces 4
+                 éléments restent display:none et invisibles pour un vrai joueur). Sol/bande rouge/
+                 bande beige/cordon reconstruits depuis son propre montage (salle-1-2.jpg). -->
+            <div id="scale-wall-test-floor" aria-hidden="true"></div>
+            <div id="scale-wall-test-stripe" aria-hidden="true"></div>
+            <div id="scale-wall-test-beige" aria-hidden="true"></div>
+            <svg id="scale-wall-test-rope" viewBox="0 0 800 90" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M20 30 Q 75 62 130 30 Q 185 62 240 30 Q 295 62 350 30 Q 405 62 460 30 Q 515 62 570 30 Q 625 62 680 30 Q 735 62 780 30" fill="none" stroke="#7a0f18" stroke-width="7" stroke-linecap="round"/>
+              <path d="M20 30 Q 75 60 130 30 Q 185 60 240 30 Q 295 60 350 30 Q 405 60 460 30 Q 515 60 570 30 Q 625 60 680 30 Q 735 60 780 30" fill="none" stroke="#c81f2c" stroke-width="4" stroke-linecap="round"/>
+              <g fill="url(#scale-wall-test-rope-post-gradient)">
+                <circle cx="20" cy="18" r="9"/><circle cx="130" cy="18" r="9"/><circle cx="240" cy="18" r="9"/><circle cx="350" cy="18" r="9"/>
+                <circle cx="460" cy="18" r="9"/><circle cx="570" cy="18" r="9"/><circle cx="680" cy="18" r="9"/><circle cx="780" cy="18" r="9"/>
+              </g>
+              <g stroke="#8a6a1a" stroke-width="5">
+                <line x1="20" y1="18" x2="20" y2="80"/><line x1="130" y1="18" x2="130" y2="80"/><line x1="240" y1="18" x2="240" y2="80"/><line x1="350" y1="18" x2="350" y2="80"/>
+                <line x1="460" y1="18" x2="460" y2="80"/><line x1="570" y1="18" x2="570" y2="80"/><line x1="680" y1="18" x2="680" y2="80"/><line x1="780" y1="18" x2="780" y2="80"/>
+              </g>
+              <defs>
+                <radialGradient id="scale-wall-test-rope-post-gradient" cx="35%" cy="30%">
+                  <stop offset="0%" stop-color="#f0d878"/><stop offset="100%" stop-color="#b5902a"/>
+                </radialGradient>
+              </defs>
+            </svg>
             <!-- Point rouge dupliqué, au ras du sol, grand format — mêmes gestes que le petit
                  point de l'écran de contrôle (glisser = avancer/reculer, ou changer de mur), mais
                  bien plus facile à manier dans un grand espace, et il montre où l'on se trouve
@@ -1720,6 +1744,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=287"></script>
+    <script src="app.js?v=288"></script>
   </body>
 </html>
