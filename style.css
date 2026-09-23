@@ -789,7 +789,16 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    updateCheckpointApproachVisual dans app.js) pendant qu'on avance vers le mur du fond, retour de
    Stéphane : « on voit le tableau du fond s'agrandir progressivement comme un effet zoom ». Sans ce
    overflow:hidden ici, la salle agrandie déborderait visuellement par-dessus #scale-checkpoint-row
-   (la machine à tickets, le cordon) en dessous, au lieu de rester cadrée dans son propre écran. */
+   (la machine à tickets, le cordon) en dessous, au lieu de rester cadrée dans son propre écran.
+   BUG corrigé v38 (retour de Stéphane, capture à l'appui : « le personnage disparaît progressivement
+   dans le sol ») : cet overflow:hidden ici NE SUFFISAIT PAS. Il ne clippe que ce qui dépasse des
+   bords de #scale-checkpoint LUI-MÊME (tout l'écran) — pas les bords de #scale-checkpoint-room, qui
+   grossit AVEC son propre transform:scale(). Résultat : le sol de la salle (#scale-checkpoint-floor,
+   à l'intérieur de #scale-checkpoint-room) grossissait bien au-delà de son propre cadre et venait
+   littéralement peindre PAR-DESSUS #scale-checkpoint-row en dessous (mesuré : jusqu'à 300px de trop
+   à l'arrivée) — exactement la marée de « sol » qui semblait avaler le personnage. Le vrai correctif
+   est ci-dessous, sur #scale-checkpoint-row : lui donner un fond opaque plutôt que transparent, pour
+   qu'il masque ce débordement au lieu de le laisser transparaître derrière le personnage. */
 #scale-checkpoint { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:1vh; background:#e8e4d8; padding:20px; padding-top:4vh; overflow:hidden; }
 /* Depuis l'entrée, on ne voit que le mur du fond, bien en face — comme au théâtre, un décor de
    fond plat. Les deux murs latéraux ne sont volontairement PAS montrés en perspective : essayer de
@@ -911,7 +920,14 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    loin vers la gauche pendant la marche ; sans ce overflow:hidden, elle resterait visible hors de sa
    rangée (voire hors de l'écran, provoquant une barre de défilement horizontale indésirable) au lieu
    de disparaître au bord du cadre comme le pilier disparaît au bord de #scale-checkpoint-room. */
-#scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; overflow:hidden; }
+/* BUG corrigé v38 : fond opaque ajouté ici (identique au fond de #scale-checkpoint juste au-dessus,
+   pour une continuité visuelle parfaite) — voir le commentaire complet sur #scale-checkpoint plus
+   haut. Sans ce fond, cette rangée était transparente, donc rien n'empêchait le sol agrandi de
+   #scale-checkpoint-room (son voisin du dessus, transformé par le zoom d'approche) de déborder et de
+   se peindre EN DESSOUS d'elle en transparence, juste derrière le personnage. Comme #scale-checkpoint-
+   row vient APRÈS #scale-checkpoint-room dans le HTML, elle se peint déjà par-dessus dans l'ordre
+   normal ; il ne lui manquait qu'un fond opaque pour vraiment cacher ce qui déborde derrière elle. */
+#scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; overflow:hidden; background:#e8e4d8; }
 /* transform-origin bas-centre (pas le centre par défaut) : pendant l'approche du mur du fond (voir
    updateCheckpointApproachVisual dans app.js), le personnage rétrécit et remonte légèrement pour
    suggérer qu'il s'éloigne vers le fond — avec cette origine, ses pieds restent ancrés au sol

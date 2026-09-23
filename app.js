@@ -3285,6 +3285,11 @@ function setupCheckpointWalk() {
     // chaque nouvelle entrée sur cet écran (retour à l'accueil puis on repasse la porte). On la
     // réaffiche donc ici, à chaque entrée fraîche sur l'écran du contrôle des billets.
     turnstileReset.classList.remove('hidden');
+    // v38 : la machine s'estompe maintenant progressivement (opacity) pendant l'avancée plutôt que
+    // de disparaître d'un coup (voir updateCheckpointApproachVisual) — même chose à remettre à zéro
+    // ici pour la même raison que ci-dessus, sinon elle resterait invisible (opacity encore basse
+    // d'un passage précédent) à la prochaine entrée sur cet écran.
+    turnstileReset.style.opacity = '';
   }
   $('scale-checkpoint-approach-dot')?.classList.add('hidden');
   const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
@@ -3378,8 +3383,22 @@ function updateCheckpointApproachVisual() {
   const dot = $('scale-checkpoint-approach-dot');
   const sil = $('scale-checkpoint-silhouette');
   const room = $('scale-checkpoint-room');
+  const turnstile = $('scale-turnstile');
   const tx = -checkpointApproach * checkpointApproachRangePx; // le point ET le personnage montent
   if (dot) dot.style.transform = `translateY(${tx}px)`;
+  if (turnstile) {
+    // BUG corrigé v38 (retour de Stéphane : « dès qu'on appuie sur l'entrée de la machine à
+    // tickets, elle disparaît, elle se volatilise ») : setupCheckpointApproach la cachait d'un coup
+    // avec classList.add('hidden') dès le clic sur Ticket, avant même le premier geste de glissement
+    // — exactement le même défaut de « disparition d'un coup » déjà corrigé une fois pour la marche
+    // latérale (voir updateCheckpointWalkVisual plus haut, « le pilier gauche s'en va et la machine
+    // à tickets s'en va avec lui »). Même remède ici : plus de disparition brutale, elle s'estompe et
+    // rétrécit progressivement AVEC le personnage, comme si elle aussi restait derrière à mesure
+    // qu'on avance — visible à checkpointApproach=0 (juste après le clic), invisible à l'arrivée.
+    turnstile.style.transform = `translateY(${tx * 0.6}px) scale(${1 - checkpointApproach * 0.3})`;
+    turnstile.style.opacity = String(Math.max(0, 1 - checkpointApproach));
+    turnstile.style.pointerEvents = checkpointApproach > 0.02 ? 'none' : '';
+  }
   if (sil) {
     // Rétrécit et remonte légèrement (voir transform-origin:50% 100% dans style.css, pieds ancrés
     // au sol) pour suggérer qu'il s'éloigne vers le fond, en même temps que la salle grossit derrière
@@ -3430,7 +3449,15 @@ function setupCheckpointApproach() {
   stopCheckpointApproaching();
   if (room) room.style.transform = 'scale(1)';
   sil.style.transform = 'translateX(0px)';
-  $('scale-turnstile')?.classList.add('hidden');
+  // BUG corrigé v38 : ne masque plus la machine avec classList.add('hidden') dès le clic — elle
+  // reste visible et normale à approach=0, puis s'estompe progressivement (voir la nouvelle logique
+  // dans updateCheckpointApproachVisual, appelée juste plus bas) au lieu de disparaître d'un coup.
+  const turnstileStart = $('scale-turnstile');
+  if (turnstileStart) {
+    turnstileStart.classList.remove('hidden');
+    turnstileStart.style.opacity = '1';
+    turnstileStart.style.transform = 'translateY(0px) scale(1)';
+  }
   $('scale-checkpoint-floor-dot')?.classList.add('hidden');
   dot.classList.remove('hidden');
   const rowRect = row.getBoundingClientRect();
