@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=194" />
+    <link rel="stylesheet" href="style.css?v=195" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 44</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 45</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1338,6 +1338,21 @@
                   </defs>
                 </svg>
               </div>
+              <!-- v45 (retour de Stéphane, après le v44 : « le personnage n'avance absolument pas et il
+                   rétrécit sur place dans le couloir... il ne passe pas du tout dans la salle ») :
+                   COPIE du personnage ci-dessus, identique trait pour trait, mais qui ne vit PAS dans
+                   #scale-checkpoint-row — donc jamais concernée par son overflow:hidden (nécessaire par
+                   ailleurs pour cacher la machine à tickets pendant la marche latérale). C'est ELLE,
+                   position:fixed et cachée par défaut, qui prend le relais du personnage normal pendant
+                   la seule avancée vers le mur (voir setupCheckpointApproach/updateCheckpointApproachVisual
+                   dans app.js) : le vrai personnage (ci-dessus, dans la rangée) devient invisible
+                   (visibility:hidden, garde sa place dans la mise en page pour ne RIEN changer aux
+                   proportions au repos) pendant que cette copie, positionnée au pixel près sur son
+                   ancienne place à l'écran, peut alors monter librement, sans plus aucun plafond de
+                   quelques dizaines de pixels — toute la hauteur de la salle devient disponible. -->
+              <svg id="scale-checkpoint-approach-silhouette" class="hidden" viewBox="0 0 100 340" aria-hidden="true">
+                <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+              </svg>
             </div>
             <!-- Voile de transition floue entre les étapes. Le passage d'une salle à l'autre,
                  lui, ne l'utilise plus : il se fait en marchant, sans coupure de décor (voir
@@ -1636,6 +1651,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=280"></script>
+    <script src="app.js?v=281"></script>
   </body>
 </html>

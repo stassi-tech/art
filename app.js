@@ -3268,6 +3268,12 @@ function setupCheckpointWalk() {
   // fournie), le personnage restait affiché décalé vers la droite puisque ce cas sortait avant
   // d'atteindre la remise à zéro.
   sil.style.transform = 'translateX(0px)';
+  // v45 : annule ici un éventuel échange laissé par une avancée précédente (voir
+  // setupCheckpointApproach) — le vrai personnage redevient visible, sa copie
+  // #scale-checkpoint-approach-silhouette redevient cachée, à CHAQUE entrée fraîche sur cet écran
+  // (retour à l'accueil, ou nouvelle recherche moins fournie qui repasse par ici).
+  sil.style.visibility = '';
+  $('scale-checkpoint-approach-silhouette')?.classList.add('hidden');
   dot.style.transform = 'translateX(0px)';
   checkpointProgress = 0;
   // Remet aussi la machine à tickets à sa position/cliquabilité de départ (voir
@@ -3359,6 +3365,10 @@ function setupCheckpointWalk() {
 // pour le dernier raccord vers le système d'affichage différent du plan rapproché.
 let checkpointApproach = 0; // 0 = vient de valider son ticket, 1 = arrivé tout contre le mur du fond
 let checkpointApproachRangePx = 200; // distance de glissement du point, mesurée à chaque entrée
+// v45 : distance RÉELLE de déplacement du personnage (pas seulement du petit point qu'on tire),
+// mesurée à chaque entrée dans setupCheckpointApproach — voir le commentaire complet là-bas et sur
+// #scale-checkpoint-approach-silhouette dans index.html/style.css.
+let checkpointApproachTravelPx = 200;
 let checkpointApproachDirection = 0;
 let checkpointApproachAnimationId = null;
 let checkpointApproachDone = false; // garde-fou : ne déclenche qu'UNE fois la suite une fois à 1
@@ -3392,7 +3402,7 @@ function stopCheckpointApproaching() {
 }
 function updateCheckpointApproachVisual() {
   const dot = $('scale-checkpoint-approach-dot');
-  const sil = $('scale-checkpoint-silhouette');
+  const sil = $('scale-checkpoint-approach-silhouette');
   const track = $('scale-checkpoint-track');
   const turnstile = $('scale-turnstile');
   // v43 : seul le POINT (poignée de glissement) monte encore avec tx — le personnage lui-même n'a
@@ -3477,19 +3487,21 @@ function updateCheckpointApproachVisual() {
     // bougent et ne rétrécissent plus JAMAIS — plus aucune illusion concurrente (l'ex-« bande qui
     // mange ») pour brouiller la lecture du seul mouvement qui reste, celui du mur du fond qui
     // s'approche.
-    sil.style.transform = `scale(${1 - checkpointApproach * 0.45})`;
-    // BUG corrigé v44 (retour de Stéphane : « le personnage ne bouge absolument pas... c'est la
-    // salle qui passe sous le couloir... il faut que les deux bandes restent fixes et que ce soit
-    // le personnage qui se déplace ») : depuis que le mur du fond (#scale-checkpoint-track,
-    // ci-dessous) ne zoome plus JAMAIS, ce rétrécissement du personnage est désormais le SEUL indice
-    // visuel de l'avancée — 0,12 (perte de 12%) était calibré à une époque où le zoom du mur portait
-    // le plus gros de l'effet ; devenu bien trop faible tout seul. Monté à 0,45 (perte de 45% à
-    // l'arrivée) pour que ce soit sans ambiguïté le personnage qui s'éloigne, et lui seul — toujours
-    // ancré par les pieds (transform-origin:50% 100%, voir style.css), donc toujours sans le moindre
-    // risque de dépassement puisque rétrécir depuis le bas ne fait que libérer de la hauteur, jamais
-    // en demander. Comme le mur ne grossit plus à côté, la proportion personnage/tableau se corrige
-    // quand même toute seule : le personnage devenant plus petit, le tableau (resté à sa taille
-    // réelle, fixe) paraît mécaniquement plus grand par comparaison.
+    // BUG corrigé v45 (retour de Stéphane, après le v44 : « le point rouge avance un tout petit peu,
+    // mais le personnage n'avance absolument pas et il rétrécit sur place dans le couloir... il ne
+    // passe pas du tout dans la salle ») : le rétrécissement seul (v44) ne suffisait pas — Stéphane
+    // veut un vrai DÉPLACEMENT du personnage vers la salle, pas juste un rétrécissement sur place.
+    // Ce `sil` n'est plus le personnage normal (resté invisible, immobile, dans #scale-checkpoint-row
+    // pour ne rien changer à ses proportions au repos) mais sa copie #scale-checkpoint-approach-
+    // silhouette, positionnée en JS (setupCheckpointApproach) exactement sur son ancienne place à
+    // l'écran, mais en position:fixed : plus aucune rangée ne la clippe, elle peut donc monter d'une
+    // distance RÉELLE (checkpointApproachTravelPx, calculée à chaque entrée jusqu'au bas de la salle)
+    // au lieu des quelques dizaines de pixels que #scale-checkpoint-row pouvait contenir. translateY
+    // ÉCRIT AVANT scale dans la liste : la translation reste donc un déplacement écran fixe en
+    // pixels, jamais réduit par le rétrécissement qui l'accompagne (même logique déjà éprouvée sur
+    // le petit point rouge juste au-dessus).
+    const travelTy = -checkpointApproach * checkpointApproachTravelPx;
+    sil.style.transform = `translateY(${travelTy}px) scale(${1 - checkpointApproach * 0.45})`;
   }
   // BUG corrigé v42 (retour répété de Stéphane, trois fois : « la bande beige claire qui avance et
   // qui mange sur la bande beige foncée »... « il faut que le couloir reste au niveau du couloir et
@@ -3539,10 +3551,12 @@ function startCheckpointApproaching(direction) {
 // fait), affiche ce nouveau point d'avancée aux pieds du personnage.
 function setupCheckpointApproach() {
   const dot = $('scale-checkpoint-approach-dot');
-  const sil = $('scale-checkpoint-silhouette');
+  const sil = $('scale-checkpoint-silhouette'); // le VRAI personnage, resté dans la rangée
+  const approachSil = $('scale-checkpoint-approach-silhouette'); // sa copie, voir index.html/style.css
   const row = $('scale-checkpoint-row');
+  const room = $('scale-checkpoint-room');
   const track = $('scale-checkpoint-track');
-  if (!dot || !sil || !row) return;
+  if (!dot || !sil || !approachSil || !row || !room) return;
   checkpointApproach = 0;
   checkpointApproachDone = false;
   stopCheckpointApproaching();
@@ -3567,13 +3581,41 @@ function setupCheckpointApproach() {
   $('scale-checkpoint-floor-dot')?.classList.add('hidden');
   dot.classList.remove('hidden');
   const rowRect = row.getBoundingClientRect();
-  const silRect = sil.getBoundingClientRect();
+  const silRect = sil.getBoundingClientRect(); // mesuré ICI, tant que sil est encore visible/en flux normal
+  const roomRect = room.getBoundingClientRect();
   if (!rowRect.width || !silRect.width) return;
   dot.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 14}px`;
   dot.style.top = `${silRect.bottom - rowRect.top - 20}px`;
   // Distance de glissement disponible avant le haut de la rangée (avec une petite marge) — même
-  // logique que checkpointWalkRangePx pour la marche latérale, mais verticale ici.
+  // logique que checkpointWalkRangePx pour la marche latérale, mais verticale ici. Reste purement
+  // la course du petit POINT rouge (poignée), qui n'a pas besoin de plus de place que ça.
   checkpointApproachRangePx = Math.max(120, rowRect.height - 40);
+  // BUG corrigé v45 (retour de Stéphane : « le personnage n'avance absolument pas et il rétrécit
+  // sur place dans le couloir... il ne passe pas du tout dans la salle ») : on bascule ICI sur la
+  // copie #scale-checkpoint-approach-silhouette (voir son commentaire complet dans index.html) —
+  // positionnée en JS, au pixel près, sur la place actuelle du VRAI personnage (aucun saut visuel),
+  // puis rendue visible pendant que le vrai personnage devient invisible (visibility:hidden — il
+  // garde sa place dans #scale-checkpoint-row pour ne RIEN changer aux proportions de repos de la
+  // rangée, seulement son rendu disparaît).
+  // BUG corrigé v45 (repéré aux mesures Playwright, pas encore signalé par Stéphane) : un premier
+  // calcul se basait sur silRect.top (le HAUT/la tête), en supposant qu'un translateY(-N) déplace le
+  // haut de la boîte de N px vers le haut — faux ici, puisque le rétrécissement (scale, ancré en
+  // bas via transform-origin:50% 100%) tire aussi le haut vers le BAS d'autant de pixels que la
+  // hauteur perdue, en même temps que la translation le tire vers le haut : les deux se soustraient
+  // presque entièrement au niveau de la tête (mesuré : ~16px de mouvement net alors que
+  // translateY(-101px) était appliqué). Le vrai point qui se déplace de EXACTEMENT translateY, sans
+  // interférence du rétrécissement, c'est l'ANCRE elle-même (transform-origin, donc les PIEDS,
+  // silRect.bottom) — c'est elle qu'il faut viser pour calculer la distance à parcourir jusqu'au bas
+  // de la salle (roomRect.bottom), avec 40px de recouvrement en plus pour qu'il finisse visiblement
+  // à cheval sur le sol plutôt que juste dessous — c'est CE dépassement qui doit se lire sans
+  // ambiguïté comme « il entre dans la salle ». Cette distance (mesurée aux pieds) peut faire
+  // plusieurs centaines de pixels, sans aucun risque de dépassement puisque plus aucune rangée ne
+  // clippe la copie (voir #scale-checkpoint-approach-silhouette, position:fixed).
+  approachSil.style.left = `${silRect.left}px`;
+  approachSil.style.top = `${silRect.top}px`;
+  checkpointApproachTravelPx = Math.max(80, silRect.bottom - roomRect.bottom + 40);
+  sil.style.visibility = 'hidden';
+  approachSil.classList.remove('hidden');
   updateCheckpointApproachVisual();
 }
 // Même geste que les autres points de l'appli (tap = avance/arrête, glissement = position directe

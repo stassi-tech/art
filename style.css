@@ -972,6 +972,23 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    pendant le rétrécissement au lieu de sembler s'enfoncer dedans (ce qui arriverait avec le centre
    par défaut, 50% 50%). */
 #scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; }
+/* v45 (retour de Stéphane : « il ne passe pas du tout dans la salle ») : copie visuelle du
+   personnage ci-dessus, à l'identique (même height, couleur, ombre), mais position:fixed — donc
+   jamais concernée par l'overflow:hidden de #scale-checkpoint-row (voir le commentaire complet dans
+   index.html et dans setupCheckpointApproach/updateCheckpointApproachVisual dans app.js). left/top
+   posés en JS au pixel près sur la position de repos du VRAI personnage au moment du clic sur
+   Ticket (aucun saut visuel à l'échange) ; margin:0 pour que ce left/top ne soit pas faussé par une
+   marge héritée. z-index élevé pour rester devant la salle (mur du fond z-index:2, sol sans
+   z-index) quelle que soit sa position une fois qu'il commence à y « entrer ». Même transform-origin
+   bas-centre que l'original, pour la même raison (pieds ancrés pendant le rétrécissement). */
+/* BUG corrigé v45 (repéré aux mesures Playwright : le point rouge ne réagissait plus du tout au
+   glissement une fois cette copie ajoutée) : pointer-events:none ajouté — sans ça, cette copie
+   (aria-hidden mais dont la boîte SVG entière, y compris ses zones transparentes, reste normalement
+   cliquable) passait, avec son z-index:50, PAR-DESSUS #scale-checkpoint-approach-dot (z-index:6,
+   juste à côté puisqu'il est positionné aux pieds du personnage) et interceptait tous les
+   événements de pointeur destinés au point, qui ne recevait donc plus jamais aucun mouvement. Cette
+   copie n'a de toute façon jamais eu besoin d'être cliquable, elle n'est que visuelle. */
+#scale-checkpoint-approach-silhouette { position:fixed; height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; margin:0; z-index:50; pointer-events:none; }
 /* Cordon rouge à 8 potelets, tracé en un seul SVG continu, vraies vagues entre chaque potelet
    doré — étendu sur toute la largeur disponible (plus de max-width, pour vraiment aller d'un
    bout à l'autre de la pièce, comme un vrai cordon de musée). */
