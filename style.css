@@ -947,13 +947,20 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    machine montait ELLE AUSSI (un peu moins vite que le personnage, mais quand même) : deux éléments
    qui montent ensemble se lisent comme une seule bande qui glisse, pas comme un personnage qui
    marche devant un décor fixe. La machine ne reçoit plus AUCUN mouvement (voir
-   updateCheckpointApproachVisual dans app.js — « il faut la fixer une fois pour toutes, il faut
-   qu'elle ne bouge pas ») : elle n'a donc plus besoin de sa propre réserve verticale. Tout le
-   padding-top (porté à 150px — 110px mesurés insuffisants de justesse à l'arrivée, ~13px de
-   dépassement mesuré par Playwright, donc marge supplémentaire ajoutée) sert maintenant
-   exclusivement au personnage, qui peut remonter nettement plus (voir son coefficient dans
-   app.js) sans jamais toucher le bord de l'overflow:hidden. */
-#scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; padding-top:150px; overflow:hidden; background:#e8e4d8; }
+   updateCheckpointApproachVisual dans app.js) — porté à 150px pour donner tout cet espace au seul
+   personnage.
+   BUG corrigé v43 (retour de Stéphane, capture à l'appui de la photo de référence d'origine : « la
+   bande beige claire est beaucoup trop importante, tu as modifié les proportions... il faut
+   repartir de là ») : ce padding-top agrandissait la rangée EN PERMANENCE, même au repos, avant
+   même tout clic sur Ticket — un vrai changement de proportions par rapport à la mise en page
+   d'origine, pas seulement un effet pendant l'avancée. Retiré entièrement : cette rangée retrouve
+   exactement sa hauteur d'origine (celle du plus grand de ses deux enfants, machine ou personnage,
+   sans aucun padding ajouté). Le personnage garde un peu de marge de manœuvre pour se détacher
+   (translateY réduit en conséquence, voir updateCheckpointApproachVisual dans app.js) — plus modeste
+   qu'en v41/v42, mais réparti sur une salle qui, elle, ne bouge et ne rétrécit plus JAMAIS depuis le
+   v42 (le sol, la rangée, tout le cadrage du bas restent fixes ; seul le mur du fond zoome), donc ce
+   mouvement plus modeste se lit sans concurrence, sans qu'il faille regonfler la rangée pour ça. */
+#scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; overflow:hidden; background:#e8e4d8; }
 /* transform-origin bas-centre (pas le centre par défaut) : pendant l'approche du mur du fond (voir
    updateCheckpointApproachVisual dans app.js), le personnage rétrécit et remonte légèrement pour
    suggérer qu'il s'éloigne vers le fond — avec cette origine, ses pieds restent ancrés au sol

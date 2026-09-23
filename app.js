@@ -3384,7 +3384,10 @@ function updateCheckpointApproachVisual() {
   const sil = $('scale-checkpoint-silhouette');
   const track = $('scale-checkpoint-track');
   const turnstile = $('scale-turnstile');
-  const tx = -checkpointApproach * checkpointApproachRangePx; // le point ET le personnage montent
+  // v43 : seul le POINT (poignée de glissement) monte encore avec tx — le personnage lui-même n'a
+  // plus de translateY (voir plus bas), seulement son rétrécissement ; le point continue de suivre
+  // le doigt/la souris tel qu'on l'a tiré, indépendamment de ça.
+  const tx = -checkpointApproach * checkpointApproachRangePx;
   if (dot) dot.style.transform = `translateY(${tx}px)`;
   if (turnstile) {
     // BUG corrigé v38 (retour de Stéphane : « dès qu'on appuie sur l'entrée de la machine à
@@ -3441,11 +3444,29 @@ function updateCheckpointApproachVisual() {
     // toujours l'impression d'une bande entière qui glisse plutôt que d'un personnage qui marche seul.
     // BUG corrigé v41 : la machine ne bouge plus du tout (voir le commentaire détaillé juste au-dessus).
     // Comme elle n'a plus besoin d'aucune réserve verticale, tout le padding-top de #scale-checkpoint-
-    // row (porté à 110px, voir style.css) peut désormais servir SEULEMENT au personnage — coefficient
-    // remonté à 0,5 pour un détachement net et sans ambiguïté, vérifié sans clipping par Playwright sur
-    // toute la plage 0→1. Rétrécissement aussi adouci (0,2 → 0,12, perte de 12% au lieu de 20%) :
-    // Stéphane a aussi signalé que le personnage paraissait « trop petit » par rapport au tableau agrandi.
-    sil.style.transform = `translateY(${tx * 0.5}px) scale(${1 - checkpointApproach * 0.12})`;
+    // row (porté à 110px puis 150px, voir historique v41/v42 dans style.css) a servi SEULEMENT au
+    // personnage — coefficient remonté à 0,5 pour un détachement net, vérifié sans clipping par
+    // Playwright... mais seulement à la fenêtre testée à l'époque (1600×900). Rétrécissement aussi
+    // adouci (0,2 → 0,12, perte de 12% au lieu de 20%) : Stéphane avait aussi signalé que le
+    // personnage paraissait « trop petit » par rapport au tableau agrandi.
+    // BUG corrigé v43 (retour de Stéphane, capture à l'appui de sa photo de référence d'origine :
+    // « la bande beige claire est beaucoup trop importante, tu as modifié les proportions... il
+    // faut repartir de là ») : ce padding-top agrandissait #scale-checkpoint-row EN PERMANENCE, même
+    // au repos avant tout clic sur Ticket — un vrai changement de mise en page, pas seulement un
+    // effet pendant l'avancée (voir le commentaire complet dans style.css). Retiré entièrement : la
+    // rangée retrouve sa hauteur d'origine, sans aucun padding. Mesuré au Playwright sur plusieurs
+    // tailles de fenêtre (1280×800, 1600×900, 1920×1000) : SANS cette réserve, aucun coefficient de
+    // translateY n'est sûr à 100% sur toutes les tailles — même 0,15 dépasse déjà de ~2px à
+    // 1920×1000, et grandit vite au-delà (jusqu'à ~35px de dépassement à 0,3). Plutôt que de rejouer
+    // le même arbitrage perdant (soit un mouvement trop faible pour être perçu, soit un risque de
+    // recréer le bug du clipping v39 sur CERTAINES tailles d'écran seulement, donc invisible dans mes
+    // propres tests), on retire ce translateY : le rétrécissement seul (pieds ancrés en bas) suffit
+    // à suggérer l'éloignement. Ce qui rend maintenant cet éloignement lisible SANS avoir besoin d'un
+    // déplacement supplémentaire, c'est le vrai correctif du v42 : le sol, la rangée et le cordon ne
+    // bougent et ne rétrécissent plus JAMAIS — plus aucune illusion concurrente (l'ex-« bande qui
+    // mange ») pour brouiller la lecture du seul mouvement qui reste, celui du mur du fond qui
+    // s'approche.
+    sil.style.transform = `scale(${1 - checkpointApproach * 0.12})`;
   }
   // BUG corrigé v42 (retour répété de Stéphane, trois fois : « la bande beige claire qui avance et
   // qui mange sur la bande beige foncée »... « il faut que le couloir reste au niveau du couloir et
