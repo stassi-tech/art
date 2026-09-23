@@ -3373,7 +3373,18 @@ let checkpointApproachDone = false; // garde-fou : ne déclenche qu'UNE fois la 
 // grossissait quand même le mur bien plus vite que le personnage ne rétrécissait (voir plus bas), ce
 // qui rendait ce dernier ridiculement minuscule par comparaison. 1,8× reste un zoom net et perceptible
 // (« on voit le tableau s'agrandir ») sans écraser la proportion avec le personnage.
-const CHECKPOINT_APPROACH_ZOOM_MAX = 0.8;
+// BUG corrigé v44 (retour de Stéphane, très clair : « quand on appuie sur le bouton rouge, en fait
+// il monte, mais le personnage ne bouge absolument pas... le fond de la salle avance, passe sous la
+// bande beige claire... c'est la salle qui passe sous le couloir... il faut que la salle, les deux
+// bandes restent fixes et que ce soit le personnage qui se déplace dans des bandes fixes. Si les
+// bandes bougent, on est foutu ») : CHECKPOINT_APPROACH_ZOOM_MAX pilotait le zoom du mur du fond
+// (#scale-checkpoint-track) pendant l'avancée — même correctement clippé par #scale-checkpoint-room
+// (v42), un mur qui GROSSIT se lit comme un décor qui avance vers le visiteur, pas comme un
+// visiteur qui avance vers le décor. Stéphane le dit sans ambiguïté : AUCUNE partie du décor ne doit
+// plus jamais bouger ni zoomer pendant cette avancée, seul le personnage. Constante retirée
+// entièrement (voir updateCheckpointApproachVisual : le rail ne reçoit plus que son translateX de
+// marche latérale, plus aucun scale ; voir aussi le rétrécissement du personnage, agrandi en
+// compensation puisqu'il porte maintenant TOUT seul l'impression qu'on s'éloigne).
 function stopCheckpointApproaching() {
   if (checkpointApproachAnimationId) clearTimeout(checkpointApproachAnimationId);
   checkpointApproachAnimationId = null;
@@ -3466,24 +3477,39 @@ function updateCheckpointApproachVisual() {
     // bougent et ne rétrécissent plus JAMAIS — plus aucune illusion concurrente (l'ex-« bande qui
     // mange ») pour brouiller la lecture du seul mouvement qui reste, celui du mur du fond qui
     // s'approche.
-    sil.style.transform = `scale(${1 - checkpointApproach * 0.12})`;
+    sil.style.transform = `scale(${1 - checkpointApproach * 0.45})`;
+    // BUG corrigé v44 (retour de Stéphane : « le personnage ne bouge absolument pas... c'est la
+    // salle qui passe sous le couloir... il faut que les deux bandes restent fixes et que ce soit
+    // le personnage qui se déplace ») : depuis que le mur du fond (#scale-checkpoint-track,
+    // ci-dessous) ne zoome plus JAMAIS, ce rétrécissement du personnage est désormais le SEUL indice
+    // visuel de l'avancée — 0,12 (perte de 12%) était calibré à une époque où le zoom du mur portait
+    // le plus gros de l'effet ; devenu bien trop faible tout seul. Monté à 0,45 (perte de 45% à
+    // l'arrivée) pour que ce soit sans ambiguïté le personnage qui s'éloigne, et lui seul — toujours
+    // ancré par les pieds (transform-origin:50% 100%, voir style.css), donc toujours sans le moindre
+    // risque de dépassement puisque rétrécir depuis le bas ne fait que libérer de la hauteur, jamais
+    // en demander. Comme le mur ne grossit plus à côté, la proportion personnage/tableau se corrige
+    // quand même toute seule : le personnage devenant plus petit, le tableau (resté à sa taille
+    // réelle, fixe) paraît mécaniquement plus grand par comparaison.
   }
   // BUG corrigé v42 (retour répété de Stéphane, trois fois : « la bande beige claire qui avance et
   // qui mange sur la bande beige foncée »... « il faut que le couloir reste au niveau du couloir et
   // que la salle soit la salle ») : le zoom portait jusqu'ici sur #scale-checkpoint-room ENTIÈRE, y
-  // compris son sol sombre (#scale-checkpoint-floor) — celui-ci grossissait donc réellement à
-  // l'intérieur de la salle à chaque avancée (masqué par-dessous depuis la v38, mais bel et bien
-  // rétréci visuellement de l'INTÉRIEUR, sa portion visible fondant de plus en plus), ce qui donnait
-  // exactement l'impression décrite : la bande claire (rangée du bas) gagne du terrain sur la bande
-  // sombre (sol de la salle). Le sol n'a plus aucune raison de rétrécir : voir le commentaire complet
-  // sur #scale-checkpoint-room dans style.css. Le zoom porte maintenant sur #scale-checkpoint-track
-  // SEUL (mur du fond + piliers) — le sol et la rangée du bas restent tous les deux 100% fixes, en
-  // toutes circonstances ; seul le mur avec le tableau s'approche. On combine avec le translateX de
-  // la marche latérale (checkpointProgress, quasi toujours 0 ici puisque le ticket n'est cliquable
-  // qu'au repos de la salle 1) pour ne jamais écraser cet autre transform par erreur.
+  // compris son sol sombre (#scale-checkpoint-floor) — ce zoom avait alors été déplacé sur
+  // #scale-checkpoint-track SEUL (mur du fond + piliers) plutôt que sur la salle entière.
+  // BUG corrigé v44 (retour de Stéphane, sans ambiguïté cette fois : « quand on appuie sur le bouton
+  // rouge... le fond de la salle avance, passe sous la bande beige claire... c'est la salle qui
+  // passe sous le couloir... il faut que la salle, les deux bandes restent fixes et que ce soit le
+  // personnage qui se déplace dans des bandes fixes. Si les bandes bougent, on est foutu ») : même
+  // limité au seul mur (et correctement clippé par #scale-checkpoint-room), ce zoom restait un
+  // morceau du DÉCOR qui grossit — et un décor qui grossit se lit comme un décor qui avance vers le
+  // visiteur, jamais comme un visiteur qui avance vers le décor. Zoom d'approche retiré ENTIÈREMENT
+  // d'ici : le rail ne reçoit plus que son translateX de marche latérale (checkpointProgress, quasi
+  // toujours 0 à ce stade puisque le ticket n'est cliquable qu'au repos de la salle 1) — plus aucun
+  // scale, quelle que soit la valeur de checkpointApproach. Salle, sol, rangée ET mur du fond sont
+  // maintenant TOUS les quatre 100% immobiles pendant cette avancée ; seul le personnage bouge.
   if (track) {
     const pillarTx = -checkpointProgress * checkpointPanTravelPx;
-    track.style.transform = `translateX(${pillarTx}px) scale(${1 + checkpointApproach * CHECKPOINT_APPROACH_ZOOM_MAX})`;
+    track.style.transform = `translateX(${pillarTx}px)`;
   }
   if (checkpointApproach >= 1 && !checkpointApproachDone) {
     checkpointApproachDone = true;
@@ -3520,11 +3546,11 @@ function setupCheckpointApproach() {
   checkpointApproach = 0;
   checkpointApproachDone = false;
   stopCheckpointApproaching();
-  // v42 : c'est #scale-checkpoint-track qui porte le zoom d'approche maintenant (plus
-  // #scale-checkpoint-room, voir le commentaire complet dans style.css et dans
-  // updateCheckpointApproachVisual) — on le remet donc à scale(1) ICI, en conservant son
-  // translateX de marche latérale (checkpointProgress, quasi toujours 0 à ce stade).
-  if (track) track.style.transform = `translateX(${-checkpointProgress * checkpointPanTravelPx}px) scale(1)`;
+  // v44 : #scale-checkpoint-track ne reçoit plus jamais de zoom d'approche (voir le commentaire
+  // complet dans updateCheckpointApproachVisual et dans style.css) — on ne remet donc ici que son
+  // translateX de marche latérale (checkpointProgress, quasi toujours 0 à ce stade), plus aucun
+  // scale à réinitialiser.
+  if (track) track.style.transform = `translateX(${-checkpointProgress * checkpointPanTravelPx}px)`;
   sil.style.transform = 'translateX(0px)';
   // BUG corrigé v38 : ne masque plus la machine avec classList.add('hidden') dès le clic — elle
   // reste visible et normale à approach=0, puis s'estompe progressivement (voir la nouvelle logique

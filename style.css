@@ -821,19 +821,19 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
      le zoom d'approche (transform:scale, voir historique v34→v41 dans app.js) — mais son overflow:
      hidden ne clippe JAMAIS un transform appliqué à elle-même (seulement ses enfants qui dépassent SA
      PROPRE boîte déjà agrandie) : le sol sombre de la salle (#scale-checkpoint-floor, à l'intérieur)
-     grossissait donc réellement au-delà de sa propre place et venait recouvrir la rangée du bas
-     (masqué depuis la v38 par le fond opaque de #scale-checkpoint-row, mais le sol continuait bel et
-     bien à rétrécir visuellement À L'INTÉRIEUR de la salle à chaque avancée, donnant l'impression
-     — exactement dans les mots de Stéphane — que la bande claire « mange » la bande sombre). Le vrai
-     correctif : le zoom ne porte plus sur LA SALLE ENTIÈRE (mur ET sol), seulement sur
-     #scale-checkpoint-track (mur du fond + piliers, voir plus bas) — le sol, comme la rangée du bas,
-     ne bouge et ne rétrécit plus JAMAIS. Cette fois #scale-checkpoint-room (jamais transformée
-     elle-même) peut enfin clipper correctement le débordement du rail zoomé avec son propre
-     overflow:hidden — plus besoin du tout de la rustine « fond opaque qui masque le débordement ».
-     transform-origin retiré d'ici : il vit maintenant sur #scale-checkpoint-track lui-même, posé
-     dynamiquement en JS (voir buildCheckpointTrack) plutôt qu'en pourcentage CSS fixe, car le rail
-     peut être plus large qu'une salle (2 salles) — un pourcentage fixe centrerait le zoom entre les
-     deux salles plutôt que sur celle qu'on regarde vraiment. */
+     grossissait donc réellement au-delà de sa propre place et venait recouvrir la rangée du bas,
+     donnant l'impression — exactement dans les mots de Stéphane — que la bande claire « mange » la
+     bande sombre. Le zoom avait alors été déplacé sur #scale-checkpoint-track (mur du fond + piliers,
+     voir plus bas) plutôt que sur la salle entière.
+     BUG corrigé v44 (retour de Stéphane, sans détour cette fois : « le fond de la salle avance, passe
+     sous la bande beige claire... il faut que la salle, les deux bandes restent fixes et que ce soit
+     le personnage qui se déplace... si les bandes bougent, on est foutu ») : même limité au mur seul,
+     ce zoom faisait grossir un morceau du DÉCOR — et un décor qui grossit se lit comme un décor qui
+     avance vers le visiteur, jamais l'inverse. #scale-checkpoint-track ne reçoit plus AUCUN zoom
+     d'approche désormais (voir son commentaire ci-dessous et updateCheckpointApproachVisual dans
+     app.js) : #scale-checkpoint-room n'a donc plus rien à clipper de ce côté, mais son overflow:
+     hidden reste utile pour le pilier/mur qui sort du cadre pendant la marche LATÉRALE (translateX,
+     inchangée). */
 }
 /* v29 : le rail qui porte TOUT ce qui appartient « à la salle » — les 2 piliers de premier plan ET
    le(s) mur(s) du fond — et qui glisse d'un seul bloc pendant la marche salle 1 / salle 2 (voir
@@ -844,11 +844,16 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    plus besoin d'un overflow séparé ici. z-index au-dessus de #scale-checkpoint-floor (déclaré après
    lui dans le HTML, alors que le rail l'est avant) : sans ça, le sol, peint après, recouvrirait la
    partie basse des piliers — voir le commentaire sur #scale-checkpoint-floor plus bas.
-   BUG corrigé v42 : porte maintenant AUSSI le zoom d'approche (transform:scale, en plus de son
-   translateX de marche latérale — voir updateCheckpointApproachVisual dans app.js), à la place de
-   #scale-checkpoint-room qui le portait avant (voir son commentaire juste au-dessus). transform-
-   origin posé dynamiquement en JS (buildCheckpointTrack), pas ici en CSS fixe : voir ce même
-   commentaire pour pourquoi un pourcentage fixe serait faux dès qu'il y a 2 salles. */
+   BUG corrigé v42 : a porté un temps AUSSI le zoom d'approche (transform:scale, en plus de son
+   translateX de marche latérale), à la place de #scale-checkpoint-room qui le portait avant (voir
+   son commentaire juste au-dessus).
+   BUG corrigé v44 (retour de Stéphane : « il faut que la salle, les deux bandes restent fixes... si
+   les bandes bougent, on est foutu ») : même ce zoom limité au mur seul restait un morceau du décor
+   qui grossit, lu comme un décor qui avance — retiré ENTIÈREMENT (voir updateCheckpointApproachVisual
+   dans app.js). Ce rail ne reçoit donc plus JAMAIS de transform:scale, quelle que soit l'avancée :
+   seul son translateX de marche latérale (checkpointProgress) reste, inchangé. Le transform-origin
+   posé dynamiquement en JS (buildCheckpointTrack) est resté en place par prudence (il ne sert plus
+   qu'à un scale qui n'arrive plus jamais) plutôt que d'être retiré — sans effet réel désormais. */
 #scale-checkpoint-track { position:absolute; top:0; left:0; height:100%; z-index:2; }
 .scale-checkpoint-wallpanel, #scale-checkpoint-floor { position:absolute; background-color:#c9b896; background-size:cover; background-position:center; }
 /* Mur(s) du fond : rectangle plat, vu bien en face — aucune déformation à faire puisqu'on le
