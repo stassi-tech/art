@@ -815,19 +815,25 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
      visiteur plutôt qu'une mince tranche collée au bord — voir aussi le dégradé de lumière ajouté
      sur ::after ci-dessous, qui accentue cette impression de relief. */
   --room-inner-x:12%; --room-horizon-y:62%;
-  /* v34 : origine du zoom d'approche (voir updateCheckpointApproachVisual dans app.js) fixée sur la
-     ligne d'horizon plutôt qu'au centre par défaut (50% 50%) — le mur du fond grossit alors depuis
-     ce point de fuite plutôt que depuis le milieu de l'écran, ce qui donne l'impression de s'en
-     approcher plutôt que de simplement l'agrandir sur place.
-     BUG corrigé v37 (retour de Stéphane : « le tableau disparaît » pendant l'avancée) : --room-horizon-y
-     (62%) marque la ligne d'HORIZON — le bas de la fenêtre murale, pas le tableau lui-même. Le vrai
-     centre vertical d'un tableau, tel que placeCheckpointWork/buildCheckpointTrack le posent, tombe au
-     milieu de CETTE fenêtre (qui va de 0 à --room-horizon-y), donc à --room-horizon-y / 2 de la salle —
-     exactement le calcul déjà fait en commentaire dans buildCheckpointTrack (« 62%/2=31% de la salle »).
-     En zoomant depuis 62% (sous le tableau), celui-ci n'est pas au centre de l'agrandissement : il se
-     décale progressivement vers le haut et finit par sortir du cadre. En zoomant depuis son propre
-     centre (31%), il grossit sur place, bien encadré, du début à la fin. */
-  transform-origin:50% calc(var(--room-horizon-y) / 2);
+  /* BUG corrigé v42 (retour répété de Stéphane, trois fois de suite : « la bande beige claire qui
+     avance et qui mange sur la bande beige foncée »... « il faut que le couloir reste au niveau du
+     couloir et que la salle soit la salle ») : c'est CETTE salle (#scale-checkpoint-room) qui portait
+     le zoom d'approche (transform:scale, voir historique v34→v41 dans app.js) — mais son overflow:
+     hidden ne clippe JAMAIS un transform appliqué à elle-même (seulement ses enfants qui dépassent SA
+     PROPRE boîte déjà agrandie) : le sol sombre de la salle (#scale-checkpoint-floor, à l'intérieur)
+     grossissait donc réellement au-delà de sa propre place et venait recouvrir la rangée du bas
+     (masqué depuis la v38 par le fond opaque de #scale-checkpoint-row, mais le sol continuait bel et
+     bien à rétrécir visuellement À L'INTÉRIEUR de la salle à chaque avancée, donnant l'impression
+     — exactement dans les mots de Stéphane — que la bande claire « mange » la bande sombre). Le vrai
+     correctif : le zoom ne porte plus sur LA SALLE ENTIÈRE (mur ET sol), seulement sur
+     #scale-checkpoint-track (mur du fond + piliers, voir plus bas) — le sol, comme la rangée du bas,
+     ne bouge et ne rétrécit plus JAMAIS. Cette fois #scale-checkpoint-room (jamais transformée
+     elle-même) peut enfin clipper correctement le débordement du rail zoomé avec son propre
+     overflow:hidden — plus besoin du tout de la rustine « fond opaque qui masque le débordement ».
+     transform-origin retiré d'ici : il vit maintenant sur #scale-checkpoint-track lui-même, posé
+     dynamiquement en JS (voir buildCheckpointTrack) plutôt qu'en pourcentage CSS fixe, car le rail
+     peut être plus large qu'une salle (2 salles) — un pourcentage fixe centrerait le zoom entre les
+     deux salles plutôt que sur celle qu'on regarde vraiment. */
 }
 /* v29 : le rail qui porte TOUT ce qui appartient « à la salle » — les 2 piliers de premier plan ET
    le(s) mur(s) du fond — et qui glisse d'un seul bloc pendant la marche salle 1 / salle 2 (voir
@@ -837,7 +843,12 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    ci-dessus, avec son overflow:hidden, qui fait disparaître piliers/murs une fois sortis du cadre —
    plus besoin d'un overflow séparé ici. z-index au-dessus de #scale-checkpoint-floor (déclaré après
    lui dans le HTML, alors que le rail l'est avant) : sans ça, le sol, peint après, recouvrirait la
-   partie basse des piliers — voir le commentaire sur #scale-checkpoint-floor plus bas. */
+   partie basse des piliers — voir le commentaire sur #scale-checkpoint-floor plus bas.
+   BUG corrigé v42 : porte maintenant AUSSI le zoom d'approche (transform:scale, en plus de son
+   translateX de marche latérale — voir updateCheckpointApproachVisual dans app.js), à la place de
+   #scale-checkpoint-room qui le portait avant (voir son commentaire juste au-dessus). transform-
+   origin posé dynamiquement en JS (buildCheckpointTrack), pas ici en CSS fixe : voir ce même
+   commentaire pour pourquoi un pourcentage fixe serait faux dès qu'il y a 2 salles. */
 #scale-checkpoint-track { position:absolute; top:0; left:0; height:100%; z-index:2; }
 .scale-checkpoint-wallpanel, #scale-checkpoint-floor { position:absolute; background-color:#c9b896; background-size:cover; background-position:center; }
 /* Mur(s) du fond : rectangle plat, vu bien en face — aucune déformation à faire puisqu'on le

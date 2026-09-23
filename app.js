@@ -3362,8 +3362,8 @@ let checkpointApproachRangePx = 200; // distance de glissement du point, mesuré
 let checkpointApproachDirection = 0;
 let checkpointApproachAnimationId = null;
 let checkpointApproachDone = false; // garde-fou : ne déclenche qu'UNE fois la suite une fois à 1
-// Zoom max : le mur du fond (et toute la salle avec lui, voir transform-origin sur
-// #scale-checkpoint-room dans style.css) grossit jusqu'à 1,8 fois sa taille de repos — assez pour
+// Zoom max : le mur du fond et les piliers (#scale-checkpoint-track — plus toute la salle avec son
+// sol depuis le v42, voir style.css) grossissent jusqu'à 1,8 fois leur taille de repos — assez pour
 // donner une vraie sensation de s'en approcher, sans devenir absurde ni faire sortir le mur du
 // cadre.
 // BUG corrigé v37 (retour de Stéphane, capture à l'appui : « plus il avance, plus il devient petit,
@@ -3382,7 +3382,7 @@ function stopCheckpointApproaching() {
 function updateCheckpointApproachVisual() {
   const dot = $('scale-checkpoint-approach-dot');
   const sil = $('scale-checkpoint-silhouette');
-  const room = $('scale-checkpoint-room');
+  const track = $('scale-checkpoint-track');
   const turnstile = $('scale-turnstile');
   const tx = -checkpointApproach * checkpointApproachRangePx; // le point ET le personnage montent
   if (dot) dot.style.transform = `translateY(${tx}px)`;
@@ -3447,7 +3447,23 @@ function updateCheckpointApproachVisual() {
     // Stéphane a aussi signalé que le personnage paraissait « trop petit » par rapport au tableau agrandi.
     sil.style.transform = `translateY(${tx * 0.5}px) scale(${1 - checkpointApproach * 0.12})`;
   }
-  if (room) room.style.transform = `scale(${1 + checkpointApproach * CHECKPOINT_APPROACH_ZOOM_MAX})`;
+  // BUG corrigé v42 (retour répété de Stéphane, trois fois : « la bande beige claire qui avance et
+  // qui mange sur la bande beige foncée »... « il faut que le couloir reste au niveau du couloir et
+  // que la salle soit la salle ») : le zoom portait jusqu'ici sur #scale-checkpoint-room ENTIÈRE, y
+  // compris son sol sombre (#scale-checkpoint-floor) — celui-ci grossissait donc réellement à
+  // l'intérieur de la salle à chaque avancée (masqué par-dessous depuis la v38, mais bel et bien
+  // rétréci visuellement de l'INTÉRIEUR, sa portion visible fondant de plus en plus), ce qui donnait
+  // exactement l'impression décrite : la bande claire (rangée du bas) gagne du terrain sur la bande
+  // sombre (sol de la salle). Le sol n'a plus aucune raison de rétrécir : voir le commentaire complet
+  // sur #scale-checkpoint-room dans style.css. Le zoom porte maintenant sur #scale-checkpoint-track
+  // SEUL (mur du fond + piliers) — le sol et la rangée du bas restent tous les deux 100% fixes, en
+  // toutes circonstances ; seul le mur avec le tableau s'approche. On combine avec le translateX de
+  // la marche latérale (checkpointProgress, quasi toujours 0 ici puisque le ticket n'est cliquable
+  // qu'au repos de la salle 1) pour ne jamais écraser cet autre transform par erreur.
+  if (track) {
+    const pillarTx = -checkpointProgress * checkpointPanTravelPx;
+    track.style.transform = `translateX(${pillarTx}px) scale(${1 + checkpointApproach * CHECKPOINT_APPROACH_ZOOM_MAX})`;
+  }
   if (checkpointApproach >= 1 && !checkpointApproachDone) {
     checkpointApproachDone = true;
     stopCheckpointApproaching();
@@ -3478,12 +3494,16 @@ function setupCheckpointApproach() {
   const dot = $('scale-checkpoint-approach-dot');
   const sil = $('scale-checkpoint-silhouette');
   const row = $('scale-checkpoint-row');
-  const room = $('scale-checkpoint-room');
+  const track = $('scale-checkpoint-track');
   if (!dot || !sil || !row) return;
   checkpointApproach = 0;
   checkpointApproachDone = false;
   stopCheckpointApproaching();
-  if (room) room.style.transform = 'scale(1)';
+  // v42 : c'est #scale-checkpoint-track qui porte le zoom d'approche maintenant (plus
+  // #scale-checkpoint-room, voir le commentaire complet dans style.css et dans
+  // updateCheckpointApproachVisual) — on le remet donc à scale(1) ICI, en conservant son
+  // translateX de marche latérale (checkpointProgress, quasi toujours 0 à ce stade).
+  if (track) track.style.transform = `translateX(${-checkpointProgress * checkpointPanTravelPx}px) scale(1)`;
   sil.style.transform = 'translateX(0px)';
   // BUG corrigé v38 : ne masque plus la machine avec classList.add('hidden') dès le clic — elle
   // reste visible et normale à approach=0, puis s'estompe progressivement (voir la nouvelle logique
@@ -3715,17 +3735,13 @@ function buildCheckpointTrack() {
   const wall2 = $('scale-checkpoint-wall-2');
   if (!room || !track || !pillarLeft || !pillarRight || !pillarEnd || !wall1 || !wall2) return 0;
   // BUG corrigé v39 (retour de Stéphane, capture à l'appui : « le tableau est descendu dans le
-  // parquet, ça ne se rétablit pas, il faut fermer toute l'application ») : room.style.transform
-  // reste à sa dernière valeur de zoom d'approche (scale(1.8) par exemple) une fois arrivé au plan
-  // rapproché — rien ne le remet à scale(1) après coup (setupCheckpointApproach ne le fait qu'AU
-  // DÉBUT d'une nouvelle approche, pas au retour). Or buildCheckpointTrack mesure room via
-  // getBoundingClientRect() pour calculer TOUTE la mise en page (largeur des piliers, position et
-  // taille du tableau...) : si la salle est encore visuellement zoomée au moment de la mesure, ces
-  // calculs partent d'une taille fausse et RESTENT faux tant qu'on ne recharge pas la page (la
-  // prochaine mesure repart du même transform corrompu). On remet donc systématiquement le zoom à
-  // zéro ICI, avant de mesurer quoi que ce soit — quel que soit l'appelant (première entrée, retour
-  // sur cet écran, redimensionnement de la fenêtre).
-  room.style.transform = 'scale(1)';
+  // parquet, ça ne se rétablit pas, il faut fermer toute l'application ») : à l'époque, c'était
+  // room.style.transform qui restait à sa dernière valeur de zoom (scale(1.8) par exemple) une fois
+  // arrivé au plan rapproché, corrompant les mesures ici. Depuis le v42 (voir le commentaire complet
+  // sur #scale-checkpoint-room dans style.css), room n'est PLUS JAMAIS transformée du tout — c'est
+  // #scale-checkpoint-track qui porte le zoom désormais — donc cette ligne est surtout une ceinture
+  // de sécurité qui ne devrait plus jamais avoir d'effet réel ; on la garde par prudence.
+  room.style.transform = 'none';
   const roomRect = room.getBoundingClientRect();
   if (!roomRect.width || !roomRect.height) return 0; // pas encore mis en page (voir requestAnimationFrame à l'appel)
   const roomW = roomRect.width;
@@ -3734,8 +3750,17 @@ function buildCheckpointTrack() {
   // valeurs ici en dur, pour ne jamais désynchroniser JS et CSS si l'un des deux change un jour.
   const innerXPercent = parseFloat(getComputedStyle(room).getPropertyValue('--room-inner-x')) || 12;
   const horizonYPercent = parseFloat(getComputedStyle(room).getPropertyValue('--room-horizon-y')) || 62;
+  // BUG corrigé v42 : origine du zoom d'approche posée ICI en JS, en PIXELS, plutôt qu'en pourcentage
+  // fixe dans le CSS de #scale-checkpoint-track — parce que ce rail peut être plus large qu'une
+  // seule salle dès qu'il y a 2 salles (voir plus bas, hasTwoRooms), et l'avancée ne se déclenche
+  // JAMAIS que depuis le repos de la toute première salle (le ticket redevient impossible à cliquer
+  // dès qu'on s'en éloigne, voir updateCheckpointWalkVisual) : le centre horizontal à viser est donc
+  // toujours celui de CETTE salle 1 (roomW / 2 en px dans le repère du rail), jamais 50% du rail
+  // entier — un pourcentage fixe centrerait le zoom entre les deux salles plutôt que sur celle
+  // qu'on regarde vraiment, décalant tout le cadrage dès qu'il y a une salle 2.
   const pillarW = roomW * (innerXPercent / 100);
   const windowW = roomW - 2 * pillarW;
+  track.style.transformOrigin = `${roomW / 2}px calc(var(--room-horizon-y) / 2)`;
   // v29c : bug réel repéré par Stéphane (« les deux tableaux sont baissés ») — #scale-checkpoint-wall
   // ne fait que --room-horizon-y (62%) de la hauteur de la salle, pas sa hauteur ENTIÈRE (roomH) ;
   // buildCheckpointWindowWorks centrait pourtant chaque tableau sur roomH tout entier, ce qui les
