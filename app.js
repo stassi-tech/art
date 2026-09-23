@@ -4145,11 +4145,44 @@ function appendStaticPillar(wall, cursor) {
 // (updateDotAlongWall, updateCheckpointRoomIndicator) qui compare à cette même valeur. Renvoie le
 // scrollLeft du tout début du mur du fond — c'est là qu'on arrive toujours en poussant le tourniquet.
 function buildContinuousWall() {
+  // v47 (retour de Stéphane après le fondu vers cette vue : « il y a quelque chose qui ne va pas
+  // dans la connexion des deux plans... ce qu'il faudrait, c'est qu'on reste sur ce plan-là [celui
+  // de l'arrivée, à l'échelle réelle] et que de ce plan-là on reprenne le principe de déplacement
+  // latéral ») : jusqu'ici, cette vue avait sa PROPRE échelle, dérivée de la hauteur CSS fixe de
+  // #scale-silhouette (70vh, jusqu'à 560px) — une échelle « dramatisée », pensée à l'origine pour
+  // ressentir la taille d'une œuvre en très grand, mais SANS AUCUN RAPPORT avec l'échelle
+  // architecturale réelle établie pendant l'avancée du contrôle des billets (checkpointPxPerCm,
+  // voir setupCheckpointApproach — mur de CHECKPOINT_WALL_LENGTH_CM=15 m, personnage de
+  // CHECKPOINT_PERSON_HEIGHT_CM=1,70 m). Mesuré : au moment précis du fondu vers cette vue, le
+  // personnage ET le tableau grossissaient d'un coup d'environ 2,5 à 3 fois — c'était ÇA, la
+  // « connexion qui ne va pas », même en partie masquée par le flou du fondu. En reprenant
+  // EXACTEMENT checkpointPxPerCm (quand elle est connue, c'est-à-dire qu'on arrive bien depuis le
+  // contrôle des billets — sinon repli sur l'ancien calcul, ex. un futur chemin d'entrée qui ne
+  // passerait plus par là) plutôt que de la recalculer depuis la silhouette, le personnage et le
+  // tableau gardent EXACTEMENT la même taille à l'écran des deux côtés du fondu : seul le cadrage
+  // se « débloque » (on peut désormais glisser latéralement le long des murs, voir plus bas — le
+  // système de défilement continu existe déjà ici, wallSegments/wallCorners/appendStaticPillar,
+  // c'est bien LE « principe de déplacement latéral » que Stéphane demande de reprendre), sans plus
+  // aucun saut de zoom. #scale-silhouette (hauteur fixée en CSS jusqu'ici) est donc réécrite ici
+  // pour représenter, elle aussi, EXACTEMENT CHECKPOINT_PERSON_HEIGHT_CM à cette même échelle —
+  // sinon elle resterait à sa taille CSS d'origine (70vh) alors que tout le reste (murs, œuvres)
+  // aurait changé d'échelle autour d'elle, ce qui casserait justement la cohérence qu'on cherche.
+  const silh = $('scale-silhouette');
+  let pxPerCm;
+  if (checkpointPxPerCm > 0) {
+    pxPerCm = checkpointPxPerCm;
+    silh.style.maxHeight = 'none';
+    silh.style.height = `${CHECKPOINT_PERSON_HEIGHT_CM * pxPerCm}px`;
+  } else {
+    silh.style.height = '';
+    silh.style.maxHeight = '';
+    pxPerCm = silh.getBoundingClientRect().height / 170;
+  }
   // La silhouette est fixée au bas de l'écran (voir CSS, position:fixed) — on lit sa position
-  // réelle après affichage pour placer chaque œuvre en conséquence, plutôt que de deviner des
-  // chiffres qui se déréglent au moindre changement de mise en page.
-  const silhRect = $('scale-silhouette').getBoundingClientRect();
-  const pxPerCm = silhRect.height / 170;
+  // réelle après affichage (et après avoir éventuellement réécrit sa hauteur ci-dessus) pour
+  // placer chaque œuvre en conséquence, plutôt que de deviner des chiffres qui se déréglent au
+  // moindre changement de mise en page.
+  const silhRect = silh.getBoundingClientRect();
   // Bug réel repéré : ce plafond dépendait de la hauteur d'écran (70% de window.innerHeight) —
   // sur mobile, bien plus petit que sur PC, beaucoup plus d'œuvres finissaient plafonnées à cette
   // même valeur, écrasant leurs vraies différences de taille (« toutes les œuvres à égalité »).
