@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=197" />
+    <link rel="stylesheet" href="style.css?v=198" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 50</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 51</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1239,26 +1239,25 @@
                         <div class="scale-checkpoint-room-dot"></div>
                       </div>
                     </div>
-                    <!-- v50 (retour de Stéphane, avec un montage Photoshop puis une photo Wikicommons
-                         de référence : « il manque un élément visuel fort qui permette de distinguer
-                         le mur du fond des murs latéraux... un escalier rouge, comme si la salle était
-                         en contrebas ») : ce même pilier sert aussi bien à l'écran du couloir (marche
-                         entre les salles) qu'à l'écran d'arrivée qui se tourne (voir setCheckpointFacing
-                         dans app.js) — CET escalier n'est donc affiché QUE dans ce 2e cas (voir
-                         .scale-checkpoint-pillar-folded dans style.css, qui ne s'applique jamais
-                         pendant la marche). Vu « de profil » (en biais, comme s'il montait et
-                         s'éloignait vers le couloir), pas de face — voir le commentaire complet dans
-                         style.css. -->
-                    <div class="scale-checkpoint-pillar-stairs" aria-hidden="true">
-                      <div class="scale-checkpoint-pillar-stairs-shape"></div>
-                      <svg class="scale-checkpoint-pillar-stairs-rope" viewBox="0 0 100 40" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-                        <circle cx="10" cy="10" r="7" fill="#a8862e" />
-                        <circle cx="90" cy="26" r="7" fill="#a8862e" />
-                        <path d="M10 10 Q50 36 90 26" stroke="#b3231f" stroke-width="5" fill="none" />
-                      </svg>
-                    </div>
                   </div>
+                  <!-- v51 (retour de Stéphane, avec 2 nouveaux montages Photoshop : « il faut créer
+                       comme une fausse perspective de mur de retour... et affecter une couleur
+                       spécifique à chaque mur, au mur du fond et aux murs latéraux, pour que les gens
+                       comprennent bien avec le code couleur qu'on n'est pas sur le même mur ») :
+                       2 nouveaux éléments, posés AVANT #scale-checkpoint-wall-works (donc DERRIÈRE
+                       l'œuvre, jamais par-dessus) : la teinte de fond change selon checkpointFacing
+                       (updateCheckpointWallColorwash dans app.js) — c'est elle, pas la présence/
+                       absence de l'escalier (voir plus bas), qui indique maintenant quel mur on
+                       regarde. Les 2 fines tranches en biais à ses bords (scale-checkpoint-wall-return)
+                       sont la « fausse perspective » demandée : un simple aplat de couleur, pas un
+                       vrai calcul de perspective (« ce n'est pas tout à fait exact du point de vue
+                       mathématique, mais ça donne bien »), qui prend la couleur du mur ADJACENT
+                       (celui qu'on devine se refermer juste à côté) pour suggérer qu'on est bien DANS
+                       un coin de la salle plutôt que devant un simple aplat plat. -->
                   <div id="scale-checkpoint-wall" class="scale-checkpoint-wallpanel">
+                    <div class="scale-checkpoint-wall-colorwash" aria-hidden="true"></div>
+                    <div class="scale-checkpoint-wall-return scale-checkpoint-wall-return-left" aria-hidden="true"></div>
+                    <div class="scale-checkpoint-wall-return scale-checkpoint-wall-return-right" aria-hidden="true"></div>
                     <div id="scale-checkpoint-wall-works" class="scale-checkpoint-wall-works"></div>
                   </div>
                   <!-- Ce pilier joue AUSSI le rôle de repère salle 1 / salle 2 en marchant (remplace
@@ -1407,6 +1406,34 @@
                    fondu automatique dès l'arrivée — voir enterCloserPlanFromArrival dans app.js)
                    permet de passer au plan rapproché pour s'approcher vraiment des tableaux. -->
               <button type="button" id="scale-checkpoint-zoom-button" class="hidden" aria-label="Voir les tableaux de plus près" title="Voir les tableaux de plus près" style="position:absolute;bottom:190px;left:50%;transform:translateX(-50%);z-index:40;padding:10px 18px;border-radius:24px;border:2px solid rgba(0,0,0,.3);background:rgba(255,255,255,.92);color:#2b2620;font-size:.85rem;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;">🔍 Voir de plus près</button>
+              <!-- v51 (retour de Stéphane, avec 2 nouveaux montages Photoshop : « tes marches sont
+                   beaucoup trop hautes par rapport au personnage... et puis elles ne descendent pas
+                   assez bas... doivent également être visibles sur le plan de face ») : ces 2
+                   escaliers ne sont plus des enfants du pilier (voir l'historique complet dans
+                   style.css, .scale-checkpoint-stairs-overlay) — posés ici, au même niveau que les
+                   flèches ci-dessus (donc DANS #scale-checkpoint, jamais dans le pilier ni dans la
+                   salle qui, elle, est en overflow:hidden et rogne tout ce qu'elle contient bien
+                   avant le cordon), position:fixed comme la silhouette d'arrivée, dimensionnés et
+                   placés en JS (positionCheckpointStairsOverlays) à partir de la vraie taille du
+                   personnage à l'écran. Visibles sur les 3 orientations (voir revealCheckpoint-
+                   ArrivalControls/setCheckpointFacing) — la couleur du mur, pas la présence de
+                   l'escalier, indique maintenant où l'on se trouve. -->
+              <div id="scale-checkpoint-stairs-left" class="scale-checkpoint-stairs-overlay hidden" aria-hidden="true">
+                <div class="scale-checkpoint-stairs-shape"></div>
+                <svg class="scale-checkpoint-stairs-rope" viewBox="0 0 100 40" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+                  <circle cx="10" cy="10" r="7" fill="#a8862e" />
+                  <circle cx="90" cy="26" r="7" fill="#a8862e" />
+                  <path d="M10 10 Q50 36 90 26" stroke="#b3231f" stroke-width="5" fill="none" />
+                </svg>
+              </div>
+              <div id="scale-checkpoint-stairs-right" class="scale-checkpoint-stairs-overlay scale-checkpoint-stairs-overlay-mirror hidden" aria-hidden="true">
+                <div class="scale-checkpoint-stairs-shape"></div>
+                <svg class="scale-checkpoint-stairs-rope" viewBox="0 0 100 40" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+                  <circle cx="10" cy="10" r="7" fill="#a8862e" />
+                  <circle cx="90" cy="26" r="7" fill="#a8862e" />
+                  <path d="M10 10 Q50 36 90 26" stroke="#b3231f" stroke-width="5" fill="none" />
+                </svg>
+              </div>
             </div>
             <!-- Voile de transition floue entre les étapes. Le passage d'une salle à l'autre,
                  lui, ne l'utilise plus : il se fait en marchant, sans coupure de décor (voir
@@ -1705,6 +1732,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=285"></script>
+    <script src="app.js?v=286"></script>
   </body>
 </html>
