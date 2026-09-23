@@ -3158,6 +3158,13 @@ let checkpointWalkAnimationId = null;
 // Distance de panoramique du décor (voir buildCheckpointTrack, qui la calcule et la renvoie) — 0
 // tant qu'il n'y a qu'une seule salle (rien à faire défiler).
 let checkpointPanTravelPx = 0;
+// v46 (retour de Stéphane : « il faut qu'on arrive à déterminer un plan de salle avec un métrage...
+// et il faut qu'après, le personnage, dans son avancée, reste dans les bonnes proportions ») :
+// échelle RÉELLE px/cm du mur du fond (voir buildCheckpointTrack, qui la calcule à partir de
+// CHECKPOINT_WALL_LENGTH_CM et la range ici) — permet de calculer la taille EXACTE qu'un personnage
+// de taille réelle (CHECKPOINT_PERSON_HEIGHT_CM) devrait avoir une fois arrivé tout contre ce mur,
+// au lieu d'un coefficient de rétrécissement choisi au jugé (voir setupCheckpointApproach).
+let checkpointPxPerCm = 0;
 function stopCheckpointWalking() {
   if (checkpointWalkAnimationId) clearTimeout(checkpointWalkAnimationId);
   checkpointWalkAnimationId = null;
@@ -3369,6 +3376,11 @@ let checkpointApproachRangePx = 200; // distance de glissement du point, mesuré
 // mesurée à chaque entrée dans setupCheckpointApproach — voir le commentaire complet là-bas et sur
 // #scale-checkpoint-approach-silhouette dans index.html/style.css.
 let checkpointApproachTravelPx = 200;
+// v46 : rapport de rétrécissement CALCULÉ (pas choisi au jugé) pour qu'à l'arrivée (approach=1) le
+// personnage fasse EXACTEMENT CHECKPOINT_PERSON_HEIGHT_CM à la même échelle px/cm que le mur du
+// fond et le tableau qui y est accroché — voir setupCheckpointApproach, où il est recalculé à
+// chaque entrée (dépend de la taille d'écran).
+let checkpointApproachShrinkTo = 0.55;
 let checkpointApproachDirection = 0;
 let checkpointApproachAnimationId = null;
 let checkpointApproachDone = false; // garde-fou : ne déclenche qu'UNE fois la suite une fois à 1
@@ -3500,8 +3512,15 @@ function updateCheckpointApproachVisual() {
     // ÉCRIT AVANT scale dans la liste : la translation reste donc un déplacement écran fixe en
     // pixels, jamais réduit par le rétrécissement qui l'accompagne (même logique déjà éprouvée sur
     // le petit point rouge juste au-dessus).
+    // BUG corrigé v46 (retour de Stéphane : « le personnage est beaucoup trop petit par rapport au
+    // pilier... il faut qu'on arrive à déterminer un plan de salle avec un métrage... et que le
+    // personnage, dans son avancée, reste dans les bonnes proportions ») : 0,45 (v45) était encore
+    // un coefficient choisi au jugé. checkpointApproachShrinkTo (calculé dans setupCheckpointApproach
+    // à partir de checkpointPxPerCm, l'échelle RÉELLE du mur de 15 m) remplace ce chiffre par le
+    // rapport EXACT qui donne, à l'arrivée, une hauteur d'écran correspondant à un personnage de
+    // vraie taille (1,70 m) à la même échelle que le mur et le tableau.
     const travelTy = -checkpointApproach * checkpointApproachTravelPx;
-    sil.style.transform = `translateY(${travelTy}px) scale(${1 - checkpointApproach * 0.45})`;
+    sil.style.transform = `translateY(${travelTy}px) scale(${1 - checkpointApproach * (1 - checkpointApproachShrinkTo)})`;
   }
   // BUG corrigé v42 (retour répété de Stéphane, trois fois : « la bande beige claire qui avance et
   // qui mange sur la bande beige foncée »... « il faut que le couloir reste au niveau du couloir et
@@ -3605,15 +3624,35 @@ function setupCheckpointApproach() {
   // presque entièrement au niveau de la tête (mesuré : ~16px de mouvement net alors que
   // translateY(-101px) était appliqué). Le vrai point qui se déplace de EXACTEMENT translateY, sans
   // interférence du rétrécissement, c'est l'ANCRE elle-même (transform-origin, donc les PIEDS,
-  // silRect.bottom) — c'est elle qu'il faut viser pour calculer la distance à parcourir jusqu'au bas
-  // de la salle (roomRect.bottom), avec 40px de recouvrement en plus pour qu'il finisse visiblement
-  // à cheval sur le sol plutôt que juste dessous — c'est CE dépassement qui doit se lire sans
-  // ambiguïté comme « il entre dans la salle ». Cette distance (mesurée aux pieds) peut faire
-  // plusieurs centaines de pixels, sans aucun risque de dépassement puisque plus aucune rangée ne
-  // clippe la copie (voir #scale-checkpoint-approach-silhouette, position:fixed).
+  // silRect.bottom).
+  // BUG corrigé v46 (retour de Stéphane, deux demandes ensemble : « il faudrait que ça aille un
+  // tout petit peu plus loin » ET « le personnage est beaucoup trop petit par rapport au pilier...
+  // il faut qu'on arrive à déterminer un plan de salle avec un métrage... et qu'après, le
+  // personnage, dans son avancée, reste dans les bonnes proportions ») : v45 visait 40px de
+  // recouvrement à peine après le bas de la salle (roomRect.bottom) — juste assez pour « entrer »,
+  // mais l'arrivée se déclenchait donc presque tout de suite après avoir posé un pied dans la
+  // salle, sans traverser son sol. On vise maintenant le bord OPPOSÉ du sol — là où il rejoint le
+  // mur du fond (#scale-checkpoint-floor commence exactement à --room-horizon-y, voir style.css),
+  // avec 20px de marge pour ne pas se fondre visuellement dans le mur : il traverse maintenant
+  // TOUTE la profondeur du sol de la salle avant que l'avancée se termine, pas juste son bord.
+  // Le rétrécissement, lui, n'est plus un coefficient choisi au jugé (0,45 en v44) mais calculé pour
+  // qu'à l'arrivée, sa hauteur sur écran corresponde EXACTEMENT à CHECKPOINT_PERSON_HEIGHT_CM (1,70 m)
+  // à la même échelle px/cm que le mur et le tableau de Courbet qui y est accroché
+  // (checkpointPxPerCm, calculé dans buildCheckpointTrack à partir des 15 m réels du mur) — donc une
+  // vraie proportion calculée, plus un chiffre choisi à l'œil. Clamp à [0,15 ; 1] par prudence : ne
+  // jamais grossir (borne haute) si le calcul donnait une cible plus grande que sa taille de repos,
+  // et ne jamais disparaître à zéro (borne basse) en cas de mesure aberrante sur un écran inhabituel.
+  const floorEl = $('scale-checkpoint-floor');
+  const floorRect = floorEl ? floorEl.getBoundingClientRect() : null;
   approachSil.style.left = `${silRect.left}px`;
   approachSil.style.top = `${silRect.top}px`;
-  checkpointApproachTravelPx = Math.max(80, silRect.bottom - roomRect.bottom + 40);
+  checkpointApproachTravelPx = floorRect
+    ? Math.max(80, silRect.bottom - floorRect.top - 20)
+    : Math.max(80, silRect.bottom - roomRect.bottom + 40);
+  const targetHeightPx = CHECKPOINT_PERSON_HEIGHT_CM * checkpointPxPerCm;
+  checkpointApproachShrinkTo = (silRect.height && checkpointPxPerCm)
+    ? Math.min(1, Math.max(0.15, targetHeightPx / silRect.height))
+    : 0.55;
   sil.style.visibility = 'hidden';
   approachSil.classList.remove('hidden');
   updateCheckpointApproachVisual();
@@ -3709,6 +3748,12 @@ function goThroughDoor() {
 // de les relire à part, et chaque salle n'affiche jamais qu'UNE seule œuvre ici, donc plus besoin
 // d'espacement entre plusieurs.
 const CHECKPOINT_WALL_LENGTH_CM = 1500;
+// v46 : même référence de taille humaine (1,70 m) que partout ailleurs dans l'appli (voir la
+// silhouette de la vue à l'échelle, buildWallSegment, etc.) — utilisée ici pour calculer la taille
+// EXACTE que le personnage doit avoir une fois arrivé tout contre le mur du fond pendant l'avancée
+// (voir setupCheckpointApproach), à la même échelle px/cm que le mur et le tableau qui y est
+// accroché, plutôt qu'un coefficient de rétrécissement choisi au jugé comme avant.
+const CHECKPOINT_PERSON_HEIGHT_CM = 170;
 // Plafond de sécurité sur la hauteur/largeur d'UNE œuvre : une faute de frappe dans le fichier
 // source (ex. un zéro de trop sur « longueur ») peut produire une dimension absurde (ex. 6680 cm
 // au lieu de 668 cm pour Un enterrement à Ornans) — bug réel repéré ici. Le danger n'est pas
@@ -3857,6 +3902,9 @@ function buildCheckpointTrack() {
   // de la salle). windowH (la vraie hauteur de la fenêtre) est la bonne référence pour ce centrage.
   const windowH = roomH * (horizonYPercent / 100);
   const pxPerCm = windowW / CHECKPOINT_WALL_LENGTH_CM;
+  // v46 : rangée dans checkpointPxPerCm (module-level) pour que setupCheckpointApproach puisse s'en
+  // servir plus tard — voir son commentaire complet là-bas.
+  checkpointPxPerCm = pxPerCm;
   const place = (el, left, width) => { el.style.left = `${left}px`; el.style.width = `${width}px`; };
 
   place(pillarLeft, 0, pillarW);
