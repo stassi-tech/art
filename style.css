@@ -943,7 +943,7 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    pic/triangle plein, pas un escalier reconnaissable.
    v52 (retour de Stéphane : « est-ce que tu peux partir de mes montages Photoshop pour créer le
    décor ? ») : fini le dessin en CSS pur. Chaque escalier est maintenant une vraie image, DÉCOUPÉE
-   directement dans SES propres montages Photoshop (voir assets/escalier-*.png) — le calque rouge
+   directement dans SES propres montages Photoshop (voir assets/salle expo/escalier-*.png) — le calque rouge
    isolé du reste du montage (fond/pilier retirés par transparence), pour réutiliser exactement son
    dessin plutôt que d'essayer de le reproduire en formes CSS. Un pilier porte maintenant 2 images
    distinctes (voir plus bas), affichées l'une ou l'autre selon checkpointFacing plutôt que
@@ -981,7 +981,7 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
 .scale-checkpoint-pillar-side-stairs { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:right center; z-index:4; pointer-events:none; display:none; }
 .scale-checkpoint-pillar-folded .scale-checkpoint-pillar-side-stairs { display:block; }
 /* Miroir pour le pilier GAUCHE (mur gauche) : même image que le pilier droit (un seul fichier,
-   assets/escalier-lateral-droite.png, pas 2 dessins à maintenir), symétrisée en CSS. Le rognage
+   assets/salle expo/escalier-lateral-droite.png, pas 2 dessins à maintenir), symétrisée en CSS. Le rognage
    object-position:right est calculé sur l'image SOURCE avant transform (transform ne fait que peindre
    le résultat déjà rogné à l'envers) — la marche large reste donc bien celle qu'on garde, simplement
    affichée du côté gauche du pilier une fois inversée, exactement ce qu'il faut puisque

@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=200" />
+    <link rel="stylesheet" href="style.css?v=202" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 53</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 55</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1243,18 +1243,18 @@
                          est-ce que tu peux partir de mes montages Photoshop pour créer le décor ? »)
                          : ce petit escalier de coin n'est plus une forme CSS (clip-path) mais une
                          vraie image DÉCOUPÉE directement dans son propre montage Photoshop
-                         (assets/escalier-coin-gauche.png), pour reprendre exactement SON dessin —
+                         (assets/salle expo/escalier-coin-gauche.png), pour reprendre exactement SON dessin —
                          voir son historique complet dans style.css,
                          .scale-checkpoint-pillar-corner-stairs. Visible seulement de face (mur du
                          fond), voir updateCheckpointPillarFraming dans app.js. -->
-                    <img class="scale-checkpoint-pillar-corner-stairs" src="assets/escalier-coin-gauche.png" alt="" aria-hidden="true" />
+                    <img class="scale-checkpoint-pillar-corner-stairs" src="assets/salle expo/escalier-coin-gauche.png" alt="" aria-hidden="true" />
                     <!-- v52 : escalier « de côté », plein cadre, révélé seulement quand CE pilier est
                          celui qui reste (le vrai coin de la salle qu'on regarde) en se tournant —
                          image découpée dans le montage Photoshop du mur droit
-                         (assets/escalier-lateral-droite.png), symétrisée en CSS pour ce pilier-ci
+                         (assets/salle expo/escalier-lateral-droite.png), symétrisée en CSS pour ce pilier-ci
                          (voir .scale-checkpoint-pillar-lit-right .scale-checkpoint-pillar-side-stairs
                          dans style.css) plutôt que de dupliquer un 2e fichier en miroir. -->
-                    <img class="scale-checkpoint-pillar-side-stairs" src="assets/escalier-lateral-droite.png" alt="" aria-hidden="true" />
+                    <img class="scale-checkpoint-pillar-side-stairs" src="assets/salle expo/escalier-lateral-droite.png" alt="" aria-hidden="true" />
                     <!-- v52 : quand ce pilier n'est PAS le vrai coin de la salle regardée (on s'est
                          tourné de l'autre côté), il ne disparaît plus (opacity:0, v49) mais se teinte
                          de la couleur du mur qu'on apercevrait en tournant encore d'un cran dans
@@ -1298,13 +1298,13 @@
                     </div>
                     <!-- v52 : même escalier de coin que #scale-checkpoint-wall-left, mais découpé
                          séparément dans le montage Photoshop (son dessin n'est pas parfaitement
-                         symétrique à main levée) : assets/escalier-coin-droite.png, pas un simple
+                         symétrique à main levée) : assets/salle expo/escalier-coin-droite.png, pas un simple
                          miroir CSS du fichier gauche. -->
-                    <img class="scale-checkpoint-pillar-corner-stairs" src="assets/escalier-coin-droite.png" alt="" aria-hidden="true" />
+                    <img class="scale-checkpoint-pillar-corner-stairs" src="assets/salle expo/escalier-coin-droite.png" alt="" aria-hidden="true" />
                     <!-- v52 : escalier « de côté » — CE pilier utilise directement le montage du mur
                          droit tel que découpé, sans miroir (voir son jumeau gauche ci-dessus pour le
                          miroir CSS). -->
-                    <img class="scale-checkpoint-pillar-side-stairs" src="assets/escalier-lateral-droite.png" alt="" aria-hidden="true" />
+                    <img class="scale-checkpoint-pillar-side-stairs" src="assets/salle expo/escalier-lateral-droite.png" alt="" aria-hidden="true" />
                     <div class="scale-checkpoint-pillar-colorfill" aria-hidden="true"></div>
                   </div>
                   <!-- Mur du fond de la 2e salle, jumeau de #scale-checkpoint-wall ci-dessus (même
