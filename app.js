@@ -3358,11 +3358,17 @@ let checkpointApproachDirection = 0;
 let checkpointApproachAnimationId = null;
 let checkpointApproachDone = false; // garde-fou : ne déclenche qu'UNE fois la suite une fois à 1
 // Zoom max : le mur du fond (et toute la salle avec lui, voir transform-origin sur
-// #scale-checkpoint-room dans style.css) grossit jusqu'à 3,2 fois sa taille de repos — assez pour
-// donner une vraie sensation de s'en approcher, sans devenir absurde ni faire sortir le pilier du
-// cadre trop vite (voir CHECKPOINT_APPROACH_ARROWS_AT plus bas pour le seuil des flèches gauche/droite,
-// pensé pour tomber À PEU PRÈS au milieu visuel de ce zoom).
-const CHECKPOINT_APPROACH_ZOOM_MAX = 2.2;
+// #scale-checkpoint-room dans style.css) grossit jusqu'à 1,8 fois sa taille de repos — assez pour
+// donner une vraie sensation de s'en approcher, sans devenir absurde ni faire sortir le mur du
+// cadre.
+// BUG corrigé v37 (retour de Stéphane, capture à l'appui : « plus il avance, plus il devient petit,
+// petit, petit... le tableau disparaît ») : cette valeur était à 2,2 (zoom jusqu'à 3,2×), COMBINÉE à
+// l'ancienne origine de zoom mal placée (voir style.css) qui poussait le tableau hors cadre — les deux
+// bugs se cumulaient. Avec l'origine corrigée le tableau reste bien encadré, mais un zoom aussi fort
+// grossissait quand même le mur bien plus vite que le personnage ne rétrécissait (voir plus bas), ce
+// qui rendait ce dernier ridiculement minuscule par comparaison. 1,8× reste un zoom net et perceptible
+// (« on voit le tableau s'agrandir ») sans écraser la proportion avec le personnage.
+const CHECKPOINT_APPROACH_ZOOM_MAX = 0.8;
 function stopCheckpointApproaching() {
   if (checkpointApproachAnimationId) clearTimeout(checkpointApproachAnimationId);
   checkpointApproachAnimationId = null;
@@ -3379,7 +3385,12 @@ function updateCheckpointApproachVisual() {
     // au sol) pour suggérer qu'il s'éloigne vers le fond, en même temps que la salle grossit derrière
     // lui — les deux mouvements (salle qui grossit, personnage qui s'éloigne) se renforcent l'un
     // l'autre plutôt que de se contredire.
-    sil.style.transform = `translateY(${tx * 0.6}px) scale(${1 - checkpointApproach * 0.5})`;
+    // BUG corrigé v37 : rétrécissait jusqu'à 0,5× (moitié de sa taille), PENDANT que la salle derrière
+    // lui grossissait jusqu'à 3,2× — les deux effets s'additionnaient (le personnage devenait environ
+    // 6 fois plus petit que le mur en comparaison), d'où le « complètement minuscule » signalé par
+    // Stéphane. Rétrécissement ramené à 0,8× (perte de 20% seulement) : on voit toujours qu'il
+    // s'éloigne, sans qu'il disparaisse à côté d'un mur désormais bien plus raisonnable (1,8×).
+    sil.style.transform = `translateY(${tx * 0.6}px) scale(${1 - checkpointApproach * 0.2})`;
   }
   if (room) room.style.transform = `scale(${1 + checkpointApproach * CHECKPOINT_APPROACH_ZOOM_MAX})`;
   if (checkpointApproach >= 1 && !checkpointApproachDone) {

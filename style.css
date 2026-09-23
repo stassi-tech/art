@@ -809,8 +809,16 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
   /* v34 : origine du zoom d'approche (voir updateCheckpointApproachVisual dans app.js) fixée sur la
      ligne d'horizon plutôt qu'au centre par défaut (50% 50%) — le mur du fond grossit alors depuis
      ce point de fuite plutôt que depuis le milieu de l'écran, ce qui donne l'impression de s'en
-     approcher plutôt que de simplement l'agrandir sur place. */
-  transform-origin:50% var(--room-horizon-y);
+     approcher plutôt que de simplement l'agrandir sur place.
+     BUG corrigé v37 (retour de Stéphane : « le tableau disparaît » pendant l'avancée) : --room-horizon-y
+     (62%) marque la ligne d'HORIZON — le bas de la fenêtre murale, pas le tableau lui-même. Le vrai
+     centre vertical d'un tableau, tel que placeCheckpointWork/buildCheckpointTrack le posent, tombe au
+     milieu de CETTE fenêtre (qui va de 0 à --room-horizon-y), donc à --room-horizon-y / 2 de la salle —
+     exactement le calcul déjà fait en commentaire dans buildCheckpointTrack (« 62%/2=31% de la salle »).
+     En zoomant depuis 62% (sous le tableau), celui-ci n'est pas au centre de l'agrandissement : il se
+     décale progressivement vers le haut et finit par sortir du cadre. En zoomant depuis son propre
+     centre (31%), il grossit sur place, bien encadré, du début à la fin. */
+  transform-origin:50% calc(var(--room-horizon-y) / 2);
 }
 /* v29 : le rail qui porte TOUT ce qui appartient « à la salle » — les 2 piliers de premier plan ET
    le(s) mur(s) du fond — et qui glisse d'un seul bloc pendant la marche salle 1 / salle 2 (voir
