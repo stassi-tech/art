@@ -931,10 +931,18 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    ne dépassent le bord HAUT de cette rangée (coupés net par l'overflow:hidden ci-dessous, faute de
    place) — ça a marché, mais Stéphane a signalé ensuite que sans aucun déplacement, seul le zoom de
    la salle bouge à l'écran, donnant l'impression que « c'est tout le couloir qui glisse », pas le
-   personnage. padding-top ajouté ici pour donner de la place EN HAUT de la rangée : le personnage et
-   la machine peuvent maintenant remonter réellement pendant l'avancée (voir
-   updateCheckpointApproachVisual dans app.js) sans jamais atteindre le bord de l'overflow:hidden. */
-#scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; padding-top:70px; overflow:hidden; background:#e8e4d8; }
+   personnage. padding-top ajouté ici pour donner de la place EN HAUT de la rangée.
+   BUG corrigé v41 : Stéphane a répété le même retour même avec ce padding — parce qu'en v40 la
+   machine montait ELLE AUSSI (un peu moins vite que le personnage, mais quand même) : deux éléments
+   qui montent ensemble se lisent comme une seule bande qui glisse, pas comme un personnage qui
+   marche devant un décor fixe. La machine ne reçoit plus AUCUN mouvement (voir
+   updateCheckpointApproachVisual dans app.js — « il faut la fixer une fois pour toutes, il faut
+   qu'elle ne bouge pas ») : elle n'a donc plus besoin de sa propre réserve verticale. Tout le
+   padding-top (porté à 150px — 110px mesurés insuffisants de justesse à l'arrivée, ~13px de
+   dépassement mesuré par Playwright, donc marge supplémentaire ajoutée) sert maintenant
+   exclusivement au personnage, qui peut remonter nettement plus (voir son coefficient dans
+   app.js) sans jamais toucher le bord de l'overflow:hidden. */
+#scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; padding-top:150px; overflow:hidden; background:#e8e4d8; }
 /* transform-origin bas-centre (pas le centre par défaut) : pendant l'approche du mur du fond (voir
    updateCheckpointApproachVisual dans app.js), le personnage rétrécit et remonte légèrement pour
    suggérer qu'il s'éloigne vers le fond — avec cette origine, ses pieds restent ancrés au sol

@@ -3403,21 +3403,18 @@ function updateCheckpointApproachVisual() {
     // sol plus sombre de la salle juste au-dessus. Le retrecissement seul (scale, pieds ancres en
     // bas via transform-origin) suffit deja a donner l'impression de s'eloigner ; plus de montee
     // verticale ici, qui n'apportait rien et cassait le cadrage.
-    // BUG corrigé v40 : v39 avait retiré tout translateY pour empêcher le clipping par
-    // #scale-checkpoint-row (overflow:hidden) — ça a marché, mais du coup la machine (et le
-    // personnage juste en dessous) ne fait plus QUE rétrécir sur place, sans se déplacer. Stéphane :
-    // « ce n'est pas le personnage qui avance, c'est tout le couloir... il ne se détache pas de la
-    // bande ». Le seul mouvement encore visible était celui de la salle (zoom) et du sol sombre qui
-    // recule dedans — d'où l'impression que c'est LE COULOIR qui glisse, pas le personnage.
-    // Premier essai (coefficient 0,2 choisi par un calcul de marge) : mesuré ensuite au Playwright,
-    // il ne suffisait PAS à créer un mouvement net vers le haut — le rétrécissement (ancré en bas)
-    // dominait toujours, donc le personnage continuait de sembler immobile. Cette fois on donne
-    // vraiment de la PLACE au lieu de chercher un coefficient minuscule : #scale-checkpoint-row a
-    // maintenant un padding-top de 70px (voir style.css) — de la réserve au-dessus de la machine et du
-    // personnage au repos, dans laquelle ils peuvent réellement remonter sans jamais toucher le bord
-    // de l'overflow:hidden. Le coefficient peut donc être franchement plus grand (0,35, contre 0,2
-    // avant) tout en restant sûr, vérifié par Playwright sur toute la plage d'avancée (0 à 1).
-    turnstile.style.transform = `translateY(${tx * 0.35}px) scale(${1 - checkpointApproach * 0.3})`;
+    // BUG corrigé v41 (retour répété de Stéphane, deux fois de suite dans les mêmes mots : « ce n'est
+    // pas le personnage qui avance, c'est tout qui avance... il ne se détache pas de la bande » puis
+    // « le point rouge n'emmène pas le personnage, il emmène la bande beige claire... il faut la
+    // fixer une fois pour toutes, il faut qu'elle ne bouge pas ») : le vrai défaut du v40 n'était pas
+    // la quantité de mouvement, mais le fait que la machine ET le personnage montaient ENSEMBLE (même
+    // si à des vitesses légèrement différentes) — deux éléments qui se déplacent en bloc à l'écran se
+    // lisent comme UNE SEULE bande qui glisse, pas comme un personnage qui marche devant un décor
+    // immobile. La machine à billets est un élément FIXE du décor (comme le sol ou le cordon rouge) :
+    // elle ne doit plus JAMAIS se déplacer ni rétrécir pendant l'avancée, seulement s'estomper. Elle
+    // reste plantée à sa place — c'est justement ce repère fixe qui rend le mouvement du personnage
+    // (juste en dessous) enfin lisible comme le SIEN.
+    turnstile.style.transform = 'none';
     turnstile.style.opacity = String(Math.max(0, 1 - checkpointApproach));
     turnstile.style.pointerEvents = checkpointApproach > 0.02 ? 'none' : '';
   }
@@ -3439,11 +3436,16 @@ function updateCheckpointApproachVisual() {
     // qui semble glisser à sa place. Un premier essai avec un coefficient minuscule (0,2, calculé pour
     // rester sous la marge du clipping SANS agrandir la rangée) s'est révélé, mesures Playwright à
     // l'appui, trop faible pour produire un vrai mouvement net vers le haut : le rétrécissement
-    // (ancré en bas) l'emportait encore. Le vrai correctif est plutôt sur #scale-checkpoint-row (voir
-    // style.css : padding-top:70px ajouté) — cette réserve d'espace au-dessus du personnage/de la
-    // machine au repos permet une remontée franchement plus grande (coefficient 0,35) sans jamais
-    // toucher le bord de l'overflow:hidden, vérifié par Playwright sur toute la plage 0→1.
-    sil.style.transform = `translateY(${tx * 0.35}px) scale(${1 - checkpointApproach * 0.2})`;
+    // (ancré en bas) l'emportait encore. Corrigé une première fois avec padding-top:70px + coefficient
+    // 0,35 — mais Stéphane a répété le même retour : la machine montait AVEC le personnage, donnant
+    // toujours l'impression d'une bande entière qui glisse plutôt que d'un personnage qui marche seul.
+    // BUG corrigé v41 : la machine ne bouge plus du tout (voir le commentaire détaillé juste au-dessus).
+    // Comme elle n'a plus besoin d'aucune réserve verticale, tout le padding-top de #scale-checkpoint-
+    // row (porté à 110px, voir style.css) peut désormais servir SEULEMENT au personnage — coefficient
+    // remonté à 0,5 pour un détachement net et sans ambiguïté, vérifié sans clipping par Playwright sur
+    // toute la plage 0→1. Rétrécissement aussi adouci (0,2 → 0,12, perte de 12% au lieu de 20%) :
+    // Stéphane a aussi signalé que le personnage paraissait « trop petit » par rapport au tableau agrandi.
+    sil.style.transform = `translateY(${tx * 0.5}px) scale(${1 - checkpointApproach * 0.12})`;
   }
   if (room) room.style.transform = `scale(${1 + checkpointApproach * CHECKPOINT_APPROACH_ZOOM_MAX})`;
   if (checkpointApproach >= 1 && !checkpointApproachDone) {
@@ -3490,7 +3492,10 @@ function setupCheckpointApproach() {
   if (turnstileStart) {
     turnstileStart.classList.remove('hidden');
     turnstileStart.style.opacity = '1';
-    turnstileStart.style.transform = 'translateY(0px) scale(1)';
+    // v41 : la machine ne reçoit plus jamais de transform pendant l'avancée (voir
+    // updateCheckpointApproachVisual — elle reste fixe, seule son opacité change) ; 'none' ici
+    // plutôt qu'un translateY/scale à zéro, pour ne rien laisser en suspens par erreur.
+    turnstileStart.style.transform = 'none';
   }
   $('scale-checkpoint-floor-dot')?.classList.add('hidden');
   dot.classList.remove('hidden');
