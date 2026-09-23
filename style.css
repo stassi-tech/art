@@ -927,7 +927,14 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    se peindre EN DESSOUS d'elle en transparence, juste derrière le personnage. Comme #scale-checkpoint-
    row vient APRÈS #scale-checkpoint-room dans le HTML, elle se peint déjà par-dessus dans l'ordre
    normal ; il ne lui manquait qu'un fond opaque pour vraiment cacher ce qui déborde derrière elle. */
-#scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; overflow:hidden; background:#e8e4d8; }
+/* BUG corrigé v40 : v39 avait retiré tout translateY sur le personnage/la machine pour éviter qu'ils
+   ne dépassent le bord HAUT de cette rangée (coupés net par l'overflow:hidden ci-dessous, faute de
+   place) — ça a marché, mais Stéphane a signalé ensuite que sans aucun déplacement, seul le zoom de
+   la salle bouge à l'écran, donnant l'impression que « c'est tout le couloir qui glisse », pas le
+   personnage. padding-top ajouté ici pour donner de la place EN HAUT de la rangée : le personnage et
+   la machine peuvent maintenant remonter réellement pendant l'avancée (voir
+   updateCheckpointApproachVisual dans app.js) sans jamais atteindre le bord de l'overflow:hidden. */
+#scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; padding-top:70px; overflow:hidden; background:#e8e4d8; }
 /* transform-origin bas-centre (pas le centre par défaut) : pendant l'approche du mur du fond (voir
    updateCheckpointApproachVisual dans app.js), le personnage rétrécit et remonte légèrement pour
    suggérer qu'il s'éloigne vers le fond — avec cette origine, ses pieds restent ancrés au sol

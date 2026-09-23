@@ -3403,7 +3403,21 @@ function updateCheckpointApproachVisual() {
     // sol plus sombre de la salle juste au-dessus. Le retrecissement seul (scale, pieds ancres en
     // bas via transform-origin) suffit deja a donner l'impression de s'eloigner ; plus de montee
     // verticale ici, qui n'apportait rien et cassait le cadrage.
-    turnstile.style.transform = `scale(${1 - checkpointApproach * 0.3})`;
+    // BUG corrigé v40 : v39 avait retiré tout translateY pour empêcher le clipping par
+    // #scale-checkpoint-row (overflow:hidden) — ça a marché, mais du coup la machine (et le
+    // personnage juste en dessous) ne fait plus QUE rétrécir sur place, sans se déplacer. Stéphane :
+    // « ce n'est pas le personnage qui avance, c'est tout le couloir... il ne se détache pas de la
+    // bande ». Le seul mouvement encore visible était celui de la salle (zoom) et du sol sombre qui
+    // recule dedans — d'où l'impression que c'est LE COULOIR qui glisse, pas le personnage.
+    // Premier essai (coefficient 0,2 choisi par un calcul de marge) : mesuré ensuite au Playwright,
+    // il ne suffisait PAS à créer un mouvement net vers le haut — le rétrécissement (ancré en bas)
+    // dominait toujours, donc le personnage continuait de sembler immobile. Cette fois on donne
+    // vraiment de la PLACE au lieu de chercher un coefficient minuscule : #scale-checkpoint-row a
+    // maintenant un padding-top de 70px (voir style.css) — de la réserve au-dessus de la machine et du
+    // personnage au repos, dans laquelle ils peuvent réellement remonter sans jamais toucher le bord
+    // de l'overflow:hidden. Le coefficient peut donc être franchement plus grand (0,35, contre 0,2
+    // avant) tout en restant sûr, vérifié par Playwright sur toute la plage d'avancée (0 à 1).
+    turnstile.style.transform = `translateY(${tx * 0.35}px) scale(${1 - checkpointApproach * 0.3})`;
     turnstile.style.opacity = String(Math.max(0, 1 - checkpointApproach));
     turnstile.style.pointerEvents = checkpointApproach > 0.02 ? 'none' : '';
   }
@@ -3417,11 +3431,19 @@ function updateCheckpointApproachVisual() {
     // 6 fois plus petit que le mur en comparaison), d'où le « complètement minuscule » signalé par
     // Stéphane. Rétrécissement ramené à 0,8× (perte de 20% seulement) : on voit toujours qu'il
     // s'éloigne, sans qu'il disparaisse à côté d'un mur désormais bien plus raisonnable (1,8×).
-    // BUG corrige v39 : meme correctif que sur la machine juste au-dessus (voir son commentaire) —
-    // ce translateY faisait deborder le personnage hors du haut de #scale-checkpoint-row, coupe net
-    // par son overflow:hidden, donnant l'impression qu'il "passe sous le sol et disparait". Le
-    // retrecissement seul suffit, plus de montee verticale.
-    sil.style.transform = `scale(${1 - checkpointApproach * 0.2})`;
+    // BUG corrigé v39 : le translateY d'alors (coefficient 0,6, choisi sans calcul) faisait deborder
+    // le personnage hors du haut de #scale-checkpoint-row, coupe net par son overflow:hidden — d'ou
+    // l'impression qu'il "passe sous le sol et disparait". Retire entierement en v39.
+    // BUG corrigé v40 : mais sans AUCUN déplacement, le personnage ne fait plus que rétrécir sur
+    // place — Stéphane a signalé qu'il « ne se détache pas de la bande » et que c'est tout le couloir
+    // qui semble glisser à sa place. Un premier essai avec un coefficient minuscule (0,2, calculé pour
+    // rester sous la marge du clipping SANS agrandir la rangée) s'est révélé, mesures Playwright à
+    // l'appui, trop faible pour produire un vrai mouvement net vers le haut : le rétrécissement
+    // (ancré en bas) l'emportait encore. Le vrai correctif est plutôt sur #scale-checkpoint-row (voir
+    // style.css : padding-top:70px ajouté) — cette réserve d'espace au-dessus du personnage/de la
+    // machine au repos permet une remontée franchement plus grande (coefficient 0,35) sans jamais
+    // toucher le bord de l'overflow:hidden, vérifié par Playwright sur toute la plage 0→1.
+    sil.style.transform = `translateY(${tx * 0.35}px) scale(${1 - checkpointApproach * 0.2})`;
   }
   if (room) room.style.transform = `scale(${1 + checkpointApproach * CHECKPOINT_APPROACH_ZOOM_MAX})`;
   if (checkpointApproach >= 1 && !checkpointApproachDone) {
