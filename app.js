@@ -3165,6 +3165,22 @@ let checkpointPanTravelPx = 0;
 // de taille réelle (CHECKPOINT_PERSON_HEIGHT_CM) devrait avoir une fois arrivé tout contre ce mur,
 // au lieu d'un coefficient de rétrécissement choisi au jugé (voir setupCheckpointApproach).
 let checkpointPxPerCm = 0;
+// v48 (retour de Stéphane : « on devrait travailler le mouvement de se tourner à droite et à
+// gauche pour voir les deux murs avant de travailler la jonction avec le plan rapproché... si on a
+// les trois mouvements, je me tourne à droite, je me tourne à gauche, je regarde en face, au fond,
+// on voit les trois murs ») : largeur/hauteur RÉELLES (en px) de la fenêtre #scale-checkpoint-wall,
+// calculées une fois dans buildCheckpointTrack et rangées ici — updateCheckpointFacing/
+// checkpointWorkForFacing en ont besoin pour réafficher un tableau dans cette même fenêtre (celui
+// du mur gauche ou droit à la place de celui du mur du fond) sans avoir à refaire tout le calcul.
+let checkpointWindowWpx = 0;
+let checkpointWindowHpx = 0;
+// -1 = mur gauche affiché, 0 = mur du fond (par défaut), 1 = mur droit — direction actuellement
+// montrée dans la fenêtre unique #scale-checkpoint-wall une fois arrivé au fond de la salle (voir
+// setCheckpointFacing). On ne montre jamais deux murs à la fois ni en perspective — exactement ce
+// qui avait été essayé puis abandonné comme « trop fragile » (voir le commentaire sur
+// #scale-checkpoint-room dans style.css) : ici, un seul mur PLAT à la fois, on tourne pour voir
+// l'autre, jamais de déformation à calculer.
+let checkpointFacing = 0;
 function stopCheckpointWalking() {
   if (checkpointWalkAnimationId) clearTimeout(checkpointWalkAnimationId);
   checkpointWalkAnimationId = null;
@@ -3305,6 +3321,11 @@ function setupCheckpointWalk() {
     turnstileReset.style.opacity = '';
   }
   $('scale-checkpoint-approach-dot')?.classList.add('hidden');
+  // v48 : remet aussi à zéro les flèches de rotation/le bouton loupe (voir
+  // revealCheckpointArrivalControls) et la direction regardée, laissés visibles/tournés par une
+  // arrivée précédente — sinon ils réapparaîtraient à tort avant même la prochaine avancée.
+  hideCheckpointArrivalControls();
+  checkpointFacing = 0;
   const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
   dot.classList.toggle('hidden', !hasTwoRooms);
   if (!hasTwoRooms) { stopCheckpointWalking(); return; }
@@ -3545,10 +3566,11 @@ function updateCheckpointApproachVisual() {
   if (checkpointApproach >= 1 && !checkpointApproachDone) {
     checkpointApproachDone = true;
     stopCheckpointApproaching();
-    blurTransition(() => {
-      $('scale-checkpoint').classList.add('hidden');
-      enterCloserPlan();
-    });
+    // v48 (retour de Stéphane : « on devrait travailler le mouvement de se tourner à droite et à
+    // gauche pour voir les deux murs avant de travailler la jonction avec le plan rapproché ») :
+    // ne bascule plus tout de suite vers le plan rapproché — on révèle plutôt les flèches de
+    // rotation et le bouton loupe, voir revealCheckpointArrivalControls plus haut.
+    revealCheckpointArrivalControls();
   }
 }
 function startCheckpointApproaching(direction) {
@@ -3579,6 +3601,10 @@ function setupCheckpointApproach() {
   checkpointApproach = 0;
   checkpointApproachDone = false;
   stopCheckpointApproaching();
+  // v48 : ceinture de sécurité — voir le même appel et son commentaire complet dans
+  // setupCheckpointWalk (garde-fou principal, à l'entrée fraîche sur cet écran).
+  hideCheckpointArrivalControls();
+  checkpointFacing = 0;
   // v44 : #scale-checkpoint-track ne reçoit plus jamais de zoom d'approche (voir le commentaire
   // complet dans updateCheckpointApproachVisual et dans style.css) — on ne remet donc ici que son
   // translateX de marche latérale (checkpointProgress, quasi toujours 0 à ce stade), plus aucun
@@ -3805,6 +3831,90 @@ function checkpointBackWallWorks(roomIndex = state.currentRoomIndex) {
   const headliner = all.reduce((biggest, w) => (estimateWorkWidthCm(w) > estimateWorkWidthCm(biggest) ? w : biggest), all[0]);
   return [headliner];
 }
+// v48 : même principe que checkpointBackWallWorks ci-dessus (une seule œuvre vedette, bien centrée
+// — cet écran d'arrivée reste une mise en scène, pas la vraie visite mur par mur), mais appliqué
+// cette fois à une liste d'œuvres déjà connue (celles VRAIMENT accrochées au mur gauche ou droit de
+// la salle, state.roomWalls[3]/[1] — voir splitIntoFourWalls) plutôt qu'à toute l'exposition.
+function checkpointHeadliner(list) {
+  if (!list || !list.length) return null;
+  return list.reduce((biggest, w) => (estimateWorkWidthCm(w) > estimateWorkWidthCm(biggest) ? w : biggest), list[0]);
+}
+// Quelle œuvre montrer dans la fenêtre unique #scale-checkpoint-wall selon la direction actuellement
+// regardée (voir checkpointFacing) : -1 → le clou du mur gauche (state.roomWalls[3], le même
+// emplacement que la jambe « left » du plan rapproché — voir buildContinuousWall), 1 → celui du mur
+// droit (state.roomWalls[1]), 0 → le mur du fond, exactement comme avant (checkpointBackWallWorks).
+function checkpointWorkForFacing(facing) {
+  if (facing === -1) return checkpointHeadliner(state.roomWalls?.[3] || []);
+  if (facing === 1) return checkpointHeadliner(state.roomWalls?.[1] || []);
+  return checkpointBackWallWorks(state.currentRoomIndex)[0];
+}
+// v48 (retour de Stéphane : « je me tourne à droite, je me tourne à gauche, je regarde en face, au
+// fond, on voit les trois murs ») : fait « tourner » le visiteur, SANS le déplacer — on reste
+// exactement à l'endroit où l'avancée s'est arrêtée, seule la fenêtre #scale-checkpoint-wall change
+// de contenu pour montrer le mur qu'on regarde maintenant. Jamais deux murs affichés à la fois, et
+// jamais en perspective : c'est exactement ce qui avait été tenté puis abandonné comme « trop
+// fragile » (voir le commentaire sur #scale-checkpoint-room dans style.css, et checkpointFacing
+// plus haut) — ici, un mur plat remplace l'autre avec un simple fondu, rien à déformer.
+function setCheckpointFacing(facing) {
+  facing = Math.max(-1, Math.min(1, facing));
+  if (facing === checkpointFacing) return;
+  checkpointFacing = facing;
+  const wall1 = $('scale-checkpoint-wall');
+  const worksEl = wall1?.querySelector('.scale-checkpoint-wall-works');
+  if (!wall1 || !worksEl || !checkpointWindowWpx) { updateCheckpointTurnButtons(); return; }
+  worksEl.style.transition = 'opacity .18s ease';
+  worksEl.style.opacity = '0';
+  setTimeout(() => {
+    buildCheckpointWindowWorks(wall1, checkpointWorkForFacing(checkpointFacing), checkpointWindowWpx, checkpointPxPerCm, checkpointWindowHpx);
+    worksEl.style.opacity = '1';
+  }, 180);
+  const label = $('scale-checkpoint-facing-label');
+  if (label) label.textContent = facing === -1 ? 'Mur gauche' : facing === 1 ? 'Mur droit' : 'Mur du fond';
+  updateCheckpointTurnButtons();
+}
+// Désactive la flèche qui ne mènerait nulle part (déjà tout à gauche, ou déjà tout à droite) —
+// repère simple pour savoir qu'on a bien atteint le bout, plutôt que de cliquer dans le vide.
+function updateCheckpointTurnButtons() {
+  const left = $('scale-checkpoint-turn-left');
+  const right = $('scale-checkpoint-turn-right');
+  if (left) left.disabled = checkpointFacing <= -1;
+  if (right) right.disabled = checkpointFacing >= 1;
+}
+// Une fois l'avancée terminée (voir updateCheckpointApproachVisual plus bas), on ne bascule plus
+// tout de suite vers le plan rapproché — retour de Stéphane : « on devrait travailler le mouvement
+// de se tourner à droite et à gauche... avant de travailler la jonction avec le plan rapproché ».
+// On reste ici, sur ce plan à l'échelle réelle, et on révèle les 2 flèches de rotation ET le bouton
+// loupe (voir enterCloserPlanFromArrival) — c'est CE bouton, explicite, qui décide maintenant du
+// passage au plan rapproché, plus un fondu automatique déclenché par la seule arrivée.
+function revealCheckpointArrivalControls() {
+  checkpointFacing = 0;
+  updateCheckpointTurnButtons();
+  $('scale-checkpoint-turn-left')?.classList.remove('hidden');
+  $('scale-checkpoint-turn-right')?.classList.remove('hidden');
+  $('scale-checkpoint-zoom-button')?.classList.remove('hidden');
+  $('scale-checkpoint-facing-label')?.classList.remove('hidden');
+  const label = $('scale-checkpoint-facing-label');
+  if (label) label.textContent = 'Mur du fond';
+}
+function hideCheckpointArrivalControls() {
+  $('scale-checkpoint-turn-left')?.classList.add('hidden');
+  $('scale-checkpoint-turn-right')?.classList.add('hidden');
+  $('scale-checkpoint-zoom-button')?.classList.add('hidden');
+  $('scale-checkpoint-facing-label')?.classList.add('hidden');
+}
+// Déclenchée par le bouton loupe (voir plus haut) : reprend exactement l'ancien fondu automatique
+// (blurTransition → enterCloserPlan), simplement décidé par le visiteur maintenant plutôt que par
+// la seule arrivée au mur du fond.
+function enterCloserPlanFromArrival() {
+  hideCheckpointArrivalControls();
+  blurTransition(() => {
+    $('scale-checkpoint').classList.add('hidden');
+    enterCloserPlan();
+  });
+}
+$('scale-checkpoint-turn-left')?.addEventListener('click', () => setCheckpointFacing(checkpointFacing - 1));
+$('scale-checkpoint-turn-right')?.addEventListener('click', () => setCheckpointFacing(checkpointFacing + 1));
+$('scale-checkpoint-zoom-button')?.addEventListener('click', enterCloserPlanFromArrival);
 // v29 : retour de Stéphane, cette fois avec des captures d'écran comparées à un Photoshop de
 // référence — la v28 (bande de tableaux + pilier inventé, seul à bouger) donnait l'impression que
 // les 2 vrais piliers gris du plan d'ensemble (#scale-checkpoint-wall-left/-right, ceux qui
@@ -3905,6 +4015,12 @@ function buildCheckpointTrack() {
   // v46 : rangée dans checkpointPxPerCm (module-level) pour que setupCheckpointApproach puisse s'en
   // servir plus tard — voir son commentaire complet là-bas.
   checkpointPxPerCm = pxPerCm;
+  // v48 : rangés ici pour que setCheckpointFacing puisse repeindre PLUS TARD cette même fenêtre
+  // (wall1/#scale-checkpoint-wall) avec le tableau du mur gauche ou droit, sans recalculer ni
+  // redemander la disposition — voir son commentaire complet plus bas.
+  checkpointWindowWpx = windowW;
+  checkpointWindowHpx = windowH;
+  checkpointFacing = 0; // on arrive toujours en train de regarder le mur du fond, jamais de côté
   const place = (el, left, width) => { el.style.left = `${left}px`; el.style.width = `${width}px`; };
 
   place(pillarLeft, 0, pillarW);

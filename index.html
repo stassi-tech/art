@@ -1167,7 +1167,7 @@
             <div id="scale-overview">
               <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
                    teste bien la bonne version envoyée. Ne rien construire par-dessus. -->
-              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 47</div>
+              <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 48</div>
               <!-- Étape 1 : la façade — mur extérieur coloré selon l'ambiance active, avec une
                    porte et un bouton d'entrée. La silhouette, à côté, est mise à l'échelle d'une
                    porte de 3 m (au lieu de son échelle habituelle de 1,70 m) pour donner une vraie
@@ -1353,6 +1353,25 @@
               <svg id="scale-checkpoint-approach-silhouette" class="hidden" viewBox="0 0 100 340" aria-hidden="true">
                 <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
               </svg>
+              <!-- v48 (retour de Stéphane : « on devrait travailler le mouvement de se tourner à
+                   droite et à gauche pour voir les deux murs avant de travailler la jonction avec
+                   le plan rapproché... si on a les trois mouvements, je me tourne à droite, je me
+                   tourne à gauche, je regarde en face, au fond, on voit les trois murs ») : une
+                   fois arrivé au mur du fond (voir revealCheckpointArrivalControls dans app.js),
+                   ces 2 flèches remplacent le mur affiché dans #scale-checkpoint-wall par celui de
+                   gauche/droite — jamais 2 murs à la fois, jamais en perspective (voir
+                   checkpointFacing dans app.js). Cachées le reste du temps (avant l'arrivée). -->
+              <button type="button" id="scale-checkpoint-turn-left" class="hidden nav-arrow-button" aria-label="Se tourner vers le mur de gauche" title="Voir le mur de gauche" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);z-index:40;">◄</button>
+              <button type="button" id="scale-checkpoint-turn-right" class="hidden nav-arrow-button" aria-label="Se tourner vers le mur de droite" title="Voir le mur de droite" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:40;">►</button>
+              <!-- top:56px (pas 16px) : la bannière globale de l'appli (#global-topbar, position:
+                   fixed, z-index:200, ~44px de haut) couvre tout le haut de l'écran — un repère
+                   posé plus haut se retrouverait rendu SOUS elle, donc invisible malgré un
+                   z-index:40 propre à cet écran (repéré aux captures Playwright de ce v48). -->
+              <p id="scale-checkpoint-facing-label" class="hidden" aria-hidden="true" style="position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:40;margin:0;background:rgba(255,255,255,.85);color:#2b2620;font-family:Arial,sans-serif;font-size:.72rem;font-weight:700;padding:4px 12px;border-radius:4px;">Mur du fond</p>
+              <!-- Une fois qu'on a fini de regarder autour de soi, ce bouton (explicite, plus de
+                   fondu automatique dès l'arrivée — voir enterCloserPlanFromArrival dans app.js)
+                   permet de passer au plan rapproché pour s'approcher vraiment des tableaux. -->
+              <button type="button" id="scale-checkpoint-zoom-button" class="hidden" aria-label="Voir les tableaux de plus près" title="Voir les tableaux de plus près" style="position:absolute;bottom:190px;left:50%;transform:translateX(-50%);z-index:40;padding:10px 18px;border-radius:24px;border:2px solid rgba(0,0,0,.3);background:rgba(255,255,255,.92);color:#2b2620;font-size:.85rem;font-weight:700;font-family:Arial,sans-serif;cursor:pointer;">🔍 Voir de plus près</button>
             </div>
             <!-- Voile de transition floue entre les étapes. Le passage d'une salle à l'autre,
                  lui, ne l'utilise plus : il se fait en marchant, sans coupure de décor (voir
@@ -1651,6 +1670,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=283"></script>
+    <script src="app.js?v=284"></script>
   </body>
 </html>
