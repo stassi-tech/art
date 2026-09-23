@@ -3872,10 +3872,9 @@ function setCheckpointFacing(facing) {
   const label = $('scale-checkpoint-facing-label');
   if (label) label.textContent = facing === -1 ? 'Mur gauche' : facing === 1 ? 'Mur droit' : 'Mur du fond';
   updateCheckpointTurnButtons();
-  // v51 : couleur du mur + perspective du cordon changent avec l'orientation, voir leur historique
-  // complet plus bas dans ce fichier.
+  // v51 : la couleur du mur change avec l'orientation, voir son historique complet plus bas dans
+  // ce fichier (updateCheckpointWallColorwash).
   updateCheckpointWallColorwash(facing);
-  updateCheckpointStairsRope();
 }
 // v49 (retour de Stéphane, capture à l'appui : « quand le personnage se tourne à gauche et qu'il
 // voit le mur de gauche, il est évident qu'il n'y a plus qu'un pilier gris à gauche. Puisqu'à
@@ -3891,6 +3890,12 @@ function setCheckpointFacing(facing) {
 // sur le mur latéral) plutôt que la face montrée au repos, sans aller jusqu'à un vrai panneau 3D
 // qui pivote (trop proche de ce qui a déjà été essayé puis abandonné ici pour les murs latéraux
 // eux-mêmes, voir le commentaire sur #scale-checkpoint-room dans style.css).
+// v52 (retour de Stéphane, avec ses montages Photoshop précis à l'appui) : en plus du -hidden/
+// -folded déjà posés depuis la v49 (voir leur historique complet dans style.css), on pose ici la
+// couleur de l'aplat qui recouvre maintenant le pilier « -hidden » (.scale-checkpoint-pillar-
+// colorfill, voir style.css) — celle du mur qu'on apercevrait en tournant encore d'un cran dans
+// cette direction, exactement le même calcul que pour les tranches de mur (v51, abandonnées) mais
+// appliqué au pilier entier désormais.
 function updateCheckpointPillarFraming(facing) {
   const pillarLeft = $('scale-checkpoint-wall-left');
   const pillarRight = $('scale-checkpoint-wall-right');
@@ -3900,10 +3905,16 @@ function updateCheckpointPillarFraming(facing) {
   if (facing === -1) {
     pillarRight.classList.add('scale-checkpoint-pillar-hidden');
     pillarLeft.classList.add('scale-checkpoint-pillar-folded');
+    setCheckpointPillarColorfill(pillarRight, facing + 1);
   } else if (facing === 1) {
     pillarLeft.classList.add('scale-checkpoint-pillar-hidden');
     pillarRight.classList.add('scale-checkpoint-pillar-folded');
+    setCheckpointPillarColorfill(pillarLeft, facing - 1);
   }
+}
+function setCheckpointPillarColorfill(pillarEl, neighborFacing) {
+  const fill = pillarEl?.querySelector('.scale-checkpoint-pillar-colorfill');
+  if (fill) fill.style.backgroundColor = CHECKPOINT_WALL_COLORS[String(neighborFacing)] || CHECKPOINT_WALL_COLORS['0'];
 }
 // Désactive la flèche qui ne mènerait nulle part (déjà tout à gauche, ou déjà tout à droite) —
 // repère simple pour savoir qu'on a bien atteint le bout, plutôt que de cliquer dans le vide.
@@ -3937,142 +3948,26 @@ function positionCheckpointArrivalControls() {
   right.style.top = `${midY}px`;
   right.style.left = `${rect.right + gap}px`;
 }
-// v51 (retour de Stéphane, avec 2 nouveaux montages Photoshop : « tes marches sont beaucoup trop
-// hautes par rapport au personnage ») : hauteur RÉELLE d'une contremarche d'escalier, à l'échelle
-// px/cm du personnage à l'écran (voir positionCheckpointStairsOverlays plus bas) — c'est cette
-// mesure, pas une simple fraction fixe d'un conteneur arbitraire comme en v50, qui garde chaque
-// marche proportionnée à lui quelle que soit la hauteur totale disponible.
-const CHECKPOINT_STAIR_RISER_CM = 17;
-// Calcule le polygone en zigzag (silhouette d'escalier vu de profil) pour un nombre de marches
-// donné — généralise à la main le polygone unique écrit en v50 (7 marches fixes) pour pouvoir
-// varier ce nombre selon la place réellement disponible à l'écran (voir l'appelant). topMarginPct
-// laisse une zone transparente en haut, hors du polygone, où se glisse l'aperçu du cordon (voir
-// .scale-checkpoint-stairs-rope dans style.css). stepPct est réutilisé pour caler les fines lignes
-// répétées (une par marche) du dégradé sur les mêmes marches que le clip-path.
-function checkpointStairsGeometry(steps) {
-  const topMarginPct = 12;
-  const usablePct = 100 - topMarginPct;
-  const stepPct = usablePct / steps;
-  const startWidthPct = 64;
-  const pts = ['0% 100%'];
-  for (let i = 0; i < steps; i++) {
-    const w = (startWidthPct * (1 - i / steps)).toFixed(2);
-    const yTop = (100 - i * stepPct).toFixed(2);
-    const yNext = (100 - (i + 1) * stepPct).toFixed(2);
-    pts.push(`${w}% ${yTop}%`);
-    pts.push(`${w}% ${yNext}%`);
-  }
-  pts.push(`0% ${topMarginPct.toFixed(2)}%`);
-  return { clipPath: `polygon(${pts.join(', ')})`, stepPct };
-}
-// v51 : ces 2 escaliers sont désormais des éléments indépendants (voir leur historique complet
-// dans style.css, .scale-checkpoint-stairs-overlay) — cette fonction les dimensionne et les place
-// en JS, exactement comme positionCheckpointArrivalControls le fait déjà pour les flèches de
-// rotation, à partir des mêmes repères réels : la silhouette d'arrivée (pour la hauteur du
-// personnage, donc l'échelle px/cm de chaque marche) et #scale-rope-barrier (pour savoir jusqu'où
-// descendre — « il faut qu'elles descendent un peu plus bas », mais pas plus bas que le cordon,
-// qui marque la limite de ce qu'on peut encore voir de la salle).
-function positionCheckpointStairsOverlays() {
-  const sil = $('scale-checkpoint-approach-silhouette');
-  const rope = $('scale-rope-barrier');
-  const left = $('scale-checkpoint-stairs-left');
-  const right = $('scale-checkpoint-stairs-right');
-  if (!sil || !rope || !left || !right) return;
-  const silRect = sil.getBoundingClientRect();
-  const ropeRect = rope.getBoundingClientRect();
-  if (!silRect.width || !silRect.height || !ropeRect.width) return; // pas encore mis en page
-  const topPx = silRect.top - silRect.height * 0.35; // un peu plus haut que la tête du personnage
-  const bottomPx = ropeRect.bottom - ropeRect.height * 0.12; // jusqu'au cordon, pas au-delà
-  const heightPx = Math.max(60, bottomPx - topPx);
-  // BUG corrigé (première mise en Playwright de ce v51) : une largeur posée comme une simple
-  // fraction de la hauteur (heightPx * 0.5) donnait un escalier ÉNORME et bien plus large que le
-  // personnage lui-même, dès que la hauteur totale (du dessus de sa tête jusqu'au cordon) devenait
-  // grande — exactement l'effet inverse de ce que Stéphane demandait. La largeur doit rester une
-  // mesure à PART, calée sur la largeur du personnage (comme ses marches sont calées sur sa
-  // hauteur), pas sur la hauteur totale de l'escalier.
-  const widthPx = Math.max(70, Math.min(190, silRect.width * 3.6));
-  const gap = 14;
-  const pxPerCmNow = silRect.height / CHECKPOINT_PERSON_HEIGHT_CM; // échelle RÉELLE du personnage à cet instant
-  const riserPx = Math.max(6, CHECKPOINT_STAIR_RISER_CM * pxPerCmNow);
-  // BUG corrigé (première mise en Playwright) : plafonner à 16 marches recréait le même défaut que
-  // v50 (marches redevenues chunky) dès que la hauteur totale à couvrir dépassait largement 16 fois
-  // la hauteur réelle d'une marche. Mais un plafond calé strictement sur la vraie taille (jusqu'à
-  // ~40+ marches sur cette hauteur) donne l'effet inverse une fois compressé dans une largeur
-  // raisonnable (voir widthPx) : la largeur de chaque marche devient alors si fine que l'ensemble se
-  // lit comme un simple triangle plein/un pic, plus du tout comme un escalier reconnaissable
-  // (vérifié à la capture Playwright). Un compromis : sensiblement PLUS de marches que les 7 fixes
-  // du v50 (donc chacune moins « chunky », ce que Stéphane demandait), mais pas au point de les
-  // rendre trop fines pour rester lisibles une par une à cette largeur.
-  const steps = Math.max(10, Math.min(20, Math.round((heightPx * 0.88) / riserPx)));
-  const geo = checkpointStairsGeometry(steps);
-  [left, right].forEach((el) => {
-    el.style.top = `${topPx}px`;
-    el.style.height = `${heightPx}px`;
-    el.style.width = `${widthPx}px`;
-    const shape = el.querySelector('.scale-checkpoint-stairs-shape');
-    if (!shape) return;
-    shape.style.clipPath = geo.clipPath;
-    shape.style.background =
-      `repeating-linear-gradient(0deg, rgba(255,255,255,.22) 0 3px, transparent 3px ${geo.stepPct}%),` +
-      'linear-gradient(0deg, #8a1a1a 0%, #6a1010 55%, #460b0e 100%)';
-  });
-  left.style.left = `${Math.max(4, silRect.left - widthPx - gap)}px`;
-  right.style.left = `${silRect.right + gap}px`;
-  updateCheckpointStairsRope();
-}
-// v51 (retour de Stéphane : « pour le mur de droite ou de gauche, il faut donner une autre
-// perspective au cordon ») : le petit aperçu du cordon, tout en haut de chaque escalier, change de
-// courbe selon l'orientation — plus symétrique (comme vu de loin, presque de face) quand on
-// regarde le mur du fond, plus étiré/dissymétrique (un poteau proche et grand, l'autre loin et
-// petit) quand on regarde un mur latéral, comme si le regard plongeait alors bien plus dans la
-// profondeur du couloir plutôt que de le voir presque droit devant soi.
-function updateCheckpointStairsRope() {
-  const sideView = checkpointFacing !== 0;
-  ['scale-checkpoint-stairs-left', 'scale-checkpoint-stairs-right'].forEach((id) => {
-    const el = $(id);
-    const svg = el?.querySelector('.scale-checkpoint-stairs-rope');
-    const path = svg?.querySelector('path');
-    const posts = svg?.querySelectorAll('circle');
-    if (!path || !posts || posts.length < 2) return;
-    const [postA, postB] = posts;
-    if (sideView) {
-      postA.setAttribute('cx', '8'); postA.setAttribute('cy', '26'); postA.setAttribute('r', '8');
-      postB.setAttribute('cx', '94'); postB.setAttribute('cy', '6'); postB.setAttribute('r', '4');
-      path.setAttribute('d', 'M8 26 Q55 40 94 6');
-    } else {
-      postA.setAttribute('cx', '10'); postA.setAttribute('cy', '10'); postA.setAttribute('r', '7');
-      postB.setAttribute('cx', '90'); postB.setAttribute('cy', '26'); postB.setAttribute('r', '7');
-      path.setAttribute('d', 'M10 10 Q50 36 90 26');
-    }
-  });
-}
 // v51 (retour de Stéphane, avec 2 nouveaux montages Photoshop : « affecter une couleur spécifique
 // à chaque mur, au mur du fond et aux murs latéraux... j'ai fait un essai avec des couleurs un peu
 // criardes, mais au fond ce n'est pas si mal parce qu'on sait où on est ») : une couleur franche
 // par mur (-1 gauche, 0 fond, 1 droit), qui devient le repère principal pour savoir où l'on se
-// trouve pendant la rotation à l'arrivée. Volontairement vives (« criardes ») comme dans l'essai de
-// Stéphane, plutôt que discrètes : le but est justement qu'on les distingue sans hésiter.
-const CHECKPOINT_WALL_COLORS = { '-1': 'rgba(224,138,30,.6)', '0': 'rgba(43,138,72,.6)', '1': 'rgba(30,95,178,.6)' };
-// v51 (retour de Stéphane : « dans la salle je pense qu'il faut créer comme une fausse perspective
-// de mur de retour. Ce n'est pas tout à fait exact du point de vue mathématique, mais ça donne
-// bien ») : pose la couleur du mur affiché (.scale-checkpoint-wall-colorwash) ET, sur les 2 fines
-// tranches en biais à ses bords (.scale-checkpoint-wall-return-left/-right, voir style.css), la
-// couleur du mur qu'on trouverait en tournant encore d'un cran dans cette direction (-1/0/1 rangés
-// comme un simple axe gauche→droit) — rien de mathématiquement exact, juste assez pour suggérer un
-// coin de salle. Aux 2 extrémités de cet axe (déjà tout à gauche/tout à droite), il n'y a plus de
-// voisin dans ce sens-là : la tranche correspondante redevient transparente plutôt que de répéter
-// une couleur qui n'aurait pas de sens.
+// trouve pendant la rotation à l'arrivée, et sert aussi à repeindre le pilier qui n'est plus un
+// vrai coin de la salle (voir setCheckpointPillarColorfill plus haut).
+// v52 : couleurs reprises directement sur les montages Photoshop de Stéphane (pixels mesurés au
+// pipette) plutôt que choisies à l'œil comme en v51 — vert et bleu sont SES couleurs exactes ;
+// aucun montage ne couvrait le mur gauche, l'ambre reste donc un choix (mais dans le même esprit
+// franc/« criard » que les 2 autres).
+const CHECKPOINT_WALL_COLORS = { '-1': '#e0962d', '0': '#4ddf40', '1': '#a7c0d4' };
+// v51 (retour de Stéphane : « affecter une couleur spécifique à chaque mur ») : pose la couleur du
+// mur affiché. v52 : en plein (opaque) plutôt qu'en demi-teinte (rgba, v51) — sur les montages
+// Photoshop de Stéphane, le mur change vraiment de couleur, ce n'est pas juste un filtre posé sur
+// la photo d'ambiance ; la « fausse perspective de mur de retour » (tranches en biais, v51) est
+// abandonnée au profit du pilier repeint (voir updateCheckpointPillarFraming).
 function updateCheckpointWallColorwash(facing) {
   const wall1 = $('scale-checkpoint-wall');
-  if (!wall1) return;
-  const wash = wall1.querySelector('.scale-checkpoint-wall-colorwash');
-  const retLeft = wall1.querySelector('.scale-checkpoint-wall-return-left');
-  const retRight = wall1.querySelector('.scale-checkpoint-wall-return-right');
+  const wash = wall1?.querySelector('.scale-checkpoint-wall-colorwash');
   if (wash) wash.style.backgroundColor = CHECKPOINT_WALL_COLORS[String(facing)] || CHECKPOINT_WALL_COLORS['0'];
-  const leftNeighbor = facing - 1;
-  const rightNeighbor = facing + 1;
-  if (retLeft) retLeft.style.backgroundColor = leftNeighbor >= -1 ? CHECKPOINT_WALL_COLORS[String(leftNeighbor)] : 'transparent';
-  if (retRight) retRight.style.backgroundColor = rightNeighbor <= 1 ? CHECKPOINT_WALL_COLORS[String(rightNeighbor)] : 'transparent';
 }
 // Une fois l'avancée terminée (voir updateCheckpointApproachVisual plus bas), on ne bascule plus
 // tout de suite vers le plan rapproché — retour de Stéphane : « on devrait travailler le mouvement
@@ -4091,13 +3986,9 @@ function revealCheckpointArrivalControls() {
   const label = $('scale-checkpoint-facing-label');
   if (label) label.textContent = 'Mur du fond';
   positionCheckpointArrivalControls();
-  // v51 (retour de Stéphane : « les marches doivent également être visibles sur le plan de face »)
-  // : les 2 escaliers indépendants (voir leur historique complet plus bas dans ce fichier) se
-  // révèlent avec le reste des commandes d'arrivée, pas seulement en se tournant de côté comme en
-  // v50 — ainsi que la couleur du mur du fond et la perspective de face du cordon.
-  $('scale-checkpoint-stairs-left')?.classList.remove('hidden');
-  $('scale-checkpoint-stairs-right')?.classList.remove('hidden');
-  positionCheckpointStairsOverlays();
+  // v52 : la couleur du mur du fond (escaliers de coin compris, posés en CSS pur sur le pilier —
+  // voir updateCheckpointPillarFraming et style.css) est déjà en place dès que
+  // updateCheckpointPillarFraming(0) a tourné juste au-dessus ; il ne reste qu'à teinter le mur.
   updateCheckpointWallColorwash(0);
 }
 function hideCheckpointArrivalControls() {
@@ -4106,8 +3997,6 @@ function hideCheckpointArrivalControls() {
   $('scale-checkpoint-zoom-button')?.classList.add('hidden');
   $('scale-checkpoint-facing-label')?.classList.add('hidden');
   updateCheckpointPillarFraming(0);
-  $('scale-checkpoint-stairs-left')?.classList.add('hidden');
-  $('scale-checkpoint-stairs-right')?.classList.add('hidden');
 }
 // Déclenchée par le bouton loupe (voir plus haut) : reprend exactement l'ancien fondu automatique
 // (blurTransition → enterCloserPlan), simplement décidé par le visiteur maintenant plutôt que par
@@ -4279,9 +4168,9 @@ window.addEventListener('resize', () => {
       const label = $('scale-checkpoint-facing-label');
       if (label) label.textContent = 'Mur du fond';
       positionCheckpointArrivalControls();
-      // v51 : les escaliers/la couleur du mur suivent le même repli sur le mur du fond que le
-      // reste des commandes d'arrivée ci-dessus.
-      positionCheckpointStairsOverlays();
+      // v52 : la couleur du mur suit le même repli sur le mur du fond que le reste des commandes
+      // d'arrivée ci-dessus (les escaliers, eux, sont posés en CSS pur sur le pilier — pas de
+      // recalcul JS nécessaire ici, voir updateCheckpointPillarFraming).
       updateCheckpointWallColorwash(0);
     }
   }

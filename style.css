@@ -873,19 +873,11 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    opaque et la recouvrirait entièrement si elle charge correctement en production — ce calque est
    donc un enfant à part, au-dessus de la photo mais SOUS l'œuvre elle-même
    (#scale-checkpoint-wall-works, posé APRÈS lui dans le HTML, donc toujours par-dessus). Couleur
-   posée en JS (updateCheckpointWallColorwash, app.js) selon checkpointFacing ; en rgba avec un
-   canal alpha < 1 pour teinter fortement la photo d'ambiance sans l'effacer complètement. */
+   posée en JS (updateCheckpointWallColorwash, app.js) selon checkpointFacing.
+   v52 (retour de Stéphane, avec ses montages Photoshop precis à l'appui) : couleur reprise en
+   PLEIN (opaque), pas en demi-teinte laissant deviner la photo derrière comme en v51 — sur son
+   montage, le mur change vraiment de couleur, un aplat franc, pas un filtre posé sur la photo. */
 .scale-checkpoint-wall-colorwash { position:absolute; inset:0; z-index:0; pointer-events:none; transition:background-color .18s ease; }
-/* Fausse perspective de mur de retour, demandée telle quelle par Stéphane (« ce n'est pas tout à
-   fait exact du point de vue mathématique, mais ça donne bien ») : 2 fines tranches en biais,
-   collées aux bords gauche/droit du mur affiché, comme si on apercevait le tout début du mur
-   VOISIN en train de se refermer sur le côté — chacune prend donc la couleur de CE mur voisin
-   (elle aussi posée par updateCheckpointWallColorwash selon la direction), pas celle du mur
-   affiché au centre. Un simple aplat en biais (clip-path), pas un vrai calcul de perspective 3D —
-   assez pour suggérer un coin de salle plutôt qu'un aplat totalement plat. */
-.scale-checkpoint-wall-return { position:absolute; inset:0; z-index:0; pointer-events:none; transition:background-color .18s ease; }
-.scale-checkpoint-wall-return-left { clip-path: polygon(0% 0%, 7% 0%, 2% 100%, 0% 100%); }
-.scale-checkpoint-wall-return-right { clip-path: polygon(93% 0%, 100% 0%, 100% 100%, 98% 100%); }
 /* Piliers au premier plan : bande verticale DROITE (pas en trapèze) qui court sur toute la hauteur
    de l'écran (donc plus bas que le mur du fond, qui s'arrête à --room-horizon-y — cet écart de
    hauteur est ce qui suggère la profondeur : piliers proches/hauts, mur du fond loin/plus haut dans
@@ -933,50 +925,76 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    setCheckpointFacing), seul le coin du côté qu'on regarde reste un coin réel ; l'autre disparaît
    en s'estompant (transition déjà posée sur .scale-checkpoint-side-pillar plus haut) plutôt que de
    rester affiché sans raison géométrique. */
-.scale-checkpoint-pillar-hidden { opacity:0; pointer-events:none; }
+/* v49 → v52 (retour de Stéphane, capture à l'appui : « il est évident qu'il n'y a plus qu'un
+   pilier gris à gauche »). En v49/v51, le pilier qui n'est plus un vrai coin de la salle
+   disparaissait (opacity:0). v52 (retour de Stéphane, avec ses montages Photoshop : « cela ne va
+   pas... il faut créer comme une fausse perspective de mur de retour ») : il reste visible mais se
+   recouvre d'un aplat de couleur (voir .scale-checkpoint-pillar-colorfill plus bas), exactement
+   comme sur son montage — plus de disparition, la « fausse perspective de mur de retour » est
+   maintenant CE pilier repeint, pas un filet posé sur le bord du mur (v51, abandonné). La classe
+   -hidden reste posée par updateCheckpointPillarFraming (app.js) par simple continuité de nom,
+   mais n'a plus cet effet d'opacité : voir .scale-checkpoint-pillar-colorfill. */
 /* v50 (retour de Stéphane, 2 tours de suite : « on n'a pas l'impression d'être sur le mur de
-   gauche ni sur le mur de droite... il manque un élément visuel fort ») : le simple repli d'ombre
-   du v49 (2 tons, sombre/clair/sombre) s'est confirmé trop discret à l'usage. Remplacé par un vrai
-   décor, proposé par Stéphane lui-même (montage Photoshop puis photo Wikicommons de référence) :
-   un escalier rouge, vu DE PROFIL (en biais, pas de face), qui suggère que chaque salle est « en
-   contrebas » par rapport à un couloir plus haut. En v50, cet escalier était un ENFANT du pilier
-   (.scale-checkpoint-pillar-stairs), révélé seulement en tournant de côté.
-   v51 (retour de Stéphane, avec 2 nouveaux montages Photoshop : « tes marches sont beaucoup trop
-   hautes par rapport au personnage... et puis elles ne descendent pas assez bas... doivent
-   également être visibles sur le plan de face ») : posé comme enfant du pilier, cet escalier ne
-   pouvait jamais descendre plus bas que #scale-checkpoint-room lui-même (overflow:hidden, ~65% de
-   la hauteur d'écran seulement — voir son commentaire plus haut dans ce fichier) : ses marches se
-   faisaient rogner bien avant d'atteindre le cordon, quelle que soit leur taille en CSS. Il devient
-   donc un élément INDÉPENDANT (position:fixed, exactement comme #scale-checkpoint-approach-
-   silhouette juste au-dessus dans ce fichier — PAS un enfant du pilier ni de la salle), posé et
-   dimensionné en JS (positionCheckpointStairsOverlays, app.js) plutôt qu'en CSS pur : chaque marche
-   y mesure une hauteur RÉELLE de contremarche (~17cm) à l'échelle du personnage à l'écran, pour
-   rester proportionnée à lui (« beaucoup trop hautes par rapport au personnage ») quel que soit le
-   nombre de marches nécessaires pour descendre jusqu'au cordon. Visible sur les 3 orientations, mur
-   du fond compris (retour de Stéphane) : ce n'est donc plus .scale-checkpoint-pillar-folded qui
-   décide de sa visibilité (cette classe reste posée par updateCheckpointPillarFraming, côté pilier,
-   mais n'a plus d'effet visuel ici) — la couleur du mur (.scale-checkpoint-wall-colorwash plus
-   haut) est maintenant le repère principal pour savoir où l'on se trouve, l'escalier n'étant plus
-   qu'un décor d'ambiance présent partout. */
-.scale-checkpoint-stairs-overlay { position:fixed; z-index:12; pointer-events:none; transition:opacity .18s ease; }
-/* Silhouette en biais (pas un escalier vu de face) : le clip-path est calculé en JS
-   (checkpointStairsGeometry, app.js) plutôt qu'écrit ici en dur, pour pouvoir faire varier le
-   nombre de marches selon la place réellement disponible (voir plus haut) — le résultat reste le
-   même principe qu'en v50 (zigzag qui part de tout le bas et se referme en montant, tapis rouge en
-   dégradé + fines lignes répétées pour distinguer chaque marche), simplement généralisé. */
-.scale-checkpoint-stairs-shape { position:absolute; inset:0; box-shadow: inset 0 -12px 16px rgba(0,0,0,.35); }
-/* Petit aperçu du cordon de velours (voir #scale-rope-barrier) tout en haut de l'escalier, comme
-   suggéré par Stéphane (« on revoit un tout petit peu le cordon, mais de l'autre côté »).
-   v51 (retour de Stéphane : « pour le mur de droite ou de gauche, il faut donner une autre
-   perspective au cordon ») : sa courbe/ses poteaux changent maintenant selon checkpointFacing
-   (updateCheckpointStairsRope, app.js) — plus symétrique de face (mur du fond), plus étiré/
-   dissymétrique de côté (mur gauche/droit), comme si le cordon s'éloignait alors bien plus vite en
-   profondeur. */
-.scale-checkpoint-stairs-rope { position:absolute; top:0; left:2%; width:36%; height:14%; overflow:visible; z-index:1; }
-/* Miroir pour l'escalier droit (mur droit) : même dessin que l'escalier gauche, symétrisé en un
-   seul transform sur tout le conteneur (forme ET aperçu de cordon ensemble) plutôt qu'en dupliquant
-   le clip-path et les dégradés. */
-.scale-checkpoint-stairs-overlay-mirror { transform:scaleX(-1); }
+   gauche ni sur le mur de droite... il manque un élément visuel fort ») : un escalier rouge, vu DE
+   PROFIL, suggérant que chaque salle est « en contrebas » par rapport à un couloir plus haut.
+   v51 : dessiné en CSS pur (clip-path généré en JS), posé comme élément indépendant pour pouvoir
+   descendre jusqu'au cordon. Confirmé mauvais à l'usage par Stéphane une fois vu dans son vrai
+   navigateur (« cela ne va pas ») : à l'échelle réelle de l'écran, le clip-path généré donnait un
+   pic/triangle plein, pas un escalier reconnaissable.
+   v52 (retour de Stéphane : « est-ce que tu peux partir de mes montages Photoshop pour créer le
+   décor ? ») : fini le dessin en CSS pur. Chaque escalier est maintenant une vraie image, DÉCOUPÉE
+   directement dans SES propres montages Photoshop (voir assets/escalier-*.png) — le calque rouge
+   isolé du reste du montage (fond/pilier retirés par transparence), pour réutiliser exactement son
+   dessin plutôt que d'essayer de le reproduire en formes CSS. Un pilier porte maintenant 2 images
+   distinctes (voir plus bas), affichées l'une ou l'autre selon checkpointFacing plutôt que
+   fusionnées en une seule forme qui devrait s'adapter aux 3 cas. */
+/* Escalier de COIN (visible sur le plan de face, mur du fond) : petit, callé au pied du pilier
+   pile à sa largeur (width:100%) — mesuré sur le montage Photoshop de Stéphane, l'escalier qu'il a
+   dessiné fait exactement la largeur du pilier, ni plus ni moins. bottom:0 + left:0 : ses propres
+   pixels sont déjà alignés au bord extérieur (gauche pour ce pilier, symétrique à droite pour
+   l'autre), pas besoin d'un 2e réglage ici. Caché dès qu'on se tourne de côté (voir
+   updateCheckpointPillarFraming) — c'est alors l'escalier « de côté » juste après qui prend le
+   relais. */
+.scale-checkpoint-pillar-corner-stairs { position:absolute; left:0; bottom:0; width:100%; z-index:3; pointer-events:none; display:block; }
+.scale-checkpoint-pillar-folded .scale-checkpoint-pillar-corner-stairs,
+.scale-checkpoint-pillar-hidden .scale-checkpoint-pillar-corner-stairs { display:none; }
+/* Escalier « DE CÔTÉ » (mur gauche/droit) : plein cadre sur TOUTE la surface du pilier (inset:0,
+   100%/100%, comme l'aplat de couleur juste après), avec object-fit:cover pour remplir ce cadre sans
+   déformer l'image — exactement comme un fond `background-size:cover`, mais en gardant un vrai <img>.
+   object-position:right center choisit QUELLE partie de l'image on garde visible une fois le rognage
+   fait : sur le montage « mur droit » de Stéphane, la marche la plus large/la plus proche est callée
+   contre le bord droit du fichier source, donc « right » garde bien cette marche-là visible et rogne
+   plutôt le haut de l'escalier (la partie qui « part » en perspective, moins importante).
+   Pourquoi pas top:0;right:0;height:100%;width:auto (le réglage v52 initial) : ce réglage laissait le
+   cadre de l'image déborder du pilier vers la GAUCHE (le pilier est plus étroit que l'image mise à la
+   hauteur du pilier), et ce débordement se faisait rogner par le overflow:hidden du pilier — jusque
+   là correct. Mais transform:scaleX(-1) (juste en dessous, pour le pilier gauche) inverse l'image À
+   L'INTÉRIEUR de son cadre SANS déplacer ce cadre : la marche large qui était callée au bord droit du
+   cadre se retrouvait donc visuellement projetée vers son bord GAUCHE — précisément la partie qui
+   débordait et se faisait rogner. Résultat vu à l'écran (v52_left_zoom.png) : seul un mince filet de
+   l'escalier restait visible, presque tout rogné. object-fit:cover n'a pas ce problème car le cadre
+   lui-même fait exactement 100%/100% du pilier (plus de débordement à rogner), donc le rognage se
+   fait DANS le calcul de object-position, pas après le miroir — le résultat reste correct une fois
+   inversé. Cette image garde son fond transparent : la texture grise striée du pilier reste visible
+   autour de l'escalier (comme sur le montage). Caché par défaut (de face) — révélé seulement par
+   updateCheckpointPillarFraming quand CE pilier devient le vrai coin de la salle qu'on regarde. */
+.scale-checkpoint-pillar-side-stairs { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:right center; z-index:4; pointer-events:none; display:none; }
+.scale-checkpoint-pillar-folded .scale-checkpoint-pillar-side-stairs { display:block; }
+/* Miroir pour le pilier GAUCHE (mur gauche) : même image que le pilier droit (un seul fichier,
+   assets/escalier-lateral-droite.png, pas 2 dessins à maintenir), symétrisée en CSS. Le rognage
+   object-position:right est calculé sur l'image SOURCE avant transform (transform ne fait que peindre
+   le résultat déjà rogné à l'envers) — la marche large reste donc bien celle qu'on garde, simplement
+   affichée du côté gauche du pilier une fois inversée, exactement ce qu'il faut puisque
+   .scale-checkpoint-pillar-lit-right marque justement le pilier gauche (voir son commentaire plus
+   haut dans ce fichier). */
+.scale-checkpoint-pillar-lit-right .scale-checkpoint-pillar-side-stairs { transform:scaleX(-1); }
+/* v52 : l'aplat de couleur qui remplace la disparition (opacity:0) de l'AUTRE pilier — voir le
+   commentaire d'ensemble plus haut. inset:0 (toute la surface du pilier, pas un simple filet) +
+   z-index au-dessus de la texture grise ET de la niche, pour bien la recouvrir entièrement comme
+   sur le montage de Stéphane. Couleur posée en JS (updateCheckpointPillarFraming) : celle du mur
+   qu'on apercevrait en tournant encore d'un cran dans cette direction. */
+.scale-checkpoint-pillar-colorfill { position:absolute; inset:0; z-index:6; pointer-events:none; display:none; }
+.scale-checkpoint-pillar-hidden .scale-checkpoint-pillar-colorfill { display:block; }
 /* v31 : bande plate (parquet à chevrons, même texture que le mur rapproché), plus de trapèze en
    perspective — retour de Stéphane après capture d'écran en cours de marche : « le parquet à un
    moment, il y a une espèce de ligne oblique... il faut trois bandes, sans ligne qui partent en
