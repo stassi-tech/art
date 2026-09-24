@@ -889,6 +889,27 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
 .scale-checkpoint-decor-image-active .scale-checkpoint-pillar-hidden .scale-checkpoint-pillar-colorfill {
   background-color:transparent !important;
 }
+/* v62 (retour de Stéphane après la livraison des 4 décors : « il n'y a qu'une partie du décor qui
+   est prise... c'est comme si le couloir restait sur le décor zéro ») : les règles ci-dessus ne
+   rendaient transparent que le MUR (#scale-checkpoint-wall/-window) et le pilier replié — mais
+   #scale-checkpoint-floor est un élément SÉPARÉ (frère de #scale-checkpoint-track, pas un enfant du
+   mur), qui portait toujours sa propre texture de sol opaque (photo d'ambiance par défaut, voir
+   body:not([data-ambiance]) #scale-checkpoint-floor plus haut) par-dessus l'image de fond posée sur
+   #scale-checkpoint-room. Résultat : seule la partie « mur » (en haut) de chaque montage de
+   Stéphane apparaissait, la partie « sol + tapis » du même montage (en bas) restait cachée sous
+   l'ancien sol générique. On rend donc ce sol transparent lui aussi, exactement par le même
+   mécanisme (!important pour la même raison de spécificité : body:not([data-ambiance])
+   #scale-checkpoint-floor a un point de plus que ce sélecteur par ID seul). */
+.scale-checkpoint-decor-image-active #scale-checkpoint-floor {
+  background-color:transparent !important; background-image:none !important; box-shadow:none !important;
+}
+/* Le tapis rouge (::after, v57) dessiné sur ce sol devient redondant : chacun des 4 montages de
+   Stéphane contient DÉJÀ son propre tapis rouge, peint directement dans l'image (voir sa
+   description dans le commentaire v61 plus haut, « décor 1,1/1,2/2,1/2,2 »). Le laisser affiché
+   superposerait un second tapis, à un angle différent de celui du montage, par-dessus le sien. */
+.scale-checkpoint-decor-image-active #scale-checkpoint-floor::after {
+  opacity:0;
+}
 /* Piliers au premier plan : bande verticale DROITE (pas en trapèze) qui court sur toute la hauteur
    de l'écran (donc plus bas que le mur du fond, qui s'arrête à --room-horizon-y — cet écart de
    hauteur est ce qui suggère la profondeur : piliers proches/hauts, mur du fond loin/plus haut dans
