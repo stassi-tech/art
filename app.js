@@ -4009,6 +4009,34 @@ function updateCheckpointWallColorwash(facing) {
   const wash = wallEl?.querySelector('.scale-checkpoint-wall-colorwash');
   const colors = checkpointWallColorsForCurrentRoom();
   if (wash) wash.style.backgroundColor = colors[String(facing)] || colors['0'];
+  updateCheckpointDecorImage(facing);
+}
+// v61 (retour de Stéphane, 4 montages complets « décor 1,1/1,2/2,1/2,2 », voir le commentaire
+// complet sur .scale-checkpoint-decor-image-active dans style.css) : une image par salle × sens de
+// mur latéral, jamais pour le mur du fond (facing===0, « décor 0 » — celui-là reste géré comme
+// avant, seule sa position de personnage a changé, voir #scale-checkpoint-silhouette dans
+// style.css). Appelée depuis updateCheckpointWallColorwash ci-dessus plutôt que dupliquée à ses 3
+// points d'appel (setCheckpointFacing, revealCheckpointArrivalControls, le redimensionnement) :
+// les deux vont toujours de pair, un seul endroit à tenir à jour.
+const CHECKPOINT_DECOR_IMAGE_BY_ROOM = [
+  { '-1': 'assets/checkpoint-decor-salle1-gauche.jpg', '1': 'assets/checkpoint-decor-salle1-droit.jpg' },
+  { '-1': 'assets/checkpoint-decor-salle2-gauche.jpg', '1': 'assets/checkpoint-decor-salle2-droit.jpg' },
+];
+function updateCheckpointDecorImage(facing) {
+  const room = $('scale-checkpoint-room');
+  if (!room) return;
+  const idx = state.allRooms && state.allRooms.length >= 2 ? (state.currentRoomIndex || 0) : 0;
+  const map = CHECKPOINT_DECOR_IMAGE_BY_ROOM[idx] || CHECKPOINT_DECOR_IMAGE_BY_ROOM[0];
+  const url = facing !== 0 ? map[String(facing)] : null;
+  if (url) {
+    room.style.backgroundImage = `url('${url}')`;
+    room.style.backgroundSize = 'cover';
+    room.style.backgroundPosition = 'center';
+    room.classList.add('scale-checkpoint-decor-image-active');
+  } else {
+    room.style.backgroundImage = '';
+    room.classList.remove('scale-checkpoint-decor-image-active');
+  }
 }
 // Une fois l'avancée terminée (voir updateCheckpointApproachVisual plus bas), on ne bascule plus
 // tout de suite vers le plan rapproché — retour de Stéphane : « on devrait travailler le mouvement

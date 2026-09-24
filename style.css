@@ -849,6 +849,46 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
    PLEIN (opaque), pas en demi-teinte laissant deviner la photo derrière comme en v51 — sur son
    montage, le mur change vraiment de couleur, un aplat franc, pas un filtre posé sur la photo. */
 .scale-checkpoint-wall-colorwash { position:absolute; inset:0; z-index:0; pointer-events:none; transition:background-color .18s ease; }
+/* v61 (retour de Stéphane, avec 4 montages Photoshop complets renommés « décor 1,1 / 1,2 / 2,1 /
+   2,2 » — un par salle × direction de mur latéral : « le problème c'est que tu changes simplement
+   les couleurs, mais tu utilises toujours le même décor... il faut que tu prennes l'autre décor,
+   en fait ») : jusqu'ici (v51/v52/v60), se tourner vers un mur latéral ne changeait QUE la couleur
+   d'aplat posée sur le même calque .scale-checkpoint-wall-colorwash — Stéphane veut désormais que
+   ce soit une image de décor entièrement différente (une par salle × par sens), pas une couleur
+   recalculée. Plutôt que de découper ses 4 montages en 2 morceaux (mur + pilier) qui devraient
+   coïncider EXACTEMENT avec pillarW/windowW calculés en JS (risque de couture visible si le
+   ratio de son montage ne correspond pas pile au calcul live, à une autre taille d'écran) : l'image
+   est posée en fond sur #scale-checkpoint-room tout entier (voir updateCheckpointDecorImage dans
+   app.js) — le cadre FIXE qui ne panoramique jamais (à l'inverse de #scale-checkpoint-track dedans,
+   voir son commentaire plus haut) — avec background-size:cover, même principe que les photos
+   d'ambiance déjà posées ailleurs sur #scale-floor/#scale-checkpoint-floor. Cette image ne devient
+   visible qu'à travers les 2 zones que voici : le mur qu'on regarde (rendu transparent) et le
+   pilier replié (idem) — l'AUTRE pilier, resté un vrai coin, garde son propre aplat opaque
+   (#scale-checkpoint-wallpanel plus haut) et continue donc à le masquer normalement, exactement
+   comme sur les montages de Stéphane (un pilier plein d'un côté, le décor de l'autre). Cette classe
+   n'est posée que quand on regarde un mur latéral (jamais au repos, mur du fond, où rien ne change
+   ici — voir « décor 0 » ci-dessous pour ce cas-là). */
+.scale-checkpoint-decor-image-active #scale-checkpoint-wall,
+.scale-checkpoint-decor-image-active .scale-checkpoint-wall-window {
+  /* !important nécessaire : sinon perdant face à body:not([data-ambiance]) #scale-checkpoint-wall
+     (règle de la photo d'ambiance, plus haut dans ce fichier) — son sélecteur inclut le type
+     `body`, ce qui lui donne un point de spécificité de plus que celui-ci malgré l'ID commun. */
+  background-color:transparent !important; background-image:none !important;
+}
+.scale-checkpoint-decor-image-active .scale-checkpoint-wall-colorwash {
+  background-color:transparent !important;
+}
+.scale-checkpoint-decor-image-active .scale-checkpoint-pillar-hidden {
+  /* même raison qu'au-dessus : body:not([data-ambiance]) ... .scale-checkpoint-side-pillar pose
+     aussi cette couleur, avec un sélecteur `body`-qualifié donc plus spécifique. */
+  background-color:transparent !important; background-image:none !important;
+}
+.scale-checkpoint-decor-image-active .scale-checkpoint-pillar-hidden::after {
+  opacity:0;
+}
+.scale-checkpoint-decor-image-active .scale-checkpoint-pillar-hidden .scale-checkpoint-pillar-colorfill {
+  background-color:transparent !important;
+}
 /* Piliers au premier plan : bande verticale DROITE (pas en trapèze) qui court sur toute la hauteur
    de l'écran (donc plus bas que le mur du fond, qui s'arrête à --room-horizon-y — cet écart de
    hauteur est ce qui suggère la profondeur : piliers proches/hauts, mur du fond loin/plus haut dans
@@ -1031,7 +1071,13 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
    suggérer qu'il s'éloigne vers le fond — avec cette origine, ses pieds restent ancrés au sol
    pendant le rétrécissement au lieu de sembler s'enfoncer dedans (ce qui arriverait avec le centre
    par défaut, 50% 50%). */
-#scale-checkpoint-silhouette { height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; }
+/* v61 (retour de Stéphane sur la vue de face, « décor 0 » : « remonte un peu le personnage ») :
+   margin-bottom plutôt que transform — ce dernier est déjà entièrement piloté en JS pendant
+   l'avancée (voir armCheckpointApproach/updateCheckpointApproachVisual, le rétrécissement en
+   zoom) et un style inline JS écraserait de toute façon une transform posée ici en CSS. Une marge
+   basse laisse le personnage démarrer un peu plus haut dans la rangée (align-items:flex-end sur
+   #scale-checkpoint-row) sans toucher au reste de la rangée (cordon, flèches). */
+#scale-checkpoint-silhouette { height:26vh; margin-bottom:1.5vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; }
 /* v45 (retour de Stéphane : « il ne passe pas du tout dans la salle ») : copie visuelle du
    personnage ci-dessus, à l'identique (même height, couleur, ombre), mais position:fixed — donc
    jamais concernée par l'overflow:hidden de #scale-checkpoint-row (voir le commentaire complet dans
