@@ -923,6 +923,14 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
    qu'on apercevrait en tournant encore d'un cran dans cette direction. */
 .scale-checkpoint-pillar-colorfill { position:absolute; inset:0; z-index:6; pointer-events:none; display:none; }
 .scale-checkpoint-pillar-hidden .scale-checkpoint-pillar-colorfill { display:block; }
+/* v61 : PAS de découpe en biais ici, volontairement, malgré celle ajoutée juste au-dessus sur
+   .scale-checkpoint-pillar-niche pour la même demande de Stéphane (« il faudrait que le cadran ne
+   soit pas droit »). Vérifié au pixel sur ses montages (500084ea/0a19435d, la frontière aplat/
+   liséré) : cette frontière est parfaitement VERTICALE à toutes les hauteurs testées (x constant à
+   ±2px près) — seule la petite niche « Salle actuelle » est coupée en biais sur son montage, pas
+   le grand aplat de couleur du pilier lui-même. Cohérent avec la décision plus ancienne, toujours
+   valable, de ne jamais montrer les murs/piliers en perspective (voir le commentaire sur
+   #scale-checkpoint-room tout en haut de ce fichier : « trop casse-gueule »). */
 /* v31 : bande plate (parquet à chevrons, même texture que le mur rapproché), plus de trapèze en
    perspective — retour de Stéphane après capture d'écran en cours de marche : « le parquet à un
    moment, il y a une espèce de ligne oblique... il faut trois bandes, sans ligne qui partent en
@@ -1057,8 +1065,26 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
 .scale-checkpoint-pillar-niche {
   position:absolute; top:38%; left:50%; transform:translateX(-50%);
   background:rgba(20,20,20,.72); border:2px solid rgba(255,255,255,.5); border-radius:6px;
-  z-index:5; padding:6px; box-sizing:border-box; pointer-events:none; text-align:center;
+  z-index:5; padding:6px 10px; box-sizing:border-box; pointer-events:none; text-align:center;
   width:max-content; max-width:90%;
+}
+/* v61 (retour de Stéphane, avec un montage Photoshop à l'appui : « les lignes du cadran suivent
+   les lignes du tapis rouge, soient parallèles au tapis rouge ») : le cadran (cette niche
+   « Salle actuelle ») était jusqu'ici un simple rectangle droit, alors que sur son montage il a
+   deux coins coupés en biais, du côté qui s'éloigne du visiteur — exactement le même principe que
+   la « fausse perspective de mur de retour » déjà appliquée au pilier lui-même (voir
+   .scale-checkpoint-pillar-colorfill plus bas, ajouté en v52 pour la même raison). Le bord côté
+   salle (là où le pilier rejoint le mur qu'on regarde) reste un vrai bord droit — seul le bord côté
+   « extérieur » (qui recule visuellement hors du cadre) est coupé, en haut ET en bas, comme mesuré
+   au pixel sur son montage (~14% de la hauteur de la niche). .scale-checkpoint-pillar-lit-right/
+   -lit-left (déjà posées sur le pilier parent selon son rôle, voir plus haut) donnent déjà le bon
+   côté : le bord éclairé est celui qui touche la salle, donc c'est TOUJOURS le bord opposé (non
+   éclairé) qui doit être coupé. */
+.scale-checkpoint-pillar-lit-right .scale-checkpoint-pillar-niche {
+  clip-path: polygon(14% 0%, 100% 0%, 100% 100%, 14% 100%, 0% 84%, 0% 16%);
+}
+.scale-checkpoint-pillar-lit-left .scale-checkpoint-pillar-niche {
+  clip-path: polygon(0% 0%, 86% 0%, 100% 16%, 100% 84%, 86% 100%, 0% 100%);
 }
 .scale-checkpoint-pillar-niche-title {
   margin:0 0 5px; color:#fff; font-family:Arial,sans-serif; font-size:.5rem; font-weight:700;
