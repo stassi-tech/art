@@ -735,51 +735,22 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
    ciré, etc. En attendant ces choix, un parquet neutre par défaut, clairement différent du mur
    pour qu'on distingue bien les deux plans). Les sculptures reposent dessus (voir --scale-ratio et
    la classe .scale-sculpture, qui les pose à bottom:0 — juste au-dessus du sol, pas dedans). */
-/* Premier plan de la salle : vue d'ensemble en trapèze (façon Zoffany) — le mur du fond, plus
-   étroit en haut qu'en bas, donne une impression de profondeur simple. Une texture de fond par
-   ambiance (voir salle-<ambiance>-mur.jpg dans assets/) remplira ce trapèze une fois préparée ;
-   en attendant, une couleur de repli assure que la forme reste lisible. */
-#scale-overview { position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; }
-/* Mur extérieur du musée, avec une porte centrale — remplace l'ancien trapèze de vignettes, qui
-   ne correspondait à rien de réel. Le personnage se tient à côté, mis à l'échelle d'une porte de
-   3 m plutôt qu'à sa taille habituelle de 1,70 m, pour donner une vraie impression de hauteur. */
-#scale-facade {
-  /* Marge basse = exactement la hauteur du sol (6vh) : la porte et la silhouette s'arrêtent
-     ainsi pile au bord supérieur du sol, ni flottantes au-dessus (marge trop grande), ni
-     enfoncées dedans (pas de marge du tout, le sol les recouvrait alors par-dessus). */
-  position:relative; width:min(92vw, 1100px); height:62vh; margin-top:auto; margin-bottom:6vh;
-  background:#c9c2b3 center/cover no-repeat;
-  display:flex; align-items:flex-end; justify-content:center; gap:4%;
-}
-#scale-door {
-  position:relative; width:22%; height:78%; border-radius:6px 6px 0 0;
-  background:#1a1712; box-shadow:inset 0 0 24px rgba(0,0,0,.7), 0 0 0 4px rgba(0,0,0,.25);
-  display:flex; align-items:center; justify-content:center;
-}
-#scale-enter-button {
-  font-family:Arial,sans-serif; font-weight:700; font-size:1rem; letter-spacing:.04em;
-  color:#fff; background:var(--accent,#9c7a4a); border:2px solid rgba(255,255,255,.7);
-  border-radius:6px; padding:10px 18px; cursor:pointer; text-transform:uppercase;
-}
-/* Silhouette à l'échelle de la porte (3 m) plutôt que sa taille habituelle (1,80 m ici, un peu
-   plus grande que le 1,70 m utilisé ailleurs dans l'appli) — 78% * 62vh (hauteur de la porte)
-   divisé par le rapport 300/180 donne sa hauteur ici. */
-#scale-facade #scale-overview-silhouette { position:relative; height:calc(0.78 * 62vh / 1.667); color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
-/* Bande de sol réduite (6vh, pas 16vh comme le sol du mur rapproché) : sans ça, elle recouvrait
-   trop la base de la porte et de la silhouette, les coupant visuellement — juste assez ici pour
-   donner l'impression d'un sol sous leurs pieds sans les amputer. */
-#scale-overview-floor { position:absolute; bottom:0; left:0; right:0; height:6vh; min-height:40px; z-index:1;
-  clip-path:polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
-  background:repeating-linear-gradient(100deg, #a9835a 0 38px, #96714a 38px 40px), linear-gradient(#c9a876, #a9835a); }
-body[data-ambiance="pitti"] #scale-facade, body[data-ambiance="pitti"] #scale-checkpoint-wall, body[data-ambiance="pitti"] .scale-checkpoint-wall-window, body[data-ambiance="pitti"] .scale-checkpoint-side-pillar { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
-body[data-ambiance="bauhaus"] #scale-facade, body[data-ambiance="bauhaus"] #scale-checkpoint-wall, body[data-ambiance="bauhaus"] .scale-checkpoint-wall-window, body[data-ambiance="bauhaus"] .scale-checkpoint-side-pillar { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
-body[data-ambiance="space"] #scale-facade, body[data-ambiance="space"] #scale-checkpoint-wall, body[data-ambiance="space"] .scale-checkpoint-wall-window, body[data-ambiance="space"] .scale-checkpoint-side-pillar { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
-body[data-ambiance="versailles"] #scale-facade, body[data-ambiance="versailles"] #scale-checkpoint-wall, body[data-ambiance="versailles"] .scale-checkpoint-wall-window, body[data-ambiance="versailles"] .scale-checkpoint-side-pillar { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
-body[data-ambiance="wedgwood"] #scale-facade, body[data-ambiance="wedgwood"] #scale-checkpoint-wall, body[data-ambiance="wedgwood"] .scale-checkpoint-wall-window, body[data-ambiance="wedgwood"] .scale-checkpoint-side-pillar { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
-body[data-ambiance="ermitage"] #scale-facade, body[data-ambiance="ermitage"] #scale-checkpoint-wall, body[data-ambiance="ermitage"] .scale-checkpoint-wall-window, body[data-ambiance="ermitage"] .scale-checkpoint-side-pillar { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
-body[data-ambiance="renaissance"] #scale-facade, body[data-ambiance="renaissance"] #scale-checkpoint-wall, body[data-ambiance="renaissance"] .scale-checkpoint-wall-window, body[data-ambiance="renaissance"] .scale-checkpoint-side-pillar { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
-body[data-ambiance="gothique"] #scale-facade, body[data-ambiance="gothique"] #scale-checkpoint-wall, body[data-ambiance="gothique"] .scale-checkpoint-wall-window, body[data-ambiance="gothique"] .scale-checkpoint-side-pillar { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
-body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .scale-checkpoint-wall-window, body:not([data-ambiance]) .scale-checkpoint-side-pillar { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
+/* v57 (retour de Stéphane : « on enlève le plan sur la porte d'entrée qui ne sert à rien ») :
+   #scale-overview/#scale-facade/#scale-door/#scale-enter-button/#scale-overview-silhouette/
+   #scale-overview-floor (le tout premier écran, une façade avec une porte à pousser) ont été
+   retirés d'index.html et de ce fichier — on entre maintenant directement dans le couloir
+   (#scale-checkpoint, juste plus bas) au clic sur une œuvre, voir enterScaleView dans app.js. Les
+   règles de couleur de mur par ambiance ci-dessous, qui ciblaient aussi #scale-facade, ne ciblent
+   plus que les murs qui existent réellement encore (#scale-checkpoint-wall et les piliers). */
+body[data-ambiance="pitti"] #scale-checkpoint-wall, body[data-ambiance="pitti"] .scale-checkpoint-wall-window, body[data-ambiance="pitti"] .scale-checkpoint-side-pillar { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
+body[data-ambiance="bauhaus"] #scale-checkpoint-wall, body[data-ambiance="bauhaus"] .scale-checkpoint-wall-window, body[data-ambiance="bauhaus"] .scale-checkpoint-side-pillar { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
+body[data-ambiance="space"] #scale-checkpoint-wall, body[data-ambiance="space"] .scale-checkpoint-wall-window, body[data-ambiance="space"] .scale-checkpoint-side-pillar { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
+body[data-ambiance="versailles"] #scale-checkpoint-wall, body[data-ambiance="versailles"] .scale-checkpoint-wall-window, body[data-ambiance="versailles"] .scale-checkpoint-side-pillar { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
+body[data-ambiance="wedgwood"] #scale-checkpoint-wall, body[data-ambiance="wedgwood"] .scale-checkpoint-wall-window, body[data-ambiance="wedgwood"] .scale-checkpoint-side-pillar { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
+body[data-ambiance="ermitage"] #scale-checkpoint-wall, body[data-ambiance="ermitage"] .scale-checkpoint-wall-window, body[data-ambiance="ermitage"] .scale-checkpoint-side-pillar { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
+body[data-ambiance="renaissance"] #scale-checkpoint-wall, body[data-ambiance="renaissance"] .scale-checkpoint-wall-window, body[data-ambiance="renaissance"] .scale-checkpoint-side-pillar { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
+body[data-ambiance="gothique"] #scale-checkpoint-wall, body[data-ambiance="gothique"] .scale-checkpoint-wall-window, body[data-ambiance="gothique"] .scale-checkpoint-side-pillar { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
+body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .scale-checkpoint-wall-window, body:not([data-ambiance]) .scale-checkpoint-side-pillar { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
 /* Étape 2 : le contrôle des billets, entre la façade et le plan rapproché — on découvre le mur du
    fond depuis l'entrée, en retrait (impression d'une distance de 15 m, la même longueur que tous
@@ -1049,7 +1020,7 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
 /* v45 (retour de Stéphane : « il ne passe pas du tout dans la salle ») : copie visuelle du
    personnage ci-dessus, à l'identique (même height, couleur, ombre), mais position:fixed — donc
    jamais concernée par l'overflow:hidden de #scale-checkpoint-row (voir le commentaire complet dans
-   index.html et dans setupCheckpointApproach/updateCheckpointApproachVisual dans app.js). left/top
+   index.html et dans armCheckpointApproach/updateCheckpointApproachVisual dans app.js). left/top
    posés en JS au pixel près sur la position de repos du VRAI personnage au moment du clic sur
    Ticket (aucun saut visuel à l'échange) ; margin:0 pour que ce left/top ne soit pas faussé par une
    marge héritée. z-index élevé pour rester devant la salle (mur du fond z-index:2, sol sans
@@ -1106,25 +1077,13 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
    dans app.js) — sans repère visuel autre que le point rouge lui-même, on ne voyait pas facilement
    dans laquelle des 2 salles on se trouve. */
 .scale-checkpoint-room-box.active-room { border-color:#e2453c; background:rgba(226,69,60,.22); color:#fff; }
-/* Tourniquet façon métro, maintenant en orientation VERTICALE : pied métallique, "Ticket" en haut,
-   "Sortie" en dessous — barres obliques évoquant les bras du tourniquet. */
-#scale-turnstile { position:relative; width:min(30vw, 160px); }
-#scale-turnstile-body { position:relative; height:220px; border-radius:10px 10px 4px 4px; background:linear-gradient(#8a8f96, #5c6066); box-shadow:0 8px 20px rgba(0,0,0,.4), inset 0 2px 4px rgba(255,255,255,.3); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; overflow:hidden; }
-#scale-turnstile-body::before, #scale-turnstile-body::after { content:''; position:absolute; left:-10%; height:8px; width:120%; background:rgba(0,0,0,.35); transform:rotate(18deg); }
-#scale-turnstile-body::before { top:28%; }
-#scale-turnstile-body::after { top:68%; }
-#scale-barrier {
-  position:relative; z-index:1; font-family:Arial,sans-serif; font-weight:700; font-size:1.05rem; letter-spacing:.06em;
-  color:#0a2a1c; background:#7de89a; border:3px solid #2a5c3c; border-radius:6px; padding:10px 16px;
-  cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,.3); text-transform:uppercase;
-}
-/* Bouton Sortie, sous Ticket sur le même tourniquet — ramène à la façade (PG). */
-#scale-turnstile-exit {
-  position:relative; z-index:1; font-family:Arial,sans-serif; font-weight:700; font-size:.85rem; letter-spacing:.04em;
-  color:#fff; background:#6b6f75; border:3px solid #3c3f44; border-radius:6px; padding:10px 14px;
-  cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,.3); text-transform:uppercase;
-}
-#scale-turnstile-base { height:16px; background:linear-gradient(#4a4e54, #2c2f33); border-radius:0 0 6px 6px; box-shadow:0 4px 10px rgba(0,0,0,.35); }
+/* v57 (retour de Stéphane : « on enlève la machine à ticket, soit le personnage va dans la salle 1
+   tout droit, soit il va sur le côté dans la salle 2 ») : le tourniquet/machine à tickets (Ticket +
+   Sortie) a été entièrement retiré d'index.html et de ce fichier — plus besoin de le valider pour
+   pouvoir avancer. Les 2 points rouges du couloir (#scale-checkpoint-floor-dot pour aller sur le
+   côté, #scale-checkpoint-approach-dot pour avancer tout droit) sont maintenant disponibles
+   librement dès l'entrée dans le couloir, voir leur commentaire commun plus bas et
+   armCheckpointApproach/setupCheckpointWalk dans app.js. */
 /* Voile de transition floue entre chaque étape — évite, pour l'instant, d'avoir à animer un vrai
    déplacement progressif du personnage à travers l'espace. */
 #scale-blur-veil { position:fixed; inset:0; z-index:15; background:rgba(20,18,14,0); backdrop-filter:blur(0px); pointer-events:none; transition:background .5s, backdrop-filter .5s; }
@@ -1141,15 +1100,15 @@ body:not([data-ambiance]) #scale-facade, body:not([data-ambiance]) #scale-checkp
 /* Sol de la salle personnalisable par ambiance (voir salle-<ambiance>-sol.jpg dans assets/) — même
    principe que le mur : un seul fichier par ambiance, utilisé aux deux plans (vue d'ensemble et
    mur rapproché). Couleur/texture de repli tant que le fichier n'est pas déposé. */
-body[data-ambiance="pitti"] #scale-floor, body[data-ambiance="pitti"] #scale-overview-floor, body[data-ambiance="pitti"] #scale-checkpoint-floor { background-color:#b8a888; background-image:url('assets/salle-pitti-sol.jpg'); }
-body[data-ambiance="bauhaus"] #scale-floor, body[data-ambiance="bauhaus"] #scale-overview-floor, body[data-ambiance="bauhaus"] #scale-checkpoint-floor { background-color:#8a8a8c; background-image:url('assets/salle-bauhaus-sol.jpg'); }
-body[data-ambiance="space"] #scale-floor, body[data-ambiance="space"] #scale-overview-floor, body[data-ambiance="space"] #scale-checkpoint-floor { background-color:#4a4a52; background-image:url('assets/salle-space-sol.jpg'); }
-body[data-ambiance="versailles"] #scale-floor, body[data-ambiance="versailles"] #scale-overview-floor, body[data-ambiance="versailles"] #scale-checkpoint-floor { background-color:#a8824a; background-image:url('assets/salle-versailles-sol.jpg'); }
-body[data-ambiance="wedgwood"] #scale-floor, body[data-ambiance="wedgwood"] #scale-overview-floor, body[data-ambiance="wedgwood"] #scale-checkpoint-floor { background-color:#d8ccb0; background-image:url('assets/salle-wedgwood-sol.jpg'); }
-body[data-ambiance="ermitage"] #scale-floor, body[data-ambiance="ermitage"] #scale-overview-floor, body[data-ambiance="ermitage"] #scale-checkpoint-floor { background-color:#8a6a3a; background-image:url('assets/salle-ermitage-sol.jpg'); }
-body[data-ambiance="renaissance"] #scale-floor, body[data-ambiance="renaissance"] #scale-overview-floor, body[data-ambiance="renaissance"] #scale-checkpoint-floor { background-color:#b89468; background-image:url('assets/salle-renaissance-sol.jpg'); }
-body[data-ambiance="gothique"] #scale-floor, body[data-ambiance="gothique"] #scale-overview-floor, body[data-ambiance="gothique"] #scale-checkpoint-floor { background-color:#8a7a5c; background-image:url('assets/salle-gothique-sol.jpg'); }
-body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overview-floor, body:not([data-ambiance]) #scale-checkpoint-floor { background-color:#6f5638; background-image:url('assets/salle-renoir-sol.jpg'); }
+body[data-ambiance="pitti"] #scale-floor, body[data-ambiance="pitti"] body[data-ambiance="pitti"] #scale-checkpoint-floor { background-color:#b8a888; background-image:url('assets/salle-pitti-sol.jpg'); }
+body[data-ambiance="bauhaus"] #scale-floor, body[data-ambiance="bauhaus"] body[data-ambiance="bauhaus"] #scale-checkpoint-floor { background-color:#8a8a8c; background-image:url('assets/salle-bauhaus-sol.jpg'); }
+body[data-ambiance="space"] #scale-floor, body[data-ambiance="space"] body[data-ambiance="space"] #scale-checkpoint-floor { background-color:#4a4a52; background-image:url('assets/salle-space-sol.jpg'); }
+body[data-ambiance="versailles"] #scale-floor, body[data-ambiance="versailles"] body[data-ambiance="versailles"] #scale-checkpoint-floor { background-color:#a8824a; background-image:url('assets/salle-versailles-sol.jpg'); }
+body[data-ambiance="wedgwood"] #scale-floor, body[data-ambiance="wedgwood"] body[data-ambiance="wedgwood"] #scale-checkpoint-floor { background-color:#d8ccb0; background-image:url('assets/salle-wedgwood-sol.jpg'); }
+body[data-ambiance="ermitage"] #scale-floor, body[data-ambiance="ermitage"] body[data-ambiance="ermitage"] #scale-checkpoint-floor { background-color:#8a6a3a; background-image:url('assets/salle-ermitage-sol.jpg'); }
+body[data-ambiance="renaissance"] #scale-floor, body[data-ambiance="renaissance"] body[data-ambiance="renaissance"] #scale-checkpoint-floor { background-color:#b89468; background-image:url('assets/salle-renaissance-sol.jpg'); }
+body[data-ambiance="gothique"] #scale-floor, body[data-ambiance="gothique"] body[data-ambiance="gothique"] #scale-checkpoint-floor { background-color:#8a7a5c; background-image:url('assets/salle-gothique-sol.jpg'); }
+body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) body:not([data-ambiance]) #scale-checkpoint-floor { background-color:#6f5638; background-image:url('assets/salle-renoir-sol.jpg'); }
 /* Ligne de plinthe séparant le mur du sol — repère visuel simple demandé pour bien distinguer les
    deux plans, en attendant une vraie salle en 3 dimensions. */
 #scale-wall-line { position:fixed; bottom:16vh; left:0; right:0; height:3px; background:rgba(0,0,0,.35); z-index:1; box-shadow:0 1px 2px rgba(255,255,255,.15); }
@@ -1258,20 +1217,40 @@ body:not([data-ambiance]) #scale-floor, body:not([data-ambiance]) #scale-overvie
    apparence que #scale-floor-dot, mais position:absolute (pas fixed) puisqu'il vit DANS
    #scale-checkpoint-row plutôt que sur tout l'écran, et sans transform:translateX(-50%) de base :
    son centrage est déjà calculé en JS au moment de poser left/top (voir setupCheckpointWalk), la
-   transform étant ensuite entièrement dédiée à faire avancer le point avec la marche. */
+   transform étant ensuite entièrement dédiée à faire avancer le point avec la marche.
+   v57 : petite flèche ↔ (::before) ajoutée — depuis que la machine à tickets a disparu, ce point
+   coexiste À L'ÉCRAN avec #scale-checkpoint-approach-dot juste après (voir son commentaire complet
+   là-bas) : sans repère visuel, rien ne distinguait plus les deux à l'œil, alors qu'ils ne font
+   pas du tout la même chose (celui-ci = changer de salle, l'autre = avancer dedans). */
 #scale-checkpoint-floor-dot {
   position:absolute; width:28px; height:28px; border-radius:50%;
   background:#e2453c; box-shadow:0 3px 8px rgba(0,0,0,.45), 0 0 0 4px rgba(255,255,255,.5);
   cursor:grab; z-index:6; touch-action:none;
 }
-/* v34 : point d'AVANCÉE vers le mur du fond — apparaît une fois le ticket validé (voir
-   setupCheckpointApproach dans app.js), remplace #scale-checkpoint-floor-dot ci-dessus qui ne sert
-   plus qu'au choix de la salle. Même apparence, même geste (tirer/taper), mais un axe VERTICAL au
-   lieu d'horizontal : « on le tire vers le tableau du fond » — retour de Stéphane. */
+#scale-checkpoint-floor-dot::before {
+  content:'\2194'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:15px; font-weight:700; pointer-events:none;
+}
+/* v34 : point d'AVANCÉE vers le mur du fond. v57 (retour de Stéphane : « on enlève la machine à
+   ticket, soit le personnage va dans la salle 1 tout droit, soit il va sur le côté dans la salle
+   2 ») : n'apparaît plus au clic sur un bouton « Ticket » (supprimé) mais s'arme automatiquement,
+   toujours au repos (jamais pendant que #scale-checkpoint-floor-dot ci-dessus est activement tiré
+   sur le côté) — voir armCheckpointApproach/disarmCheckpointApproach dans app.js pour le détail de
+   ce nouvel arbitrage. Repositionné 42px à droite de #scale-checkpoint-floor-dot (voir
+   armCheckpointApproach) plutôt que pile à ses pieds comme avant v57 : les deux points sont
+   maintenant visibles EN MÊME TEMPS au repos (avant, un seul des deux existait à la fois, donc le
+   chevauchement pile au même endroit ne posait aucun problème) — sans ce décalage, ils se
+   superposeraient exactement l'un sur l'autre. Même apparence de base, même geste (tirer/taper),
+   mais un axe VERTICAL au lieu d'horizontal : « on le tire vers le tableau du fond » — retour de
+   Stéphane. Flèche ↑ (::before) ajoutée pour la même raison que ↔ ci-dessus. */
 #scale-checkpoint-approach-dot {
   position:absolute; width:28px; height:28px; border-radius:50%;
   background:#e2453c; box-shadow:0 3px 8px rgba(0,0,0,.45), 0 0 0 4px rgba(255,255,255,.5);
   cursor:grab; z-index:6; touch-action:none;
+}
+#scale-checkpoint-approach-dot::before {
+  content:'\2191'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:15px; font-weight:700; pointer-events:none;
 }
 .lightbox-scale-caption { position:fixed; bottom:20px; right:24px; color:#4a453c; font-family:Arial,sans-serif; font-size:.9rem; margin:0; background:rgba(255,255,255,.8); padding:6px 12px; border-radius:4px; }
 @media (max-width:640px) {
@@ -1485,7 +1464,8 @@ body.stephane-test-decor #scale-silhouette { bottom:9vh; }
 /* Fond de mur par salle (voir buildContinuousWall dans app.js, window.__testRoomWallColors) : DANS
    #scale-wall, donc défile avec les œuvres/le pilier — c'est ce qui permet à la couleur de
    réellement changer en passant le pilier, plutôt qu'un fond d'écran fixe unique pour toute la
-   visite (voir #scale-facade, qui reste inchangé et continue de gérer la vraie ambiance du jeu). */
+   visite (voir les règles body[data-ambiance=...] #scale-checkpoint-wall plus haut, qui restent
+   inchangées et continuent de gérer la vraie ambiance du jeu). */
 .scale-wall-test-room-backdrop { position:absolute; top:0; height:57.56vh; z-index:0; pointer-events:none; }
 /* Pilier : même geste que l'original (.scale-wall-pillar, cannelures + arête claire), mais teinté
    dans le bleu-gris exact mesuré sur le pilier du montage de Stéphane (plutôt que le brun-gris

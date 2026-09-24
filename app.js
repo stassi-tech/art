@@ -3051,23 +3051,24 @@ function enterScaleView() {
   // renseignée, réduisait considérablement le pool réel : une salle qui ne montrait plus qu'une
   // seule œuvre (celle ayant, par chance, sa hauteur remplie) plutôt que la sélection complète.
   const candidates = (state.currentOtherWorks && state.currentOtherWorks.length ? state.currentOtherWorks : [currentLightboxWork]);
-  // On entre toujours par la vue d'ensemble (1er plan) — le mur rapproché (2e plan, ci-dessous)
-  // ne s'affiche qu'après avoir tiré la silhouette vers l'avant. Le sol de la vue d'ensemble a sa
-  // propre forme en trapèze (#scale-overview-floor, une perspective différente de celle du mur) —
-  // le sol rectangulaire (#scale-floor) reste réservé au mur rapproché uniquement, pour ne pas
-  // afficher deux sols superposés (bug réel repéré sur smartphone).
-  $('scale-overview').classList.remove('hidden');
+  // v57 (retour de Stéphane : « on enlève le plan sur la porte d'entrée qui ne sert à rien ») : on
+  // entrait auparavant par une façade avec une porte à pousser (#scale-overview, 1er plan) avant de
+  // découvrir le couloir (#scale-checkpoint, 2e plan) — cette façade a été entièrement retirée, on
+  // saute donc directement au couloir, voir enterCheckpointCorridor() en bas de cette fonction. Le
+  // mur rapproché (3e plan, #scale-wall) ne s'affiche toujours, lui, qu'après avoir choisi la loupe
+  // dans le couloir (voir enterCloserPlanFromArrival).
   $('scale-wall-line').classList.add('hidden');
   ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
   state.scaleViewCandidates = candidates;
-  // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer à l'étape du contrôle
-  // des billets (voir goThroughDoor). state.allRooms garde TOUTES les salles (une deuxième salle
-  // n'est créée que s'il y a assez d'œuvres, voir splitIntoRooms) ; state.roomWalls reste, comme
-  // avant, les 4 murs de la salle actuellement visitée — la plupart du code existant (goToWall,
-  // enterCloserPlan...) n'a donc pas besoin de savoir qu'il peut exister plusieurs salles.
+  // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer dans le couloir (voir
+  // enterCheckpointCorridor). state.allRooms garde TOUTES les salles (une deuxième salle n'est créée
+  // que s'il y a assez d'œuvres, voir splitIntoRooms) ; state.roomWalls reste, comme avant, les 4
+  // murs de la salle actuellement visitée — la plupart du code existant (goToWall, enterCloserPlan...)
+  // n'a donc pas besoin de savoir qu'il peut exister plusieurs salles.
   state.allRooms = temporaryTestRoomSplit(candidates) || splitIntoRooms(candidates);
   state.currentRoomIndex = 0;
   state.roomWalls = state.allRooms[0];
+  enterCheckpointCorridor();
 }
 // Petit plan des 2 salles, un simple TÉMOIN passif — confirmé par Stéphane : « le point rouge du
 // petit plan ne déclenche rien, c'est un témoin du déplacement qu'on déclenche par un gros point
@@ -3163,7 +3164,7 @@ let checkpointPanTravelPx = 0;
 // échelle RÉELLE px/cm du mur du fond (voir buildCheckpointTrack, qui la calcule à partir de
 // CHECKPOINT_WALL_LENGTH_CM et la range ici) — permet de calculer la taille EXACTE qu'un personnage
 // de taille réelle (CHECKPOINT_PERSON_HEIGHT_CM) devrait avoir une fois arrivé tout contre ce mur,
-// au lieu d'un coefficient de rétrécissement choisi au jugé (voir setupCheckpointApproach).
+// au lieu d'un coefficient de rétrécissement choisi au jugé (voir armCheckpointApproach).
 let checkpointPxPerCm = 0;
 // v48 (retour de Stéphane : « on devrait travailler le mouvement de se tourner à droite et à
 // gauche pour voir les deux murs avant de travailler la jonction avec le plan rapproché... si on a
@@ -3214,34 +3215,13 @@ function updateCheckpointWalkVisual() {
   const dot = $('scale-checkpoint-floor-dot');
   const sil = $('scale-checkpoint-silhouette');
   const track = $('scale-checkpoint-track');
-  const turnstile = $('scale-turnstile');
   const tx = checkpointProgress * checkpointWalkRangePx;
   if (dot) dot.style.transform = `translateX(${tx}px)`;
   if (sil) sil.style.transform = `translateX(${tx}px)`;
   const pillarTx = -checkpointProgress * checkpointPanTravelPx;
   if (track) track.style.transform = `translateX(${pillarTx}px)`;
-  if (turnstile) {
-    turnstile.style.transform = `translateX(${pillarTx}px)`;
-    // BUG corrigé ici (retour de Stéphane v35 : « il n'y a pas de point rouge qui permet
-    // d'entrer dans la salle », alors même que la marche latérale fonctionnait) : la version
-    // précédente désactivait le clic dès que checkpointProgress dépassait 0, et ne le
-    // réactivait QUE si checkpointProgress revenait à EXACTEMENT 0 — ce qui n'arrive quasiment
-    // jamais avec un drag à la souris (on relâche toujours avec un tout petit reste, genre
-    // 0.013). Résultat : dès qu'on avait marché un peu vers la salle 2, le bouton Ticket restait
-    // cliqué-mort pour de bon, donc plus aucun moyen de déclencher setupCheckpointApproach (le
-    // nouveau point d'avancée n'apparaissait jamais). On teste maintenant la visibilité RÉELLE
-    // de la machine (est-ce qu'elle chevauche encore la zone visible de la rangée, compte tenu du
-    // overflow:hidden) plutôt qu'une égalité à 0 : elle redevient cliquable dès qu'elle est ne
-    // serait-ce que partiellement revisible, exactement comme on la voit à l'écran.
-    let turnstileVisible = true;
-    const rowEl = $('scale-checkpoint-row');
-    if (rowEl) {
-      const rowRect = rowEl.getBoundingClientRect();
-      const tRect = turnstile.getBoundingClientRect();
-      turnstileVisible = tRect.width === 0 || (tRect.right > rowRect.left && tRect.left < rowRect.right);
-    }
-    turnstile.style.pointerEvents = turnstileVisible ? '' : 'none';
-  }
+  // v57 : la machine à tickets, qui suivait ce même transform pillarTx (pour glisser avec le
+  // pilier gauche), a été retirée — plus rien à faire suivre ici.
   // Hysteresis : au-delà de la fin de la zone → salle 2 ; avant le début → salle 1 ; À L'INTÉRIEUR
   // de la zone, on ne touche à rien, la salle « logique » reste celle d'avant qu'on y entre (qu'on
   // vienne de la gauche ou de la droite) — évite un aller-retour minuscule pile sur le pilier qui
@@ -3260,12 +3240,20 @@ function updateCheckpointWalkVisual() {
 }
 function startCheckpointWalking(direction) {
   stopCheckpointWalking();
+  // v57 : dès qu'on (re)part sur le côté, on désarme l'avancée tout droit (voir
+  // disarmCheckpointApproach) — elle était armée sur la position de repos qu'on est justement en
+  // train de quitter, la garder active pendant qu'on marche la ferait rester figée sur cette
+  // ancienne position pendant que le personnage, lui, se déplace ailleurs à l'écran.
+  disarmCheckpointApproach();
   checkpointWalkDirection = direction;
   const step = () => {
     checkpointProgress = Math.min(1, Math.max(0, checkpointProgress + checkpointWalkDirection * 0.018));
     updateCheckpointWalkVisual();
     if ((checkpointWalkDirection > 0 && checkpointProgress >= 1) || (checkpointWalkDirection < 0 && checkpointProgress <= 0)) {
       stopCheckpointWalking();
+      // v57 : arrivé au repos (salle 1 ou salle 2 selon le sens) — on peut de nouveau proposer
+      // d'avancer tout droit dans CETTE salle, voir armCheckpointApproach.
+      armCheckpointApproach();
       return;
     }
     checkpointWalkAnimationId = setTimeout(step, 16);
@@ -3291,36 +3279,14 @@ function setupCheckpointWalk() {
   // fournie), le personnage restait affiché décalé vers la droite puisque ce cas sortait avant
   // d'atteindre la remise à zéro.
   sil.style.transform = 'translateX(0px)';
-  // v45 : annule ici un éventuel échange laissé par une avancée précédente (voir
-  // setupCheckpointApproach) — le vrai personnage redevient visible, sa copie
-  // #scale-checkpoint-approach-silhouette redevient cachée, à CHAQUE entrée fraîche sur cet écran
-  // (retour à l'accueil, ou nouvelle recherche moins fournie qui repasse par ici).
-  sil.style.visibility = '';
-  $('scale-checkpoint-approach-silhouette')?.classList.add('hidden');
   dot.style.transform = 'translateX(0px)';
   checkpointProgress = 0;
-  // Remet aussi la machine à tickets à sa position/cliquabilité de départ (voir
-  // updateCheckpointWalkVisual, où elle suit désormais EXACTEMENT le même transform que le pilier
-  // gauche) — sinon un décalage resté d'un passage précédent à 2 salles pourrait persister à tort
-  // si la branche salle unique ci-dessous sort avant d'atteindre updateCheckpointWalkVisual.
-  const turnstileReset = $('scale-turnstile');
-  if (turnstileReset) {
-    turnstileReset.style.transform = 'translateX(0px)';
-    turnstileReset.style.pointerEvents = '';
-    // Deuxième bug trouvé en corrigeant le premier : setupCheckpointApproach (déclenchée par le
-    // clic sur Ticket) masque la machine avec classList.add('hidden') pour laisser la place au
-    // point d'avancée — mais rien ne la réaffichait jamais après coup. Résultat, une fois qu'on
-    // avait cliqué sur Ticket une première fois, la machine restait invisible pour de bon à
-    // chaque nouvelle entrée sur cet écran (retour à l'accueil puis on repasse la porte). On la
-    // réaffiche donc ici, à chaque entrée fraîche sur l'écran du contrôle des billets.
-    turnstileReset.classList.remove('hidden');
-    // v38 : la machine s'estompe maintenant progressivement (opacity) pendant l'avancée plutôt que
-    // de disparaître d'un coup (voir updateCheckpointApproachVisual) — même chose à remettre à zéro
-    // ici pour la même raison que ci-dessus, sinon elle resterait invisible (opacity encore basse
-    // d'un passage précédent) à la prochaine entrée sur cet écran.
-    turnstileReset.style.opacity = '';
-  }
-  $('scale-checkpoint-approach-dot')?.classList.add('hidden');
+  // v57 : plus de machine à tickets à remettre en place ici (retirée, voir le commentaire complet
+  // dans style.css juste avant #scale-checkpoint-floor-dot) — cette fonction remet seulement à zéro
+  // ce qui reste : la position du personnage/point pour la marche sur le côté, et l'état d'approche
+  // du mur du fond (voir disarmCheckpointApproach, qui annule le même échange sil/approchSil que
+  // gérait auparavant armCheckpointApproach à ce même endroit).
+  disarmCheckpointApproach();
   // v48 : remet aussi à zéro les flèches de rotation/le bouton loupe (voir
   // revealCheckpointArrivalControls) et la direction regardée, laissés visibles/tournés par une
   // arrivée précédente — sinon ils réapparaîtraient à tort avant même la prochaine avancée.
@@ -3328,7 +3294,16 @@ function setupCheckpointWalk() {
   checkpointFacing = 0;
   const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
   dot.classList.toggle('hidden', !hasTwoRooms);
-  if (!hasTwoRooms) { stopCheckpointWalking(); return; }
+  if (!hasTwoRooms) {
+    stopCheckpointWalking();
+    // v57 : une seule salle → rien à marcher SUR LE CÔTÉ, mais on peut toujours marcher TOUT DROIT
+    // dedans (retour de Stéphane : « soit le personnage va dans la salle 1 tout droit, soit il va
+    // sur le côté dans la salle 2 » — le 2e choix suppose juste qu'il existe une salle 2). On arme
+    // donc quand même l'avancée avant de sortir, sinon ce cas particulier (le plus courant : la
+    // plupart des recherches ne remplissent qu'une seule salle) resterait sans aucun moyen d'avancer.
+    armCheckpointApproach();
+    return;
+  }
   const rowRect = row.getBoundingClientRect();
   const silRect = sil.getBoundingClientRect();
   if (!rowRect.width || !silRect.width) return;
@@ -3340,6 +3315,11 @@ function setupCheckpointWalk() {
   // Stéphane : « il va jusqu'au bout de l'écran... il est devant le pilier »).
   checkpointWalkRangePx = Math.max(160, window.innerWidth - silRect.right - 40);
   updateCheckpointWalkVisual();
+  // v57 : arme l'avancée tout droit dès ce premier repos (salle 1, progress=0) — voir
+  // armCheckpointApproach, rappelée aussi à chaque fois que la marche sur le côté se réinstalle
+  // (startCheckpointWalking, attachCheckpointFloorDotDrag) pour rester toujours à jour avec la
+  // salle actuellement en face du personnage.
+  armCheckpointApproach();
 }
 // Même geste que le point du plan rapproché (attachFloorDotDrag) : un tap simple avance/arrête la
 // marche dans la direction tapée, un vrai glissement positionne directement la progression sous le
@@ -3360,6 +3340,10 @@ function setupCheckpointWalk() {
     if (!dragging) return;
     const dx = event.clientX - downX;
     if (Math.abs(dx) > DRAG_THRESHOLD) {
+      // v57 : dès le premier vrai mouvement de CE glissement (pas à chaque frame), on désarme
+      // l'avancée tout droit — voir le même appel et son commentaire complet dans
+      // startCheckpointWalking, geste jumeau de celui-ci pour un tap plutôt qu'un glissement.
+      if (!moved) disarmCheckpointApproach();
       moved = true;
       stopCheckpointWalking();
       checkpointProgress = Math.min(1, Math.max(0, startProgress + dx / checkpointWalkRangePx));
@@ -3372,12 +3356,23 @@ function setupCheckpointWalk() {
     dot.style.cursor = 'grab';
     if (!moved) {
       if (checkpointWalkDirection !== 0) {
+        // Tap pendant une marche déjà en cours (animation démarrée par un tap précédent) : on
+        // l'arrête net, à la position atteinte — v57 : et on peut donc y (re)proposer l'avancée
+        // tout droit, voir armCheckpointApproach (startCheckpointWalking() le ferait lui-même,
+        // mais on ne le rappelle pas ici, ce cas ne relance jamais de marche).
         stopCheckpointWalking();
+        armCheckpointApproach();
       } else {
         const rect = dot.getBoundingClientRect();
         const center = rect.left + rect.width / 2;
         startCheckpointWalking(event.clientX < center ? -1 : 1);
       }
+    } else {
+      // v57 : fin d'un vrai glissement (relâché avant d'atteindre 0 ou 1) — startCheckpointWalking
+      // arme déjà l'avancée quand une marche ANIMÉE atteint son terme, mais un glissement manuel
+      // ne passe jamais par cette fonction : on l'arme donc ici, sur la position où l'on vient de
+      // relâcher, qu'elle soit pile sur une salle ou entre les deux.
+      armCheckpointApproach();
     }
   };
   dot.addEventListener('pointerup', stop);
@@ -3391,15 +3386,15 @@ function setupCheckpointWalk() {
 // plus bas, le clic sur #scale-barrier lance maintenant CETTE avancée plutôt que enterCloserPlan()
 // directement ; le fondu flou reste utilisé, mais seulement une fois l'avancée terminée (progress=1),
 // pour le dernier raccord vers le système d'affichage différent du plan rapproché.
-let checkpointApproach = 0; // 0 = vient de valider son ticket, 1 = arrivé tout contre le mur du fond
+let checkpointApproach = 0; // 0 = au repos dans le couloir (v57 : plus besoin de valider un ticket), 1 = arrivé tout contre le mur du fond
 let checkpointApproachRangePx = 200; // distance de glissement du point, mesurée à chaque entrée
 // v45 : distance RÉELLE de déplacement du personnage (pas seulement du petit point qu'on tire),
-// mesurée à chaque entrée dans setupCheckpointApproach — voir le commentaire complet là-bas et sur
+// mesurée à chaque entrée dans armCheckpointApproach — voir le commentaire complet là-bas et sur
 // #scale-checkpoint-approach-silhouette dans index.html/style.css.
 let checkpointApproachTravelPx = 200;
 // v46 : rapport de rétrécissement CALCULÉ (pas choisi au jugé) pour qu'à l'arrivée (approach=1) le
 // personnage fasse EXACTEMENT CHECKPOINT_PERSON_HEIGHT_CM à la même échelle px/cm que le mur du
-// fond et le tableau qui y est accroché — voir setupCheckpointApproach, où il est recalculé à
+// fond et le tableau qui y est accroché — voir armCheckpointApproach, où il est recalculé à
 // chaque entrée (dépend de la taille d'écran).
 let checkpointApproachShrinkTo = 0.55;
 let checkpointApproachDirection = 0;
@@ -3436,45 +3431,25 @@ function stopCheckpointApproaching() {
 function updateCheckpointApproachVisual() {
   const dot = $('scale-checkpoint-approach-dot');
   const sil = $('scale-checkpoint-approach-silhouette');
+  const realSil = $('scale-checkpoint-silhouette');
   const track = $('scale-checkpoint-track');
-  const turnstile = $('scale-turnstile');
+  // v57 : l'échange avec le vrai personnage (lui invisible / sa copie visible) suivait auparavant
+  // le seul clic sur Ticket, posé une fois pour toutes dans armCheckpointApproach (anciennement
+  // setupCheckpointApproach). Ça ne marche plus maintenant que cette fonction est rappelée en
+  // permanence à chaque repos (voir son commentaire) : la poser là aurait fait « disparaître » le
+  // personnage réel au repos, à chaque arrêt, même sans qu'on ait touché à l'avancée. L'échange
+  // suit donc maintenant directement checkpointApproach ICI, à chaque frame : tant qu'on est
+  // exactement au repos (0), le vrai personnage reste affiché normalement ; dès qu'on avance
+  // (>0), on bascule sur la copie, comme avant.
+  if (realSil) realSil.style.visibility = checkpointApproach > 0 ? 'hidden' : '';
+  if (sil) sil.classList.toggle('hidden', checkpointApproach <= 0);
   // v43 : seul le POINT (poignée de glissement) monte encore avec tx — le personnage lui-même n'a
   // plus de translateY (voir plus bas), seulement son rétrécissement ; le point continue de suivre
   // le doigt/la souris tel qu'on l'a tiré, indépendamment de ça.
   const tx = -checkpointApproach * checkpointApproachRangePx;
   if (dot) dot.style.transform = `translateY(${tx}px)`;
-  if (turnstile) {
-    // BUG corrigé v38 (retour de Stéphane : « dès qu'on appuie sur l'entrée de la machine à
-    // tickets, elle disparaît, elle se volatilise ») : setupCheckpointApproach la cachait d'un coup
-    // avec classList.add('hidden') dès le clic sur Ticket, avant même le premier geste de glissement
-    // — exactement le même défaut de « disparition d'un coup » déjà corrigé une fois pour la marche
-    // latérale (voir updateCheckpointWalkVisual plus haut, « le pilier gauche s'en va et la machine
-    // à tickets s'en va avec lui »). Même remède ici : plus de disparition brutale, elle s'estompe et
-    // rétrécit progressivement AVEC le personnage, comme si elle aussi restait derrière à mesure
-    // qu'on avance — visible à checkpointApproach=0 (juste après le clic), invisible à l'arrivée.
-    // BUG corrige v39 (retour de Stephane, capture a l'appui : la machine et le personnage
-    // "passent sous le parquet et disparaissent") : le translateY(tx*0.6) qui etait ici faisait
-    // monter la machine bien plus haut que ce que #scale-checkpoint-row (overflow:hidden, et
-    // dimensionnee au plus juste pour la machine/le personnage au repos) pouvait contenir : son
-    // bord superieur depassait le haut de la rangee et se faisait couper net, comme avale par le
-    // sol plus sombre de la salle juste au-dessus. Le retrecissement seul (scale, pieds ancres en
-    // bas via transform-origin) suffit deja a donner l'impression de s'eloigner ; plus de montee
-    // verticale ici, qui n'apportait rien et cassait le cadrage.
-    // BUG corrigé v41 (retour répété de Stéphane, deux fois de suite dans les mêmes mots : « ce n'est
-    // pas le personnage qui avance, c'est tout qui avance... il ne se détache pas de la bande » puis
-    // « le point rouge n'emmène pas le personnage, il emmène la bande beige claire... il faut la
-    // fixer une fois pour toutes, il faut qu'elle ne bouge pas ») : le vrai défaut du v40 n'était pas
-    // la quantité de mouvement, mais le fait que la machine ET le personnage montaient ENSEMBLE (même
-    // si à des vitesses légèrement différentes) — deux éléments qui se déplacent en bloc à l'écran se
-    // lisent comme UNE SEULE bande qui glisse, pas comme un personnage qui marche devant un décor
-    // immobile. La machine à billets est un élément FIXE du décor (comme le sol ou le cordon rouge) :
-    // elle ne doit plus JAMAIS se déplacer ni rétrécir pendant l'avancée, seulement s'estomper. Elle
-    // reste plantée à sa place — c'est justement ce repère fixe qui rend le mouvement du personnage
-    // (juste en dessous) enfin lisible comme le SIEN.
-    turnstile.style.transform = 'none';
-    turnstile.style.opacity = String(Math.max(0, 1 - checkpointApproach));
-    turnstile.style.pointerEvents = checkpointApproach > 0.02 ? 'none' : '';
-  }
+  // v57 : la machine à tickets, qui s'estompait ici avec checkpointApproach (voir l'historique
+  // v38→v41 de ce fondu), a été retirée — plus rien à faire suivre ici non plus.
   if (sil) {
     // Rétrécit et remonte légèrement (voir transform-origin:50% 100% dans style.css, pieds ancrés
     // au sol) pour suggérer qu'il s'éloigne vers le fond, en même temps que la salle grossit derrière
@@ -3526,7 +3501,7 @@ function updateCheckpointApproachVisual() {
     // veut un vrai DÉPLACEMENT du personnage vers la salle, pas juste un rétrécissement sur place.
     // Ce `sil` n'est plus le personnage normal (resté invisible, immobile, dans #scale-checkpoint-row
     // pour ne rien changer à ses proportions au repos) mais sa copie #scale-checkpoint-approach-
-    // silhouette, positionnée en JS (setupCheckpointApproach) exactement sur son ancienne place à
+    // silhouette, positionnée en JS (armCheckpointApproach) exactement sur son ancienne place à
     // l'écran, mais en position:fixed : plus aucune rangée ne la clippe, elle peut donc monter d'une
     // distance RÉELLE (checkpointApproachTravelPx, calculée à chaque entrée jusqu'au bas de la salle)
     // au lieu des quelques dizaines de pixels que #scale-checkpoint-row pouvait contenir. translateY
@@ -3536,7 +3511,7 @@ function updateCheckpointApproachVisual() {
     // BUG corrigé v46 (retour de Stéphane : « le personnage est beaucoup trop petit par rapport au
     // pilier... il faut qu'on arrive à déterminer un plan de salle avec un métrage... et que le
     // personnage, dans son avancée, reste dans les bonnes proportions ») : 0,45 (v45) était encore
-    // un coefficient choisi au jugé. checkpointApproachShrinkTo (calculé dans setupCheckpointApproach
+    // un coefficient choisi au jugé. checkpointApproachShrinkTo (calculé dans armCheckpointApproach
     // à partir de checkpointPxPerCm, l'échelle RÉELLE du mur de 15 m) remplace ce chiffre par le
     // rapport EXACT qui donne, à l'arrivée, une hauteur d'écran correspondant à un personnage de
     // vraie taille (1,70 m) à la même échelle que le mur et le tableau.
@@ -3587,10 +3562,17 @@ function startCheckpointApproaching(direction) {
   };
   checkpointApproachAnimationId = setTimeout(step, 16);
 }
-// Appelée au clic sur « Ticket » (voir plus bas) au lieu de basculer directement vers le plan
-// rapproché : cache le tourniquet et le point salle 1/salle 2 (plus la peine, le choix est déjà
-// fait), affiche ce nouveau point d'avancée aux pieds du personnage.
-function setupCheckpointApproach() {
+// v57 (retour de Stéphane : « on enlève la machine à ticket, soit le personnage va dans la salle 1
+// tout droit, soit il va sur le côté dans la salle 2 ») : anciennement setupCheckpointApproach(),
+// déclenchée par le seul clic sur le bouton « Ticket » (retiré) — renommée puisqu'elle est
+// maintenant (ré)appelée automatiquement à chaque fois que le personnage est au repos dans le
+// couloir (entrée fraîche, fin de marche sur le côté animée ou glissée), voir setupCheckpointWalk/
+// startCheckpointWalking/attachCheckpointFloorDotDrag. Le corps de la fonction (mesures, échange
+// avec la copie #scale-checkpoint-approach-silhouette, calcul du rétrécissement à l'arrivée) reste
+// EXACTEMENT celui d'avant — seul son déclencheur a changé, plus le décalage horizontal ajouté ici
+// pour ne plus se superposer avec #scale-checkpoint-floor-dot, désormais visible EN MÊME TEMPS
+// qu'elle (voir le commentaire complet dans style.css).
+function armCheckpointApproach() {
   const dot = $('scale-checkpoint-approach-dot');
   const sil = $('scale-checkpoint-silhouette'); // le VRAI personnage, resté dans la rangée
   const approachSil = $('scale-checkpoint-approach-silhouette'); // sa copie, voir index.html/style.css
@@ -3611,25 +3593,19 @@ function setupCheckpointApproach() {
   // scale à réinitialiser.
   if (track) track.style.transform = `translateX(${-checkpointProgress * checkpointPanTravelPx}px)`;
   sil.style.transform = 'translateX(0px)';
-  // BUG corrigé v38 : ne masque plus la machine avec classList.add('hidden') dès le clic — elle
-  // reste visible et normale à approach=0, puis s'estompe progressivement (voir la nouvelle logique
-  // dans updateCheckpointApproachVisual, appelée juste plus bas) au lieu de disparaître d'un coup.
-  const turnstileStart = $('scale-turnstile');
-  if (turnstileStart) {
-    turnstileStart.classList.remove('hidden');
-    turnstileStart.style.opacity = '1';
-    // v41 : la machine ne reçoit plus jamais de transform pendant l'avancée (voir
-    // updateCheckpointApproachVisual — elle reste fixe, seule son opacité change) ; 'none' ici
-    // plutôt qu'un translateY/scale à zéro, pour ne rien laisser en suspens par erreur.
-    turnstileStart.style.transform = 'none';
-  }
-  $('scale-checkpoint-floor-dot')?.classList.add('hidden');
   dot.classList.remove('hidden');
   const rowRect = row.getBoundingClientRect();
   const silRect = sil.getBoundingClientRect(); // mesuré ICI, tant que sil est encore visible/en flux normal
   const roomRect = room.getBoundingClientRect();
   if (!rowRect.width || !silRect.width) return;
-  dot.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 14}px`;
+  // v57 : +42px — ce point vit maintenant EN MÊME TEMPS que #scale-checkpoint-floor-dot (avant,
+  // seul l'un des deux existait à un instant donné, calé pile aux pieds du personnage ; voir le
+  // commentaire complet dans style.css). Sans ce décalage, les deux se superposeraient exactement.
+  // Pas de décalage quand il n'y a qu'une seule salle : #scale-checkpoint-floor-dot reste alors
+  // caché en permanence (rien à choisir sur le côté), donc rien à éviter non plus.
+  const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
+  const sidewaysOffsetPx = hasTwoRooms ? 42 : 0;
+  dot.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 14 + sidewaysOffsetPx}px`;
   dot.style.top = `${silRect.bottom - rowRect.top - 20}px`;
   // Distance de glissement disponible avant le haut de la rangée (avec une petite marge) — même
   // logique que checkpointWalkRangePx pour la marche latérale, mais verticale ici. Reste purement
@@ -3679,9 +3655,27 @@ function setupCheckpointApproach() {
   checkpointApproachShrinkTo = (silRect.height && checkpointPxPerCm)
     ? Math.min(1, Math.max(0.15, targetHeightPx / silRect.height))
     : 0.55;
-  sil.style.visibility = 'hidden';
-  approachSil.classList.remove('hidden');
+  // v57 : l'échange sil/approchSil ne se fait plus ici (ce serait le refaire à CHAQUE repos, voir
+  // le commentaire d'ensemble en tête de cette fonction) — updateCheckpointApproachVisual(), juste
+  // en dessous, le fait maintenant lui-même d'après la valeur de checkpointApproach (0 ici : le
+  // vrai personnage reste donc affiché normalement au repos).
   updateCheckpointApproachVisual();
+}
+// v57 : symétrique d'armCheckpointApproach ci-dessus — annule l'échange sil/approchSil (le vrai
+// personnage redevient visible, sa copie repasse cachée) et cache le point d'avancée. Appelée à
+// chaque fois qu'on (re)part marcher sur le côté (startCheckpointWalking, premier mouvement d'un
+// glissement dans attachCheckpointFloorDotDrag) : tant qu'on marche, ce point d'avancée n'a plus de
+// sens — il était calé sur la position de repos qu'on est justement en train de quitter, le garder
+// actif ferait avancer une copie figée pendant que le vrai personnage, lui, se déplace ailleurs.
+function disarmCheckpointApproach() {
+  const sil = $('scale-checkpoint-silhouette');
+  const approachSil = $('scale-checkpoint-approach-silhouette');
+  if (sil) sil.style.visibility = '';
+  approachSil?.classList.add('hidden');
+  $('scale-checkpoint-approach-dot')?.classList.add('hidden');
+  stopCheckpointApproaching();
+  checkpointApproach = 0;
+  checkpointApproachDone = false;
 }
 // Même geste que les autres points de l'appli (tap = avance/arrête, glissement = position directe
 // sous le doigt) — voir attachCheckpointFloorDotDrag ci-dessus, repris ici sur l'axe VERTICAL :
@@ -3744,9 +3738,11 @@ function blurTransition(swap) {
 }
 // Étape 2 : pousser la porte — transition floue vers le contrôle des billets, qui montre le mur du
 // fond depuis l'entrée avant de le franchir.
-function goThroughDoor() {
+// v57 : anciennement goThroughDoor(), déclenchée par le clic sur le bouton « Entrée » de la façade
+// (retirée, voir enterScaleView) — renommée puisqu'il n'y a plus de porte à franchir : cette
+// fonction est maintenant appelée directement depuis enterScaleView, à chaque entrée dans la salle.
+function enterCheckpointCorridor() {
   blurTransition(() => {
-    $('scale-overview').classList.add('hidden');
     $('scale-checkpoint').classList.remove('hidden');
     // Depuis l'entrée, on ne voit que le mur du fond, bien en face — les murs latéraux ne sont ici
     // que des tranches décoratives (en CSS), sans œuvres : le joueur ne les découvrira qu'en se
@@ -3755,8 +3751,9 @@ function goThroughDoor() {
     // mise en page — sinon ses dimensions mesureraient encore zéro) puis on construit la bande du
     // mur du fond (voir buildCheckpointTrack — salle 1, pilier, salle 2), on met à jour le témoin de
     // salle (uniquement visible si state.allRooms en compte 2, voir updateCheckpointRoomIndicator),
-    // et on prépare la marche salle 1 / salle 2 sur CET écran (voir setupCheckpointWalk — v24, suite
-    // à la confirmation de Stéphane que c'est ICI, pas dans le plan rapproché, que ce choix se fait).
+    // et on prépare la marche libre salle 1 / salle 2 ET l'approche du mur du fond sur CET écran
+    // (voir setupCheckpointWalk, qui arme maintenant aussi armCheckpointApproach — v57, plus de
+    // machine à tickets entre les deux, voir son commentaire complet).
     requestAnimationFrame(() => {
       checkpointPanTravelPx = buildCheckpointTrack();
       updateCheckpointRoomIndicator();
@@ -3777,7 +3774,7 @@ const CHECKPOINT_WALL_LENGTH_CM = 1500;
 // v46 : même référence de taille humaine (1,70 m) que partout ailleurs dans l'appli (voir la
 // silhouette de la vue à l'échelle, buildWallSegment, etc.) — utilisée ici pour calculer la taille
 // EXACTE que le personnage doit avoir une fois arrivé tout contre le mur du fond pendant l'avancée
-// (voir setupCheckpointApproach), à la même échelle px/cm que le mur et le tableau qui y est
+// (voir armCheckpointApproach), à la même échelle px/cm que le mur et le tableau qui y est
 // accroché, plutôt qu'un coefficient de rétrécissement choisi au jugé comme avant.
 const CHECKPOINT_PERSON_HEIGHT_CM = 170;
 // Plafond de sécurité sur la hauteur/largeur d'UNE œuvre : une faute de frappe dans le fichier
@@ -3928,7 +3925,7 @@ function updateCheckpointTurnButtons() {
 // problème, c'est que d'abord, il faut les mettre près du personnage ») : jusqu'ici, les 2 flèches
 // avaient une position fixée en dur dans le CSS/HTML (aux 2 bords de l'écran, style="left:16px"/
 // "right:16px") — sans aucun rapport avec l'endroit où le personnage se trouve réellement à
-// l'écran (lui-même positionné en JS, voir setupCheckpointApproach). On calcule maintenant leur
+// l'écran (lui-même positionné en JS, voir armCheckpointApproach). On calcule maintenant leur
 // position à partir de la vraie boîte de la silhouette d'arrivée (#scale-checkpoint-approach-
 // silhouette, position:fixed elle aussi), juste avant/après ses pieds, pour qu'elles encadrent le
 // personnage plutôt que l'écran entier — exactement comme des flèches qu'on afficherait à côté de
@@ -4108,7 +4105,7 @@ function buildCheckpointTrack() {
   // de la salle). windowH (la vraie hauteur de la fenêtre) est la bonne référence pour ce centrage.
   const windowH = roomH * (horizonYPercent / 100);
   const pxPerCm = windowW / CHECKPOINT_WALL_LENGTH_CM;
-  // v46 : rangée dans checkpointPxPerCm (module-level) pour que setupCheckpointApproach puisse s'en
+  // v46 : rangée dans checkpointPxPerCm (module-level) pour que armCheckpointApproach puisse s'en
   // servir plus tard — voir son commentaire complet là-bas.
   checkpointPxPerCm = pxPerCm;
   // v48 : rangés ici pour que setCheckpointFacing puisse repeindre PLUS TARD cette même fenêtre
@@ -4175,13 +4172,11 @@ window.addEventListener('resize', () => {
     }
   }
 });
-$('scale-enter-button')?.addEventListener('click', goThroughDoor);
-// v34 : franchir la barrière (donner son ticket) ne bascule plus instantanément (fondu flou) vers le
-// plan rapproché — retour de Stéphane : « il faut arriver de plus en plus à un mouvement qui soit
-// fluide ». On fait maintenant avancer le personnage dans la salle (voir setupCheckpointApproach),
-// avec le mur du fond qui grossit progressivement ; le fondu flou vers enterCloserPlan() n'intervient
-// plus qu'une fois cette avancée terminée (voir updateCheckpointApproachVisual).
-$('scale-barrier')?.addEventListener('click', setupCheckpointApproach);
+// v57 : plus de bouton « Entrée » ni de bouton « Ticket » (façade et machine à tickets toutes deux
+// retirées) — enterScaleView() appelle directement enterCheckpointCorridor(), et l'avancée
+// (armCheckpointApproach) s'arme désormais automatiquement au repos plutôt qu'au clic sur un
+// bouton, voir son commentaire complet. Le fondu flou vers enterCloserPlan() n'intervient toujours,
+// lui, qu'une fois l'avancée terminée (voir updateCheckpointApproachVisual) — ça, ça n'a pas changé.
 // Les œuvres de la session sont réparties sur les 3 murs réellement exploitables d'une salle : le
 // mur du fond et les 2 murs latéraux — jamais le mur côté couloir (là où est la porte), qui reste
 // toujours vide, comme dans une vraie salle où l'on n'accroche rien juste après l'entrée.
@@ -4471,8 +4466,10 @@ function buildContinuousWall() {
     // comportement identique à avant). Il défile AVEC le mur (position:absolute DANS #scale-wall,
     // mêmes pixels que les œuvres/piliers) plutôt que de rester un fond d'écran fixe : c'est ce qui
     // permet à la couleur de changer réellement quand on franchit le pilier vers la salle suivante,
-    // ce que #scale-facade (fixe, un seul fond pour toute la visite) ne pourrait pas faire seul.
-    // Inséré en premier enfant (insertBefore) pour rester sous les œuvres/piliers/angles déjà posés.
+    // ce qu'un fond d'ambiance fixe unique pour toute la visite (comme celui de
+    // #scale-checkpoint-wall, voir les règles body[data-ambiance=...] dans style.css) ne pourrait
+    // pas faire seul. Inséré en premier enfant (insertBefore) pour rester sous les œuvres/piliers/
+    // angles déjà posés.
     if (window.__testRoomWallColors && window.__testRoomWallColors[roomIndex]) {
       const backdrop = document.createElement('div');
       backdrop.className = 'scale-wall-test-room-backdrop';
@@ -4490,16 +4487,18 @@ function buildContinuousWall() {
 }
 function enterCloserPlan() {
   // state.allRooms est déjà calculé dès l'entrée en vue d'ensemble (voir enterScaleView), pour
-  // connaître l'œuvre du mur du fond à montrer en aperçu à travers la porte.
+  // connaître l'œuvre du mur du fond à montrer en aperçu depuis le couloir.
   if (!state.allRooms) state.allRooms = splitIntoRooms(state.scaleViewCandidates || []);
-  // v24 : le tourniquet mène désormais à la salle où l'on se trouvait EN MARCHANT sur le plan
-  // d'ensemble (voir setupCheckpointWalk/updateCheckpointWalkVisual) — state.currentRoomIndex/
-  // state.roomWalls ont déjà été mis à jour là-bas pendant la marche, on n'y touche plus ici. Avant
-  // ce changement, on repartait toujours de force de la salle 1 ; ce n'est plus le cas, le choix se
-  // fait avant de franchir le tourniquet, pas après. (state.roomWalls est réaffirmé par sécurité,
-  // au cas où currentRoomIndex existerait sans lui — ex. un état repris d'ailleurs.)
+  // v24 : on entre désormais dans la salle où l'on se trouvait EN MARCHANT dans le couloir (voir
+  // setupCheckpointWalk/updateCheckpointWalkVisual) — state.currentRoomIndex/state.roomWalls ont
+  // déjà été mis à jour là-bas pendant la marche, on n'y touche plus ici. Avant ce changement, on
+  // repartait toujours de force de la salle 1 ; ce n'est plus le cas, le choix se fait avant
+  // d'avancer tout droit, pas après. (state.roomWalls est réaffirmé par sécurité, au cas où
+  // currentRoomIndex existerait sans lui — ex. un état repris d'ailleurs.)
   state.roomWalls = state.allRooms[state.currentRoomIndex] || state.allRooms[0];
-  $('scale-overview').classList.add('hidden');
+  // v57 : #scale-checkpoint est déjà caché par l'appelant (enterCloserPlanFromArrival) avant
+  // d'arriver ici — plus rien à cacher de ce côté (l'ancienne façade, #scale-overview, qui pouvait
+  // aussi mener directement ici via une silhouette glissable, a été retirée avec cette silhouette).
   $('scale-wall-line').classList.remove('hidden');
   ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.remove('hidden'));
   // On attend que le navigateur ait vraiment posé la mise en page après avoir retiré "hidden" —
@@ -4541,17 +4540,24 @@ function enterCloserPlan() {
     }, 400);
   });
 }
-// (l'entrée se fait maintenant via #scale-enter-button → goThroughDoor → #scale-barrier, voir
-// plus haut — plus une entrée directe au clic sur la porte elle-même)
-function backToOverview() {
-  stopCheckpointWalking(); // sinon une marche encore en cours sur le plan d'ensemble continuerait en fond, invisible, après en être sorti
-  $('scale-overview').classList.remove('hidden');
-  $('scale-checkpoint').classList.add('hidden'); // au cas où on revient depuis le contrôle des billets — cache aussi avec lui le plan de choix de salle, qui y vit désormais
+// v57 : anciennement backToOverview() — remontait jusqu'à la façade (#scale-overview, retirée),
+// l'écran le plus « en amont » de la visite. Renommée : ce rôle de « niveau du dessus » est
+// maintenant tenu par le couloir (#scale-checkpoint), qui EST désormais le premier écran. On
+// revient donc y montrer le personnage, pas dans un état figé (voir disarmCheckpointApproach puis
+// armCheckpointApproach) — sans quoi il resterait affiché minuscule contre le mur du fond,
+// exactement où l'avait laissé une éventuelle avancée précédente.
+function backToCorridor() {
+  stopCheckpointWalking(); // sinon une marche encore en cours sur le côté continuerait en fond, invisible, après en être sorti
+  $('scale-checkpoint').classList.remove('hidden');
   $('scale-wall-line').classList.add('hidden');
   ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
+  disarmCheckpointApproach();
+  armCheckpointApproach();
 }
-$('scale-checkpoint-back')?.addEventListener('click', backToOverview);
-$('scale-turnstile-exit')?.addEventListener('click', backToOverview);
+// v57 : ce bouton vivait juste APRÈS la façade (retirée) — il n'y a donc plus aucun écran « avant »
+// le couloir vers lequel revenir : on quitte directement la vue à l'échelle, retour à l'image
+// normale (même comportement que le ↩ en haut de l'écran, voir exitScaleView).
+$('scale-checkpoint-back')?.addEventListener('click', exitScaleView);
 // Vue rapprochée d'une œuvre précise : elle occupe le plus possible de l'écran, la silhouette se
 // tient juste à côté à sa vraie échelle relative — même principe que le mur, mais en très grand,
 // pour bien ressentir la taille d'une seule œuvre. On sort en tirant la silhouette hors du cadre ;
@@ -4805,13 +4811,9 @@ function scrollLeftFromFloorProgress(progress) {
   wall.addEventListener('wheel', (event) => event.preventDefault(), { passive: false });
   wall.addEventListener('scroll', () => { updateDotAlongWall(); updateDistanceMarker(); });
 })();
-makeSilhouetteDraggable($('scale-overview-silhouette'), {
-  onDragEnd: (dx, dy, endX, endY) => {
-    if (isNearBottomCorner(endX, endY)) { exitScaleViewCompletely(); return; }
-    // Tirer vers le haut (vers le fond de la salle) fait avancer vers le mur rapproché.
-    if (dy < -40) enterCloserPlan();
-  },
-});
+// v57 : makeSilhouetteDraggable($('scale-overview-silhouette'), ...) vivait ici — la silhouette
+// glissable de la façade (retirée, voir enterScaleView) n'existe plus, cet appel a donc été
+// supprimé avec elle plutôt que laissé mort (ciblait un élément qui n'existe plus dans le DOM).
 // Marche fluide et maîtrisée : on tire la silhouette d'un côté, elle avance à vitesse constante
 // dans cette direction tant qu'on maintient — le mur défile exactement au même rythme, dans la
 // même boucle d'animation, donc les deux restent strictement synchronisés (plus de désynchro
@@ -4855,7 +4857,7 @@ function updateDotAlongWall() {
   const floorDot = $('scale-floor-dot');
   const silhouette = $('scale-silhouette');
   if (!wall || !dot || !wallSegments.length) return;
-  // Bug réel repéré : cacher #scale-wall (voir backToOverview) fait retomber son scrollLeft à 0 et
+  // Bug réel repéré : cacher #scale-wall (voir backToCorridor) fait retomber son scrollLeft à 0 et
   // déclenche un événement 'scroll' natif (via guardWallScrollSync) — sans ce garde-fou, cette
   // remise à 0 était interprétée comme « on est revenu à la salle 1 » et écrasait à tort
   // state.currentRoomIndex juste après une vraie marche jusqu'à la salle 2. Rien à recalculer tant
@@ -4946,7 +4948,7 @@ function startWalking(direction) {
       if (edgeHoldTicks > 12) { // ~200 ms collé au bord en continuant de marcher
         edgeHoldTicks = 0;
         stopWalking();
-        backToOverview();
+        backToCorridor();
         return;
       }
     } else {
@@ -4981,7 +4983,7 @@ makeSilhouetteDraggable($('scale-silhouette'), {
     // Seuil plus élevé, et le geste doit être franchement vertical (pas un déplacement latéral
     // avec un peu de tremblement) — trop sensible avant, un retour brutal au plan général pouvait
     // se déclencher par erreur en voulant simplement se déplacer le long du mur.
-    if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.5) backToOverview();
+    if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.5) backToCorridor();
   },
 });
 function exitScaleView() {
@@ -5003,10 +5005,11 @@ function exitScaleViewCompletely() {
 // bouton, quitter la salle depuis le plan rapproché ou général n'était possible qu'en fermant
 // complètement l'application, faute d'accès aux boutons habituels (masqués derrière la visionneuse).
 $('scale-emergency-exit')?.addEventListener('click', () => {
-  // Le bouton ramène maintenant à la façade (PG), pas hors de la salle — la vraie sortie
-  // (fermeture du musée, retour au menu des exercices) vit désormais sur la façade elle-même.
+  // v57 : ramène maintenant au couloir (#scale-checkpoint), pas à la façade (retirée) — la vraie
+  // sortie complète (fermeture du musée, retour au menu des exercices) vit désormais sur
+  // #scale-close-museum, déplacé dans le couloir, voir index.html.
   stopWalking();
-  backToOverview();
+  backToCorridor();
 });
 $('scale-close-museum')?.addEventListener('click', () => {
   exitScaleViewCompletely();
