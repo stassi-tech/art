@@ -1010,6 +1010,13 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
    qu'en v41/v42, mais réparti sur une salle qui, elle, ne bouge et ne rétrécit plus JAMAIS depuis le
    v42 (le sol, la rangée, tout le cadrage du bas restent fixes ; seul le mur du fond zoome), donc ce
    mouvement plus modeste se lit sans concurrence, sans qu'il faille regonfler la rangée pour ça. */
+/* v59 : padding-left ci-dessous en dur (8vw) UNIQUEMENT comme filet de sécurité pour le tout
+   premier instant d'affichage, avant que buildCheckpointTrack (app.js) ne le recalcule en JS à
+   partir de la vraie largeur du pilier (pillarW) — voir le commentaire complet là-bas (retour de
+   Stéphane : « comme il est en face du pilier, quand il va tout droit, il va dans le pilier »).
+   Cette valeur statique n'est donc quasiment jamais celle réellement à l'écran ; ne pas la régler à
+   l'œil en pensant corriger la position de repos du personnage — c'est buildCheckpointTrack qu'il
+   faut ajuster. */
 #scale-checkpoint-row { position:relative; display:flex; align-items:flex-end; justify-content:flex-start; gap:4vw; width:100%; margin-top:auto; padding-left:8vw; overflow:hidden; background:#e8e4d8; }
 /* transform-origin bas-centre (pas le centre par défaut) : pendant l'approche du mur du fond (voir
    updateCheckpointApproachVisual dans app.js), le personnage rétrécit et remonte légèrement pour

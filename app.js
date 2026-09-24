@@ -3856,14 +3856,14 @@ function setCheckpointFacing(facing) {
   facing = Math.max(-1, Math.min(1, facing));
   if (facing === checkpointFacing) return;
   checkpointFacing = facing;
-  const wall1 = $('scale-checkpoint-wall');
-  const worksEl = wall1?.querySelector('.scale-checkpoint-wall-works');
+  const wallEl = checkpointActiveWallEl(); // v59 : plus jamais wall1 en dur, voir son commentaire complet
+  const worksEl = wallEl?.querySelector('.scale-checkpoint-wall-works');
   updateCheckpointPillarFraming(facing);
-  if (!wall1 || !worksEl || !checkpointWindowWpx) { updateCheckpointTurnButtons(); return; }
+  if (!wallEl || !worksEl || !checkpointWindowWpx) { updateCheckpointTurnButtons(); return; }
   worksEl.style.transition = 'opacity .18s ease';
   worksEl.style.opacity = '0';
   setTimeout(() => {
-    buildCheckpointWindowWorks(wall1, checkpointWorkForFacing(checkpointFacing), checkpointWindowWpx, checkpointPxPerCm, checkpointWindowHpx);
+    buildCheckpointWindowWorks(wallEl, checkpointWorkForFacing(checkpointFacing), checkpointWindowWpx, checkpointPxPerCm, checkpointWindowHpx);
     worksEl.style.opacity = '1';
   }, 180);
   const label = $('scale-checkpoint-facing-label');
@@ -3893,12 +3893,37 @@ function setCheckpointFacing(facing) {
 // colorfill, voir style.css) — celle du mur qu'on apercevrait en tournant encore d'un cran dans
 // cette direction, exactement le même calcul que pour les tranches de mur (v51, abandonnées) mais
 // appliqué au pilier entier désormais.
+// v59 (bug réel repéré en câblant les couleurs par salle de Stéphane, pas encore signalé par lui :
+// se tourner pour regarder un mur latéral EN SALLE 2 ne faisait jusqu'ici RIEN à l'écran) : cette
+// fonction, setCheckpointFacing et updateCheckpointWallColorwash visaient TOUJOURS
+// #scale-checkpoint-wall/-wall-left/-wall-right PAR LEUR ID FIXE, en supposant à tort qu'on regarde
+// toujours la salle 1 — or après une marche jusqu'à la salle 2 (checkpointProgress=1), c'est
+// #scale-checkpoint-wall-2 qui se retrouve dans le cadre (tout le rail a glissé, voir
+// buildCheckpointTrack) : #scale-checkpoint-wall est alors hors-écran, à gauche, et le repeindre
+// n'a plus aucun effet visible. Même chose pour les piliers de coin : #scale-checkpoint-wall-right
+// sert de pilier PARTAGÉ (coin droit de la salle 1 ET coin gauche de la salle 2, voir son
+// commentaire dans index.html), #scale-checkpoint-pillar-end ne joue un rôle qu'en salle 2 (coin
+// droit), #scale-checkpoint-wall-left qu'en salle 1 (coin gauche). checkpointActiveWallEl/
+// checkpointActiveCornerPillars ci-dessous renvoient donc le bon élément selon
+// state.currentRoomIndex plutôt que de supposer que c'est toujours celui de la salle 1.
+function checkpointActiveWallEl() {
+  return state.currentRoomIndex === 1 ? $('scale-checkpoint-wall-2') : $('scale-checkpoint-wall');
+}
+function checkpointActiveCornerPillars() {
+  return state.currentRoomIndex === 1
+    ? { cornerLeft: $('scale-checkpoint-wall-right'), cornerRight: $('scale-checkpoint-pillar-end') }
+    : { cornerLeft: $('scale-checkpoint-wall-left'), cornerRight: $('scale-checkpoint-wall-right') };
+}
 function updateCheckpointPillarFraming(facing) {
-  const pillarLeft = $('scale-checkpoint-wall-left');
-  const pillarRight = $('scale-checkpoint-wall-right');
+  const { cornerLeft: pillarLeft, cornerRight: pillarRight } = checkpointActiveCornerPillars();
   if (!pillarLeft || !pillarRight) return;
-  pillarLeft.classList.remove('scale-checkpoint-pillar-hidden', 'scale-checkpoint-pillar-folded');
-  pillarRight.classList.remove('scale-checkpoint-pillar-hidden', 'scale-checkpoint-pillar-folded');
+  // Les 3 piliers qui peuvent jouer un rôle de coin (wall-left, wall-right — partagé — et
+  // pillar-end) sont TOUS remis à neutre ici, pas seulement la paire de la salle courante : un
+  // pilier resté hidden/folded après un tour dans l'AUTRE salle ne peut donc jamais rester coincé
+  // dans cet état une fois qu'on change de salle ou qu'on revient regarder le mur du fond.
+  [$('scale-checkpoint-wall-left'), $('scale-checkpoint-wall-right'), $('scale-checkpoint-pillar-end')].forEach((el) => {
+    el?.classList.remove('scale-checkpoint-pillar-hidden', 'scale-checkpoint-pillar-folded');
+  });
   if (facing === -1) {
     pillarRight.classList.add('scale-checkpoint-pillar-hidden');
     pillarLeft.classList.add('scale-checkpoint-pillar-folded');
@@ -3911,7 +3936,8 @@ function updateCheckpointPillarFraming(facing) {
 }
 function setCheckpointPillarColorfill(pillarEl, neighborFacing) {
   const fill = pillarEl?.querySelector('.scale-checkpoint-pillar-colorfill');
-  if (fill) fill.style.backgroundColor = CHECKPOINT_WALL_COLORS[String(neighborFacing)] || CHECKPOINT_WALL_COLORS['0'];
+  const colors = checkpointWallColorsForCurrentRoom();
+  if (fill) fill.style.backgroundColor = colors[String(neighborFacing)] || colors['0'];
 }
 // Désactive la flèche qui ne mènerait nulle part (déjà tout à gauche, ou déjà tout à droite) —
 // repère simple pour savoir qu'on a bien atteint le bout, plutôt que de cliquer dans le vide.
@@ -3952,19 +3978,37 @@ function positionCheckpointArrivalControls() {
 // trouve pendant la rotation à l'arrivée, et sert aussi à repeindre le pilier qui n'est plus un
 // vrai coin de la salle (voir setCheckpointPillarColorfill plus haut).
 // v52 : couleurs reprises directement sur les montages Photoshop de Stéphane (pixels mesurés au
-// pipette) plutôt que choisies à l'œil comme en v51 — vert et bleu sont SES couleurs exactes ;
-// aucun montage ne couvrait le mur gauche, l'ambre reste donc un choix (mais dans le même esprit
+// pipette) plutôt que choisies à l'œil comme en v51 — vert et bleu étaient SES couleurs exactes ;
+// aucun montage ne couvrait le mur gauche, l'ambre restait donc un choix (mais dans le même esprit
 // franc/« criard » que les 2 autres).
-const CHECKPOINT_WALL_COLORS = { '-1': '#e0962d', '0': '#4ddf40', '1': '#a7c0d4' };
+// v59 (retour de Stéphane, montages Photoshop précis à l'appui, un jeu de couleurs par salle cette
+// fois : « affecter une couleur spécifique à chaque mur... pour que les gens comprennent bien avec
+// le code couleur qu'on n'est pas sur le même mur » — étendu maintenant à « pas dans la même
+// salle ») : UN SEUL jeu de 3 couleurs (v51/v52 ci-dessus) ne distinguait que le mur (fond/gauche/
+// droit), pas la salle — la salle 2 reprenait donc exactement les couleurs de la salle 1. Ce futur
+// code couleur doit pourtant aussi servir de repère pour l'outil « composer son exposition » (6
+// feuilles à plat, une par mur) : chaque salle a donc maintenant SON PROPRE jeu de 3 couleurs,
+// toutes mesurées au pipette sur les montages de Stéphane, indexé par state.currentRoomIndex (0 ou
+// 1) plutôt que par un seul jeu global — voir updateCheckpointWallColorwash/
+// setCheckpointPillarColorfill juste plus bas, seuls points qui lisaient l'ancienne constante.
+const CHECKPOINT_WALL_COLORS_BY_ROOM = [
+  { '-1': '#ffffff', '0': '#fafc12', '1': '#de8cde' }, // salle 1 : gauche blanc, fond jaune paille, droit rose
+  { '-1': '#000000', '0': '#96d5cd', '1': '#fafc12' }, // salle 2 : gauche noir, fond bleu ciel, droit jaune poussin
+];
+function checkpointWallColorsForCurrentRoom() {
+  const idx = state.allRooms && state.allRooms.length >= 2 ? (state.currentRoomIndex || 0) : 0;
+  return CHECKPOINT_WALL_COLORS_BY_ROOM[idx] || CHECKPOINT_WALL_COLORS_BY_ROOM[0];
+}
 // v51 (retour de Stéphane : « affecter une couleur spécifique à chaque mur ») : pose la couleur du
 // mur affiché. v52 : en plein (opaque) plutôt qu'en demi-teinte (rgba, v51) — sur les montages
 // Photoshop de Stéphane, le mur change vraiment de couleur, ce n'est pas juste un filtre posé sur
 // la photo d'ambiance ; la « fausse perspective de mur de retour » (tranches en biais, v51) est
 // abandonnée au profit du pilier repeint (voir updateCheckpointPillarFraming).
 function updateCheckpointWallColorwash(facing) {
-  const wall1 = $('scale-checkpoint-wall');
-  const wash = wall1?.querySelector('.scale-checkpoint-wall-colorwash');
-  if (wash) wash.style.backgroundColor = CHECKPOINT_WALL_COLORS[String(facing)] || CHECKPOINT_WALL_COLORS['0'];
+  const wallEl = checkpointActiveWallEl(); // v59 : plus jamais wall1 en dur, voir son commentaire complet
+  const wash = wallEl?.querySelector('.scale-checkpoint-wall-colorwash');
+  const colors = checkpointWallColorsForCurrentRoom();
+  if (wash) wash.style.backgroundColor = colors[String(facing)] || colors['0'];
 }
 // Une fois l'avancée terminée (voir updateCheckpointApproachVisual plus bas), on ne bascule plus
 // tout de suite vers le plan rapproché — retour de Stéphane : « on devrait travailler le mouvement
@@ -4098,6 +4142,24 @@ function buildCheckpointTrack() {
   const pillarW = roomW * (innerXPercent / 100);
   const windowW = roomW - 2 * pillarW;
   track.style.transformOrigin = `${roomW / 2}px calc(var(--room-horizon-y) / 2)`;
+  // BUG corrigé v59 (retour de Stéphane, capture à l'appui : « comme il est en face du pilier, quand
+  // il va tout droit, il va dans le pilier ») : #scale-checkpoint-row (la rangée où vit le
+  // personnage) posait son padding-left en `vw` — donc une fraction de la largeur de la FENÊTRE —
+  // alors que le pilier ci-dessus (pillarW, juste calculé) est une fraction de la largeur de LA
+  // SALLE (roomW), qui n'est pas exactement la même chose (#scale-checkpoint a ses propres 20px de
+  // padding de chaque côté, voir style.css). Les deux valeurs étaient de plus choisies
+  // indépendamment (8vw contre 12% de roomW) sans jamais être comparées entre elles : 8 < 12, donc
+  // le personnage démarrait purement et simplement DANS la zone que le pilier occupe juste
+  // au-dessus de lui dans le rail (#scale-checkpoint-track, z-index:2), pas seulement collé contre
+  // son bord. Plutôt que de deviner une nouvelle valeur fixe en `vw` qui recolle par hasard à cet
+  // écran-ci mais recommencerait à dériver sur un autre format de fenêtre, on pose ce padding ICI,
+  // en JS, en pixels, dérivé de la MÊME mesure que le pilier (pillarW) plus une marge de respiration
+  // (24px) — les deux valeurs ne peuvent alors plus jamais se désynchroniser, quelle que soit la
+  // taille ou les proportions de la fenêtre. armCheckpointApproach/setupCheckpointWalk mesurent déjà
+  // la position du personnage en direct (silRect) pour placer les 2 points rouges : ils suivent donc
+  // ce nouveau padding automatiquement, sans rien à changer de leur côté.
+  const rowEl = $('scale-checkpoint-row');
+  if (rowEl) rowEl.style.paddingLeft = `${pillarW + 24}px`;
   // v29c : bug réel repéré par Stéphane (« les deux tableaux sont baissés ») — #scale-checkpoint-wall
   // ne fait que --room-horizon-y (62%) de la hauteur de la salle, pas sa hauteur ENTIÈRE (roomH) ;
   // buildCheckpointWindowWorks centrait pourtant chaque tableau sur roomH tout entier, ce qui les

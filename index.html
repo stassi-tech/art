@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=205" />
+    <link rel="stylesheet" href="style.css?v=206" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1173,7 +1173,7 @@
                  pour rester visible sur LES DEUX écrans (couloir ET plan rapproché), pas seulement
                  sur le tout premier — utile puisque c'est justement de la version affichée PARTOUT
                  qu'on veut être sûr. -->
-            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 58</div>
+            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 60</div>
             <!-- Couloir : vue à l'échelle réelle, mur du fond en face, 2 piliers de premier plan.
                  v57 : plus de tourniquet à franchir ici (retiré, voir plus bas) — on peut
                  directement soit marcher sur le côté (#scale-checkpoint-floor-dot, pour choisir la
@@ -1283,8 +1283,18 @@
                   <!-- Mur du fond de la 2e salle, jumeau de #scale-checkpoint-wall ci-dessus (même
                        thème d'ambiance — voir .scale-checkpoint-wall-window dans style.css) :
                        n'existe que pour être révélé en marchant, jamais visible tant qu'il n'y a
-                       qu'une seule salle (voir buildCheckpointTrack). -->
+                       qu'une seule salle (voir buildCheckpointTrack).
+                       v59 (bug réel repéré, pas encore signalé par Stéphane, en câblant ses couleurs
+                       par salle) : ce mur n'avait PAS son propre calque .scale-checkpoint-wall-
+                       colorwash comme son jumeau ci-dessus — updateCheckpointWallColorwash/
+                       setCheckpointFacing (app.js) ne repeignaient donc toujours QUE
+                       #scale-checkpoint-wall (le mur de la salle 1), resté hors-écran une fois la
+                       marche jusqu'à la salle 2 terminée (tout le rail glisse, voir
+                       buildCheckpointTrack) — aucun effet visible en salle 2. Ce calque manquant
+                       est la moitié du correctif ; l'autre moitié (viser le bon mur selon
+                       state.currentRoomIndex) est dans checkpointActiveWallEl, app.js. -->
                   <div id="scale-checkpoint-wall-2" class="scale-checkpoint-wallpanel scale-checkpoint-wall-window">
+                    <div class="scale-checkpoint-wall-colorwash" aria-hidden="true"></div>
                     <div id="scale-checkpoint-wall-2-works" class="scale-checkpoint-wall-works"></div>
                   </div>
                   <!-- v29b : pilier de CLÔTURE de la dernière salle affichée — retour de Stéphane
@@ -1306,6 +1316,12 @@
                         <div class="scale-checkpoint-room-dot"></div>
                       </div>
                     </div>
+                    <!-- v59 : ce pilier joue le rôle de coin DROIT de la salle 2 une fois qu'on s'y
+                         est promené (voir checkpointActiveCornerPillars, app.js) — il lui manquait
+                         donc ce calque .scale-checkpoint-pillar-colorfill, présent sur
+                         #scale-checkpoint-wall-right (son équivalent salle 1) mais jamais ajouté ici
+                         puisque ce pilier ne jouait encore aucun rôle actif avant ce correctif. -->
+                    <div class="scale-checkpoint-pillar-colorfill" aria-hidden="true"></div>
                   </div>
                 </div>
                 <div id="scale-checkpoint-floor" aria-hidden="true"></div>
@@ -1713,6 +1729,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=289"></script>
+    <script src="app.js?v=291"></script>
   </body>
 </html>
