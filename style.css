@@ -878,16 +878,38 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
 .scale-checkpoint-decor-image-active .scale-checkpoint-wall-colorwash {
   background-color:transparent !important;
 }
-.scale-checkpoint-decor-image-active .scale-checkpoint-pillar-hidden {
+/* v63b (retour de Stéphane après comparaison pixel par pixel de sa capture : « ça prend le pilier,
+   pas comme je l'ai dessiné, mais toujours le pilier du décor zéro à gauche... et à droite il reste
+   un cadran en l'air qu'il faut supprimer ») : la règle v61 ci-dessus ne rendait transparent QUE le
+   pilier replié (.scale-checkpoint-pillar-hidden), en gardant l'AUTRE pilier — le vrai coin — plein
+   avec sa propre texture rayée grise (.scale-checkpoint-side-pillar::after). C'était un choix
+   voulu à l'époque (« un pilier plein d'un côté, le décor de l'autre », comme sur les tout premiers
+   montages) — mais les 4 montages actuels de Stéphane dessinent en fait LEURS PROPRES piliers, en
+   perspective, aux DEUX bords de l'image (vérifié au pixel : bande grise rayée ~56-150 en RGB sur
+   les 130 premiers pixels de chaque montage) — un pilier « vrai » de l'appli n'a donc plus sa place
+   nulle part, ni d'un côté ni de l'autre, quand une image de décor est active : les 2 piliers
+   doivent disparaître entièrement pour laisser voir les piliers DESSINÉS DANS l'image, du bord
+   gauche au bord droit. On passe donc de .scale-checkpoint-pillar-hidden (un seul pilier) à
+   .scale-checkpoint-side-pillar (les 3 piliers possibles : wall-left/wall-right/pillar-end, quel
+   que soit leur état hidden/folded/coin réel) pour cette transparence. */
+.scale-checkpoint-decor-image-active .scale-checkpoint-side-pillar {
   /* même raison qu'au-dessus : body:not([data-ambiance]) ... .scale-checkpoint-side-pillar pose
      aussi cette couleur, avec un sélecteur `body`-qualifié donc plus spécifique. */
   background-color:transparent !important; background-image:none !important;
 }
-.scale-checkpoint-decor-image-active .scale-checkpoint-pillar-hidden::after {
+.scale-checkpoint-decor-image-active .scale-checkpoint-side-pillar::after {
   opacity:0;
 }
 .scale-checkpoint-decor-image-active .scale-checkpoint-pillar-hidden .scale-checkpoint-pillar-colorfill {
   background-color:transparent !important;
+}
+/* La niche « SALLE ACTUELLE » (le petit cadran avec les cases 1/2) est un ENFANT positionné du
+   pilier, avec son propre fond opaque — la rendre transparente comme le pilier ne suffit pas, elle
+   resterait affichée « en l'air », flottante, sans plus aucun pilier derrière elle pour la porter.
+   Aucun des montages de Stéphane ne montre ce cadran : on le masque entièrement ici plutôt que de
+   chercher à le rendre transparent lui aussi. */
+.scale-checkpoint-decor-image-active .scale-checkpoint-pillar-niche {
+  display:none !important;
 }
 /* v62 (retour de Stéphane après la livraison des 4 décors : « il n'y a qu'une partie du décor qui
    est prise... c'est comme si le couloir restait sur le décor zéro ») : les règles ci-dessus ne
