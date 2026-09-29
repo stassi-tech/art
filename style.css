@@ -398,6 +398,9 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intrus-confusion-label { font-family:Arial,sans-serif; font-weight:700; font-size:1rem; text-align:center; }
 .intrus-confusion-ref { font-family:Georgia,serif; font-size:1rem; text-align:center; color:var(--ink); }
 .intrus-confusion-ref em { font-style:italic; }
+/* v82 (retour Stéphane : « rajouter après artiste et titre, année et lieu de conservation ») :
+   seconde ligne, sous la référence, plus discrète (comme .illustration-caption). */
+.intrus-confusion-extra { display:block; font-family:Arial,sans-serif; font-size:.85rem; color:var(--muted); text-align:center; margin-top:-4px; }
 .intrus-verdict { font-family:Arial,sans-serif; font-weight:700; }
 .intrus-answer-instruction { font-family:Arial,sans-serif; font-size:.85rem; color:var(--muted); margin:16px 0 10px; }
 .intrus-answer-buttons { display:flex; gap:10px; }
@@ -647,7 +650,10 @@ body.lefty .hamburger-menu { right:auto; left:16px; }
    Valider — gris/transparent tant qu'il n'y a pas de réponse, vert ou rouge une fois validée (voir
    .correct/.wrong ci-dessous, posées par app.js). */
 .verdict-row { display:flex; align-items:center; gap:12px; margin-top:16px; }
-.verdict-square { width:30px; height:30px; border-radius:7px; flex:0 0 auto; background:var(--border); transition:background-color .15s; }
+/* v82 (retour Stéphane : « le carré vert, tu l'agrandis et tu marques dedans en blanc Exact. ; pour
+   le carré rouge tu marques Faux ») : agrandi (44px) et devient son propre petit bouton texte,
+   plutôt qu'un simple indicateur de couleur. */
+.verdict-square { width:44px; height:44px; border-radius:8px; flex:0 0 auto; background:var(--border); transition:background-color .15s; display:flex; align-items:center; justify-content:center; color:#fff; font-family:Arial,sans-serif; font-weight:700; font-size:.72rem; line-height:1.1; text-align:center; padding:2px; box-sizing:border-box; }
 .verdict-square.correct { background:var(--ok); }
 .verdict-square.wrong { background:var(--wrong); }
 .quiz-grid { display:grid; grid-template-columns:minmax(0,1.9fr) minmax(340px,.6fr); background:var(--paper); box-shadow:0 14px 35px rgba(54,45,31,.1); border-radius:8px; overflow:hidden; }

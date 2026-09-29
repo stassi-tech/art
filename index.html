@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=224" />
+    <link rel="stylesheet" href="style.css?v=225" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -296,7 +296,7 @@
                et discrète, ici sur l'écran d'accueil (le menu des jeux) — à mettre à jour à CHAQUE
                livraison, en même temps que le numéro dans app.js et les paramètres ?v= de app.js et
                style.css juste en dessous dans le <head>. -->
-          <p style="font-family:Arial,sans-serif;font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin:14px 2px 0;">v81</p>
+          <p style="font-family:Arial,sans-serif;font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin:14px 2px 0;">v82</p>
         </section>
 
         <section id="impregnation-setup-panel" class="welcome-panel hidden">
@@ -339,6 +339,14 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
+          <!-- v82 (retour Stéphane : « il faut pouvoir aller aussi sur la page choix des artistes,
+               si on veut consacrer un jeu à un artiste précis ») : la flèche retour en cours de jeu
+               ramène désormais sur cette page de configuration (comportement accepté par Stéphane),
+               mais il manquait un accès direct à « Mes choix d'artiste » depuis ici — jusqu'ici
+               accessible seulement depuis Mon compte. Même lien répété sur les 7 exercices, voir le
+               gestionnaire commun sur .setup-artists-link dans app.js (data-return-panel permet de
+               revenir précisément ici après le choix, via returnToExercisePanel). -->
+          <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="imp-setup-artists-link" data-return-panel="impregnation-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div class="config-table config-table-3">
@@ -412,7 +420,8 @@
                   </div>
                   <div class="imp-bio-text-col">
                     <h3 id="imp-bio-split-name" style="font-family:Georgia,serif;margin:0 0 10px;"></h3>
-                    <p id="imp-bio-split-text" style="font-family:Arial,sans-serif;font-size:1.15rem;line-height:1.65;white-space:pre-line;"></p>
+                    <!-- v82 (retour Stéphane : « justifie le texte de la bio ») -->
+                    <p id="imp-bio-split-text" style="font-family:Arial,sans-serif;font-size:1.15rem;line-height:1.65;white-space:pre-line;text-align:justify;"></p>
                   </div>
                 </div>
               </figure>
@@ -474,6 +483,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="intrus-setup-artists-link" data-return-panel="intrus-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div class="config-table config-table-3">
@@ -523,11 +533,17 @@
               </figure>
             </div>
             <section class="answer-card" aria-label="Choix">
-              <h2 id="intrus-instruction" style="font-family:Arial,sans-serif;font-weight:700;margin:0 0 16px;">Appuyer sur le bouton correspondant à l'œuvre dont on vous donne les références.</h2>
+              <!-- v82 (retour Stéphane 29/09) : nouvelle formulation -->
+              <h2 id="intrus-instruction" style="font-family:Arial,sans-serif;font-weight:700;margin:0 0 16px;">Appuyez sur l'image correspondant à l'œuvre dont on vous donne les références.</h2>
               <div id="intrus-choices"></div>
               <div id="intrus-correction" class="hidden">
                 <div class="correction-details" id="intrus-correction-details"></div>
-                <button type="button" class="primary-button" id="intrus-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
+                <!-- v82 (retour Stéphane : « même système » étendu à Intrus) : carré coloré au lieu
+                     du texte "Exact !" écrit dans l'écran — voir intrusAnswer dans app.js. -->
+                <div class="verdict-row">
+                  <span id="intrus-verdict-square" class="verdict-square"></span>
+                  <button type="button" class="primary-button" id="intrus-next-button" style="flex:1;">Suivant →</button>
+                </div>
               </div>
             </section>
           </div>
@@ -573,6 +589,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="recon-setup-artists-link" data-return-panel="reconstitution-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div class="config-table config-table-3">
@@ -682,6 +699,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="vf-setup-artists-link" data-return-panel="vraifaux-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div class="config-table config-table-3">
@@ -785,6 +803,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="fam-setup-artists-link" data-return-panel="famille-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div class="config-table config-table-3">
@@ -845,7 +864,8 @@
                  de secours (overflow-y:auto en CSS) si jamais le contenu dépassait la hauteur de la
                  rangée. -->
             <section class="answer-card" aria-label="Sélection">
-              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">La moitié de ces images est du même artiste. Retrouve cette famille en cliquant sur les images.</h2>
+              <!-- v82 (vérification vouvoiement, retour Stéphane 29/09) -->
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">La moitié de ces images est du même artiste. Retrouvez cette famille en cliquant sur les images.</h2>
               <div id="fam-step0">
                 <button type="button" class="primary-button" id="fam-validate-selection-button" style="width:100%">Valider ma sélection</button>
               </div>
@@ -901,6 +921,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones. Plusieurs siècles nécessaires pour un vrai classement.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="chrono-setup-artists-link" data-return-panel="chrono-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div class="config-table config-table-3">
@@ -1005,6 +1026,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones. Cocher plusieurs siècles les mélange aléatoirement.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="quiz-setup-artists-link" data-return-panel="quiz-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div class="config-table config-table-3">
@@ -1783,6 +1805,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=308"></script>
+    <script src="app.js?v=309"></script>
   </body>
 </html>

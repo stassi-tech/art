@@ -65,6 +65,12 @@ const state = {
   mode: 'normal', // 'normal' | 'review'
   fullQuestions: [], // toutes les questions du fichier importé (pour revenir après une révision)
 };
+// v82 (retour Stéphane : « rajouter une consigne orale à la première page d'exercice, ne pas la
+// répéter ensuite ») : dite une seule fois par lancement du quiz (voir renderQuestion) — remise à
+// false à chaque nouveau départ (state.index = 0), pour qu'elle se répète bien à chaque nouvelle
+// tentative (révision des erreurs, redémarrage complet…) sans jamais se répéter question par
+// question au fil d'un même parcours.
+let quizConsigneSpoken = false;
 
 // --- Authentification et sauvegarde des scores (Firebase) ---
 // ⚠️ Remplacez les valeurs ci-dessous par la configuration de VOTRE projet Firebase
@@ -2610,6 +2616,12 @@ $('quiz-launch-first-button')?.addEventListener('click', () => {
 });
 function renderQuestion() {
   document.body.classList.remove('has-other-works'); // repart d'un état propre à chaque question
+  // v82 (retour Stéphane : « la tablette est encore présente ») : ce bandeau de vignettes (portrait/
+  // lieu/ensemble, voir showBottomGallery ci-dessous) est celui déjà supprimé d'Imprégnation en v73
+  // pour la même raison (« trop compliqué, on ne comprend plus rien ») — il ne s'affiche plus non
+  // plus ici (voir renderCorrection), mais on le masque aussi explicitement à l'arrivée sur une
+  // nouvelle question au cas où il serait resté affiché depuis la correction précédente.
+  hideBottomGallery();
   const question = state.questions[state.index]; const answer = answerFor(state.index);
   const modeLabel = state.mode === 'review' ? 'Révision des erreurs — ' : '';
   $('quiz-reference').textContent = `${state.quizConfig?.reference || ''} — ${modeLabel}Q. ${state.index + 1}/${state.questions.length}`;
@@ -2647,6 +2659,13 @@ function renderQuestion() {
   }
   $('previous-button-overlay').disabled = state.index === 0;
   $('next-button-overlay').textContent = state.index === state.questions.length - 1 ? '🏁' : '→';
+  // v82 (retour Stéphane : « rajouter une consigne orale à la première page d'exercice. Ne pas la
+  // répéter ensuite ») : dite une seule fois, à la 1ʳᵉ question de chaque nouveau parcours (voir
+  // quizConsigneSpoken, remis à zéro à chaque nouveau départ, pas à chaque question).
+  if (state.index === 0 && !quizConsigneSpoken) {
+    quizConsigneSpoken = true;
+    quizSpeak('Donnez les références de cette œuvre.');
+  }
 }
 function formatArtistName(name) {
   // Convention des légendes muséales : prénom normal, nom de famille en MAJUSCULES
@@ -2792,6 +2811,23 @@ function pickSynonym(list) { return list[Math.floor(Math.random() * list.length)
 // que toujours le même mot (voir SPEECH_SYNONYMS ci-dessus). N'affecte jamais le texte ÉCRIT à
 // l'écran (verdicts, libellés), seulement ce que dit la voix.
 function spokenVerdictOpener(isCorrect) { return pickSynonym(isCorrect ? SPEECH_SYNONYMS.exact : SPEECH_SYNONYMS.aReviser); }
+// v82 (retour Stéphane : « le carré vert, tu l'agrandis et tu marques dedans en blanc Exact. ; pour
+// le carré rouge tu marques Faux, cela pour tous les jeux ») : agrandi le carré à sa taille finale
+// (voir .verdict-square dans style.css) et lui donne son texte — un seul point d'entrée pour tous
+// les jeux plutôt que de dupliquer classList+textContent à chaque appel.
+function setVerdictSquare(id, isCorrect) {
+  const el = $(id);
+  if (!el) return;
+  el.classList.remove('correct', 'wrong');
+  el.classList.add(isCorrect ? 'correct' : 'wrong');
+  el.textContent = isCorrect ? 'Exact.' : 'Faux';
+}
+function resetVerdictSquare(id) {
+  const el = $(id);
+  if (!el) return;
+  el.classList.remove('correct', 'wrong');
+  el.textContent = '';
+}
 // Variante liaison Artiste/Œuvre (Vrai/Faux, rubrique Auteur) : plusieurs façons d'annoncer que
 // l'artiste proposé est bien, ou n'est pas, celui qui a réalisé l'œuvre — toujours suivi de la
 // confirmation du bon nom pour rester informatif quelle que soit la formule tirée.
@@ -2874,7 +2910,10 @@ function quizSpeak(text) {
 function renderCorrection(answer, question) {
   correctionMainWork = question;
   renderCorrectionDetails(question, question, answer);
-  showBottomGallery(question);
+  // v82 (retour Stéphane : « la tablette est encore présente ») : ce bandeau de vignettes cliquables
+  // (portrait/lieu/ensemble) avait déjà été retiré d'Imprégnation en v73 pour la même raison — il
+  // était volontairement laissé tel quel ici pour le Quiz final à l'époque, mais Stéphane le
+  // signale maintenant lui aussi de trop : showBottomGallery n'est donc plus appelée.
   // Cas particulier du lieu : si la réponse ne donnait que la ville (acceptée comme bonne), on le
   // signale à l'oral en encourageant à préciser le musée la prochaine fois.
   const cityOnlyHint = (state.selectedFieldKeys.includes('location') && locationMatchQuality(answer.location, question) === 'city-only')
@@ -5480,7 +5519,7 @@ $('excel-file')?.addEventListener('change', async (event) => {
     state.mode = 'normal';
     state.fullQuestions = shuffleQuestions(questions);
     state.questions = state.fullQuestions;
-    state.answers = []; state.index = 0;
+    state.answers = []; state.index = 0; quizConsigneSpoken = false;
     state.currentScoreSaved = false;
     state.quizConfig = { label: 'Import manuel', level: 'Autre', rubriques: chosenKeys.map((key) => allFields.find((f) => f.key === key)?.label || key), reference: `${questions.length} questions — import manuel` };
     const refEl = $('quiz-reference');
@@ -5929,7 +5968,8 @@ function updateExhibitionButtonLabel() {
 $('exhibition-launch-button')?.addEventListener('click', async () => {
   const feedback = $('exhibition-feedback');
   const names = [...document.querySelectorAll('.exhibition-artist-field')].map((f) => f.value.trim()).filter(Boolean);
-  if (!names.length) { feedback.textContent = 'Indique au moins un nom d’artiste.'; return; }
+  // v82 (vérification vouvoiement, retour Stéphane 29/09)
+  if (!names.length) { feedback.textContent = 'Indiquez au moins un nom d’artiste.'; return; }
   localStorage.setItem('lastExhibitionArtists', JSON.stringify(names));
   updateExhibitionButtonLabel();
   feedback.style.color = 'var(--muted)';
@@ -6069,6 +6109,21 @@ $('global-back-button')?.addEventListener('click', () => {
     return;
   }
   history.back();
+});
+// v82 (retour Stéphane : « il faut pouvoir aller aussi sur la page choix des artistes, si on veut
+// consacrer un jeu à un artiste précis ») : un même lien, répété sur les 7 pages de configuration
+// d'exercice (voir index.html, .setup-artists-link), ouvre directement l'onglet « Mes choix
+// d'artiste » de Mon compte — jusqu'ici seulement accessible depuis là. On réutilise le mécanisme
+// déjà en place pour « Voir mes scores » en plein jeu (returnToExercisePanel + le bouton « ↩ Revenir
+// à l'exercice en cours ») pour ramener ensuite exactement sur la page de configuration d'où l'on
+// est parti, plutôt que sur le tableau de bord général de Mon compte.
+document.querySelectorAll('.setup-artists-link').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    returnToExercisePanel = btn.dataset.returnPanel || null;
+    showPanel('profile');
+    initProfilePage();
+    $('profile-menu-artists')?.click();
+  });
 });
 
 
@@ -6283,7 +6338,7 @@ function chronoShowQuestion() {
   updateTopBannerScore(`${chronoScore} pt${chronoScore > 1 ? 's' : ''}`);
   $('chrono-correction').classList.add('hidden');
   $('chrono-correct-table').classList.add('hidden');
-  $('chrono-verdict-square')?.classList.remove('correct', 'wrong');
+  resetVerdictSquare('chrono-verdict-square');
   $('chrono-validate-button').classList.remove('hidden');
   $('chrono-validate-button').disabled = true;
   $('chrono-cards-row').classList.remove('hidden');
@@ -6402,9 +6457,9 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   $('chrono-score-label').textContent = `${chronoScore} point${chronoScore > 1 ? 's' : ''}`;
   updateTopBannerScore(`${chronoScore} pt${chronoScore > 1 ? 's' : ''}`);
 
-  // v81 (docx 29 sept, « même système ») : carré coloré à côté de Suivant plutôt que le texte.
-  $('chrono-verdict-square')?.classList.remove('correct', 'wrong');
-  $('chrono-verdict-square')?.classList.add(isCorrect ? 'correct' : 'wrong');
+  // v81/v82 (docx 29 sept + retour Stéphane) : carré coloré agrandi, avec "Exact."/"Faux" écrit
+  // dedans en blanc, à côté de Suivant plutôt que le texte au-dessus.
+  setVerdictSquare('chrono-verdict-square', isCorrect);
 
   // La rangée reprend l'ordre choisi par le joueur (déjà rangé visuellement), encadrée en
   // rouge sur toute carte où l'ordre était faux, avec la référence complète sous chaque image.
@@ -6713,6 +6768,16 @@ function famNumberWord(n) {
   const words = { 2: 'deux', 3: 'trois', 4: 'quatre', 5: 'cinq', 6: 'six' };
   return words[n] || String(n);
 }
+// Bug live signalé par Stéphane (29/09, capture d'écran) : « la voix dit undefined les Quatre
+// saisons » — l'ancien tableau ordinals ci-dessous (dans famAnswer) s'arrêtait à 4 ("La
+// quatrième"), alors qu'avec 2 artistes choisis et 8 images, la famille à retrouver peut monter à
+// 5 œuvres (voir familySize = (imgCountChoice/2)+1 plus bas) : ordinals[4] valait undefined, d'où
+// ce mot lu tel quel par la voix. Fonction défensive plutôt qu'un tableau à rallonger à la main à
+// chaque fois qu'une taille de famille plus grande redeviendra possible.
+function famOrdinalWord(i) {
+  const words = ['La première', 'La deuxième', 'La troisième', 'La quatrième', 'La cinquième', 'La sixième', 'La septième', 'La huitième'];
+  return words[i] || `La ${i + 1}e`;
+}
 // L'ancienne loupe flottante (objet déplaçable avec poignée, suivant le doigt/curseur) a été
 // retirée : la petite loupe posée au coin de chaque cadre (appui maintenu = agrandissement, voir
 // attachZoomHold) l'a remplacée avec succès — plus simple à comprendre et à utiliser.
@@ -6726,6 +6791,7 @@ function famShowQuestion() {
   famStep = 1;
   famTimers.push(setTimeout(() => { famStep = 0; }, 400));
   famPickedLabel = null;
+  $('fam-step0')?.querySelector('.fam-step-feedback')?.classList.add('hidden');
   const q = FAM_SESSION[famIndex];
   // Précharge les 6-8 images de la question suivante, pendant que le joueur répond encore.
   FAM_SESSION[famIndex + 1]?.images?.forEach((w) => preloadImage(w.image, 250));
@@ -6735,7 +6801,7 @@ function famShowQuestion() {
   updateTopBannerScore(`${famScore} pt${famScore > 1 ? 's' : ''}`);
   $('fam-progress-bar').style.width = `${(famIndex / FAM_SESSION.length) * 100}%`;
   $('fam-correction').classList.add('hidden');
-  $('fam-verdict-square')?.classList.remove('correct', 'wrong');
+  resetVerdictSquare('fam-verdict-square');
   $('fam-step0').classList.remove('hidden');
   $('fam-validate-selection-button').disabled = false;
 
@@ -6784,9 +6850,28 @@ function famShowQuestion() {
     });
   });
 
-  famSpeak(`Trouve ${famNumberWord(q.family.length)} œuvres du même artiste.`);
+  // v82 (vérification vouvoiement, retour Stéphane 29/09 : « consigne et voix tutoient le joueur »)
+  famSpeak(`Trouvez ${famNumberWord(q.family.length)} œuvres du même artiste.`);
 }
 
+// Bug live signalé par Stéphane (29/09, capture d'écran) : famStepFeedback était appelée plus bas
+// (nombre d'œuvres sélectionné incorrect à la validation) mais n'avait jamais été définie nulle
+// part — ReferenceError qui plantait net le clic sur « Valider ma sélection » dans ce cas précis.
+// Implémentation minimale : un message discret sous le bouton concerné (crée l'élément au premier
+// besoin s'il n'existe pas déjà dans le panneau ciblé), plutôt qu'une alerte bloquante.
+function famStepFeedback(panelId, message) {
+  const panel = $(panelId);
+  if (!panel) return;
+  let el = panel.querySelector('.fam-step-feedback');
+  if (!el) {
+    el = document.createElement('p');
+    el.className = 'hint fam-step-feedback';
+    el.style.marginTop = '10px';
+    panel.appendChild(el);
+  }
+  el.textContent = message;
+  el.classList.remove('hidden');
+}
 $('fam-launch-first-button')?.addEventListener('click', () => {
   $('fam-ready-screen').classList.add('hidden');
   $('fam-quiz-grid').classList.remove('hidden');
@@ -6813,9 +6898,8 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
   $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
   updateTopBannerScore(`${famScore} pt${famScore > 1 ? 's' : ''}`);
 
-  // v81 (docx 29 sept, « même système ») : carré coloré à côté de Suivant plutôt que du texte.
-  $('fam-verdict-square')?.classList.remove('correct', 'wrong');
-  $('fam-verdict-square')?.classList.add(imagesCorrect ? 'correct' : 'wrong');
+  // v81/v82 (docx 29 sept + retour Stéphane) : carré coloré agrandi, "Exact."/"Faux" écrit dedans.
+  setVerdictSquare('fam-verdict-square', imagesCorrect);
 
   const yearOf = (w) => { const m = String(w.date || '').match(/\b(1[3-9]|20)\d{2}\b/); return m ? Number(m[0]) : 9999; };
   const chronological = q.family.slice().sort((a, b) => yearOf(a) - yearOf(b));
@@ -6851,8 +6935,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
     $('fam-image-grid').className = 'fam-result-grid';
     $('fam-image-grid').innerHTML = chronological.map((w) => cellHtml(w, true)).join('');
     $('fam-image-grid').querySelectorAll('.fam-result-item').forEach(famWireResultLoupe);
-    const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
-    const titleList = chronological.map((w, i) => `${ordinals[i]}, ${w.title}`).join('. ');
+    const titleList = chronological.map((w, i) => `${famOrdinalWord(i)}, ${w.title}`).join('. ');
     currentSpeechNationality = chronological[0]?.nationality || '';
     // La voix dit le surnom quand il existe (ex. « El Greco »), pas le nom complet parfois moins
     // reconnaissable (« Domenikos Theotokopoulos ») — cohérent avec ce qui est écrit à l'écran.
@@ -7022,6 +7105,26 @@ function vfFieldValue(row, key) {
   if (key === 'artist') return row.surnomFr ? `${row.artist}, dit ${row.surnomFr}` : (row.artist || '');
   return row[key] || '';
 }
+// Bug réel signalé par Stéphane (« Vous n'avez pas vu que l'artiste n'était pas jean de bologne,
+// mais giambologna ») : à la génération d'une question, le tirage de la « fausse » attribution
+// (voir errorFields plus bas) piochait n'importe quelle AUTRE LIGNE du réservoir sans vérifier
+// qu'il s'agissait bien d'un artiste différent — deux lignes peuvent pourtant décrire LE MÊME
+// artiste avec une orthographe/un format de nom différent (ex. une ligne où le fichier maître donne
+// « Jean de Boulogne » + surnom « Giambologna », une autre où « Giambologna » a été saisi
+// directement dans la colonne artiste, sans passer par la colonne Surnom). Le jeu affichait alors
+// une « fausse » attribution qui, en réalité, désignait la même personne — d'où une correction qui
+// n'avait aucun sens. Comparaison robuste : même nom civil (prénom+patronyme) une fois normalisé,
+// ou surnom de l'un qui correspond au nom (civil ou surnom) de l'autre.
+function vfSameArtist(a, b) {
+  const civil = (r) => keyName([r.prenom, r.patronyme].filter(Boolean).join(' '));
+  const aCivil = civil(a), bCivil = civil(b);
+  const aSurnom = keyName(a.surnomFr || ''), bSurnom = keyName(b.surnomFr || '');
+  const aArtist = keyName(a.artist || ''), bArtist = keyName(b.artist || '');
+  if (aCivil && bCivil) return aCivil === bCivil;
+  if (aSurnom && (aSurnom === bSurnom || aSurnom === bArtist)) return true;
+  if (bSurnom && bSurnom === aArtist) return true;
+  return aArtist === bArtist;
+}
 
 let VF_SESSION = [], vfIndex = 0, vfScore = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null, vfTimers = [], vfFieldLabel = '';
 const vfTimer = createTimer('topbar-timer');
@@ -7110,15 +7213,29 @@ $('vf-start-button')?.addEventListener('click', async () => {
         // est concerné, puis Titre, Date, etc.) : on retrie après le tirage au sort aléatoire.
         errorFields.sort((a, b) => activeFields.findIndex((f) => f.key === a) - activeFields.findIndex((f) => f.key === b));
         errorFields.forEach((key) => {
-          const others = pool.filter((r) => r !== correct && vfFieldValue(r, key));
+          // v82 (voir vfSameArtist ci-dessus) : pour la rubrique Auteur, on exclut aussi les lignes
+          // qui désignent en réalité le même artiste que la bonne réponse (même sous un nom écrit
+          // différemment) — sinon la « fausse » attribution proposée n'en est pas une. Dans tous les
+          // cas, on exclut aussi une ligne dont la valeur affichée serait identique (une fois
+          // normalisée) à la bonne réponse : ce ne serait alors pas une erreur détectable.
+          const correctValueKey = keyName(vfFieldValue(correct, key));
+          const others = pool.filter((r) => r !== correct
+            && vfFieldValue(r, key)
+            && keyName(vfFieldValue(r, key)) !== correctValueKey
+            && (key !== 'artist' || !vfSameArtist(r, correct)));
           if (others.length) {
             const swapped = others[Math.floor(Math.random() * others.length)];
             displayed[key] = vfFieldValue(swapped, key);
             displayedSource[key] = swapped;
           }
+          // v82 : si aucun candidat valable n'a été trouvé (réservoir trop restreint, ou uniquement
+          // des lignes du même artiste), la valeur affichée reste celle, correcte, de départ — cette
+          // rubrique ne doit alors plus compter comme une erreur, sous peine de reprocher au joueur
+          // de ne pas avoir vu une « erreur » qui, à l'écran, n'en était pas une.
+          else errorFields = errorFields.filter((k) => k !== key);
         });
       }
-      return { correct, hasError, errorFields, displayed, displayedSource, activeFields };
+      return { correct, hasError: hasError && errorFields.length > 0, errorFields, displayed, displayedSource, activeFields };
     });
     vfIndex = 0; vfScore = 0;
     showPanel('vraifaux');
@@ -7149,7 +7266,7 @@ function vfShowQuestion() {
   $('vf-validate-button').classList.remove('hidden');
   $('vf-validate-button').textContent = 'Valider';
   $('vf-validate-button').disabled = false;
-  $('vf-verdict-square')?.classList.remove('correct', 'wrong');
+  resetVerdictSquare('vf-verdict-square');
   $('vf-stage-img').src = imageSourceSized(q.correct.image, 700);
   preloadImage(VF_SESSION[vfIndex + 1]?.correct?.image, 700);
 
@@ -7296,10 +7413,9 @@ $('vf-validate-button')?.addEventListener('click', async () => {
   // global affiché juste sous la consigne — les indications déjà présentes rubrique par rubrique
   // (vf-was-wrong / vf-updated, plus bas) montrent le détail, mais rien ne donnait avant ça le
   // verdict d'ensemble d'un coup d'œil.
-  // v81 (docx 29 sept, « même système ») : carré coloré à côté du bouton Valider/Suivant plutôt
-  // que le texte "Exact"/"À réviser" (#vf-verdict, supprimé de l'écran).
-  $('vf-verdict-square')?.classList.remove('correct', 'wrong');
-  $('vf-verdict-square')?.classList.add(questionScore === 1 ? 'correct' : 'wrong');
+  // v81/v82 (docx 29 sept + retour Stéphane) : carré coloré agrandi, "Exact."/"Faux" écrit dedans,
+  // à côté du bouton Valider/Suivant plutôt que le texte "Exact"/"À réviser" (#vf-verdict, disparu).
+  setVerdictSquare('vf-verdict-square', questionScore === 1);
 
   // Correction vocale (retour de Stéphane, 22/09) : on ne raconte plus systématiquement chaque
   // rubrique cochée — seulement ce qu'il y a d'intéressant à dire. Si tout est bon partout (aucune
@@ -7577,7 +7693,7 @@ function reconShowQuestion() {
   // masquée à la correction, voir reconAnswer ci-dessous).
   $('recon-instruction')?.classList.remove('hidden');
   $('recon-correction').classList.add('hidden');
-  $('recon-verdict-square')?.classList.remove('correct', 'wrong');
+  resetVerdictSquare('recon-verdict-square');
   $('recon-choices').classList.remove('hidden');
 
   const src = escapeHtml(imageSourceSized(q.correct.image, 1200));
@@ -7588,6 +7704,10 @@ function reconShowQuestion() {
   $('recon-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
     btn.addEventListener('click', () => reconAnswer(Number(btn.dataset.index)));
   });
+  // v82 (retour Stéphane : « la voix doit donner une petite consigne comme dans les autres jeux
+  // pour la première page. Ne pas la répéter ensuite ») : dite une seule fois, à la 1ʳᵉ question du
+  // parcours seulement — même texte que la consigne écrite (#recon-instruction), pour rester cohérent.
+  if (reconIndex === 0) reconSpeak('Cliquez sur la référence qui correspond à l’œuvre dont vous voyez un détail.');
 }
 
 // Même principe que pour Intrus : fonction isolée, sans effet de bord, pour rafraîchir la
@@ -7604,10 +7724,13 @@ function reconRefreshCorrectionDetails() {
   if (!el) return;
   const dims = formatDimensionsDisplay(q.correct);
   const detailsParts = [];
-  if (showFullCorrection || reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
+  // v82 (retour Stéphane : « sur l'écran rajouter après artiste et titre, année et lieu de
+  // conservation ») : ces deux rubriques s'affichent désormais toujours à l'écran, sans dépendre
+  // des rubriques choisies pour la correction (qui ne conditionnent plus que Matériau/Dimensions).
+  detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if ((showFullCorrection || reconExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
-  if (showFullCorrection || reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu de conservation actuel</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
+  detailsParts.push(`<span class="correction-label">Lieu de conservation actuel</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   el.innerHTML = detailsParts.join('');
 }
 function reconAnswer(chosenIndex) {
@@ -7630,8 +7753,8 @@ function reconAnswer(chosenIndex) {
     if (i === chosenIndex) btn.insertAdjacentHTML('beforeend', inlineDetailsHtml);
     else btn.remove();
   });
-  $('recon-verdict-square')?.classList.remove('correct', 'wrong');
-  $('recon-verdict-square')?.classList.add(isCorrect ? 'correct' : 'wrong');
+  // v81/v82 (docx 29 sept + retour Stéphane) : carré coloré agrandi, "Exact."/"Faux" écrit dedans.
+  setVerdictSquare('recon-verdict-square', isCorrect);
 
   // L'image entière est révélée, avec la référence complète.
   $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSourceSized(q.correct.image, 700))}" alt="" />`;
@@ -9136,6 +9259,7 @@ function intrusShowQuestion() {
   updateTopBannerScore(`${intrusCorrectCount}/${intrusIndex}`);
   $('intrus-progress-bar').style.width = `${(intrusIndex / INTRUS_SESSION.length) * 100}%`;
   $('intrus-correction').classList.add('hidden');
+  resetVerdictSquare('intrus-verdict-square'); // v82 : nouvelle question, carré remis à zéro
   $('intrus-choices').classList.remove('hidden');
   $('intrus-instruction')?.classList.remove('hidden'); // v65 : réapparaît pour la nouvelle question (masquée à la correction)
 
@@ -9230,11 +9354,20 @@ function intrusRefreshCorrectionDetails() {
 function intrusRenderConfusionStep(work, label, isCorrectStep, titleOnly = false) {
   const promptCard = $('intrus-prompt-card');
   const refHtml = titleOnly ? `<em>« ${escapeHtml(work.title)} »</em>` : `${formatArtistDisplayName(work)} — <em>« ${escapeHtml(work.title)} »</em>`;
+  // v82 (retour Stéphane : « rajouter après artiste et titre, année et lieu de conservation ») :
+  // seconde ligne, sous la référence, avec date + lieu (drapeau inclus) quand ils sont renseignés.
+  const extraParts = [work.date ? escapeHtml(work.date) : '', locationWithFlag(work)].filter(Boolean);
+  const extraHtml = extraParts.length ? `<span class="intrus-confusion-extra">${extraParts.join(' — ')}</span>` : '';
+  // v82 (retour Stéphane : « exact reste écrit en haut, à supprimer ») : label vide = aucune
+  // étiquette écrite (cas de la bonne réponse, dont le verdict est désormais donné par le carré
+  // coloré commun à tous les jeux — voir intrusAnswer).
+  const labelHtml = label ? `<span class="intrus-confusion-label" style="color:${isCorrectStep ? 'var(--ok)' : 'var(--wrong)'}">${escapeHtml(label)}</span>` : '';
   promptCard.innerHTML = `<div class="intrus-image-choices">
     <div class="intrus-image-choice intrus-image-choice-solo intrus-confusion-step">
-      <span class="intrus-confusion-label" style="color:${isCorrectStep ? 'var(--ok)' : 'var(--wrong)'}">${escapeHtml(label)}</span>
+      ${labelHtml}
       <img src="${escapeHtml(imageSourceSized(work.image, 700))}" alt="" />
       <span class="intrus-confusion-ref">${refHtml}</span>
+      ${extraHtml}
     </div>
   </div>`;
 }
@@ -9278,11 +9411,11 @@ function intrusAnswer(chosenIndex) {
     // loupe), plus le bouton lui-même, donc plus ce qu'il faut désactiver ici.
     document.querySelectorAll('#intrus-prompt-card .intrus-image-tap-button').forEach((btn) => { btn.disabled = true; });
     if (isCorrect) {
-      intrusRenderConfusionStep(q.correct, 'Exact !', true);
+      intrusRenderConfusionStep(q.correct, '', true); // v82 : plus de texte écrit, le carré de verdict s'en charge
     } else {
-      // Étape 1 : l'image cliquée à tort, avec SEULEMENT son titre (plus toute la référence) —
-      // « Vous avez confondu avec... ».
-      intrusRenderConfusionStep(chosen, 'Vous avez confondu avec :', false, true);
+      // Étape 1 : l'image cliquée à tort — v82 (retour Stéphane : « rajouter l'artiste en légende »)
+      // on redonne désormais sa référence complète (auteur + titre), pas seulement le titre.
+      intrusRenderConfusionStep(chosen, 'Vous avez confondu avec :', false);
       // v73 : sur cette 1ʳᵉ page de correction, AUCUN bouton ne doit être disponible (ni Suivant, ni
       // Retour au menu/Voir la correction complète) — pour ne pas pouvoir passer à la question
       // suivante avant d'avoir vu et entendu la bonne réponse, révélée à l'étape 2 ci-dessous.
@@ -9295,14 +9428,16 @@ function intrusAnswer(chosenIndex) {
     // tout (image + verdict + référence) reste dans l'écran, rien ne se répète en dessous.
     $('intrus-choices').innerHTML = '';
     if (isCorrect) {
+      setVerdictSquare('intrus-verdict-square', true);
       intrusSpeak(`${spokenVerdictOpener(true)} ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
     } else {
       // Étape 2 (après la phrase de l'étape 1) : révèle la bonne image + sa référence complète,
       // introduite par « La bonne référence était » (à l'écran comme à la voix) — puis réaffiche les
       // boutons, jusque-là masqués (voir ci-dessus).
       deferControlsReveal = true;
-      intrusSpeak(`À réviser. Vous avez confondu avec « ${chosen.title || 'œuvre non titrée'} »`, () => {
+      intrusSpeak(`À réviser. Vous avez confondu avec ${artDesignation(chosen)} de ${chosen.artist}, ${chosen.title || 'œuvre non titrée'}.`, () => {
         intrusRenderConfusionStep(q.correct, 'La bonne référence était :', true);
+        setVerdictSquare('intrus-verdict-square', false);
         intrusSpeak(`La bonne référence était : ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
         intrusRevealCorrectionControls();
       });
@@ -9310,12 +9445,13 @@ function intrusAnswer(chosenIndex) {
   } else {
     // Référence intruses : inchangé — on garde la case CHOISIE (avec son verdict écrit dedans),
     // les deux autres disparaissent ; la bonne réponse reste lisible plus bas via correction-details.
-    const verdictHtml = ` <span class="intrus-verdict" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? '— Exact' : '— À réviser'}</span>`;
     document.querySelectorAll('#intrus-choices .intrus-choice-btn').forEach((btn, i) => {
       btn.disabled = true;
-      if (i === chosenIndex) btn.insertAdjacentHTML('beforeend', verdictHtml);
-      else btn.remove();
+      if (i !== chosenIndex) btn.remove();
     });
+    // v82 (« même système » étendu à Intrus) : le verdict écrit dans le bouton disparaît, remplacé
+    // par le carré coloré commun à tous les jeux.
+    setVerdictSquare('intrus-verdict-square', isCorrect);
     intrusSpeak(`${spokenVerdictOpener(isCorrect)} ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
   }
 
@@ -9558,7 +9694,7 @@ $('launch-quiz-button')?.addEventListener('click', async () => {
     state.mode = 'normal';
     state.fullQuestions = shuffled.slice(0, targetCount);
     state.questions = state.fullQuestions;
-    state.answers = []; state.index = 0;
+    state.answers = []; state.index = 0; quizConsigneSpoken = false;
     state.currentScoreSaved = false;
     // Conserve la configuration du quiz (art, siècle, niveau, nombre de questions, rubriques
     // testées) pour l'historique des scores : deux quiz avec des rubriques différentes n'ont pas
@@ -9627,7 +9763,7 @@ $('lightbox-image')?.addEventListener('click', () => $('image-lightbox').classLi
 $('image-lightbox')?.addEventListener('click', (event) => { if (event.target.id === 'image-lightbox') $('image-lightbox').classList.add('hidden'); });
 $('review-button').addEventListener('click', () => {
   // Reprendre depuis le début le même jeu de questions (normal ou révision en cours)
-  showPanel('quiz'); state.index = 0; renderQuestion();
+  showPanel('quiz'); state.index = 0; quizConsigneSpoken = false; renderQuestion();
 });
 $('review-errors-button').addEventListener('click', () => {
   const missed = state.questions.filter((question, index) => !isFullyCorrect(state.answers[index], question));
@@ -9636,6 +9772,7 @@ $('review-errors-button').addEventListener('click', () => {
   state.questions = missed;
   state.answers = [];
   state.index = 0;
+  quizConsigneSpoken = false;
   state.currentScoreSaved = false;
   showPanel('quiz'); renderQuestion();
 });
@@ -9644,6 +9781,7 @@ $('restart-full-button').addEventListener('click', () => {
   state.questions = state.fullQuestions;
   state.answers = [];
   state.index = 0;
+  quizConsigneSpoken = false;
   state.currentScoreSaved = false;
   showPanel('quiz'); renderQuestion();
 });
