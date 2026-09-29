@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v87';
+const APP_VERSION = 'v88';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4116,8 +4116,21 @@ function setCheckpointFacing(facing) {
   // commentaire complet ci-dessus), celle du mur du fond sinon (inchangé).
   const decorHorizonPx = facing !== 0 ? checkpointDecorHorizonPx($('scale-checkpoint-room')?.getBoundingClientRect()) : null;
   const winHeightForFacingPx = decorHorizonPx || checkpointWindowHpx;
+  // v87 (retour Stéphane, capture à l'appui : « sur le mur de droite, il reste par terre », alors que
+  // le mur de gauche était bien corrigé) : le recentrage seul (v85) ne suffit pas pour une œuvre plus
+  // HAUTE que la bande de mur disponible au-dessus de la ligne de sol du montage — mesure faite,
+  // cette bande (~44% de la hauteur de l'image en biais) est nettement plus courte que celle du mur
+  // du fond (62% de la salle) : une œuvre affichée à sa vraie échelle réelle (voir le choix assumé
+  // dans le commentaire de buildCheckpointTrack : « un Courbet de 6,68 m occupe bien sa vraie
+  // proportion d'un mur de 15 m ») qui tenait large sur le mur du fond peut très bien dépasser cette
+  // bande plus courte sur un mur latéral — même parfaitement centrée dessus, elle déborde alors
+  // forcément dans le sol par sa moitié basse. maxHeightPx (90% de la bande, pour une petite marge de
+  // respiration en haut et en bas) fait réduire l'œuvre — largeur ET hauteur ensemble, proportions
+  // gardées — UNIQUEMENT quand elle ne tiendrait pas, et UNIQUEMENT sur un mur latéral : le mur du
+  // fond garde sa vraie échelle sans aucun changement (undefined ci-dessous, comme avant ce correctif).
+  const maxHeightPx = decorHorizonPx ? decorHorizonPx * 0.9 : undefined;
   setTimeout(() => {
-    buildCheckpointWindowWorks(wallEl, checkpointWorkForFacing(checkpointFacing), checkpointWindowWpx, checkpointPxPerCm, winHeightForFacingPx);
+    buildCheckpointWindowWorks(wallEl, checkpointWorkForFacing(checkpointFacing), checkpointWindowWpx, checkpointPxPerCm, winHeightForFacingPx, maxHeightPx);
     worksEl.style.opacity = '1';
   }, 180);
   const label = $('scale-checkpoint-facing-label');
@@ -4245,8 +4258,15 @@ function positionCheckpointArrivalControls() {
 // toutes mesurées au pipette sur les montages de Stéphane, indexé par state.currentRoomIndex (0 ou
 // 1) plutôt que par un seul jeu global — voir updateCheckpointWallColorwash/
 // setCheckpointPillarColorfill juste plus bas, seuls points qui lisaient l'ancienne constante.
+// v87 (retour Stéphane, avec les couleurs exactes de sa salle 1 : « mur de gauche blanc, mur du fond
+// vert clair, mur de droite rose ») : le jaune posé ici pour le mur du FOND de la salle 1 était un
+// choix provisoire jamais vérifié contre ses montages — les deux montages en biais (gauche ET droit)
+// laissent justement voir, sur leur bord, un bout du mur du fond en perspective : mesuré au pixel
+// dans les deux images, ce bout de mur fait #cdeab4 (vert clair), pas jaune. Gauche (#ffffff) et
+// droit (#de8cde) étaient eux déjà exacts (mêmes pixels mesurés sur ses montages) — seule la couleur
+// du fond change ici.
 const CHECKPOINT_WALL_COLORS_BY_ROOM = [
-  { '-1': '#ffffff', '0': '#fafc12', '1': '#de8cde' }, // salle 1 : gauche blanc, fond jaune paille, droit rose
+  { '-1': '#ffffff', '0': '#cdeab4', '1': '#de8cde' }, // salle 1 : gauche blanc, fond vert clair, droit rose
   { '-1': '#000000', '0': '#96d5cd', '1': '#fafc12' }, // salle 2 : gauche noir, fond bleu ciel, droit jaune poussin
 ];
 function checkpointWallColorsForCurrentRoom() {
@@ -4347,11 +4367,19 @@ $('scale-checkpoint-zoom-button')?.addEventListener('click', enterCloserPlanFrom
 // l'écran par la gauche en premier, puis, une fois le pilier droit franchi (il joue le rôle de
 // repère salle 1 / salle 2), la salle 2 arrive avec son propre tableau, jusqu'à occuper exactement
 // la même place que la salle 1 occupait au repos (« on sera en plein dans la deuxième salle »).
-function placeCheckpointWork(container, work, centerXPx, pxPerCm, winHeightPx) {
+function placeCheckpointWork(container, work, centerXPx, pxPerCm, winHeightPx, maxHeightPx) {
   if (!work) return;
   const { hCm, lCm } = checkpointSanitizedSizeCm(work);
-  const heightPx = Math.max(4, hCm * pxPerCm);
-  const widthPx = Math.max(4, lCm * pxPerCm);
+  let heightPx = Math.max(4, hCm * pxPerCm);
+  let widthPx = Math.max(4, lCm * pxPerCm);
+  // v87 : voir le commentaire complet dans setCheckpointFacing — réduit l'œuvre (proportions
+  // gardées) UNIQUEMENT si elle ne tiendrait pas dans la bande disponible (maxHeightPx, fourni
+  // seulement pour un mur latéral ; jamais fourni pour le mur du fond, qui garde sa vraie échelle).
+  if (maxHeightPx && heightPx > maxHeightPx) {
+    const shrink = maxHeightPx / heightPx;
+    heightPx *= shrink;
+    widthPx *= shrink;
+  }
   const img = document.createElement('img');
   img.className = 'scale-checkpoint-work';
   img.alt = '';
@@ -4367,11 +4395,11 @@ function placeCheckpointWork(container, work, centerXPx, pxPerCm, winHeightPx) {
 // Pose (ou remplace) le tableau du mur du fond DANS son propre cadre (windowEl, un
 // .scale-checkpoint-wallpanel) — centré à l'intérieur de ce cadre, pas d'une bande partagée : voir
 // buildCheckpointTrack, qui décide lui de la position du CADRE dans le rail.
-function buildCheckpointWindowWorks(windowEl, work, windowWidthPx, pxPerCm, winHeightPx) {
+function buildCheckpointWindowWorks(windowEl, work, windowWidthPx, pxPerCm, winHeightPx, maxHeightPx) {
   const worksEl = windowEl.querySelector('.scale-checkpoint-wall-works');
   if (!worksEl) return;
   worksEl.innerHTML = '';
-  placeCheckpointWork(worksEl, work, windowWidthPx / 2, pxPerCm, winHeightPx);
+  placeCheckpointWork(worksEl, work, windowWidthPx / 2, pxPerCm, winHeightPx, maxHeightPx);
 }
 // Construit #scale-checkpoint-track (pilier gauche, mur salle 1, pilier droit, mur salle 2, pilier
 // de clôture — les 5 éléments FIXES du HTML, jamais recréés ni détruits, seulement repositionnés à
