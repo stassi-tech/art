@@ -1192,6 +1192,21 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
 .scale-checkpoint-decor-image-active #scale-checkpoint-floor::after {
   opacity:0;
 }
+/* v84 (retour Stéphane : « en bas des décors, reste toujours le décor du cordon tel qu'on le voit
+   de face, pas celui qu'on a redessiné en biais ») : même bug que le tapis rouge ci-dessus (v62,
+   juste au-dessus), mais sur un élément que ce correctif-là avait manqué — #scale-rope-barrier (le
+   cordon à 8 potelets) ne vit pas DANS #scale-checkpoint-room comme le sol/le tapis, mais dans
+   #scale-checkpoint-row, son FRÈRE juste en dessous (voir index.html) : la règle v62 ci-dessus, qui
+   ne cible que des descendants de .scale-checkpoint-decor-image-active, ne pouvait donc jamais
+   l'atteindre. Résultat vérifié à l'écran (Playwright) : en se tournant vers un mur latéral, le
+   cordon EN BIAIS que Stéphane a peint dans son propre montage (visible en haut, dans le décor) et
+   l'ANCIEN cordon fixe, toujours vu de face, de #scale-checkpoint-row restaient tous deux affichés
+   en même temps, l'un au-dessus de l'autre, sans aucun rapport entre leurs angles. Sélecteur en
+   frère général (~) plutôt qu'en descendant, puisque #scale-checkpoint-room et #scale-checkpoint-row
+   sont deux éléments distincts, pas l'un dans l'autre. */
+#scale-checkpoint-room.scale-checkpoint-decor-image-active ~ #scale-checkpoint-row #scale-rope-barrier {
+  opacity:0;
+}
 /* Piliers au premier plan : bande verticale DROITE (pas en trapèze) qui court sur toute la hauteur
    de l'écran (donc plus bas que le mur du fond, qui s'arrête à --room-horizon-y — cet écart de
    hauteur est ce qui suggère la profondeur : piliers proches/hauts, mur du fond loin/plus haut dans

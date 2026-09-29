@@ -3955,6 +3955,17 @@ function enterCheckpointCorridor() {
       checkpointPanTravelPx = buildCheckpointTrack();
       updateCheckpointRoomIndicator();
       setupCheckpointWalk();
+      // v84 (retour Stéphane : « quand le personnage approche du mur du fond, tout d'un coup, le
+      // mur du fond change de couleur ») : updateCheckpointWallColorwash(0) n'était jusqu'ici jamais
+      // appelée avant revealCheckpointArrivalControls(), déclenchée seulement une fois l'avancée
+      // TERMINÉE (checkpointApproach >= 1, voir updateCheckpointApproachVisual). Pendant toute la
+      // marche vers le mur du fond, le calque de teinte (.scale-checkpoint-wall-colorwash) restait
+      // donc sans couleur posée — d'où le changement brutal, en un seul instant, pile à l'arrivée,
+      // plutôt qu'une couleur déjà là dès qu'on découvre le couloir. On la pose donc ici aussi, dès
+      // la construction du couloir (avant même la première image), pour que le mur du fond ait déjà
+      // sa bonne couleur d'ambiance PENDANT toute l'avancée — revealCheckpointArrivalControls()
+      // continue de la reposer à l'arrivée (aucun changement à ce second appel, inoffensif).
+      updateCheckpointWallColorwash(0);
     });
   });
 }
