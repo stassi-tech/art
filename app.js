@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v89';
+const APP_VERSION = 'v90';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -3384,8 +3384,8 @@ let checkpointPxPerCm = 0;
 // les trois mouvements, je me tourne à droite, je me tourne à gauche, je regarde en face, au fond,
 // on voit les trois murs ») : largeur/hauteur RÉELLES (en px) de la fenêtre #scale-checkpoint-wall,
 // calculées une fois dans buildCheckpointTrack et rangées ici — updateCheckpointFacing/
-// checkpointWorkForFacing en ont besoin pour réafficher un tableau dans cette même fenêtre (celui
-// du mur gauche ou droit à la place de celui du mur du fond) sans avoir à refaire tout le calcul.
+// checkpointWorksForFacing en ont besoin pour réafficher les œuvres dans cette même fenêtre (celles
+// du mur gauche ou droit à la place de celles du mur du fond) sans avoir à refaire tout le calcul.
 let checkpointWindowWpx = 0;
 let checkpointWindowHpx = 0;
 // -1 = mur gauche affiché, 0 = mur du fond (par défaut), 1 = mur droit — direction actuellement
@@ -4028,46 +4028,57 @@ function checkpointSanitizedSizeCm(w) {
 // propres œuvres correctement déformées s'est révélé trop fragile (murs qui semblaient penchés,
 // œuvres qui se chevauchaient ou perdaient leurs proportions) pour le peu que ça apportait, puisque
 // le joueur les voit de toute façon correctement une fois entré, sur le plan rapproché.
-// Choisit l'œuvre du mur du fond pour cet aperçu : uniquement la plus large de toute l'exposition
-// (le « clou » — Courbet, ici), seule et bien centrée — les petites œuvres qui l'encadraient ont
-// été retirées à la demande : elles éloignaient l'œil du sujet principal plutôt que de le mettre
-// en valeur. On pioche dans state.scaleViewCandidates (toute l'exposition), PAS dans
-// state.roomWalls[0] : ce dernier ne contient que ce que splitIntoFourWalls a mis sur le mur du
-// fond pour la VRAIE visite (plan rapproché), un tirage qui peut très bien ne laisser qu'une seule
-// œuvre là-bas. Cet aperçu depuis l'entrée est une simple mise en scène (comme un rideau de
-// théâtre qui s'ouvre sur l'œuvre vedette) : il peut donc très bien montrer une autre œuvre que
-// celle qu'on croisera vraiment sur ce mur une fois entré, sans que ça pose problème.
 // v24 : Stéphane a confirmé que le passage salle 1 / salle 2 se choisit ICI, sur le plan
 // d'ensemble (voir setupCheckpointWalk/attachCheckpointFloorDotDrag plus bas), avant même de
-// franchir le tourniquet — donc cet aperçu doit pouvoir montrer le clou DE LA SALLE VERS LAQUELLE
-// on marche (pas systématiquement celui de toute l'exposition, comme avant), pour que ce qu'on
-// voit ici corresponde à la salle où l'on s'apprête réellement à entrer. roomIndex par défaut =
-// la salle actuelle (comportement inchangé quand il n'y a qu'une seule salle).
+// franchir le tourniquet — donc cet aperçu doit montrer les œuvres DE LA SALLE VERS LAQUELLE on
+// marche (pas systématiquement celles de toute l'exposition), pour que ce qu'on voit ici
+// corresponde à la salle où l'on s'apprête réellement à entrer. roomIndex par défaut = la salle
+// actuelle (comportement inchangé quand il n'y a qu'une seule salle).
+// v90 (retour Stéphane, très explicite : « il reste le problème que les tableaux ne sont pas les
+// mêmes entre ce plan d'ensemble et le plan rapproché où il y en a beaucoup plus... où sont passés
+// les tableaux sur le plan d'ensemble ? C'est ça le problème. ») : jusqu'à la v89, cette fonction
+// ne renvoyait JAMAIS qu'une seule œuvre (le « clou » — la plus large de toute l'exposition), choisi
+// dans state.scaleViewCandidates plutôt que dans state.roomWalls[0] — un choix de mise en scène
+// assumé à l'époque (voir l'ancien commentaire, conservé dans l'historique git) censé mettre en
+// valeur l'œuvre vedette, mais qui fait maintenant croire à Stéphane que des œuvres disparaissent
+// entre cet aperçu et la vraie visite. On renvoie donc maintenant la VRAIE liste d'œuvres accrochées
+// au mur du fond de cette salle, state.allRooms[roomIndex][0] — exactement ce que splitIntoFourWalls
+// y a mis pour le plan rapproché (voir buildContinuousWall, qui lit ce même roomWalls[0]) — pour que
+// l'aperçu et la vraie salle montrent toujours le même mur. Le repli ci-dessous (un seul « clou »
+// choisi dans tout ce qu'on trouve) ne sert donc plus que dans le cas limite où ce mur n'a, par
+// tirage, littéralement rien dessus — pour ne jamais laisser le mur du fond complètement vide.
 function checkpointBackWallWorks(roomIndex = state.currentRoomIndex) {
-  const room = state.allRooms && state.allRooms[roomIndex];
-  const all = room && room.flat().length
-    ? room.flat()
+  const wallsForRoom = state.allRooms && state.allRooms[roomIndex];
+  const trueBackWall = wallsForRoom && wallsForRoom[0];
+  if (trueBackWall && trueBackWall.length) return trueBackWall;
+  const all = wallsForRoom && wallsForRoom.flat().length
+    ? wallsForRoom.flat()
     : (state.scaleViewCandidates && state.scaleViewCandidates.length ? state.scaleViewCandidates : (state.roomWalls || []).flat());
   if (!all.length) return [];
-  const headliner = all.reduce((biggest, w) => (estimateWorkWidthCm(w) > estimateWorkWidthCm(biggest) ? w : biggest), all[0]);
-  return [headliner];
+  const headliner = checkpointHeadliner(all);
+  return headliner ? [headliner] : [];
 }
-// v48 : même principe que checkpointBackWallWorks ci-dessus (une seule œuvre vedette, bien centrée
-// — cet écran d'arrivée reste une mise en scène, pas la vraie visite mur par mur), mais appliqué
-// cette fois à une liste d'œuvres déjà connue (celles VRAIMENT accrochées au mur gauche ou droit de
-// la salle, state.roomWalls[3]/[1] — voir splitIntoFourWalls) plutôt qu'à toute l'exposition.
+// v48 : choisit une seule œuvre vedette dans une liste déjà connue — ne sert plus, depuis le v90,
+// que comme repli de dernier recours dans checkpointBackWallWorks ci-dessus (mur du fond sans
+// aucune vraie œuvre assignée) : conservée pour ce cas limite, mais plus utilisée pour les murs
+// latéraux ci-dessous, qui montrent maintenant leur vraie liste complète (voir checkpointWorksForFacing).
 function checkpointHeadliner(list) {
   if (!list || !list.length) return null;
   return list.reduce((biggest, w) => (estimateWorkWidthCm(w) > estimateWorkWidthCm(biggest) ? w : biggest), list[0]);
 }
-// Quelle œuvre montrer dans la fenêtre unique #scale-checkpoint-wall selon la direction actuellement
-// regardée (voir checkpointFacing) : -1 → le clou du mur gauche (state.roomWalls[3], le même
-// emplacement que la jambe « left » du plan rapproché — voir buildContinuousWall), 1 → celui du mur
-// droit (state.roomWalls[1]), 0 → le mur du fond, exactement comme avant (checkpointBackWallWorks).
-function checkpointWorkForFacing(facing) {
-  if (facing === -1) return checkpointHeadliner(state.roomWalls?.[3] || []);
-  if (facing === 1) return checkpointHeadliner(state.roomWalls?.[1] || []);
-  return checkpointBackWallWorks(state.currentRoomIndex)[0];
+// Quelles œuvres montrer dans la fenêtre unique #scale-checkpoint-wall selon la direction
+// actuellement regardée (voir checkpointFacing) : -1 → TOUTES les œuvres du mur gauche
+// (state.roomWalls[3], le même emplacement que la jambe « left » du plan rapproché — voir
+// buildContinuousWall), 1 → toutes celles du mur droit (state.roomWalls[1]), 0 → toutes celles du
+// mur du fond (checkpointBackWallWorks). v90 (retour Stéphane, voir le commentaire complet sur
+// checkpointBackWallWorks) : renvoie maintenant un TABLEAU (avant : une seule œuvre choisie via
+// checkpointHeadliner) — les murs latéraux montraient déjà state.roomWalls[3]/[1], la vraie
+// assignation, mais la réduisaient quand même à un seul « clou » ; ce n'est plus le cas, pour que
+// l'aperçu montre exactement ce qu'on retrouvera sur ce mur une fois entré dans la salle.
+function checkpointWorksForFacing(facing) {
+  if (facing === -1) return state.roomWalls?.[3] || [];
+  if (facing === 1) return state.roomWalls?.[1] || [];
+  return checkpointBackWallWorks(state.currentRoomIndex);
 }
 // v48 (retour de Stéphane : « je me tourne à droite, je me tourne à gauche, je regarde en face, au
 // fond, on voit les trois murs ») : fait « tourner » le visiteur, SANS le déplacer — on reste
@@ -4130,7 +4141,7 @@ function setCheckpointFacing(facing) {
   // fond garde sa vraie échelle sans aucun changement (undefined ci-dessous, comme avant ce correctif).
   const maxHeightPx = decorHorizonPx ? decorHorizonPx * 0.9 : undefined;
   setTimeout(() => {
-    buildCheckpointWindowWorks(wallEl, checkpointWorkForFacing(checkpointFacing), checkpointWindowWpx, checkpointPxPerCm, winHeightForFacingPx, maxHeightPx);
+    buildCheckpointWindowWorks(wallEl, checkpointWorksForFacing(checkpointFacing), checkpointWindowWpx, checkpointPxPerCm, winHeightForFacingPx, maxHeightPx);
     worksEl.style.opacity = '1';
   }, 180);
   const label = $('scale-checkpoint-facing-label');
@@ -4367,39 +4378,70 @@ $('scale-checkpoint-zoom-button')?.addEventListener('click', enterCloserPlanFrom
 // l'écran par la gauche en premier, puis, une fois le pilier droit franchi (il joue le rôle de
 // repère salle 1 / salle 2), la salle 2 arrive avec son propre tableau, jusqu'à occuper exactement
 // la même place que la salle 1 occupait au repos (« on sera en plein dans la deuxième salle »).
-function placeCheckpointWork(container, work, centerXPx, pxPerCm, winHeightPx, maxHeightPx) {
-  if (!work) return;
-  const { hCm, lCm } = checkpointSanitizedSizeCm(work);
-  let heightPx = Math.max(4, hCm * pxPerCm);
-  let widthPx = Math.max(4, lCm * pxPerCm);
-  // v87 : voir le commentaire complet dans setCheckpointFacing — réduit l'œuvre (proportions
-  // gardées) UNIQUEMENT si elle ne tiendrait pas dans la bande disponible (maxHeightPx, fourni
-  // seulement pour un mur latéral ; jamais fourni pour le mur du fond, qui garde sa vraie échelle).
-  if (maxHeightPx && heightPx > maxHeightPx) {
-    const shrink = maxHeightPx / heightPx;
-    heightPx *= shrink;
-    widthPx *= shrink;
+// v90 (retour Stéphane, voir le commentaire complet sur checkpointBackWallWorks) : réintroduit un
+// espacement réel entre œuvres voisines d'un même mur — il avait disparu en v28 quand ce mur ne
+// montrait plus jamais qu'une seule œuvre à la fois (voir le commentaire plus haut, ~ligne 3992) ;
+// maintenant que plusieurs œuvres peuvent à nouveau partager le même mur, il faut ce nouvel
+// espacement. En CENTIMÈTRES réels (comme tout le reste de cet aperçu, voir CHECKPOINT_WALL_LENGTH_CM
+// et le choix assumé de la vraie échelle), pas en pixels fixes qui se seraient déformés selon l'écran.
+const CHECKPOINT_GAP_CM = 20;
+// v90 : placeCheckpointWork devient placeCheckpointWorks (pluriel) — pose maintenant TOUTE la liste
+// d'œuvres réellement accrochées à ce mur (voir checkpointBackWallWorks/checkpointWorksForFacing),
+// côte à côte à leur vraie échelle et centrées comme un seul groupe sur centerXPx, plutôt qu'une
+// unique œuvre isolée. availableWidthPx (nouveau) est la largeur totale de la fenêtre du mur : si le
+// groupe entier déborderait de cette largeur (ce qui ne pouvait pas arriver avant, avec une seule
+// œuvre), on réduit le groupe TOUT ENTIER — largeur ET hauteur ensemble, proportions gardées ENTRE
+// les œuvres, aucune ne rétrécissant plus que sa voisine — jamais l'inverse : un groupe qui tient
+// déjà large garde sa vraie échelle, exactement comme avant pour une œuvre seule.
+function placeCheckpointWorks(container, works, centerXPx, pxPerCm, winHeightPx, maxHeightPx, availableWidthPx) {
+  const list = (works || []).filter(Boolean);
+  if (!list.length) return;
+  const sized = list.map((work) => {
+    const { hCm, lCm } = checkpointSanitizedSizeCm(work);
+    let heightPx = Math.max(4, hCm * pxPerCm);
+    let widthPx = Math.max(4, lCm * pxPerCm);
+    // v87 : voir le commentaire complet dans setCheckpointFacing — réduit CETTE œuvre (proportions
+    // gardées) UNIQUEMENT si elle ne tiendrait pas dans la bande disponible en hauteur (maxHeightPx,
+    // fourni seulement pour un mur latéral ; jamais fourni pour le mur du fond, qui garde sa vraie
+    // échelle) — indépendant du clamp de largeur de GROUPE ci-dessous, qui s'applique après.
+    if (maxHeightPx && heightPx > maxHeightPx) {
+      const shrink = maxHeightPx / heightPx;
+      heightPx *= shrink;
+      widthPx *= shrink;
+    }
+    return { work, heightPx, widthPx };
+  });
+  const gapPx = CHECKPOINT_GAP_CM * pxPerCm;
+  let totalWidthPx = sized.reduce((sum, s) => sum + s.widthPx, 0) + gapPx * (sized.length - 1);
+  if (availableWidthPx && totalWidthPx > availableWidthPx * 0.94) {
+    const groupShrink = (availableWidthPx * 0.94) / totalWidthPx;
+    sized.forEach((s) => { s.heightPx *= groupShrink; s.widthPx *= groupShrink; });
+    totalWidthPx *= groupShrink;
   }
-  const img = document.createElement('img');
-  img.className = 'scale-checkpoint-work';
-  img.alt = '';
-  img.src = imageSourceSized(work.image, Math.max(widthPx, 40));
-  img.style.left = `${centerXPx - widthPx / 2}px`;
-  // Centré verticalement dans la hauteur visible de la fenêtre plutôt qu'à une hauteur des yeux
-  // fixe (repère déjà repéré avant : un vrai milieu reste centré quel que soit l'écran).
-  img.style.top = `${winHeightPx / 2 - heightPx / 2}px`;
-  img.style.width = `${widthPx}px`;
-  img.style.height = `${heightPx}px`;
-  container.appendChild(img);
+  let cursorX = centerXPx - totalWidthPx / 2;
+  sized.forEach(({ work, heightPx, widthPx }) => {
+    const img = document.createElement('img');
+    img.className = 'scale-checkpoint-work';
+    img.alt = '';
+    img.src = imageSourceSized(work.image, Math.max(widthPx, 40));
+    img.style.left = `${cursorX}px`;
+    // Centré verticalement dans la hauteur visible de la fenêtre plutôt qu'à une hauteur des yeux
+    // fixe (repère déjà repéré avant : un vrai milieu reste centré quel que soit l'écran).
+    img.style.top = `${winHeightPx / 2 - heightPx / 2}px`;
+    img.style.width = `${widthPx}px`;
+    img.style.height = `${heightPx}px`;
+    container.appendChild(img);
+    cursorX += widthPx + gapPx;
+  });
 }
-// Pose (ou remplace) le tableau du mur du fond DANS son propre cadre (windowEl, un
-// .scale-checkpoint-wallpanel) — centré à l'intérieur de ce cadre, pas d'une bande partagée : voir
-// buildCheckpointTrack, qui décide lui de la position du CADRE dans le rail.
-function buildCheckpointWindowWorks(windowEl, work, windowWidthPx, pxPerCm, winHeightPx, maxHeightPx) {
+// Pose (ou remplace) les tableaux du mur du fond DANS son propre cadre (windowEl, un
+// .scale-checkpoint-wallpanel) — centrés comme groupe à l'intérieur de ce cadre, pas d'une bande
+// partagée : voir buildCheckpointTrack, qui décide lui de la position du CADRE dans le rail.
+function buildCheckpointWindowWorks(windowEl, works, windowWidthPx, pxPerCm, winHeightPx, maxHeightPx) {
   const worksEl = windowEl.querySelector('.scale-checkpoint-wall-works');
   if (!worksEl) return;
   worksEl.innerHTML = '';
-  placeCheckpointWork(worksEl, work, windowWidthPx / 2, pxPerCm, winHeightPx, maxHeightPx);
+  placeCheckpointWorks(worksEl, works, windowWidthPx / 2, pxPerCm, winHeightPx, maxHeightPx, windowWidthPx);
 }
 // Construit #scale-checkpoint-track (pilier gauche, mur salle 1, pilier droit, mur salle 2, pilier
 // de clôture — les 5 éléments FIXES du HTML, jamais recréés ni détruits, seulement repositionnés à
@@ -4491,7 +4533,7 @@ function buildCheckpointTrack() {
   place(pillarLeft, 0, pillarW);
   place(wall1, pillarW, windowW);
   place(pillarRight, pillarW + windowW, pillarW);
-  buildCheckpointWindowWorks(wall1, checkpointBackWallWorks(0)[0], windowW, pxPerCm, windowH);
+  buildCheckpointWindowWorks(wall1, checkpointBackWallWorks(0), windowW, pxPerCm, windowH);
 
   const hasTwoRooms = state.allRooms && state.allRooms.length >= 2;
   if (!hasTwoRooms) {
@@ -4506,7 +4548,7 @@ function buildCheckpointTrack() {
   wall2.style.display = '';
   pillarEnd.style.display = '';
   place(wall2, pillarW + windowW + pillarW, windowW);
-  buildCheckpointWindowWorks(wall2, checkpointBackWallWorks(1)[0], windowW, pxPerCm, windowH);
+  buildCheckpointWindowWorks(wall2, checkpointBackWallWorks(1), windowW, pxPerCm, windowH);
   place(pillarEnd, pillarW + windowW + pillarW + windowW, pillarW);
   track.style.width = `${pillarW + windowW + pillarW + windowW + pillarW}px`;
   // Trajet : amène la salle 2 exactement dans le créneau que la salle 1 occupait au repos — aussi
