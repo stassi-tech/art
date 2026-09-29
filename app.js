@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v91';
+const APP_VERSION = 'v92';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -3436,6 +3436,13 @@ function updateCheckpointWalkVisual() {
   const tx = checkpointProgress * checkpointWalkRangePx;
   if (dot) dot.style.transform = `translateX(${tx}px)`;
   if (sil) sil.style.transform = `translateX(${tx}px)`;
+  // v92 : la copie du plan rapproché (voir applyCheckpointZoomLevel) est positionnée avec un
+  // translateX(-50%) de base (centrage horizontal sur la salle, voir
+  // repositionCheckpointFloorSilhouette) — on lui applique le MÊME petit déplacement tx qu'au vrai
+  // personnage, mais EN PLUS de ce centrage, jamais à sa place, pour qu'elle avance elle aussi
+  // pendant la marche (sans effet si elle est cachée, en vue d'ensemble).
+  const floorSil = $('scale-checkpoint-floor-silhouette');
+  if (floorSil) floorSil.style.transform = `translateX(calc(-50% + ${tx}px))`;
   const pillarTx = -checkpointProgress * checkpointPanTravelPx;
   if (track) track.style.transform = `translateX(${pillarTx}px)`;
 }
@@ -3906,6 +3913,17 @@ function enterCheckpointCorridor() {
     // — sinon ses dimensions mesureraient encore zéro) puis on construit le mur unique et on prépare
     // la marche le long de toute sa longueur.
     requestAnimationFrame(() => {
+      // v92 : (re)part toujours en vue d'ensemble à chaque entrée FRAÎCHE dans le couloir — jamais en
+      // plan rapproché résiduel d'une visite précédente (voir applyCheckpointZoomLevel/
+      // toggleCheckpointCloseUp). Le bouton loupe, mort depuis le v91 (plus de plan rapproché à
+      // atteindre), redevient permanemment visible : il bascule maintenant entre les deux échelles du
+      // même couloir plutôt que de mener à un plan séparé.
+      checkpointCloseUp = false;
+      const realSil0 = $('scale-checkpoint-silhouette');
+      if (realSil0) realSil0.style.visibility = '';
+      $('scale-checkpoint-floor-silhouette')?.classList.add('hidden');
+      const zoomBtn = $('scale-checkpoint-zoom-button');
+      if (zoomBtn) { zoomBtn.classList.remove('hidden'); zoomBtn.textContent = '🔍 Voir de plus près'; }
       checkpointPanTravelPx = buildCheckpointTrack();
       setupCheckpointWalk();
     });
@@ -4290,7 +4308,9 @@ function enterCloserPlanFromArrival() {
 }
 $('scale-checkpoint-turn-left')?.addEventListener('click', () => setCheckpointFacing(checkpointFacing - 1));
 $('scale-checkpoint-turn-right')?.addEventListener('click', () => setCheckpointFacing(checkpointFacing + 1));
-$('scale-checkpoint-zoom-button')?.addEventListener('click', enterCloserPlanFromArrival);
+// v92 : le bouton loupe ne mène plus à un plan séparé (enterCloserPlanFromArrival, mort depuis le
+// v91) mais bascule entre les deux échelles du MÊME couloir — voir toggleCheckpointCloseUp.
+$('scale-checkpoint-zoom-button')?.addEventListener('click', toggleCheckpointCloseUp);
 // v29 : retour de Stéphane, cette fois avec des captures d'écran comparées à un Photoshop de
 // référence — la v28 (bande de tableaux + pilier inventé, seul à bouger) donnait l'impression que
 // les 2 vrais piliers gris du plan d'ensemble (#scale-checkpoint-wall-left/-right, ceux qui
@@ -4462,7 +4482,11 @@ function buildCheckpointTrack() {
   const pillarEnd = $('scale-checkpoint-pillar-end'); // v91 : devient le pilier de clôture du mur unique
   const wall1 = $('scale-checkpoint-wall'); // v91 : devient LE mur unique, portant toutes les œuvres
   const wall2 = $('scale-checkpoint-wall-2'); // v91 : plus utilisé, gardé caché (voir plus bas)
-  const sil = $('scale-checkpoint-silhouette');
+  // v92 : en plan rapproché, la référence d'échelle n'est plus le vrai personnage (invisible, voir
+  // applyCheckpointZoomLevel) mais sa copie décorative #scale-checkpoint-floor-silhouette, redimensionnée
+  // plus grande — pxPerCm suit donc SA hauteur à l'écran dans ce cas, au lieu de celle du personnage
+  // de la rangée du bas.
+  const sil = checkpointCloseUp ? $('scale-checkpoint-floor-silhouette') : $('scale-checkpoint-silhouette');
   if (!room || !track || !pillarLeft || !pillarRight || !pillarEnd || !wall1 || !wall2 || !sil) return 0;
   // BUG corrigé v39 (retour de Stéphane, capture à l'appui : « le tableau est descendu dans le
   // parquet, ça ne se rétablit pas, il faut fermer toute l'application ») : à l'époque, c'était
@@ -4521,15 +4545,86 @@ function buildCheckpointTrack() {
   track.style.transform = 'translateX(0px)';
   return Math.max(0, fullTrackW - roomW);
 }
+// v92 (retour Stéphane : « rajoute le plan rapproché... en gardant exactement la même disposition,
+// mais en rapprochant le personnage des tableaux ») : hauteur cible de la copie décorative du
+// personnage (#scale-checkpoint-floor-silhouette) en plan rapproché — nettement plus grande que les
+// 18vh de la vue d'ensemble (personnage plus proche, donc pxPerCm plus grand, voir buildCheckpointTrack
+// ci-dessus), mais volontairement plus modeste que les 70vh de l'ancien plan rapproché
+// (buildContinuousWall, désormais mort) : Stéphane a précisé vouloir « un peu plus loin des tableaux »
+// que cette ancienne version. Valeur d'essai, à ajuster avec lui une fois vue en vrai.
+const CHECKPOINT_CLOSEUP_SILHOUETTE_VH = 34;
+let checkpointCloseUp = false;
+// Positionne la copie décorative du plan rapproché : centrée horizontalement dans la salle (comme le
+// vrai personnage l'est déjà dans la rangée du bas), les pieds à mi-profondeur du sol à croisillons
+// (#scale-checkpoint-floor) — « à peu près au milieu du parquet », pas collée à son bord le plus proche
+// du joueur ni au mur du fond. Recale aussi le point rouge / la course de marche disponible sur les
+// VRAIES pieds du personnage (resté en place dans la rangée, seulement invisible) : c'est toujours lui
+// qui fait foi pour le geste de glissement, la copie n'étant que visuelle. Appelée à la fois par
+// applyCheckpointZoomLevel (bascule) et par le redimensionnement de fenêtre (voir plus bas).
+function repositionCheckpointFloorSilhouette() {
+  const floorSil = $('scale-checkpoint-floor-silhouette');
+  const realSil = $('scale-checkpoint-silhouette');
+  const room = $('scale-checkpoint-room');
+  const floorEl = $('scale-checkpoint-floor');
+  const row = $('scale-checkpoint-row');
+  const dot = $('scale-checkpoint-floor-dot');
+  if (!floorSil || !realSil || !room || !floorEl || !row || !dot) return;
+  const roomRect = room.getBoundingClientRect();
+  const floorRect = floorEl.getBoundingClientRect();
+  const floorSilRect = floorSil.getBoundingClientRect();
+  if (!roomRect.width || !floorRect.height || !floorSilRect.height) return;
+  const floorMidY = floorRect.top + floorRect.height / 2;
+  floorSil.style.left = `${roomRect.left + roomRect.width / 2}px`;
+  floorSil.style.top = `${floorMidY - floorSilRect.height}px`;
+  const rowRect = row.getBoundingClientRect();
+  const realSilRect = realSil.getBoundingClientRect();
+  if (rowRect.width && realSilRect.width) {
+    dot.style.left = `${realSilRect.left + realSilRect.width / 2 - rowRect.left - 14}px`;
+    dot.style.top = `${realSilRect.bottom - rowRect.top - 20}px`;
+    checkpointWalkRangePx = Math.max(160, window.innerWidth - realSilRect.right - 40);
+  }
+  dot.classList.toggle('hidden', checkpointPanTravelPx <= 0);
+}
+// Bascule effective entre vue d'ensemble et plan rapproché : reconstruit le MÊME mur (même liste
+// d'œuvres, même ordre — buildCheckpointTrack/buildCheckpointCorridorWorks ne changent pas) à la
+// nouvelle échelle, sans jamais toucher checkpointProgress (une fraction 0..1 du mur ENTIER, déjà
+// indépendante de l'échelle) : rester devant LA MÊME œuvre en changeant de plan est donc automatique.
+function applyCheckpointZoomLevel() {
+  const realSil = $('scale-checkpoint-silhouette');
+  const floorSil = $('scale-checkpoint-floor-silhouette');
+  if (!realSil || !floorSil) return;
+  if (!checkpointCloseUp) {
+    realSil.style.visibility = '';
+    floorSil.classList.add('hidden');
+    checkpointPanTravelPx = buildCheckpointTrack();
+    updateCheckpointWalkVisual();
+    return;
+  }
+  floorSil.style.height = `${CHECKPOINT_CLOSEUP_SILHOUETTE_VH}vh`;
+  realSil.style.visibility = 'hidden';
+  floorSil.classList.remove('hidden');
+  checkpointPanTravelPx = buildCheckpointTrack();
+  repositionCheckpointFloorSilhouette();
+  updateCheckpointWalkVisual();
+}
+function toggleCheckpointCloseUp() {
+  checkpointCloseUp = !checkpointCloseUp;
+  applyCheckpointZoomLevel();
+  const btn = $('scale-checkpoint-zoom-button');
+  if (btn) btn.textContent = checkpointCloseUp ? '🔍 Voir l’ensemble' : '🔍 Voir de plus près';
+}
 // Recalcule tout si la fenêtre change de taille pendant que ce plan est affiché (sinon la mise à
 // l'échelle, calculée une seule fois à l'entrée, ne correspondrait plus à la nouvelle salle) — on
 // réapplique aussi la progression courante contre la nouvelle distance de panoramique, plutôt que
 // de remettre la marche à zéro juste parce que la fenêtre a changé de taille. v91 : plus de flèches
 // de rotation ni de teinte par mur à réaligner ici (voir le commentaire d'ensemble sur
-// buildCheckpointTrack) — juste le mur unique et la marche à recalculer.
+// buildCheckpointTrack) — juste le mur unique et la marche à recalculer. v92 : si le plan rapproché
+// est actif, la copie décorative doit aussi être repositionnée (nouvelle taille de fenêtre = nouveau
+// milieu de sol, nouvelle course de marche).
 window.addEventListener('resize', () => {
   if (!$('scale-checkpoint')?.classList.contains('hidden')) {
     checkpointPanTravelPx = buildCheckpointTrack();
+    if (checkpointCloseUp) repositionCheckpointFloorSilhouette();
     updateCheckpointWalkVisual();
   }
 });

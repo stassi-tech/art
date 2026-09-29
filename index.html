@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=234" />
+    <link rel="stylesheet" href="style.css?v=235" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1474,6 +1474,15 @@
               <svg id="scale-checkpoint-approach-silhouette" class="hidden" viewBox="0 0 100 340" aria-hidden="true">
                 <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
               </svg>
+              <!-- v92 : copie décorative du personnage pour le nouveau « plan rapproché » (retour de
+                   Stéphane : « rajoute le plan rapproché... en gardant exactement la même disposition,
+                   mais en rapprochant le personnage des tableaux », puis « il faudrait que le
+                   personnage passe à peu près au milieu du parquet à croisillon ») — même principe que
+                   la copie d'avancée ci-dessus, voir le commentaire complet dans style.css et
+                   applyCheckpointZoomLevel/repositionCheckpointFloorSilhouette dans app.js. -->
+              <svg id="scale-checkpoint-floor-silhouette" class="hidden" viewBox="0 0 100 340" aria-hidden="true">
+                <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+              </svg>
               <!-- v48 (retour de Stéphane : « on devrait travailler le mouvement de se tourner à
                    droite et à gauche pour voir les deux murs avant de travailler la jonction avec
                    le plan rapproché... si on a les trois mouvements, je me tourne à droite, je me
@@ -1820,6 +1829,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=318"></script>
+    <script src="app.js?v=319"></script>
   </body>
 </html>

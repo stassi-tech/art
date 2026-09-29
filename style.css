@@ -1430,6 +1430,21 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
    événements de pointeur destinés au point, qui ne recevait donc plus jamais aucun mouvement. Cette
    copie n'a de toute façon jamais eu besoin d'être cliquable, elle n'est que visuelle. */
 #scale-checkpoint-approach-silhouette { position:fixed; height:26vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; margin:0; z-index:50; pointer-events:none; }
+/* v92 (retour Stéphane, 2 messages d'affilée : « rajoute le plan rapproché... en gardant exactement
+   la même disposition, mais en rapprochant le personnage des tableaux », puis, précision immédiate :
+   « il faudrait que le personnage passe à peu près au milieu du parquet à croisillon, qu'il soit un
+   peu plus loin des tableaux qu'il n'était dans le plan rapproché [l'ancien, #scale-silhouette à
+   70vh, désormais mort — voir buildContinuousWall dans app.js], mais qu'il soit au milieu de ton
+   parquet... ça serait une bonne distance ») : même principe EXACT que la copie d'approche
+   ci-dessus — une copie purement décorative du personnage réel de #scale-checkpoint-row, en
+   position:fixed pour échapper à l'overflow:hidden de #scale-checkpoint-room, mais height/left/top
+   posés en JS (voir applyCheckpointZoomLevel/repositionCheckpointFloorSilhouette dans app.js) pour
+   la planter à mi-profondeur du sol à croisillons (#scale-checkpoint-floor) plutôt que dans la
+   rangée du bas. Hauteur nettement plus grande qu'au repos (18vh) mais volontairement plus modeste
+   que l'ancien plan rapproché (70vh) — valeur d'essai (34vh) à ajuster avec Stéphane. z-index:8 —
+   juste au-dessus de #scale-checkpoint-track (z-index:2, piliers + mur), largement suffisant
+   puisqu'elle est de toute façon centrée horizontalement, loin des piliers latéraux. */
+#scale-checkpoint-floor-silhouette { position:fixed; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; margin:0; z-index:8; pointer-events:none; }
 /* Cordon rouge à 8 potelets, tracé en un seul SVG continu, vraies vagues entre chaque potelet
    doré — étendu sur toute la largeur disponible (plus de max-width, pour vraiment aller d'un
    bout à l'autre de la pièce, comme un vrai cordon de musée). */
