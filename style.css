@@ -581,6 +581,11 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .topbar-zone-center { flex:0 0 auto; }
 #topbar-timer { font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:var(--ink); min-width:36px; text-align:center; cursor:pointer; }
 .topbar-zone-right { flex:1 1 0; justify-content:flex-end; font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; color:#c0392b; white-space:nowrap; }
+/* v87 (retour Stéphane : voir le commentaire complet dans index.html, juste avant ce span) — petit
+   repère de version, discret, dans le bandeau du haut commun à tous les écrans (donc aussi visible
+   depuis la salle d'exposition, contrairement à l'ancien badge posé uniquement sur l'écran d'accueil).
+   Même habillage visuel (taille, gris, opacité réduite) que ce badge d'accueil, pour rester cohérent. */
+.global-version-badge { font-family:Arial,sans-serif; font-size:.62rem; color:var(--muted); opacity:.55; white-space:nowrap; flex:0 0 auto; margin-left:2px; }
 @media (max-width:640px) {
   .topbar-banner { padding:6px 8px; gap:4px; }
   #topbar-exercise-name { font-size:.7rem; }

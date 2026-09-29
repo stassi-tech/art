@@ -1,4 +1,20 @@
 const $ = (id) => document.getElementById(id);
+// v87 (retour Stéphane : « remets-moi le numéro de version... je ne sais jamais si je suis sur la
+// bonne version, dans la salle de musée ») : source UNIQUE du numéro de version affiché — avant cette
+// version, le numéro était écrit en dur à deux endroits différents (le badge de l'écran d'accueil ET,
+// à partir de maintenant, celui du bandeau du haut commun à tous les écrans), avec le risque réel
+// d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
+// CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
+// paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
+const APP_VERSION = 'v87';
+document.addEventListener('DOMContentLoaded', () => {
+  if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
+  if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
+});
+if (document.readyState !== 'loading') {
+  if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
+  if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
+}
 // Filet de sécurité pour le diagnostic à distance : si une erreur JavaScript survient N'IMPORTE OÙ
 // dans l'app (même très tôt, avant tout le reste), elle reste aujourd'hui invisible pour Stéphane
 // tant qu'il n'ouvre pas la console du navigateur (F12) — ce qu'on ne peut pas lui demander de faire

@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=229" />
+    <link rel="stylesheet" href="style.css?v=230" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -47,6 +47,16 @@
         <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
         <button type="button" id="global-exhibition-button" class="global-topbar-button" aria-label="Salle d'exposition" title="Salle d'exposition">🖼️<span id="exhibition-button-label"></span></button>
         <button type="button" id="global-account-button" class="global-topbar-button" aria-label="Mon compte" title="Mon compte">👤</button>
+        <!-- v87 (retour Stéphane : « remets-moi le numéro de version... je ne sais jamais si je suis
+             sur la bonne version, ou si je suis sur une vieille version ») : jusqu'ici le numéro de
+             version n'était affiché que sur l'écran d'accueil (#app-version-badge plus bas) — invisible
+             dès qu'on est dans un exercice ou dans la salle d'exposition, justement là où Stéphane a le
+             plus besoin de vérifier sur quelle version il se trouve. Ce bandeau global (#global-topbar)
+             étant seul commun à TOUS les écrans (position:fixed, toujours au-dessus), on y ajoute ce
+             petit repère discret, texte seul rempli en JS (voir APP_VERSION en tout début de app.js) —
+             jamais écrit en dur ici, pour ne plus jamais pouvoir désynchroniser ce numéro-ci de celui de
+             l'écran d'accueil (les deux sont désormais posés depuis la même unique source). -->
+        <span id="global-version-badge" class="global-version-badge" aria-hidden="true"></span>
       </div>
       <div class="topbar-zone topbar-zone-right" id="topbar-score"></div>
       <div class="hamburger-menu hidden" id="hamburger-menu">
@@ -293,10 +303,15 @@
                elle s'est déployée ou pas — tu marques le numéro de version dans un endroit discret
                sur la page d'accueil ») : remplace le repère temporaire (bandeau rouge plein écran,
                posé dans la salle d'exposition — voir plus haut, retiré) par une mention permanente
-               et discrète, ici sur l'écran d'accueil (le menu des jeux) — à mettre à jour à CHAQUE
-               livraison, en même temps que le numéro dans app.js et les paramètres ?v= de app.js et
-               style.css juste en dessous dans le <head>. -->
-          <p style="font-family:Arial,sans-serif;font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin:14px 2px 0;">v86</p>
+               et discrète, ici sur l'écran d'accueil (le menu des jeux).
+               v87 (retour de Stéphane : « je ne sais jamais si je suis sur la bonne version... dans la
+               salle de musée ») : ce texte n'est plus écrit en dur ici — il est maintenant rempli en JS
+               depuis APP_VERSION (tout en haut de app.js), la SEULE chose à mettre à jour à chaque
+               livraison (avec les paramètres ?v= de app.js et style.css juste au-dessus dans le
+               <head>) ; #global-version-badge, sur le bandeau du haut commun à tous les écrans (voir
+               plus haut, juste avant </div> du bandeau), affiche désormais aussi ce même numéro,
+               visible en particulier depuis la salle d'exposition. -->
+          <p id="app-version-badge" style="font-family:Arial,sans-serif;font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin:14px 2px 0;"></p>
         </section>
 
         <section id="impregnation-setup-panel" class="welcome-panel hidden">
@@ -1805,6 +1820,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=313"></script>
+    <script src="app.js?v=314"></script>
   </body>
 </html>
