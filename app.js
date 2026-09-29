@@ -825,9 +825,18 @@ function artistMatchesCurrentField(row) {
   // un peintre pur restait proposé même en cochant seulement « sculpture », exactement comme
   // rapporté. Même logique de correspondance que filteredArtistListRows (recherche de
   // sous-chaîne dans la colonne brute, qui peut lister plusieurs arts séparés par des virgules).
+  // v66 (retour de Stéphane, capture d'écran à l'appui : « sculpture, 16e siècle » renvoyait 0
+  // artiste alors qu'il y en a bien) : la comparaison ci-dessus (avant cette ligne) était un
+  // includes() BRUT, sensible à la casse et aux accents, contre les valeurs des cases à cocher
+  // ('peinture'/'sculpture', toujours en minuscules) — alors que la colonne « Art(s) » du fichier
+  // maître est écrite normalement ("Peinture", "Sculpture"), donc jamais égale en minuscules. Le
+  // fix précédent (v65, commentaire ci-dessus) avait bien réactivé le filtre par art, mais sans
+  // reprendre keyName() (minuscules + accents retirés), déjà utilisé PARTOUT ailleurs dans le
+  // fichier pour ce genre de comparaison (ex. artFormIcons, juste plus bas) — du coup plus aucun
+  // artiste ne correspondait jamais dès qu'on cochait un art, quel qu'il soit.
   if (fields.arts?.length) {
-    const rowArts = String(row['Art(s)'] || '');
-    if (!fields.arts.some((a) => rowArts.includes(a))) return false;
+    const rowArts = keyName(row['Art(s)'] || '');
+    if (!fields.arts.some((a) => rowArts.includes(keyName(a)))) return false;
   }
   const rowCenturies = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim());
   if (fields.centuries?.length && !rowCenturies.some((c) => fields.centuries.includes(c))) return false;
