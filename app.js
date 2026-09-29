@@ -88,7 +88,7 @@ function toggleFullCorrection(rerenderFn) {
 }
 // Panneaux où ce bouton doit apparaître (les 4 exercices ayant un choix de rubrique), avec la
 // fonction de réaffichage sûre à appeler quand elle existe (voir showPanel plus bas pour l'usage).
-const FULL_CORRECTION_PANELS = { impregnation: () => { if (IMP_SESSION.length) impShowCurrent(); }, vraifaux: null, intrus: () => intrusRefreshCorrectionDetails(), reconstitution: () => reconRefreshCorrectionDetails() };
+const FULL_CORRECTION_PANELS = { impregnation: () => { if (IMP_SESSION.length) impShowCurrent(); }, vraifaux: () => { if (VF_SESSION.length) vfRefreshExtraFields(); }, intrus: () => intrusRefreshCorrectionDetails(), reconstitution: () => reconRefreshCorrectionDetails() };
 let db = null;
 let currentUser = null;
 let accountMode = 'login'; // 'login' | 'register'
@@ -6540,10 +6540,27 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
   const cellHtml = (work, revealed) => `<div class="fam-result-item${revealed ? '' : ' fam-result-pending'}">
       ${revealed ? `<img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" /><span class="fam-result-caption">${captionOf(work)}</span>` : ''}
     </div>`;
+  // v66 (docx 29 sept, FAMILLE item 1 : « à la correction, garder le système de loupe pour observer
+  // les œuvres ») : pendant la phase de jeu, chaque case de la grille (.fam-image-cell, plus haut)
+  // reçoit la loupe progressive — mais les images révélées à la correction (.fam-result-item,
+  // ci-dessus) n'en avaient jamais reçu, faute d'avoir jamais été câblées. Même réglage ('solo',
+  // 2 paliers) que pendant le jeu. data-loupe-wired évite de la recâbler deux fois sur une case déjà
+  // équipée (announceFound peut révéler la même grille en plusieurs vagues).
+  function famWireResultLoupe(cellEl) {
+    const img = cellEl?.querySelector('img');
+    if (!img || cellEl.dataset.loupeWired) return;
+    cellEl.dataset.loupeWired = '1';
+    attachProgressiveLoupe(cellEl, img, {
+      mode: 'solo', maxLevel: 2,
+      container: cellEl.closest('.fam-result-grid'),
+      zoomFor: (level) => (level === 2 ? 2.2 : 1),
+    });
+  }
 
   if (!wrongSelected.length && !missedFamily.length) {
     $('fam-image-grid').className = 'fam-result-grid';
     $('fam-image-grid').innerHTML = chronological.map((w) => cellHtml(w, true)).join('');
+    $('fam-image-grid').querySelectorAll('.fam-result-item').forEach(famWireResultLoupe);
     const ordinals = ['La première', 'La deuxième', 'La troisième', 'La quatrième'];
     const titleList = chronological.map((w, i) => `${ordinals[i]}, ${w.title}`).join('. ');
     currentSpeechNationality = chronological[0]?.nationality || '';
@@ -6563,10 +6580,15 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
     function revealTop(work) {
       const idx = chronological.indexOf(work);
       topCells[idx].outerHTML = cellHtml(work, true);
+      // outerHTML remplace le nœud : l'ancienne référence topCells[idx] pointe désormais sur un
+      // élément détaché du DOM — on la resynchronise avant de câbler la loupe sur la vraie case.
+      topCells[idx] = document.querySelectorAll('#fam-result-top .fam-result-item')[idx];
+      famWireResultLoupe(topCells[idx]);
     }
     function announceWrong(next) {
       if (!wrongSelected.length) { next(); return; }
       $('fam-result-bottom').innerHTML = wrongSelected.map((w) => cellHtml(w, true)).join('');
+      $('fam-result-bottom').querySelectorAll('.fam-result-item').forEach(famWireResultLoupe);
       const intro = wrongSelected.length > 1 ? `Tu as fait ${famNumberWord(wrongSelected.length)} erreurs.` : 'Tu as fait une erreur.';
       const details = wrongSelected.map((w) => `${artDesignation(w).charAt(0).toUpperCase()}${artDesignation(w).slice(1)} était ${deArtist(w.surnomFr || w.artist)}, intitulé ${w.title}.`).join(' ');
       currentSpeechNationality = wrongSelected[0]?.nationality || '';
@@ -6653,6 +6675,15 @@ function vfActiveFields() {
 // plutôt que d'exiger une correspondance exacte, avec le bon genre grammatical pour l'article.
 const NATURE_DESIGNATIONS = [
   { match: 'fresque', word: 'fresque', feminine: true },
+  // v73 (retour Stéphane 29/09, item Famille « la voix dit peinture pour fresque ») : .nature et
+  // ce tableau de mots-clés sont pourtant déjà corrects (vérifié : « fresque » est bien reconnu dès
+  // qu'il figure dans la colonne « Nature de l'objet », et cette colonne alimente artDesignation()
+  // pour Famille exactement comme pour les autres jeux) — deux synonymes fréquents en plus, au cas
+  // où l'auteure du fichier Excel a plutôt écrit « peinture murale » que le mot « fresque » lui-même,
+  // ce qui ferait retomber sur le repli générique « tableau ». Si le problème persiste malgré ça,
+  // la cellule « Nature de l'objet » de l'œuvre concernée est probablement vide dans le fichier.
+  { match: 'peinture murale', word: 'fresque', feminine: true },
+  { match: 'mur peint', word: 'fresque', feminine: true },
   { match: 'haut relief', word: 'haut-relief', feminine: false },
   { match: 'bas relief', word: 'bas-relief', feminine: false },
   { match: 'ronde bosse', word: 'ronde-bosse', feminine: true },
@@ -6839,6 +6870,10 @@ function vfShowQuestion() {
       });
     });
   });
+  // v73 (retour Stéphane) : « Voir la correction complète » reconstruit aussi les rubriques
+  // supplémentaires (voir vfRefreshExtraFields) pour la nouvelle question — sinon elles restaient
+  // celles de la question précédente, ou absentes si le bouton avait déjà été activé avant.
+  vfRefreshExtraFields();
 
   const spokenText = q.activeFields.map((f) => {
     if (f.key === 'title') return `« ${q.displayed[f.key]} »`;
@@ -6846,6 +6881,44 @@ function vfShowQuestion() {
     return q.displayed[f.key];
   }).join(' — ');
   vfSpeak(spokenText);
+}
+
+// v73 (retour Stéphane, 29/09) : « Voir la correction complète » ne faisait RIEN en Vrai/Faux — au
+// contraire d'Imprégnation/Intrus/Reconstitution, showFullCorrection n'était consulté par
+// vfActiveFields() qu'au moment de « Valider mon choix pour ce jeu » (donc seulement pour une
+// PROCHAINE partie, jamais pour celle en cours) : le bouton, purement visuel (texte Voir/Arrêter),
+// restait sans aucun effet visible pendant la partie, quel que soit le nombre de rubriques choisies
+// au départ — mais l'absence se remarque surtout avec une seule rubrique cochée, puisqu'il n'y a
+// alors rien d'autre à consulter par ce bouton. Corrigé en ajoutant, dès que la correction complète
+// est activée, les AUTRES rubriques (non cochées au départ) en lecture seule sous les rubriques
+// interactives — sans toucher à q.activeFields, donc sans rien changer à la notation ni aux
+// boutons Vrai/Faux d'origine, qui ne portent toujours que sur les rubriques réellement choisies.
+function vfRefreshExtraFields() {
+  const q = VF_SESSION[vfIndex];
+  const container = $('vf-field-rows');
+  if (!q || !container) return;
+  container.querySelectorAll('.vf-field-row-readonly').forEach((el) => el.remove());
+  if (!showFullCorrection) return;
+  const ALL_VF_FIELDS = [
+    { key: 'artist', label: 'Auteur' },
+    { key: 'title', label: 'Titre de l’œuvre' },
+    { key: 'date', label: 'Date' },
+    { key: 'materials', label: 'Matériau' },
+    { key: 'dimensions', label: 'Dimensions' },
+    { key: 'location', label: 'Lieu' },
+  ];
+  const activeKeys = q.activeFields.map((f) => f.key);
+  const extrasHtml = ALL_VF_FIELDS.filter((f) => !activeKeys.includes(f.key)).map((f) => {
+    let valueHtml;
+    if (f.key === 'title') valueHtml = `<em>« ${escapeHtml(vfFieldValue(q.correct, f.key))} »</em>`;
+    else if (f.key === 'dimensions') valueHtml = formatDimensionsDisplay(q.correct) || escapeHtml(vfFieldValue(q.correct, f.key)) || '—';
+    else valueHtml = escapeHtml(vfFieldValue(q.correct, f.key)) || '—';
+    return `<div class="vf-field-row vf-field-row-readonly" data-key="${f.key}">
+      <span class="vf-field-label">${f.label}</span>
+      <span class="vf-field-value">${valueHtml}</span>
+    </div>`;
+  }).join('');
+  container.insertAdjacentHTML('beforeend', extrasHtml);
 }
 
 // « Démarrer le jeu » : geste explicite avant d'afficher la toute première œuvre — le jeu ne
@@ -8247,10 +8320,17 @@ function impShowCurrent() {
     else impSourceLink.classList.add('hidden');
   }
   preloadImage(IMP_SESSION[impIndex + 1]?.image, 900);
-  // Comme sur la correction du quiz final : bandeau de vignettes cliquables pour le portrait de
-  // l'artiste, une photo du lieu, et désormais une autre vue de l'ensemble/cycle (voir
-  // showBottomGallery) quand ces informations existent pour l'œuvre affichée.
-  showBottomGallery(work);
+  // v73 (retour Stéphane 29/09 : « la tablette est trop compliquée, on ne comprend plus rien »).
+  // L'ancien bandeau de vignettes cliquables (portrait/lieu/ensemble, à survoler puis ouvrir dans
+  // une visionneuse — showBottomGallery, toujours utilisée telle quelle par le Quiz final, plus bas
+  // dans ce fichier, qui n'est PAS concerné par ce retour) est retiré d'Imprégnation et remplacé par
+  // un déroulé fluide et automatique, sans aucune action du joueur : l'image de la case change
+  // simplement au fil de la référence (voir plus bas, dans la boucle STAGGER) — d'abord l'œuvre,
+  // puis la photo du lieu (rubrique Lieu) si le fichier Excel en fournit une, puis celle de
+  // l'ensemble/cycle (rubrique Ensemble) si le fichier en fournit une — chacune avec un petit badge
+  // (imp-flow-label) indiquant ce qui est affiché. On repart systématiquement sans badge affiché.
+  $('imp-flow-label')?.classList.remove('imp-flow-visible');
+  $('imp-flow-label')?.classList.add('hidden');
 
   const dims = formatDimensionsDisplay(work);
   const anyFieldChecked = ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].some((k) => $(`imp-field-${k}`)?.checked);
@@ -8327,9 +8407,32 @@ function impShowCurrent() {
         if (f.key === 'dimensions' || f.key === 'title' || f.key === 'artist' || f.key === 'location') el.innerHTML = f.value; else el.textContent = f.value;
         el.classList.add('written');
       }
+      // v73 : déroulé fluide (voir plus haut) — bascule l'image de la case exactement quand son
+      // texte apparaît, jamais avant ni après ; ne revient pas en arrière ensuite (l'œuvre suivante
+      // repart de zéro via la remise à zéro du badge en tête de fonction).
+      if (f.key === 'location' && work.locationImage) impShowFlowImage(work.locationImage, 'Lieu');
+      else if (f.key === 'cycle' && work.cycleImage) impShowFlowImage(work.cycleImage, 'Ensemble');
     }, 400 + i * STAGGER));
   });
 
+}
+// v73 : bascule l'image affichée dans la case principale d'Imprégnation vers une photo du lieu ou
+// de l'ensemble/cycle, avec un badge indiquant laquelle — la loupe progressive existante reste
+// active sur cette nouvelle image (repartant à zéro, sans hériter du zoom de l'image précédente),
+// mais rien d'autre n'exige d'action du joueur : la bascule elle-même est entièrement automatique.
+function impShowFlowImage(url, label) {
+  $('imp-stage-img').src = imageSourceSized(url, 900);
+  const labelEl = $('imp-flow-label');
+  if (labelEl) {
+    labelEl.textContent = label;
+    labelEl.classList.remove('hidden');
+    // Force un reflow avant d'ajouter la classe d'opacité, pour garantir le fondu (sinon le
+    // navigateur peut regrouper les deux changements de classe dans la même image et sauter
+    // directement à l'état final, sans transition visible).
+    void labelEl.offsetWidth;
+    labelEl.classList.add('imp-flow-visible');
+  }
+  impLoupe?.setLevel(0);
 }
 
 // Bouton texte partagé (bandeau du haut, à côté de « Retour au menu des exercices ») plutôt que
@@ -8653,15 +8756,32 @@ function intrusRefreshCorrectionDetails() {
 // v65 (INTRUS item 4) : révèle une œuvre en solo dans #intrus-prompt-card, avec une légende et sa
 // référence — utilisé pour les 2 temps du système « Vous avez confondu » en mode images intruses
 // (d'abord l'image cliquée à tort, puis la bonne), et aussi pour la réponse correcte (1 seul temps).
-function intrusRenderConfusionStep(work, label, isCorrectStep) {
+// titleOnly (v73, retour Stéphane 29/09) : pour l'image cliquée À TORT (étape 1 d'une mauvaise
+// réponse), plus besoin de redonner toute la référence (auteur + titre) — seul le titre est utile
+// pour situer l'erreur ; la référence complète reste réservée à la bonne œuvre (étape 2).
+function intrusRenderConfusionStep(work, label, isCorrectStep, titleOnly = false) {
   const promptCard = $('intrus-prompt-card');
+  const refHtml = titleOnly ? `<em>« ${escapeHtml(work.title)} »</em>` : `${formatArtistDisplayName(work)} — <em>« ${escapeHtml(work.title)} »</em>`;
   promptCard.innerHTML = `<div class="intrus-image-choices">
     <div class="intrus-image-choice intrus-image-choice-solo intrus-confusion-step">
       <span class="intrus-confusion-label" style="color:${isCorrectStep ? 'var(--ok)' : 'var(--wrong)'}">${escapeHtml(label)}</span>
       <img src="${escapeHtml(imageSourceSized(work.image, 700))}" alt="" />
-      <span class="intrus-confusion-ref">${formatArtistDisplayName(work)} — <em>« ${escapeHtml(work.title)} »</em></span>
+      <span class="intrus-confusion-ref">${refHtml}</span>
     </div>
   </div>`;
+}
+// v73 : regroupe la révélation des boutons de correction (Suivant + bandeau retour-menu/correction
+// complète), pour pouvoir la retarder jusqu'à l'étape 2 en cas d'erreur (voir intrusAnswer) sans
+// dupliquer cette logique. #intrus-hub-row est normalement TOUJOURS visible (y compris pendant la
+// question, pas de classe hidden) : on ne le masque donc que ponctuellement dans le cas concerné, et
+// cette fonction le réaffiche explicitement à chaque fois qu'elle est appelée.
+function intrusRevealCorrectionControls() {
+  intrusRefreshCorrectionDetails();
+  $('intrus-correction').classList.remove('hidden');
+  $('intrus-hub-row')?.classList.remove('hidden');
+  $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
+  updateTopBannerScore(`${intrusCorrectCount}/${intrusIndex + 1}`);
+  $('intrus-next-button').textContent = intrusIndex === INTRUS_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
 }
 function intrusAnswer(chosenIndex) {
   if (intrusAnswered) return;
@@ -8670,6 +8790,10 @@ function intrusAnswer(chosenIndex) {
   const chosen = q.choices[chosenIndex];
   const isCorrect = chosen === q.correct;
   if (isCorrect) intrusCorrectCount++;
+  $('intrus-instruction')?.classList.add('hidden');
+  // v73 : en cas d'erreur (mode images), la révélation des boutons est retardée jusqu'à l'étape 2
+  // (voir plus bas) — dans tous les autres cas, elle a lieu tout de suite comme avant.
+  let deferControlsReveal = false;
 
   if (intrusMode === 'image') {
     // v65 : plus de garder/retirer les boutons existants — l'image (correcte ou, en cas d'erreur,
@@ -8679,19 +8803,26 @@ function intrusAnswer(chosenIndex) {
     if (isCorrect) {
       intrusRenderConfusionStep(q.correct, 'Exact !', true);
     } else {
-      // Étape 1 : l'image cliquée à tort, avec SA vraie référence (différente de celle annoncée) —
+      // Étape 1 : l'image cliquée à tort, avec SEULEMENT son titre (plus toute la référence) —
       // « Vous avez confondu avec... ».
-      intrusRenderConfusionStep(chosen, 'Vous avez confondu avec :', false);
+      intrusRenderConfusionStep(chosen, 'Vous avez confondu avec :', false, true);
+      // v73 : sur cette 1ʳᵉ page de correction, AUCUN bouton ne doit être disponible (ni Suivant, ni
+      // Retour au menu/Voir la correction complète) — pour ne pas pouvoir passer à la question
+      // suivante avant d'avoir vu et entendu la bonne réponse, révélée à l'étape 2 ci-dessous.
+      $('intrus-hub-row')?.classList.add('hidden');
     }
     $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
     if (isCorrect) {
       intrusSpeak(`Exact. ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
     } else {
-      // Étape 2 (après la phrase de l'étape 1) : révèle la bonne image + sa référence — même
-      // enchaînement parlé que Famille (announceWrong → announceFound), adapté à une seule image.
-      intrusSpeak(`À réviser. Vous avez confondu avec ${spokenFullReference(chosen, showFullCorrection ? null : intrusExtraFields)}`, () => {
+      // Étape 2 (après la phrase de l'étape 1) : révèle la bonne image + sa référence complète,
+      // introduite par « La bonne référence était » (à l'écran comme à la voix) — puis réaffiche les
+      // boutons, jusque-là masqués (voir ci-dessus).
+      deferControlsReveal = true;
+      intrusSpeak(`À réviser. Vous avez confondu avec « ${chosen.title || 'œuvre non titrée'} »`, () => {
         intrusRenderConfusionStep(q.correct, 'La bonne référence était :', true);
-        intrusSpeak(spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields));
+        intrusSpeak(`La bonne référence était : ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
+        intrusRevealCorrectionControls();
       });
     }
   } else {
@@ -8706,12 +8837,7 @@ function intrusAnswer(chosenIndex) {
     intrusSpeak(`${isCorrect ? 'Exact' : 'À réviser'}. ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
   }
 
-  intrusRefreshCorrectionDetails();
-  $('intrus-correction').classList.remove('hidden');
-  $('intrus-instruction')?.classList.add('hidden');
-  $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
-  updateTopBannerScore(`${intrusCorrectCount}/${intrusIndex + 1}`);
-  $('intrus-next-button').textContent = intrusIndex === INTRUS_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
+  if (!deferControlsReveal) intrusRevealCorrectionControls();
   if (intrusAutoAdvance) intrusTimers.push(setTimeout(() => $('intrus-next-button')?.click(), intrusAutoAdvanceDelay));
 }
 
