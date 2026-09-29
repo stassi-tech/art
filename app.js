@@ -4060,6 +4060,32 @@ function checkpointWorkForFacing(facing) {
 // jamais en perspective : c'est exactement ce qui avait été tenté puis abandonné comme « trop
 // fragile » (voir le commentaire sur #scale-checkpoint-room dans style.css, et checkpointFacing
 // plus haut) — ici, un mur plat remplace l'autre avec un simple fondu, rien à déformer.
+// v85 (retour Stéphane, avec 3 captures d'écran : « les tableaux sont mal accrochés, ils sont par
+// terre ») : buildCheckpointWindowWorks centre toujours l'œuvre dans une hauteur de winHeightPx
+// (voir placeCheckpointWork, img.style.top = winHeightPx/2 - heightPx/2) — pour le mur du fond,
+// cette hauteur est celle de wallEl lui-même (checkpointWindowHpx, calée sur --room-horizon-y =
+// 62% de la salle, voir buildCheckpointTrack). Sur un mur latéral, l'œuvre reste affichée dans ce
+// même wallEl (aucun autre cadre n'existe pour les murs latéraux, purement décoratifs), mais
+// l'image de fond visible n'est plus le mur JS (62%) : c'est le montage Photoshop de Stéphane,
+// posé en cover sur #scale-checkpoint-room ENTIER (voir updateCheckpointDecorImage) — et mesuré au
+// pixel sur les 4 montages (checkpoint-decor-salle{1,2}-{gauche,droit}.jpg, tous 1755×893), leur
+// propre ligne mur/sol y est à ~44% de leur hauteur, pas 62%. Centrer l'œuvre sur 62% la fait donc
+// systématiquement déborder sous la ligne de sol du montage — d'où l'impression d'un tableau « par
+// terre ». checkpointDecorHorizonPx ci-dessous rejoue le calcul de background-size:cover (mise à
+// l'échelle + rognage centré) pour retrouver, en pixels réels de la salle, la hauteur EXACTE à
+// laquelle ce montage précis place sa propre ligne mur/sol — c'est CETTE hauteur qu'il faut utiliser
+// pour centrer l'œuvre quand un mur latéral est actif, jamais checkpointWindowHpx (qui reste, lui,
+// correct pour le mur du fond, inchangé ci-dessous).
+const CHECKPOINT_DECOR_IMAGE_PX = { w: 1755, h: 893 };
+const CHECKPOINT_DECOR_HORIZON_FRACTION = 0.441;
+function checkpointDecorHorizonPx(roomRect) {
+  if (!roomRect || !roomRect.width || !roomRect.height) return null;
+  const { w: imgW, h: imgH } = CHECKPOINT_DECOR_IMAGE_PX;
+  const scale = Math.max(roomRect.width / imgW, roomRect.height / imgH);
+  const displayedH = imgH * scale;
+  const cropTop = (displayedH - roomRect.height) / 2;
+  return CHECKPOINT_DECOR_HORIZON_FRACTION * displayedH - cropTop;
+}
 function setCheckpointFacing(facing) {
   facing = Math.max(-1, Math.min(1, facing));
   if (facing === checkpointFacing) return;
@@ -4070,8 +4096,12 @@ function setCheckpointFacing(facing) {
   if (!wallEl || !worksEl || !checkpointWindowWpx) { updateCheckpointTurnButtons(); return; }
   worksEl.style.transition = 'opacity .18s ease';
   worksEl.style.opacity = '0';
+  // v85 : hauteur de centrage de l'œuvre — celle du montage en biais pour un mur latéral (voir le
+  // commentaire complet ci-dessus), celle du mur du fond sinon (inchangé).
+  const decorHorizonPx = facing !== 0 ? checkpointDecorHorizonPx($('scale-checkpoint-room')?.getBoundingClientRect()) : null;
+  const winHeightForFacingPx = decorHorizonPx || checkpointWindowHpx;
   setTimeout(() => {
-    buildCheckpointWindowWorks(wallEl, checkpointWorkForFacing(checkpointFacing), checkpointWindowWpx, checkpointPxPerCm, checkpointWindowHpx);
+    buildCheckpointWindowWorks(wallEl, checkpointWorkForFacing(checkpointFacing), checkpointWindowWpx, checkpointPxPerCm, winHeightForFacingPx);
     worksEl.style.opacity = '1';
   }, 180);
   const label = $('scale-checkpoint-facing-label');
