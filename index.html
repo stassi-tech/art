@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=223" />
+    <link rel="stylesheet" href="style.css?v=224" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -296,7 +296,7 @@
                et discrète, ici sur l'écran d'accueil (le menu des jeux) — à mettre à jour à CHAQUE
                livraison, en même temps que le numéro dans app.js et les paramètres ?v= de app.js et
                style.css juste en dessous dans le <head>. -->
-          <p style="font-family:Arial,sans-serif;font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin:14px 2px 0;">v80</p>
+          <p style="font-family:Arial,sans-serif;font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin:14px 2px 0;">v81</p>
         </section>
 
         <section id="impregnation-setup-panel" class="welcome-panel hidden">
@@ -412,7 +412,7 @@
                   </div>
                   <div class="imp-bio-text-col">
                     <h3 id="imp-bio-split-name" style="font-family:Georgia,serif;margin:0 0 10px;"></h3>
-                    <p id="imp-bio-split-text" style="font-family:Arial,sans-serif;font-size:.92rem;line-height:1.5;white-space:pre-line;"></p>
+                    <p id="imp-bio-split-text" style="font-family:Arial,sans-serif;font-size:1.15rem;line-height:1.65;white-space:pre-line;"></p>
                   </div>
                 </div>
               </figure>
@@ -630,7 +630,13 @@
                    reconAnswer/reconRefreshCorrectionDetails dans app.js), pas dans un bloc séparé
                    qui répétait Auteur/Titre une seconde fois. -->
               <div id="recon-correction" class="hidden">
-                <button type="button" class="primary-button" id="recon-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
+                <!-- v81 (docx 29 sept, FAMILLE/RECONSTITUTION/VRAI-FAUX/CHRONOLOGIE, « même
+                     système ») : plus de texte "Exact"/"À réviser" à l'écran — un carré coloré
+                     (vert/rouge) à côté du bouton Suivant en tient lieu, voir reconAnswer. -->
+                <div class="verdict-row">
+                  <span id="recon-verdict-square" class="verdict-square"></span>
+                  <button type="button" class="primary-button" id="recon-next-button" style="flex:1;">Suivant →</button>
+                </div>
               </div>
             </section>
           </div>
@@ -726,11 +732,14 @@
               </figure>
             </div>
             <section class="answer-card" aria-label="Référence proposée">
-              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Chaque rubrique est-elle exacte ? (2 fausses au maximum)</h2>
-              <p id="vf-verdict" class="hidden"></p>
+              <!-- v81 (docx 29 sept, VRAI/FAUX : nouvelle consigne) -->
+              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Chaque rubrique est-elle bien renseignée ? Il peut y avoir deux fausses informations au maximum pour une œuvre. Poussez le curseur sur faux si vous les repérez.</h2>
               <div id="vf-field-rows"></div>
-              <div id="vf-nav-row">
-                <button type="button" class="primary-button" id="vf-validate-button" style="width:100%;margin-top:16px;">Valider</button>
+              <!-- v81 (docx 29 sept, « même système ») : carré coloré au lieu du texte "Exact"/
+                   "À réviser" (#vf-verdict, supprimé) — voir #vf-validate-button listener. -->
+              <div id="vf-nav-row" class="verdict-row">
+                <span id="vf-verdict-square" class="verdict-square"></span>
+                <button type="button" class="primary-button" id="vf-validate-button" style="flex:1;">Valider</button>
               </div>
             </section>
           </div>
@@ -841,8 +850,12 @@
                 <button type="button" class="primary-button" id="fam-validate-selection-button" style="width:100%">Valider ma sélection</button>
               </div>
               <div id="fam-correction" class="hidden">
-                <p id="fam-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.3rem;margin:0 0 16px;"></p>
-                <button type="button" class="primary-button" id="fam-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
+                <!-- v81 (docx 29 sept, « même système ») : carré coloré au lieu du texte "Exact"/
+                     "À réviser" — voir #fam-validate-selection-button listener dans app.js. -->
+                <div class="verdict-row">
+                  <span id="fam-verdict-square" class="verdict-square"></span>
+                  <button type="button" class="primary-button" id="fam-next-button" style="flex:1;">Suivant →</button>
+                </div>
               </div>
             </section>
           </div>
@@ -934,12 +947,19 @@
                    ajouté pour pouvoir la masquer (avec le paragraphe d'aide juste en dessous) une
                    fois la réponse validée — voir chrono-validate-button dans app.js, même principe
                    que pour Imprégnation/VRAI-FAUX/Reconstitution (masquage indépendant du viewport). -->
-              <h2 id="chrono-instruction" style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Remettez ces œuvres dans l'ordre chronologique de leur création</h2>
-              <p id="chrono-instruction-hint" class="modal-hint" style="margin-top:0;">Touchez les œuvres l'une après l'autre, en commençant par la plus ancienne : un numéro s'affiche sur chacune. Touchez à nouveau une œuvre numérotée pour retirer son numéro.</p>
+              <!-- v81 (docx 29 sept, CHRONOLOGIE : « mettre la consigne en blanc, très peu lisible
+                   dans la plupart des ambiances ») : couleur forcée en blanc plutôt que var(--ink)/
+                   var(--muted), qui ne restent pas toujours claires selon l'ambiance choisie. -->
+              <h2 id="chrono-instruction" style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;color:#fff;">Remettez ces œuvres dans l'ordre chronologique de leur création</h2>
+              <p id="chrono-instruction-hint" class="modal-hint" style="margin-top:0;color:#fff;">Touchez les œuvres l'une après l'autre, en commençant par la plus ancienne : un numéro s'affiche sur chacune. Touchez à nouveau une œuvre numérotée pour retirer son numéro.</p>
               <button type="button" class="primary-button" id="chrono-validate-button" style="width:100%">Valider l'ordre</button>
               <div id="chrono-correction" class="hidden">
-                <p id="chrono-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.3rem;margin:16px 0;"></p>
-                <button type="button" class="primary-button" id="chrono-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
+                <!-- v81 (docx 29 sept, « même système ») : carré coloré au lieu du texte "Exact"/
+                     "À réviser" — voir chrono-validate-button listener dans app.js. -->
+                <div class="verdict-row">
+                  <span id="chrono-verdict-square" class="verdict-square"></span>
+                  <button type="button" class="primary-button" id="chrono-next-button" style="flex:1;">Suivant →</button>
+                </div>
               </div>
             </section>
           </div>
@@ -1763,6 +1783,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=307"></script>
+    <script src="app.js?v=308"></script>
   </body>
 </html>

@@ -248,6 +248,17 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .chrono-slot-num { position:absolute; top:4px; left:4px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:.85rem; display:flex; align-items:center; justify-content:center; z-index:2; }
 .chrono-target-slot.wrong { border-color:var(--wrong); }
 .chrono-target-slot.right { border-color:var(--ok); }
+/* v81 (docx 29 sept, FAMILLE : « les loupes débordent sur les œuvres... accrocher les loupes au
+   bord extérieur des cadres ») : même principe que .chrono-source-item plus haut — .fam-image-cell
+   passe de bouton unique à conteneur flex vertical (bouton-image, puis bande de loupe SŒUR, jamais
+   superposée à l'aire de clic qui causait le débordement signalé). Les propriétés déjà posées sur
+   .fam-image-cell plus haut (position, bordure, padding, transition...) restent utiles pour l'état
+   sélectionné/correct/faux, posé maintenant sur ce conteneur plutôt que sur l'ancien bouton unique. */
+.fam-image-cell { display:flex; flex-direction:column; gap:2px; }
+.fam-image-tap-button { flex:1; min-width:0; min-height:0; display:flex; align-items:center; justify-content:center; border:0; background:none; padding:0; cursor:pointer; width:100%; }
+.fam-image-loupe-zone { min-height:22px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+.fam-image-loupe-zone .loupe-progressive { position:static; bottom:auto; left:auto; flex-direction:row; }
+.fam-image-tap-button:disabled { cursor:not-allowed; }
 .fam-image-cell img { width:100%; height:100%; object-fit:contain; background:#1b1c1e; border-radius:4px; display:block; }
 .fam-image-cell.selected { border-color:var(--accent); }
 /* Rouge explicite (pas la couleur d'ambiance variable) : un point de sélection net et identifiable
@@ -627,6 +638,18 @@ body.lefty .hamburger-menu { right:auto; left:16px; }
 
 .quiz-topbar { display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px; }
 .hidden { display:none !important; }.quiz-reference { margin:0; font-family:Arial,sans-serif; font-size:.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }.progress-row { display:none; }.score-summary-highlight { color:#c0392b; font-weight:800; font-size:1rem; white-space:nowrap; }.progress-track { height:7px; overflow:hidden; margin:0 0 20px; background:#ddd7cd; border-radius:10px; }.progress-bar { height:100%; width:0; background:var(--accent); transition:width .25s; }
+/* v81 (docx 29 sept, INTRUS item 1 : « rendre plus discret le nombre de questions réussies, pas de
+   rouge, en blanc comme le reste ») : override par ID (plus spécifique que .score-summary-highlight
+   ci-dessus, partagé par les autres jeux qui ne sont pas concernés par cette demande). */
+#intrus-score-label { color:#fff; font-weight:600; font-size:.85rem; }
+/* v81 (docx 29 sept, FAMILLE/RECONSTITUTION/VRAI-FAUX/CHRONOLOGIE, « même système ») : le texte
+   "Exact"/"À réviser" disparaît, remplacé par ce petit carré coloré à côté du bouton Suivant/
+   Valider — gris/transparent tant qu'il n'y a pas de réponse, vert ou rouge une fois validée (voir
+   .correct/.wrong ci-dessous, posées par app.js). */
+.verdict-row { display:flex; align-items:center; gap:12px; margin-top:16px; }
+.verdict-square { width:30px; height:30px; border-radius:7px; flex:0 0 auto; background:var(--border); transition:background-color .15s; }
+.verdict-square.correct { background:var(--ok); }
+.verdict-square.wrong { background:var(--wrong); }
 .quiz-grid { display:grid; grid-template-columns:minmax(0,1.9fr) minmax(340px,.6fr); background:var(--paper); box-shadow:0 14px 35px rgba(54,45,31,.1); border-radius:8px; overflow:hidden; }
 /* Gaucher : l'image passe à droite, la marge de réponses/références à gauche — dans tous les
    exercices, puisqu'ils partagent tous la même structure .artwork-column + .answer-card. */
@@ -691,6 +714,15 @@ body.lefty .quiz-grid .answer-card { order:1; }
 #imp-bio-split-portrait { display:block; flex:1 1 0; min-height:0; max-width:100%; width:100%; height:auto; object-fit:contain; border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,.4); }
 .imp-bio-split-caption { font-family:Georgia,"Times New Roman",serif; font-style:italic; font-size:.78rem; color:#c9c9c9; text-align:center; }
 .imp-bio-text-col { flex:1; display:flex; flex-direction:column; min-width:0; padding:26px 28px; overflow-y:auto; background:var(--paper); color:var(--ink); }
+/* v81 (retour Stéphane, capture d'écran de la bio de Giambologna) : pendant que la bio est ouverte,
+   la colonne de droite (référence de l'œuvre qu'on regardait avant de cliquer sur le nom de
+   l'artiste) disparaît et #imp-quiz-grid repasse en une seule colonne pleine largeur — c'est cette
+   largeur retrouvée qui fait "se déployer" le texte de la bio, pas seulement une histoire de
+   police (agrandie tout de même ci-dessous, demande explicite). Sélecteur par ID : .quiz-grid a
+   déjà une règle de colonnes (et body.lefty .quiz-grid une variante inversée) qu'il faut ici
+   emporter dans tous les cas, sans jouer sur l'ordre des règles ni sur !important. */
+#imp-quiz-grid.imp-bio-open { grid-template-columns:1fr; }
+#imp-quiz-grid.imp-bio-open .answer-card { display:none; }
 #imp-bio-split-close { display:flex; position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--paper); border:1px solid var(--border); color:var(--ink); font-size:1rem; align-items:center; justify-content:center; cursor:pointer; z-index:5; box-shadow:0 1px 4px rgba(0,0,0,.15); }
 #imp-bio-split-close:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); }
 .imp-artist-name-button { background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; font-weight:inherit; cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:3px; }
@@ -1740,6 +1772,14 @@ body.has-other-works .correction-label { font-size:.76rem; }
   .intrus-image-choices { max-width:100%; box-sizing:border-box; }
   .intrus-image-choice { max-width:100%; box-sizing:border-box; }
   .intrus-image-choice img { max-width:100% !important; box-sizing:border-box; }
+  /* v81 (docx 29 sept, FAMILLE, mobile uniquement — « pas sur PC ») : abandon de l'échelle relative
+     (famSizes, posée en ligne par JavaScript) au profit d'une taille unique, réduite, pour toutes
+     les images de la grille — !important pour l'emporter sur ces styles en ligne, même principe que
+     ci-dessus pour Intrus. */
+  /* Sélecteur scopé à #fam-image-grid (la grille de sélection propre à Famille) : CHRONOLOGIE
+     réutilise aussi la classe .fam-image-cell pour ses propres cartes (#chrono-cards-row), qui ne
+     sont pas concernées par cette demande. */
+  #fam-image-grid .fam-image-cell img { max-width:130px !important; max-height:130px !important; box-sizing:border-box; }
   .home-icon-button { width:26px; height:26px; font-size:.85rem; }
   #other-works-panel-list { margin-top:36px; }
   .artwork-card { min-height:52vh; padding:10px; }

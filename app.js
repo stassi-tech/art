@@ -2773,6 +2773,44 @@ function spokenDimensionsPhrase(work) {
 // « trichait » et révélait des informations que l'affichage, lui, cachait bien comme prévu.
 // extraFields (optionnel) restreint ce qui est dit ; omis ou null = tout dire (comportement par
 // défaut, utilisé quand la correction complète est active).
+// v81 (doc « 3 Commentaires vocaux. Formules synonymes » du 29 sept) : petites banques de formules
+// que la voix peut dire à la place d'une phrase toujours identique — un tirage au hasard à chaque
+// fois plutôt qu'une seule formulation figée, pour que les corrections sonnent moins mécaniques à
+// la longue. Reprend le contenu du tableau fourni par Stéphane ; ses propres exemples tutoient par
+// endroits (« tu l'as vue ! »), harmonisés ici en vouvoiement comme le reste de l'appli (voir aussi
+// le vouvoiement rétabli ailleurs ce même 29 sept). Ce tableau n'est qu'un début — Stéphane a prévu
+// de le compléter au fil du temps ; il suffira d'allonger ces listes, aucun autre changement de
+// code ne sera nécessaire pour qu'une nouvelle formule entre dans le tirage.
+const SPEECH_SYNONYMS = {
+  exact: ['Exact.', 'C’est bien.', 'Bravo.', 'Très bien.', 'Parfait.', 'Bien trouvé.', 'Bonne réponse.', 'Excellent !', 'Bonne déduction.', 'Bien vu !'],
+  aReviser: ['À réviser.', 'Une petite erreur.', 'Vous vous êtes trompé.', 'Ce n’était pas la bonne réponse.', 'Et non !', 'Dommage !', 'Hélas, non !'],
+  refFausseBonne: ['cette référence est fausse', 'l’information était effectivement erronée', 'mauvaise information, et vous l’avez vue !', 'c’était le piège et vous l’avez déjoué !', 'vous avez vu l’erreur !'],
+  refFausseMauvaise: ['cette référence était fausse', 'l’information était erronée', 'mauvaise information, et vous ne l’avez pas vue !', 'c’était un piège !', 'vous n’avez pas vu l’erreur !'],
+};
+function pickSynonym(list) { return list[Math.floor(Math.random() * list.length)]; }
+// « Exact »/« À réviser » en tête d'une phrase parlée : un tirage différent à chaque fois plutôt
+// que toujours le même mot (voir SPEECH_SYNONYMS ci-dessus). N'affecte jamais le texte ÉCRIT à
+// l'écran (verdicts, libellés), seulement ce que dit la voix.
+function spokenVerdictOpener(isCorrect) { return pickSynonym(isCorrect ? SPEECH_SYNONYMS.exact : SPEECH_SYNONYMS.aReviser); }
+// Variante liaison Artiste/Œuvre (Vrai/Faux, rubrique Auteur) : plusieurs façons d'annoncer que
+// l'artiste proposé est bien, ou n'est pas, celui qui a réalisé l'œuvre — toujours suivi de la
+// confirmation du bon nom pour rester informatif quelle que soit la formule tirée.
+function spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, title) {
+  if (isBonne) {
+    return pickSynonym([
+      `C’est bien ${trueValue} qui a ${artVerb} ${artWord}.`,
+      `${trueValue} est bien l’auteur de ${artWord}.`,
+      `En effet, ${trueValue} est l’artiste à l’origine de ${artWord}.`,
+      `Le créateur de « ${title} » est bien ${trueValue}.`,
+    ]);
+  }
+  return pickSynonym([
+    `Ce n’est pas ${wrongValue} qui a ${artVerb} ${artWord}, mais bien ${trueValue}.`,
+    `${wrongValue} n’est pas l’auteur de ${artWord}, mais bien ${trueValue}.`,
+    `Malheureusement, ${wrongValue} n’est pas l’artiste à l’origine de ${artWord}, mais bien ${trueValue}.`,
+    `Le créateur de « ${title} » n’est pas ${wrongValue}, mais bien ${trueValue}.`,
+  ]);
+}
 function spokenFullReference(work, extraFields = null) {
   const on = (key) => !extraFields || extraFields.includes(key);
   const dimsPhrase = on('dimensions') ? spokenDimensionsPhrase(work) : '';
@@ -2842,7 +2880,10 @@ function renderCorrection(answer, question) {
   const cityOnlyHint = (state.selectedFieldKeys.includes('location') && locationMatchQuality(answer.location, question) === 'city-only')
     ? (() => {
         const reste = String(question.location || '').split(',').filter((part) => keyName(part) !== keyName(question.ville || '')).join(', ').trim();
-        return `Tu as bien indiqué ${question.ville}. Tu aurais pu préciser${reste ? ' : ' + reste : ' le musée'}.`;
+        // v81 (docx 29 sept, FAMILLE : « la voix tutoie le joueur, remplacer par un vouvoiement,
+        // vérifier partout ailleurs ») : ce commentaire (Quiz, indice ville seule) tutoyait aussi,
+        // corrigé au passage.
+        return `Vous avez bien indiqué ${question.ville}. Vous auriez pu préciser${reste ? ' : ' + reste : ' le musée'}.`;
       })()
     : '';
   // « Exact » dit à voix haute quand toute la question est juste — jusqu'ici le quiz principal ne
@@ -2854,7 +2895,7 @@ function renderCorrection(answer, question) {
   // déjà que la question a été ratée la première fois — la répéter à voix haute n'apporte rien de
   // plus que l'indicateur écrit déjà affiché ; seul l'encouragement sur le lieu (ville seule)
   // garde son utilité, lui aussi conservé.
-  const spokenParts = [(isFullyCorrect(answer, question) && state.mode !== 'review') ? 'Exact.' : '', cityOnlyHint].filter(Boolean);
+  const spokenParts = [(isFullyCorrect(answer, question) && state.mode !== 'review') ? spokenVerdictOpener(true) : '', cityOnlyHint].filter(Boolean);
   if (spokenParts.length) quizSpeak(spokenParts.join(' '));
 }
 let currentArtistWorksIndex = -1;
@@ -6242,6 +6283,7 @@ function chronoShowQuestion() {
   updateTopBannerScore(`${chronoScore} pt${chronoScore > 1 ? 's' : ''}`);
   $('chrono-correction').classList.add('hidden');
   $('chrono-correct-table').classList.add('hidden');
+  $('chrono-verdict-square')?.classList.remove('correct', 'wrong');
   $('chrono-validate-button').classList.remove('hidden');
   $('chrono-validate-button').disabled = true;
   $('chrono-cards-row').classList.remove('hidden');
@@ -6360,8 +6402,9 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   $('chrono-score-label').textContent = `${chronoScore} point${chronoScore > 1 ? 's' : ''}`;
   updateTopBannerScore(`${chronoScore} pt${chronoScore > 1 ? 's' : ''}`);
 
-  $('chrono-verdict').textContent = isCorrect ? 'Exact' : 'À réviser';
-  $('chrono-verdict').style.color = isCorrect ? 'var(--ok)' : 'var(--wrong)';
+  // v81 (docx 29 sept, « même système ») : carré coloré à côté de Suivant plutôt que le texte.
+  $('chrono-verdict-square')?.classList.remove('correct', 'wrong');
+  $('chrono-verdict-square')?.classList.add(isCorrect ? 'correct' : 'wrong');
 
   // La rangée reprend l'ordre choisi par le joueur (déjà rangé visuellement), encadrée en
   // rouge sur toute carte où l'ordre était faux, avec la référence complète sous chaque image.
@@ -6401,13 +6444,13 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   let spokenText;
   if (isCorrect) {
     const list = correctOrder.map((w, i) => `${ordinals[i]}, ${w.artist}, ${w.title}, en ${chronoYearOf(w)}`).join('. ');
-    spokenText = `Exact. Voici l'ordre chronologique. ${list}.`;
+    spokenText = `${spokenVerdictOpener(true)} Voici l'ordre chronologique. ${list}.`;
   } else {
     const correctIndices = rightFlags.map((ok, i) => (ok ? i : -1)).filter((i) => i !== -1);
     const wrongIndices = rightFlags.map((ok, i) => (!ok ? i : -1)).filter((i) => i !== -1);
     const wrongList = wrongIndices.map((i) => `à ${ordinals[i]} position, ${correctOrder[i].artist}, ${correctOrder[i].title}, en ${chronoYearOf(correctOrder[i])}`).join('. ');
     if (!correctIndices.length) {
-      spokenText = `À réviser. Voici l'ordre chronologique. ${wrongList}.`;
+      spokenText = `${spokenVerdictOpener(false)} Voici l'ordre chronologique. ${wrongList}.`;
     } else {
       const goodList = correctIndices.map((i) => ordinals[i]).join(', ');
       spokenText = `Vous avez bien placé ${goodList}. Les autres œuvres se répartissent ainsi\u00a0: ${wrongList}.`;
@@ -6692,40 +6735,51 @@ function famShowQuestion() {
   updateTopBannerScore(`${famScore} pt${famScore > 1 ? 's' : ''}`);
   $('fam-progress-bar').style.width = `${(famIndex / FAM_SESSION.length) * 100}%`;
   $('fam-correction').classList.add('hidden');
+  $('fam-verdict-square')?.classList.remove('correct', 'wrong');
   $('fam-step0').classList.remove('hidden');
   $('fam-validate-selection-button').disabled = false;
 
   $('fam-image-grid').className = `fam-image-grid${q.imgCount === 6 ? ' fam-count-6' : ''}`;
   // Même échelle relative compressée que pour Intrus : les tailles à l'écran reflètent un peu les
   // vraies différences de taille entre les œuvres, sans rendre les plus petites illisibles.
+  // v81 (docx 29 sept, FAMILLE, mobile : « les loupes débordent sur les œuvres... accrocher les
+  // loupes au bord extérieur des cadres ») : .fam-image-cell est maintenant un conteneur (bouton-
+  // image + bande de loupe SŒUR, jamais superposée), même principe que .chrono-source-item — voir
+  // le CSS. La taille relative (famSizes) reste posée en ligne pour le PC ; sur mobile, une règle
+  // CSS !important (voir style.css) l'ignore au profit d'une taille unique réduite, comme demandé
+  // (« pas sur PC »).
   const famSizes = relativeImageSizes(q.images);
   $('fam-image-grid').innerHTML = q.images.map((work, i) =>
-    `<button type="button" class="fam-image-cell" data-index="${i}"><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" style="max-width:${famSizes[i]}px;max-height:${famSizes[i]}px;" /></button>`
+    `<div class="fam-image-cell" data-index="${i}">
+      <button type="button" class="fam-image-tap-button" data-index="${i}"><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" style="max-width:${famSizes[i]}px;max-height:${famSizes[i]}px;" /></button>
+      <div class="fam-image-loupe-zone"></div>
+    </div>`
   ).join('');
   // La loupe passe la case choisie en solo plein cadre par-dessus toute la grille (masquant les
   // autres) au palier 1, puis l'agrandit et la rend déplaçable comme dans Imprégnation au palier
   // 2 — remplace l'ancienne approche par grid-column/grid-row (span), qui ne faisait que déplacer
   // les autres cases sans jamais les recouvrir, et bloquait le scroll mobile une fois agrandie.
-  $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((btn) => {
-    attachProgressiveLoupe(btn, btn.querySelector('img'), {
+  $('fam-image-grid').querySelectorAll('.fam-image-cell').forEach((cell) => {
+    attachProgressiveLoupe(cell, cell.querySelector('img'), {
       mode: 'solo',
       maxLevel: 2,
       container: $('fam-image-grid'),
+      iconHost: cell.querySelector('.fam-image-loupe-zone'),
       zoomFor: (level) => (level === 2 ? 2.2 : 1),
     });
-    btn.addEventListener('click', () => {
+    cell.querySelector('.fam-image-tap-button').addEventListener('click', () => {
       if (famStep !== 0) return;
-      const idx = Number(btn.dataset.index);
+      const idx = Number(cell.dataset.index);
       const pos = famSelectedImages.indexOf(idx);
       if (pos >= 0) {
         famSelectedImages.splice(pos, 1);
-        btn.classList.remove('selected');
-        btn.removeAttribute('data-num');
+        cell.classList.remove('selected');
+        cell.removeAttribute('data-num');
         famSelectedImages.forEach((si, n) => { $('fam-image-grid').querySelector(`.fam-image-cell[data-index="${si}"]`).dataset.num = n + 1; });
       } else if (famSelectedImages.length < q.family.length) {
         famSelectedImages.push(idx);
-        btn.classList.add('selected');
-        btn.dataset.num = famSelectedImages.length;
+        cell.classList.add('selected');
+        cell.dataset.num = famSelectedImages.length;
       }
     });
   });
@@ -6744,7 +6798,9 @@ $('fam-launch-first-button')?.addEventListener('click', () => {
 $('fam-validate-selection-button')?.addEventListener('click', () => {
   const q = FAM_SESSION[famIndex];
   if (famSelectedImages.length !== q.family.length) { famStepFeedback('fam-step0', `Sélectionnez exactement ${q.family.length} œuvres avant de valider.`); return; }
-  document.querySelectorAll('.fam-image-cell').forEach((btn) => { btn.disabled = true; });
+  // v81 : .fam-image-cell est un conteneur (div), plus un bouton — on désactive le vrai bouton
+  // cliquable à l'intérieur (.fam-image-tap-button).
+  document.querySelectorAll('.fam-image-tap-button').forEach((btn) => { btn.disabled = true; });
   $('fam-validate-selection-button').disabled = true;
 
   const familyIndexes = q.images.map((w, i) => q.family.includes(w) ? i : -1).filter((i) => i >= 0);
@@ -6757,8 +6813,9 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
   $('fam-score-label').textContent = `${famScore} point${famScore > 1 ? 's' : ''}`;
   updateTopBannerScore(`${famScore} pt${famScore > 1 ? 's' : ''}`);
 
-  $('fam-verdict').textContent = imagesCorrect ? 'Exact' : 'À réviser';
-  $('fam-verdict').style.color = imagesCorrect ? 'var(--ok)' : 'var(--wrong)';
+  // v81 (docx 29 sept, « même système ») : carré coloré à côté de Suivant plutôt que du texte.
+  $('fam-verdict-square')?.classList.remove('correct', 'wrong');
+  $('fam-verdict-square')?.classList.add(imagesCorrect ? 'correct' : 'wrong');
 
   const yearOf = (w) => { const m = String(w.date || '').match(/\b(1[3-9]|20)\d{2}\b/); return m ? Number(m[0]) : 9999; };
   const chronological = q.family.slice().sort((a, b) => yearOf(a) - yearOf(b));
@@ -6802,7 +6859,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
     const spokenArtistName = chronological[0]?.surnomFr || q.artist;
     // « Exact » en tête, avant d'enchaîner sur le commentaire — plus stimulant à l'oral qu'un
     // simple texte affiché (retour de Stéphane, valable pour tous les jeux).
-    famSpeak(`Exact. Ces ${famNumberWord(chronological.length)} œuvres sont bien ${deArtist(spokenArtistName)}. ${titleList}.`);
+    famSpeak(`${spokenVerdictOpener(true)} Ces ${famNumberWord(chronological.length)} œuvres sont bien ${deArtist(spokenArtistName)}. ${titleList}.`);
   } else {
     $('fam-image-grid').className = 'fam-result-rows';
     $('fam-image-grid').innerHTML = `
@@ -6822,7 +6879,9 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
       if (!wrongSelected.length) { next(); return; }
       $('fam-result-bottom').innerHTML = wrongSelected.map((w) => cellHtml(w, true)).join('');
       $('fam-result-bottom').querySelectorAll('.fam-result-item').forEach(famWireResultLoupe);
-      const intro = wrongSelected.length > 1 ? `Tu as fait ${famNumberWord(wrongSelected.length)} erreurs.` : 'Tu as fait une erreur.';
+      // v81 (docx 29 sept, FAMILLE : « la voix tutoie le joueur en page de correction, remplacer
+      // par un vouvoiement ») :
+      const intro = wrongSelected.length > 1 ? `Vous avez fait ${famNumberWord(wrongSelected.length)} erreurs.` : 'Vous avez fait une erreur.';
       const details = wrongSelected.map((w) => `${artDesignation(w).charAt(0).toUpperCase()}${artDesignation(w).slice(1)} était ${deArtist(w.surnomFr || w.artist)}, intitulé ${w.title}.`).join(' ');
       currentSpeechNationality = wrongSelected[0]?.nationality || '';
       famSpeak(`${intro} ${details}`, next);
@@ -6831,7 +6890,7 @@ $('fam-validate-selection-button')?.addEventListener('click', () => {
       if (!foundFamily.length) { next(); return; }
       foundFamily.forEach(revealTop);
       const spokenArtistName = foundFamily[0]?.surnomFr || q.artist;
-      famSpeak(`Tu avais bien repéré ${famNumberWord(foundFamily.length)} œuvre${foundFamily.length > 1 ? 's' : ''} ${deArtist(spokenArtistName)}.`, next);
+      famSpeak(`Vous aviez bien repéré ${famNumberWord(foundFamily.length)} œuvre${foundFamily.length > 1 ? 's' : ''} ${deArtist(spokenArtistName)}.`, next);
     }
     function announceMissed() {
       if (!missedFamily.length) return;
@@ -6939,6 +6998,18 @@ function artDesignation(work) {
   // Repli sur l'ancien critère peinture/sculpture quand « Nature de l'objet » est vide ou pas
   // reconnue (ex. « Tempera sur bois », qui désigne en réalité un tableau).
   return work?.artType === 'sculpture' ? 'cette sculpture' : 'ce tableau';
+}
+// v81 (docx 29 sept, RECONSTITUTION : « la voix dit "Ce détail appartenait en réalité au tableau/à
+// la sculpture..." » + doc « Commentaires vocaux » : 3 formules pour la bonne réponse) : ouverture
+// variée puis référence complète déroulée dans tous les cas, jamais tronquée.
+function spokenReconCorrect(work, extraFields) {
+  const opener = pickSynonym([
+    'Ce détail appartenait bien à', 'Bravo pour l’observation, il s’agissait bien de', 'Vous avez bien reconnu',
+  ]);
+  return `${opener} ${spokenFullReference(work, extraFields)}`;
+}
+function spokenReconWrong(work, extraFields) {
+  return `Ce détail appartenait en réalité à ${artDesignation(work)} : ${spokenFullReference(work, extraFields)}`;
 }
 function vfFieldValue(row, key) {
   if (key === 'dimensions') return formatDimensionsPlainText(row) || [row.hauteur, row.longueur].filter(Boolean).join(' × ');
@@ -7078,7 +7149,7 @@ function vfShowQuestion() {
   $('vf-validate-button').classList.remove('hidden');
   $('vf-validate-button').textContent = 'Valider';
   $('vf-validate-button').disabled = false;
-  $('vf-verdict')?.classList.add('hidden');
+  $('vf-verdict-square')?.classList.remove('correct', 'wrong');
   $('vf-stage-img').src = imageSourceSized(q.correct.image, 700);
   preloadImage(VF_SESSION[vfIndex + 1]?.correct?.image, 700);
 
@@ -7225,12 +7296,10 @@ $('vf-validate-button')?.addEventListener('click', async () => {
   // global affiché juste sous la consigne — les indications déjà présentes rubrique par rubrique
   // (vf-was-wrong / vf-updated, plus bas) montrent le détail, mais rien ne donnait avant ça le
   // verdict d'ensemble d'un coup d'œil.
-  const vfVerdictEl = $('vf-verdict');
-  if (vfVerdictEl) {
-    vfVerdictEl.textContent = questionScore === 1 ? 'Exact' : 'À réviser';
-    vfVerdictEl.style.color = questionScore === 1 ? 'var(--ok)' : 'var(--wrong)';
-    vfVerdictEl.classList.remove('hidden');
-  }
+  // v81 (docx 29 sept, « même système ») : carré coloré à côté du bouton Valider/Suivant plutôt
+  // que le texte "Exact"/"À réviser" (#vf-verdict, supprimé de l'écran).
+  $('vf-verdict-square')?.classList.remove('correct', 'wrong');
+  $('vf-verdict-square')?.classList.add(questionScore === 1 ? 'correct' : 'wrong');
 
   // Correction vocale (retour de Stéphane, 22/09) : on ne raconte plus systématiquement chaque
   // rubrique cochée — seulement ce qu'il y a d'intéressant à dire. Si tout est bon partout (aucune
@@ -7245,8 +7314,10 @@ $('vf-validate-button')?.addEventListener('click', async () => {
   const VF_RUBRIQUE_LABELS = { artist: "l'artiste", title: 'le titre', date: 'la date', materials: 'le matériau', dimensions: 'les dimensions', location: 'le lieu' };
   function vfFieldCorrectionContent(key, isBonne, wrongValue, trueValue) {
     switch (key) {
+      // v81 (doc « Commentaires vocaux ») : plusieurs formulations possibles pour la liaison
+      // artiste/œuvre, voir spokenLiaisonArtiste.
       case 'artist':
-        return isBonne ? `C'est bien ${trueValue} qui a ${artVerb} ${artWord}.` : `Ce n'est pas ${wrongValue} qui a ${artVerb} ${artWord}, mais bien ${trueValue}.`;
+        return spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, q.correct.title);
       case 'title':
         return isBonne ? `Le titre est bien « ${trueValue} ».` : `Le titre n'est pas « ${wrongValue} », mais bien « ${trueValue} ».`;
       case 'date':
@@ -7283,17 +7354,18 @@ $('vf-validate-button')?.addEventListener('click', async () => {
     const rubriqueLabel = VF_RUBRIQUE_LABELS[key] || key;
     const rubriquePrefix = q.activeFields.length > 1 ? `Pour ${rubriqueLabel}, ` : '';
     if (actuallyWrong && playerSaysFalse) {
-      // Repérée : « [Pour X,] exact, cette référence est fausse. <détail> »
+      // Repérée : « [Pour X,] exact, <formule tirée au hasard>. <détail> » (v81, doc « Commentaires
+      // vocaux » : SPEECH_SYNONYMS.refFausseBonne varie la formule d'une fois à l'autre).
       const content = vfFieldCorrectionContent(key, false, wrongValue, trueValue);
       const start = rubriquePrefix ? 'exact' : 'Exact';
-      return `${rubriquePrefix}${start}, cette référence est fausse. ${content}`;
+      return `${rubriquePrefix}${start}, ${pickSynonym(SPEECH_SYNONYMS.refFausseBonne)}. ${content}`;
     }
     if (actuallyWrong && !playerSaysFalse) {
-      // Manquée : « Vous n'avez pas vu la fausse référence pour X : <détail> » — le nom de la
-      // rubrique fait partie de cette phrase même s'il n'y en a qu'une (demande explicite de
-      // Stéphane), donc pas de rubriquePrefix séparé ici.
+      // Manquée : « Pour X, <formule tirée au hasard>. <détail> » — le nom de la rubrique reste
+      // annoncé même s'il n'y en a qu'une (demande explicite de Stéphane) ; la formule elle-même
+      // varie désormais (SPEECH_SYNONYMS.refFausseMauvaise).
       const content = vfFieldCorrectionContent(key, false, wrongValue, trueValue);
-      return `Vous n'avez pas vu la fausse référence pour ${rubriqueLabel}. ${content}`;
+      return `Pour ${rubriqueLabel}, ${pickSynonym(SPEECH_SYNONYMS.refFausseMauvaise)}. ${content}`;
     }
     // Fausse alerte : référence bonne, signalée à tort comme fausse par le joueur.
     const content = vfFieldCorrectionContent(key, true, null, trueValue);
@@ -7505,6 +7577,7 @@ function reconShowQuestion() {
   // masquée à la correction, voir reconAnswer ci-dessous).
   $('recon-instruction')?.classList.remove('hidden');
   $('recon-correction').classList.add('hidden');
+  $('recon-verdict-square')?.classList.remove('correct', 'wrong');
   $('recon-choices').classList.remove('hidden');
 
   const src = escapeHtml(imageSourceSized(q.correct.image, 1200));
@@ -7545,17 +7618,20 @@ function reconAnswer(chosenIndex) {
   const isCorrect = chosen === q.correct;
   if (isCorrect) reconCorrectCount++;
 
-  const verdictHtml = ` <span class="intrus-verdict" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? '— Exact' : '— À réviser'}</span>`;
   // v76 (docx 29 sept, item 3) : les rubriques supplémentaires (Date/Matériau/Dimensions/Lieu)
   // s'affichent désormais DANS ce bouton même, via ce conteneur — plus de bloc séparé qui répétait
   // Auteur/Titre une seconde fois (ces deux-là restent uniquement dans le texte déjà présent
   // ci-dessus sur le bouton). Rempli juste après par reconRefreshCorrectionDetails().
+  // v81 (docx 29 sept, « même système ») : le span "— Exact"/"— À réviser" disparaît du bouton,
+  // remplacé par le carré coloré à côté de Suivant (#recon-verdict-square, voir plus bas).
   const inlineDetailsHtml = '<div class="correction-details recon-inline-details"></div>';
   $('recon-choices').querySelectorAll('.intrus-choice-btn').forEach((btn, i) => {
     btn.disabled = true;
-    if (i === chosenIndex) btn.insertAdjacentHTML('beforeend', verdictHtml + inlineDetailsHtml);
+    if (i === chosenIndex) btn.insertAdjacentHTML('beforeend', inlineDetailsHtml);
     else btn.remove();
   });
+  $('recon-verdict-square')?.classList.remove('correct', 'wrong');
+  $('recon-verdict-square')?.classList.add(isCorrect ? 'correct' : 'wrong');
 
   // L'image entière est révélée, avec la référence complète.
   $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSourceSized(q.correct.image, 700))}" alt="" />`;
@@ -7563,7 +7639,10 @@ function reconAnswer(chosenIndex) {
   // « Exact »/« À réviser » dit à voix haute avant d'enchaîner sur la référence, pas seulement
   // affiché — plus stimulant à l'oral (retour de Stéphane, valable pour tous les jeux), et
   // cohérent avec ce que fait déjà Chronologie.
-  reconSpeak(`${isCorrect ? 'Exact' : 'À réviser'}. ${spokenFullReference(q.correct, showFullCorrection ? null : reconExtraFields)}`);
+  // v81 (docx 29 sept, RECONSTITUTION, item correction) : phrase spécifique (« Ce détail
+  // appartenait... ») plutôt que la référence nue, voir spokenReconCorrect/spokenReconWrong.
+  const reconExtra = showFullCorrection ? null : reconExtraFields;
+  reconSpeak(`${spokenVerdictOpener(isCorrect)} ${isCorrect ? spokenReconCorrect(q.correct, reconExtra) : spokenReconWrong(q.correct, reconExtra)}`);
   reconRefreshCorrectionDetails();
   // v76 (docx 29 sept, item 1 : « à la correction la consigne doit disparaître ») : même principe
   // déjà appliqué à Intrus/VF/Impregnation.
@@ -8807,10 +8886,17 @@ function openImpArtistBio(work) {
   const textEl = $('imp-bio-split-text');
   if (textEl) textEl.textContent = bioText;
   $('imp-bio-split')?.classList.remove('hidden');
+  // v81 (retour Stéphane, capture d'écran de la bio de Giambologna : « la référence de l'œuvre à
+  // droite doit disparaître, ça permettra au texte de se déployer davantage ») : #imp-quiz-grid
+  // repasse en une seule colonne pleine largeur (voir .imp-bio-open dans style.css) et masque
+  // #imp-correction-details, qui n'a plus sa place une fois la bio ouverte — remis en place par
+  // closeImpArtistBio ci-dessous, jamais ailleurs, donc jamais oublié en sortant de la bio.
+  $('imp-quiz-grid')?.classList.add('imp-bio-open');
   if (work.bio) impSpeak(work.bio);
 }
 function closeImpArtistBio() {
   $('imp-bio-split')?.classList.add('hidden');
+  $('imp-quiz-grid')?.classList.remove('imp-bio-open');
   speechSynthesis.cancel();
 }
 $('imp-bio-split-close')?.addEventListener('click', closeImpArtistBio);
@@ -9209,7 +9295,7 @@ function intrusAnswer(chosenIndex) {
     // tout (image + verdict + référence) reste dans l'écran, rien ne se répète en dessous.
     $('intrus-choices').innerHTML = '';
     if (isCorrect) {
-      intrusSpeak(`Exact. ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
+      intrusSpeak(`${spokenVerdictOpener(true)} ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
     } else {
       // Étape 2 (après la phrase de l'étape 1) : révèle la bonne image + sa référence complète,
       // introduite par « La bonne référence était » (à l'écran comme à la voix) — puis réaffiche les
@@ -9230,7 +9316,7 @@ function intrusAnswer(chosenIndex) {
       if (i === chosenIndex) btn.insertAdjacentHTML('beforeend', verdictHtml);
       else btn.remove();
     });
-    intrusSpeak(`${isCorrect ? 'Exact' : 'À réviser'}. ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
+    intrusSpeak(`${spokenVerdictOpener(isCorrect)} ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
   }
 
   if (!deferControlsReveal) intrusRevealCorrectionControls();
