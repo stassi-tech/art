@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=222" />
+    <link rel="stylesheet" href="style.css?v=223" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -296,7 +296,7 @@
                et discrète, ici sur l'écran d'accueil (le menu des jeux) — à mettre à jour à CHAQUE
                livraison, en même temps que le numéro dans app.js et les paramètres ?v= de app.js et
                style.css juste en dessous dans le <head>. -->
-          <p style="font-family:Arial,sans-serif;font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin:14px 2px 0;">v79</p>
+          <p style="font-family:Arial,sans-serif;font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin:14px 2px 0;">v80</p>
         </section>
 
         <section id="impregnation-setup-panel" class="welcome-panel hidden">
@@ -523,7 +523,7 @@
               </figure>
             </div>
             <section class="answer-card" aria-label="Choix">
-              <h2 id="intrus-instruction" style="font-family:Arial,sans-serif;font-weight:700;margin:0 0 16px;">Appuyer sur l'image correspondant à l'œuvre dont on vous donne les références.</h2>
+              <h2 id="intrus-instruction" style="font-family:Arial,sans-serif;font-weight:700;margin:0 0 16px;">Appuyer sur le bouton correspondant à l'œuvre dont on vous donne les références.</h2>
               <div id="intrus-choices"></div>
               <div id="intrus-correction" class="hidden">
                 <div class="correction-details" id="intrus-correction-details"></div>
@@ -930,8 +930,12 @@
               </div>
             </div>
             <section class="answer-card" aria-label="Ordre chronologique">
-              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Remettez ces œuvres dans l'ordre chronologique de leur création</h2>
-              <p class="modal-hint" style="margin-top:0;">Touchez les œuvres l'une après l'autre, en commençant par la plus ancienne : un numéro s'affiche sur chacune. Touchez à nouveau une œuvre numérotée pour retirer son numéro.</p>
+              <!-- v80 (docx 29 sept, CHRONOLOGIE : « à la correction, enlever la consigne ») : id
+                   ajouté pour pouvoir la masquer (avec le paragraphe d'aide juste en dessous) une
+                   fois la réponse validée — voir chrono-validate-button dans app.js, même principe
+                   que pour Imprégnation/VRAI-FAUX/Reconstitution (masquage indépendant du viewport). -->
+              <h2 id="chrono-instruction" style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Remettez ces œuvres dans l'ordre chronologique de leur création</h2>
+              <p id="chrono-instruction-hint" class="modal-hint" style="margin-top:0;">Touchez les œuvres l'une après l'autre, en commençant par la plus ancienne : un numéro s'affiche sur chacune. Touchez à nouveau une œuvre numérotée pour retirer son numéro.</p>
               <button type="button" class="primary-button" id="chrono-validate-button" style="width:100%">Valider l'ordre</button>
               <div id="chrono-correction" class="hidden">
                 <p id="chrono-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.3rem;margin:16px 0;"></p>
@@ -1759,6 +1763,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=306"></script>
+    <script src="app.js?v=307"></script>
   </body>
 </html>

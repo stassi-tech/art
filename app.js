@@ -660,6 +660,10 @@ function initProfilePage() {
   renderExerciseOverrides();
   applyMonCompteExplanationsVisibility();
 }
+// Libellés français des rubriques (mêmes intitulés que les cases à cocher #pf-rubrique-field,
+// voir index.html) — utilisés pour traduire les clés techniques internes ("artist", "location"...)
+// partout où elles risqueraient sinon de s'afficher telles quelles (v80, voir renderExerciseOverrides).
+const RUBRIQUE_FIELD_LABELS = { artist: 'Artiste', title: 'Titre', date: 'Date', materiaux: 'Matériau', dimensions: 'Dimensions', location: 'Lieu de conservation actuel' };
 // Liste, sous chaque tableau (champ / rubrique), les exercices pour lesquels une sélection
 // spécifique a été mémorisée (via l'icône ✏️ sur leur bouton) — avec un bouton pour l'oublier.
 function renderExerciseOverrides() {
@@ -675,7 +679,13 @@ function renderExerciseOverrides() {
     const centuries = checkedKeys.filter((k) => k.startsWith(`${idPrefix}century-`)).map((k) => k.replace(`${idPrefix}century-`, ''));
     const zones = checkedKeys.filter((k) => k.startsWith(`${idPrefix}zone-`)).map((k) => k.replace(`${idPrefix}zone-`, ''));
     const levels = checkedKeys.filter((k) => k.startsWith(`${idPrefix}level-`)).map((k) => k.replace(`${idPrefix}level-`, ''));
-    const fieldsList = checkedKeys.filter((k) => k.startsWith(`${idPrefix}field-`) || k.startsWith('rubrique-')).map((k) => k.replace(`${idPrefix}field-`, '').replace('rubrique-', ''));
+    // v80 (retour Stéphane, docx 29 sept, MON COMPTE : « le résumé des rubriques est en anglais ») :
+    // fieldsList reprenait tel quel le suffixe de l'id de la case cochée (ex. "field-artist" ->
+    // "artist", "field-location" -> "location") — ce sont les clés techniques internes, pas leur
+    // libellé affiché ("Artiste", "Lieu de conservation actuel"...), d'où ces mots anglais dans le
+    // résumé de Mon compte. On les fait maintenant passer par le même dictionnaire de libellés
+    // français que les cases à cocher elles-mêmes (voir RUBRIQUE_FIELD_LABELS).
+    const fieldsList = checkedKeys.filter((k) => k.startsWith(`${idPrefix}field-`) || k.startsWith('rubrique-')).map((k) => k.replace(`${idPrefix}field-`, '').replace('rubrique-', '')).map((k) => RUBRIQUE_FIELD_LABELS[k] || k);
     if (arts.length || centuries.length || zones.length) {
       const summary = [arts.join('/'), centuries.length ? `${centuries.join('/')} siècle` : '', zones.length ? `en ${zones.join('/')}` : ''].filter(Boolean).join(', ');
       rows.fields.push({ prefix, name: info.name, summary, panel: info.panel });
@@ -1932,6 +1942,16 @@ function fixSpeechPronunciation(text) {
   // alourdit la lecture à voix haute : on le retire ici, avant toute autre correction, pour que
   // ça s'applique partout où l'on parle, sans avoir à y penser exercice par exercice.
   let out = String(text || '').replace(/\s*\([^)]*\)/g, '');
+  // v80 (retour Stéphane, docx 29 sept, QUIZ : « la voix à l'énoncé de la consigne dit deux fois
+  // micro ») : la consigne du Quiz ("...dictez-la avec le micro 🎤...") contient l'emoji 🎤 juste
+  // après le mot "micro" — certaines voix de synthèse (notamment les voix Windows/SAPI) énoncent
+  // le NOM de l'emoji ("microphone") en plus de lire le texte, ce qui donne à l'oreille "le micro,
+  // microphone" : on croit entendre "micro" deux fois de suite. Comme fixSpeechPronunciation() est
+  // déjà le passage obligé de tout texte lu à voix haute dans l'appli (règles du jeu, objectifs,
+  // références des œuvres…), on retire ici tout emoji avant de parler, une fois pour toutes,
+  // plutôt que de corriger ce seul texte — d'autres rubriques en contiennent aussi (⏸, 🔎…) et
+  // auraient pu poser le même problème ailleurs.
+  out = out.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}️]/gu, '');
   // Frontières Unicode : \b ne reconnaît que les lettres ASCII comme « caractères de mot », donc
   // échoue silencieusement pour tout mot commençant ou finissant par une lettre accentuée (ex.
   // « Cosmè » : le \b après le è ne se déclenchait pas). On utilise des lookarounds explicites sur
@@ -1996,9 +2016,21 @@ function normaliseRows(rows) {
     // correspondantes, par la même symétrie que pour « cycle ».
     const locationImageKey = findColumn(row, ['images du lieu', 'image du lieu', 'image 1 du lieu', 'images 1 du lieu', 'photo lieu', 'photo musee', 'photo musée', 'image du sous lieu', 'images du sous lieu', 'image 1 du sous lieu', 'images 1 du sous lieu', 'photo sous lieu', 'photo du sous lieu']);
     const cycleImageKey = findColumn(row, ['images du cycle', 'image 1 du cycle', 'image du cycle', 'photo cycle']);
+    // v80 (retour Stéphane, docx 29 sept, IMPREGNATION item 4 : « l'image de la colonne M apparaît
+    // sur la tablette mais pas celle de la colonne O ») : « Image 2 du cycle » (+ sa légende propre,
+    // « Légende image 2 ») n'était encore jamais récupérée (voir le commentaire plus haut sur cette
+    // fonction, resté vrai jusqu'ici) — on l'ajoute, montrée automatiquement juste après la première
+    // (voir impSpeakSegment plus bas), dans le droit fil du choix v73 de tout enchaîner sans aucune
+    // action du joueur plutôt que de rouvrir une tablette à manipuler.
+    const cycleImage2Key = findColumn(row, ['images 2 du cycle', 'image 2 du cycle', 'photo cycle 2']);
+    const cycleCaption1Key = findColumn(row, ['legende image 1', 'legende 1 du cycle', 'legende du cycle']);
+    const cycleCaption2Key = findColumn(row, ['legende image 2', 'legende 2 du cycle']);
     let artistImage = artistImageKey ? String(row[artistImageKey] || '').trim() : '';
     const locationImage = locationImageKey ? String(row[locationImageKey] || '').trim() : '';
     const cycleImage = cycleImageKey ? String(row[cycleImageKey] || '').trim() : '';
+    const cycleImage2 = cycleImage2Key ? String(row[cycleImage2Key] || '').trim() : '';
+    const cycleCaption1 = cycleCaption1Key ? String(row[cycleCaption1Key] || '').trim() : '';
+    const cycleCaption2 = cycleCaption2Key ? String(row[cycleCaption2Key] || '').trim() : '';
 
     // --- Identité de l'artiste : nouvelle structure (Prénom/Patronyme/Surnom) si présente,
     // sinon on retombe sur l'ancienne colonne unique « Artiste » pour rester compatible avec
@@ -2147,14 +2179,25 @@ function normaliseRows(rows) {
       if (masterRow['Bio']) bio = String(masterRow['Bio']).trim();
     }
 
+    // v80 (retour Stéphane, docx 29 sept, IMPREGNATION item 6 : « l'app lit la ligne titre des
+    // fichiers Excel comme s'il s'agissait d'une œuvre ») : trouvé en creusant le bug « Bronzino
+    // vide » (sculpture-16e.xlsx contenait une ligne 2 qui n'était qu'une copie de la ligne d'en-tête,
+    // glissée par erreur comme première ligne de données). Le filtre plus bas (au moins un champ
+    // renseigné) ne suffisait pas à l'écarter : cette ligne fantôme a bien un "titre", un "artiste"…
+    // ce sont simplement les intitulés de colonnes eux-mêmes. On détecte donc spécifiquement ce
+    // cas — Prénom/Patronyme/Titre valent littéralement le nom de leur propre colonne — plutôt que
+    // de compter sur l'utilisateur pour repérer et supprimer chaque occurrence à la main.
+    const isGhostHeaderRow = (prenomKey && keyName(prenom) === keyName(prenomKey) && patronymeKey && keyName(patronyme) === keyName(patronymeKey))
+      || (titreFrKey && keyName(title) === keyName(titreFrKey));
+    if (isGhostHeaderRow) return null;
     return {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, artistImageCaption, locationImage, cycleImage, bio,
+      artistImage, artistImageCaption, locationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio,
       row: rowIndex + 2
     };
-  }).filter((question) => question.image || question.artist || question.date || question.location || question.title);
+  }).filter((question) => question && (question.image || question.artist || question.date || question.location || question.title));
 }
 // Colonne optionnelle (I) : nationalité de l'artiste -> petit drapeau affiché à côté des dates sur
 // la fiche de correction. Volontairement large (variantes de genre, gentilés, anciens pays) : mieux
@@ -2806,7 +2849,12 @@ function renderCorrection(answer, question) {
   // disait jamais rien à l'oral pour confirmer une bonne réponse (seul l'écrit « Exact »/« À
   // réviser » par rubrique existait), contrairement aux autres jeux — retour de Stéphane, valable
   // pour tous les jeux.
-  const spokenParts = [isFullyCorrect(answer, question) ? 'Exact.' : '', cityOnlyHint].filter(Boolean);
+  // v80 (docx 29 sept, QUIZ : « si on veut revoir les questions ratées, inutile de réentendre la
+  // voix dire Exact ») : en révision (state.mode === 'review', voir review-errors-button), on sait
+  // déjà que la question a été ratée la première fois — la répéter à voix haute n'apporte rien de
+  // plus que l'indicateur écrit déjà affiché ; seul l'encouragement sur le lieu (ville seule)
+  // garde son utilité, lui aussi conservé.
+  const spokenParts = [(isFullyCorrect(answer, question) && state.mode !== 'review') ? 'Exact.' : '', cityOnlyHint].filter(Boolean);
   if (spokenParts.length) quizSpeak(spokenParts.join(' '));
 }
 let currentArtistWorksIndex = -1;
@@ -5608,7 +5656,13 @@ async function loadArtistListIfNeeded() {
   if (artistListLoaded) return true;
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé.');
-    const response = await fetch('quizzes/artistes-nationalites-maitre.xlsx');
+    // v80 (retour Stéphane, docx 29 sept, LISTE item 1 : « est-ce qu'elle se remet à jour
+    // automatiquement avec les autres fichiers excel ? ») : fetchQuizRows (fichiers par siècle,
+    // plus bas) posait déjà ?v=DATA_CACHE_BUST pour empêcher un cache navigateur/CDN de servir une
+    // version périmée — ce fetch-ci, pour le fichier maître, ne l'avait pas : à chaque nouvel envoi
+    // du fichier maître, la LISTE pouvait continuer d'afficher les anciennes données tant que le
+    // cache HTTP n'expirait pas. Même correctif ici.
+    const response = await fetch(`quizzes/artistes-nationalites-maitre.xlsx?v=${DATA_CACHE_BUST}`);
     if (!response.ok) throw new Error('fichier introuvable');
     const buffer = await response.arrayBuffer();
     const book = XLSX.read(buffer, { type: 'array' });
@@ -6191,6 +6245,10 @@ function chronoShowQuestion() {
   $('chrono-validate-button').classList.remove('hidden');
   $('chrono-validate-button').disabled = true;
   $('chrono-cards-row').classList.remove('hidden');
+  // v80 (docx 29 sept, CHRONOLOGIE) : la consigne réapparaît pour chaque nouvelle question (elle
+  // est masquée à la correction, voir chrono-validate-button plus bas).
+  $('chrono-instruction')?.classList.remove('hidden');
+  $('chrono-instruction-hint')?.classList.remove('hidden');
 
   const shuffledDisplay = q.works.slice().sort(() => Math.random() - 0.5);
   q.displayOrder = shuffledDisplay;
@@ -6206,18 +6264,27 @@ function chronoNextFreeNumber() {
   for (let n = 1; n <= 4; n++) if (!chronoAssigned.includes(n)) return n;
   return null;
 }
+// v80 (retour Stéphane, docx 29 sept, CHRONOLOGIE : « remettre le système de loupe mais en
+// dessous de l'image, on continue à manipuler les images ») : Chronologie n'avait encore jamais
+// eu de loupe. On reprend le même principe que la « zone sœur » d'Intrus (voir intrusShowQuestion,
+// .intrus-image-loupe-zone) — une bande à part, EN DEHORS du bouton cliquable qui attribue le
+// numéro d'ordre, pour que toucher la loupe n'attribue jamais un numéro par erreur — mais placée
+// APRÈS l'image plutôt qu'avant (Stéphane veut ici la loupe sous l'image, pas au-dessus comme sur
+// Intrus). Chaque case reste par ailleurs manipulable exactement comme avant (clic = attribue/
+// retire son numéro).
 function renderChronoCards() {
   const q = CHRONO_SESSION[chronoIndex];
   $('chrono-cards-row').innerHTML = q.displayOrder.map((work, i) => {
     const num = chronoAssigned[i];
-    return `<button type="button" class="fam-image-cell chrono-source-item${num ? ' numbered' : ''}" data-index="${i}" style="order:${num || (10 + i)};position:relative;">
-      ${num ? `<span class="chrono-slot-num" style="position:absolute;top:6px;left:6px;">${num}</span>` : ''}
-      <img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" />
-    </button>`;
+    return `<div class="fam-image-cell chrono-source-item${num ? ' numbered' : ''}" data-index="${i}" style="order:${num || (10 + i)};position:relative;">
+      ${num ? `<span class="chrono-slot-num" style="position:absolute;top:6px;left:6px;z-index:2;">${num}</span>` : ''}
+      <button type="button" class="chrono-tap-button" data-index="${i}"><img src="${escapeHtml(imageSourceSized(work.image, 250))}" alt="" /></button>
+      <div class="chrono-loupe-zone"></div>
+    </div>`;
   }).join('');
-  document.querySelectorAll('#chrono-cards-row .chrono-source-item').forEach((item) => {
-    item.addEventListener('click', () => {
-      const idx = Number(item.dataset.index);
+  document.querySelectorAll('#chrono-cards-row .chrono-tap-button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.index);
       if (chronoAssigned[idx]) {
         chronoAssigned[idx] = undefined; // retire son numéro, libère la place
       } else {
@@ -6227,6 +6294,15 @@ function renderChronoCards() {
       }
       renderChronoCards();
       updateChronoValidateState();
+    });
+  });
+  document.querySelectorAll('#chrono-cards-row .chrono-source-item').forEach((cell) => {
+    attachProgressiveLoupe(cell, cell.querySelector('img'), {
+      mode: 'solo',
+      maxLevel: 2,
+      container: $('chrono-cards-row'),
+      iconHost: cell.querySelector('.chrono-loupe-zone'),
+      zoomFor: (level) => (level === 2 ? 2.2 : 1),
     });
   });
 }
@@ -6268,6 +6344,10 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   chronoAnswered = true;
   const q = CHRONO_SESSION[chronoIndex];
   $('chrono-validate-button').classList.add('hidden');
+  // v80 (docx 29 sept, CHRONOLOGIE : « à la correction, enlever la consigne ») : même principe que
+  // les autres exercices, masquage indépendant du viewport.
+  $('chrono-instruction')?.classList.add('hidden');
+  $('chrono-instruction-hint')?.classList.add('hidden');
 
   // Reconstitue l'ordre choisi par le joueur à partir des numéros posés sur chaque carte.
   const orderedIndexes = [1, 2, 3, 4].map((n) => chronoAssigned.indexOf(n));
@@ -6306,6 +6386,15 @@ $('chrono-validate-button')?.addEventListener('click', () => {
           <span class="fam-result-caption"><strong>${formatArtistDisplayName(work)}</strong><br><em>«\u00a0${escapeHtml(work.title)}\u00a0»</em><br>${meta}</span>
         </div>`;
       }).join('')}</div>`;
+    // v80 (docx 29 sept, CHRONOLOGIE : « la page d'erreur et la page avec le bon ordre se
+    // succèdent automatiquement, mais on peut éventuellement remonter à la première quand la
+    // seconde apparaît ») : les deux « pages » restent en réalité l'une sous l'autre dans le même
+    // écran (pas de modale ni de changement de panneau) — on laisse d'abord voir l'erreur (le
+    // temps de la lire), puis on fait défiler automatiquement jusqu'au bon ordre ; un simple
+    // scroll manuel vers le haut permet de revenir à l'erreur, rien ne l'empêche ni ne le masque.
+    chronoTimers.push(setTimeout(() => {
+      $('chrono-correct-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 2200));
   }
 
   const ordinals = ['la première', 'la deuxième', 'la troisième', 'la quatrième'];

@@ -235,6 +235,16 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .chrono-source-item.picked { border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,58,95,.35); }
 .chrono-source-item { touch-action:none; }
 .chrono-source-item.numbered { border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,58,95,.35); }
+/* CHRONOLOGIE (docx 29 sept : « remettre le système de loupe mais en dessous de l'image ») : la
+   case .chrono-source-item passe de bouton unique à conteneur flex vertical (bouton-image, puis
+   la bande de loupe) — même principe que .intrus-image-loupe-zone (voir son commentaire), une zone
+   SŒUR du bouton cliquable, jamais superposée à son aire de clic, mais ici APRÈS l'image plutôt
+   qu'avant. */
+.chrono-source-item { display:flex; flex-direction:column; gap:2px; }
+.chrono-tap-button { flex:1; min-height:0; min-width:0; display:flex; align-items:center; justify-content:center; border:0; background:none; padding:0; cursor:pointer; width:100%; }
+.chrono-tap-button img { width:100%; height:100%; object-fit:contain; background:#1b1c1e; border-radius:4px; display:block; }
+.chrono-loupe-zone { min-height:22px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+.chrono-loupe-zone .loupe-progressive { position:static; bottom:auto; left:auto; flex-direction:row; }
 .chrono-slot-num { position:absolute; top:4px; left:4px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:.85rem; display:flex; align-items:center; justify-content:center; z-index:2; }
 .chrono-target-slot.wrong { border-color:var(--wrong); }
 .chrono-target-slot.right { border-color:var(--ok); }
