@@ -1400,7 +1400,19 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
    zoom) et un style inline JS écraserait de toute façon une transform posée ici en CSS. Une marge
    basse laisse le personnage démarrer un peu plus haut dans la rangée (align-items:flex-end sur
    #scale-checkpoint-row) sans toucher au reste de la rangée (cordon, flèches). */
-#scale-checkpoint-silhouette { height:26vh; margin-bottom:1.5vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; }
+/* v89 (retour Stéphane : « la bande qui est en bas occupe pratiquement le tiers de la hauteur de
+   l'image, elle n'a rien à faire là ») : #scale-checkpoint-row (personnage + cordon + flèches),
+   juste en dessous, n'a pas de hauteur fixée en dur — elle est entièrement dictée par son enfant le
+   plus haut, ce personnage (26vh + sa marge), #scale-checkpoint-room au-dessus étant lui en
+   flex:1 1 auto (voir plus haut) : il prend TOUT ce qui reste une fois la rangée posée. Réduire
+   cette seule valeur (26vh → 18vh) suffit donc à redonner mécaniquement cette place au mur/sol
+   (donc aux tableaux affichés dessus) SANS toucher au reste (armCheckpointApproach et consorts
+   remesurent déjà ce personnage en direct via getBoundingClientRect, jamais une valeur 26vh supposée
+   en dur — voir leur code). Valeur d'essai à confirmer/ajuster avec Stéphane une fois vu en vrai :
+   pas de bonne proportion évidente sans un aller-retour sur ce point précis.
+   Voir aussi CHECKPOINT_MAX_WORK_CM (app.js, v87 : la vraie échelle du Courbet du mur du fond)
+   pour l'autre moitié de cette même préoccupation (le tableau qui manque de place). */
+#scale-checkpoint-silhouette { height:18vh; margin-bottom:1.5vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; }
 /* v45 (retour de Stéphane : « il ne passe pas du tout dans la salle ») : copie visuelle du
    personnage ci-dessus, à l'identique (même height, couleur, ombre), mais position:fixed — donc
    jamais concernée par l'overflow:hidden de #scale-checkpoint-row (voir le commentaire complet dans
