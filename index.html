@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=213" />
+    <link rel="stylesheet" href="style.css?v=215" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -493,7 +493,7 @@
                 <div class="correction-details" id="intrus-correction-details"></div>
                 <button type="button" class="primary-button" id="intrus-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
-              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:10px;justify-content:center;">
+              <div id="intrus-hub-row" style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:10px;justify-content:center;">
                 <button type="button" class="exercise-hub-text-button" id="intrus-hub-link" aria-label="Retour au menu des jeux" title="Retour au menu des jeux">Retour au menu des jeux</button>
                 <button type="button" class="secondary-button exercise-correction-toggle-button intrus-full-correction-button" id="intrus-full-correction-button">Voir la correction complète</button>
               </div>
@@ -1174,7 +1174,7 @@
                  pour rester visible sur LES DEUX écrans (couloir ET plan rapproché), pas seulement
                  sur le tout premier — utile puisque c'est justement de la version affichée PARTOUT
                  qu'on veut être sûr. -->
-            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 70</div>
+            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 72</div>
             <!-- Couloir : vue à l'échelle réelle, mur du fond en face, 2 piliers de premier plan.
                  v57 : plus de tourniquet à franchir ici (retiré, voir plus bas) — on peut
                  directement soit marcher sur le côté (#scale-checkpoint-floor-dot, pour choisir la
@@ -1730,6 +1730,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=298"></script>
+    <script src="app.js?v=299"></script>
   </body>
 </html>

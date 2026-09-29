@@ -8136,12 +8136,22 @@ let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioO
 const impTimer = createTimer('topbar-timer');
 
 function impClearTimers() { impTimers.forEach(clearTimeout); impTimers = []; }
-function impSpeak(text) {
-  if (!impAudioOn || !window.speechSynthesis) return;
+// v66 (docx 29 sept, item 8) : onEnd optionnel, même mécanique que intrusSpeak/vfSpeak/famSpeak —
+// utilisé pour enchaîner les segments de la référence avec un vrai silence entre eux (voir
+// impShowCurrent). Le filet de sécurité (setTimeout) couvre les navigateurs/voix où onend ne se
+// déclenche pas de façon fiable.
+function impSpeak(text, onEnd) {
+  if (!impAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.72; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (impSelectedVoice) u.voice = impSelectedVoice;
+  if (onEnd) {
+    let done = false;
+    const finish = () => { if (!done) { done = true; onEnd(); } };
+    u.onend = finish; u.onerror = finish;
+    impTimers.push(setTimeout(finish, Math.max(1200, (text.length / 13) * 1000) + 400));
+  }
   speechSynthesis.speak(u);
 }
 
@@ -8264,16 +8274,50 @@ function impShowCurrent() {
     // maintenant aussi comme sa propre ligne juste sous le lieu, et se lit à voix haute. Volontairement
     // pas soumis à fieldOn/aux cases à cocher de rubriques : comme l'auteur et le titre, c'est une
     // information contextuelle sur l'œuvre elle-même, pas un choix de ce qui est testé.
-    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: !!work.cycle },
+    // v66 (docx 29 sept, item 3 : « la colonne ensemble apparaît quand on n'a demandé que la
+    // rubrique artiste ») : Ensemble n'a pas de case à cocher dédiée (comme Auteur/Titre en ont
+    // une) — le commentaire au-dessus disait la traiter « comme l'auteur et le titre », mais
+    // Auteur et Titre sont eux bien soumis à fieldOn() (voir juste au-dessus), alors qu'Ensemble ne
+    // l'était pas du tout (`on: !!work.cycle`, sans condition de rubrique). Résultat : dès qu'on
+    // restreignait à une seule rubrique précise (ex. Auteur seul), Ensemble s'affichait quand même.
+    // Faute de case dédiée, on ne peut pas réutiliser fieldOn('cycle') tel quel (il n'y a pas de
+    // #imp-field-cycle) — la rubrique ne s'affiche donc désormais que quand AUCUNE rubrique
+    // précise n'a été choisie (réglage par défaut « tout afficher ») ou en mode correction complète
+    // (🔎), exactement comme un joueur qui n'a rien restreint continue de la voir.
+    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: (showFullCorrection || !anyFieldChecked) && !!work.cycle },
   ].filter((f) => f.on);
 
   $('imp-correction-details').innerHTML = fields.map((f) =>
     `<span class="correction-label">${f.label}</span><span class="correction-value" id="imp-val-${f.key}"></span>`
   ).join('');
 
-  const refText = fields.map((f) => f.spoken || f.value).join(' — ') || work.artist;
+  // v66 (docx 29 sept, item 8 : « séparer davantage pour la voix la lecture du lieu de celle du
+  // matériau, prévoir 2 secondes d'écart. Même chose avant la lecture éventuelle de Ensemble ») :
+  // jusqu'ici toute la référence était lue d'un seul bloc (un seul appel à la synthèse vocale, tout
+  // enchaîné) — impossible d'y ménager un vrai silence. On découpe maintenant en segments lus l'un
+  // après l'autre, avec 2 secondes de silence entre deux segments : un nouveau segment démarre
+  // juste avant "Lieu" quand il suit directement "Matériau" (les deux rubriques se suivent alors
+  // sans aucune pause, ce qui arrive dès que Dimensions est absente entre les deux), et TOUJOURS
+  // juste avant "Ensemble" (rubrique à part, ajoutée après la référence principale). Le reste de la
+  // référence continue de se lire d'une traite, comme avant. Le rythme d'affichage progressif du
+  // texte (STAGGER, juste plus bas) n'a pas besoin d'être synchronisé à ces pauses : il ne l'était
+  // déjà pas exactement avec la voix avant ce changement (durées de synthèse vocale variables).
   currentSpeechNationality = work.nationality || '';
-  impSpeak(refText);
+  const speechSegments = [];
+  let currentSpeechSegment = [];
+  fields.forEach((f, i) => {
+    const prev = fields[i - 1];
+    const startsNewSegment = f.key === 'cycle' || (f.key === 'location' && prev?.key === 'materiaux');
+    if (startsNewSegment && currentSpeechSegment.length) { speechSegments.push(currentSpeechSegment); currentSpeechSegment = []; }
+    currentSpeechSegment.push(f);
+  });
+  if (currentSpeechSegment.length) speechSegments.push(currentSpeechSegment);
+  function impSpeakSegment(i) {
+    if (i >= speechSegments.length) return;
+    const text = speechSegments[i].map((f) => f.spoken || f.value).join(' — ') || work.artist;
+    impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), 2000)); });
+  }
+  if (speechSegments.length) impSpeakSegment(0); else impSpeak(work.artist);
 
   const STAGGER = impDelayMs * 0.5;
   fields.forEach((f, i) => {

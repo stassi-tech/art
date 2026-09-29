@@ -1498,12 +1498,52 @@ body.has-other-works .correction-label { font-size:.76rem; }
   #intrus-next-button { order:1; }
   #intrus-choices { order:2; }
   #intrus-correction-details { order:3; }
+  /* Bug réel découvert en testant la clarification ci-dessous par capture d'écran (jamais visible
+     dans les vérifications précédentes, qui ne mesuraient que les positions relatives des éléments
+     déjà réordonnés, jamais l'ensemble de la page) : "Retour au menu des jeux"/"Voir la correction
+     complète" n'avait jamais reçu d'ordre explicite (contrairement à Imprégnation, où #imp-hub-row
+     en a un depuis le début) — resté à 0 par défaut, il remontait donc AVANT les boutons 1-2-3 et
+     la référence (order 2), aussi bien avant qu'après réponse. Corrigé en lui donnant le plus grand
+     ordre (4), pour qu'il reste toujours en dernier. */
+  #intrus-hub-row { order:4; }
   /* VRAI/FAUX item 2 : dès que la grille passe en une seule colonne, le bouton Valider/Suivant
      remonte juste sous le verdict (donc juste sous la consigne), avant la liste des rubriques —
      avec jusqu'à 6 rubriques affichées, il fallait sinon défiler toute la liste à chaque question
      pour l'atteindre. */
   #vf-nav-row { order:2; }
   #vf-field-rows { order:3; }
+  /* IMPREGNATION item 2 (docx 29 sept : « sur mobile, enlever la consigne, remonter les boutons de
+     commande sous l'image, afficher une correction plus compacte, pas de scroll ») : la consigne
+     ("Écoutez ces références...") disparaît entièrement sur mobile (pas seulement à la correction,
+     comme pour les autres exercices — ici elle n'a plus d'utilité une fois qu'on sait de quoi il
+     s'agit, et prenait de la place à chaque œuvre) ; #imp-nav-row garde son order:1 déjà existant
+     ci-dessus, ce qui suffit à le faire remonter juste sous l'image une fois le h2 retiré du flux
+     (display:none), sans avoir à toucher l'ordre des autres éléments. */
+  #imp-quiz-grid .answer-card h2 { display:none; }
+  #imp-correction-details .correction-label { font-size:.68rem; }
+  #imp-correction-details .correction-value { font-size:.92rem; margin-bottom:6px; }
+  /* INTRUS — clarification orale de Stéphane après la livraison de la VERSION 68 : la consigne du
+     h2 ("Appuyer sur le bouton...") doit être REMPLACÉE par les boutons 1-2-3 eux-mêmes, pas juste
+     suivie par eux plus bas — sur mobile la consigne disparaît donc complètement (comme pour
+     Imprégnation/VRAI-FAUX ci-dessus), à tout moment (pas seulement à la correction), et les
+     boutons 1-2-3 remontent directement à sa place, sous l'image. #intrus-choices n'est rempli
+     avec cette structure (.correction-details + .intrus-answer-instruction + .intrus-answer-buttons)
+     qu'en mode « images intruses » — en mode « références intruses » il contient une liste
+     différente (.intrus-choice-list), non concernée ici et donc inchangée. Le paragraphe
+     d'instruction interne ("Appuie sur le bouton qui correspond...") redevient redondant une fois
+     que les boutons prennent visuellement la place de la consigne — masqué sur mobile pour gagner
+     de la place, comme demandé (« qu'on n'ait pas à scroller »). La référence à retrouver
+     (Auteur/Titre) est compactée avec le même resserrement que la correction plus bas ("façon
+     Famille, en petit"). */
+  #intrus-quiz-grid .answer-card h2 { display:none; }
+  #intrus-choices { display:flex; flex-direction:column; }
+  #intrus-choices .intrus-answer-buttons { order:0; margin-top:0; }
+  #intrus-choices .correction-details { order:1; }
+  #intrus-choices .intrus-answer-instruction { display:none; }
+  #intrus-choices .correction-details .correction-label { font-size:.68rem; }
+  #intrus-choices .correction-details .correction-value { font-size:.92rem; margin-bottom:4px; }
+  #intrus-correction-details .correction-label { font-size:.68rem; }
+  #intrus-correction-details .correction-value { font-size:.92rem; margin-bottom:6px; }
 }
 
 @media (max-width:640px) {
