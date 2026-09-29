@@ -2472,9 +2472,6 @@ function showPanel(name) {
       try { history.pushState({ panel: name }, '', `#${name}`); } catch (e) { /* ignoré si l'historique est indisponible */ }
     }
   }
-  // Bouton « Voir/Arrêter la correction complète » : un par exercice concerné (à côté de son
-  // propre 🏠 « Retour au menu des exercices »), toujours à jour avec l'état réel.
-  updateFullCorrectionButtonsText();
   impTimers = []; vfTimers = []; famTimers = []; reconTimers = []; intrusTimers = []; chronoTimers = [];
 
   // name: 'welcome' | 'training-hub' | 'impregnation-setup' | 'impregnation' | 'intrus-setup' |
@@ -5913,6 +5910,18 @@ $('open-reconstitution-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('recon');
   suppressSaveLastSelection = true;
   applyDefaultAdvance('recon-opt-autoadvance', 'recon-opt-delay', 'recon-delay-row');
+  // v77 (bug réel : « le bouton Famille du menu des jeux est inactif » — capture d'écran de
+  // Stéphane, 29 sept) : la tuile du menu des jeux saute directement au bouton de lancement SANS
+  // jamais afficher le panneau de configuration — tous les messages "pas assez d'œuvres"/"besoin
+  // d'au moins 2 artistes" de chaque jeu s'écrivaient donc dans un panneau resté masqué : rien ne
+  // se passait à l'écran (d'où l'impression d'un bouton inactif), sur les 6 jeux, pas seulement
+  // Famille. showPanel(...) ici (avant le clic sur le bouton de lancement) garantit que ces
+  // messages sont désormais visibles quand ils s'affichent ; il affiche aussi "Chargement des
+  // œuvres…" pendant la préparation de l'exercice, invisible jusqu'ici. suppressHistoryPush évite
+  // d'empiler une entrée d'historique pour ce passage transitoire (sinon la flèche "précédent" du
+  // navigateur, qui remplace le bouton "Retour au menu des jeux" retiré plus haut, ramènerait sur
+  // cet écran de configuration au lieu du menu des jeux).
+  suppressHistoryPush = true; showPanel('reconstitution-setup'); suppressHistoryPush = false;
   speakObjective('recon'); $('recon-start-button')?.click();
 });
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
@@ -5930,6 +5939,7 @@ function showVfConfig() {
 $('open-vraifaux-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('vf');
   suppressSaveLastSelection = true;
+  suppressHistoryPush = true; showPanel('vraifaux-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
   speakObjective('vf'); $('vf-start-button')?.click();
 });
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
@@ -5946,6 +5956,7 @@ function showFamConfig() {
 $('open-famille-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('fam');
   suppressSaveLastSelection = true;
+  suppressHistoryPush = true; showPanel('famille-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
   speakObjective('fam'); $('fam-start-button')?.click();
 });
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
@@ -5972,10 +5983,10 @@ function showChronoConfig() {
 $('open-chrono-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('chrono');
   suppressSaveLastSelection = true;
+  suppressHistoryPush = true; showPanel('chrono-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
   speakObjective('chrono'); $('chrono-start-button')?.click();
 });
 $('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('chrono-setup'); });
-$('chrono-hub-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
 $('chrono-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'chrono'; showPanel('account'); loadAccountPage(); });
 $('chrono-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
@@ -6382,6 +6393,10 @@ $('fam-start-button')?.addEventListener('click', async () => {
   saveLastSelection('famille-setup-panel');
   // Famille a besoin d'œuvres « intruses » d'autres artistes pour que le jeu ait un sens —
   // impossible à construire avec un seul artiste choisi (tout serait alors « famille »).
+  // v77 : ce message (et tous les autres "pas assez d'œuvres" plus bas dans ce fichier) s'écrivait
+  // parfois dans un panneau resté masqué — voir le correctif systémique sur open-famille-setup
+  // (et les 5 autres tuiles du menu des jeux) juste plus haut, qui garantit maintenant que le
+  // panneau de configuration concerné est déjà affiché avant même que ces messages ne s'écrivent.
   const globalArtistsFam = (readGlobalArtistDefaults().artists || []);
   if (globalArtistsFam.length === 1) {
     $('fam-setup-feedback').classList.remove('hidden');
@@ -6693,7 +6708,7 @@ function vfActiveFields() {
     { key: 'date', label: 'Date' },
     { key: 'materials', label: 'Matériau' },
     { key: 'dimensions', label: 'Dimensions' },
-    { key: 'location', label: 'Lieu' },
+    { key: 'location', label: 'Lieu de conservation actuel' },
   ];
   if (showFullCorrection) return all;
   const checkboxMap = { artist: 'vf-field-artist', title: 'vf-field-title', date: 'vf-field-date', materials: 'vf-field-materiaux', dimensions: 'vf-field-dimensions', location: 'vf-field-location' };
@@ -6778,6 +6793,8 @@ $('vf-start-button')?.addEventListener('click', async () => {
   saveLastSelection('vraifaux-setup-panel');
   // Vrai/Faux a besoin de proposer une fausse attribution crédible — impossible à construire
   // avec un seul artiste choisi (il n'y aurait personne d'autre à qui l'attribuer par erreur).
+  // v77 : voir le correctif systémique sur open-vraifaux-setup (et les 5 autres tuiles du menu des
+  // jeux) plus haut dans ce fichier.
   const globalArtists = (readGlobalArtistDefaults().artists || []);
   if (globalArtists.length === 1) {
     $('vf-setup-feedback').classList.remove('hidden');
@@ -6938,7 +6955,7 @@ function vfRefreshExtraFields() {
     { key: 'date', label: 'Date' },
     { key: 'materials', label: 'Matériau' },
     { key: 'dimensions', label: 'Dimensions' },
-    { key: 'location', label: 'Lieu' },
+    { key: 'location', label: 'Lieu de conservation actuel' },
   ];
   const activeKeys = q.activeFields.map((f) => f.key);
   const extrasHtml = ALL_VF_FIELDS.filter((f) => !activeKeys.includes(f.key)).map((f) => {
@@ -7332,7 +7349,7 @@ function reconRefreshCorrectionDetails() {
   if (showFullCorrection || reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if ((showFullCorrection || reconExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
-  if (showFullCorrection || reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
+  if (showFullCorrection || reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu de conservation actuel</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   el.innerHTML = detailsParts.join('');
 }
 function reconAnswer(chosenIndex) {
@@ -7526,6 +7543,7 @@ refreshSavedChoiceButton();
 $('open-quiz-setup')?.addEventListener('click', () => {
   applyGlobalDefaultsToQuiz();
   suppressSaveLastSelection = true;
+  suppressHistoryPush = true; showPanel('quiz-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
   speakObjective('quiz'); $('launch-quiz-button')?.click();
 });
 $('load-saved-choice-button')?.addEventListener('click', () => {
@@ -8223,12 +8241,10 @@ function showImpConfig() {
 $('open-impregnation-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('imp');
   suppressSaveLastSelection = true;
+  suppressHistoryPush = true; showPanel('impregnation-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
   speakObjective('imp'); $('imp-start-button')?.click();
 });
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
-['imp', 'intrus', 'recon', 'vf', 'fam'].forEach((p) => {
-  $(`${p}-hub-link`)?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('training-hub'); updateExerciseSummaries(); });
-});
 
 const IMP_ACCORDIONS = ['imp-toggle-art:imp-body-art', 'imp-toggle-century:imp-body-century', 'imp-toggle-level:imp-body-level', 'imp-toggle-rubriques:imp-body-rubriques'];
 IMP_ACCORDIONS.forEach((pair) => {
@@ -8436,7 +8452,7 @@ function impShowCurrent() {
     // où elle se trouve précisément, dans les deux sens (texte affiché, ordre des champs plus bas
     // pour la voix et pour le déroulé d'images) plutôt que l'inverse.
     { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: (showFullCorrection || !anyFieldChecked) && !!work.cycle },
-    { key: 'location', label: 'Lieu', value: cityFlag(work.ville) ? `${escapeHtml(work.location)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${cityFlag(work.ville)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
+    { key: 'location', label: 'Lieu de conservation actuel', value: cityFlag(work.ville) ? `${escapeHtml(work.location)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${cityFlag(work.ville)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
   ].filter((f) => f.on);
 
   $('imp-correction-details').innerHTML = fields.map((f) =>
@@ -8583,19 +8599,11 @@ function closeImpArtistBio() {
 $('imp-artist-bio-close')?.addEventListener('click', closeImpArtistBio);
 $('imp-artist-bio-panel')?.addEventListener('click', (e) => { if (e.target.id === 'imp-artist-bio-panel') closeImpArtistBio(); });
 
-// Bouton texte partagé (bandeau du haut, à côté de « Retour au menu des exercices ») plutôt que
-// des icônes 🔎 séparées — plus clair et directement à côté du bouton retour propre à chaque jeu.
-// Le texte lui-même indique l'état : « Voir » quand elle est éteinte, « Arrêter » une fois activée.
-function updateFullCorrectionButtonsText() {
-  ['imp', 'vf', 'intrus', 'recon'].forEach((p) => {
-    const btn = $(`${p}-full-correction-button`);
-    if (btn) btn.textContent = showFullCorrection ? 'Arrêter la correction complète' : 'Voir la correction complète';
-  });
-}
-$('imp-full-correction-button')?.addEventListener('click', () => { toggleFullCorrection(FULL_CORRECTION_PANELS.impregnation); updateFullCorrectionButtonsText(); });
-$('vf-full-correction-button')?.addEventListener('click', () => { toggleFullCorrection(FULL_CORRECTION_PANELS.vraifaux); updateFullCorrectionButtonsText(); });
-$('intrus-full-correction-button')?.addEventListener('click', () => { toggleFullCorrection(FULL_CORRECTION_PANELS.intrus); updateFullCorrectionButtonsText(); });
-$('recon-full-correction-button')?.addEventListener('click', () => { toggleFullCorrection(FULL_CORRECTION_PANELS.reconstitution); updateFullCorrectionButtonsText(); });
+// v77 (docx 29 sept : « enlever le bouton correction complète, trop compliqué ») : les 4 boutons
+// et leur texte partagé ont disparu de l'écran — showFullCorrection/FULL_CORRECTION_PANELS/
+// toggleFullCorrection restent en place (lus par la logique d'affichage des rubriques de chaque
+// jeu, ex. fieldOn()), mais showFullCorrection ne vaut plus jamais que false désormais, plus aucun
+// bouton ne pouvant l'activer.
 $('imp-pause-button')?.addEventListener('click', () => {
   impPaused = !impPaused;
   $('imp-pause-button').textContent = impPaused ? '▶' : '⏸';
@@ -8626,6 +8634,7 @@ $('open-intrus-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('intrus');
   suppressSaveLastSelection = true;
   applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
+  suppressHistoryPush = true; showPanel('intrus-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
   speakObjective('intrus'); $('intrus-start-button')?.click();
 });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
@@ -8829,6 +8838,14 @@ function intrusShowQuestion() {
   $('intrus-instruction')?.classList.remove('hidden'); // v65 : réapparaît pour la nouvelle question (masquée à la correction)
 
   const promptCard = $('intrus-prompt-card');
+  // v77 (docx 29 sept : « mettre les loupes en haut de l'image à la place des chiffres qu'on
+  // enlève, mettre les 3 boutons de sélection en dessous de l'image — ils remplacent les chiffres
+  // et font partie de l'écran des images ») : sur PC ET mobile désormais (avant, seul le mobile
+  // était concerné). #intrus-quiz-grid passe donc en une seule colonne (image, puis consigne, puis
+  // référence) à TOUTE largeur d'écran quand ce mode est actif — voir .intrus-image-layout dans
+  // style.css. En mode "références intruses" (else ci-dessous), la mise en page à 2 colonnes reste
+  // inchangée.
+  $('intrus-quiz-grid')?.classList.toggle('intrus-image-layout', intrusMode === 'image');
   if (intrusMode === 'image') {
     // Les 3 images (choix) occupent la grande zone de gauche, en plus grand ; la référence à
     // retrouver s'affiche à droite, avec le même espacement de rubrique que la correction.
@@ -8839,10 +8856,17 @@ function intrusShowQuestion() {
     // Bug de confusion signalé par Stéphane : chaque image était à la fois la cible de la loupe
     // ET le bouton de réponse — un tap visant la loupe pouvait valider une réponse par erreur, et
     // inversement. Désormais l'image ne fait plus QUE zoomer (via la loupe progressive) ; répondre
-    // se fait via 3 boutons numérotés séparés, plus bas dans la colonne de droite — chaque image
-    // porte le même numéro (pastille en haut à gauche) pour les relier sans ambiguïté.
+    // se fait via 3 boutons numérotés séparés, directement sous les images (v77 : auparavant plus
+    // bas dans la colonne de droite, avec une pastille numérotée par image pour les relier).
+    // v77 : la pastille numérotée disparaît (elle faisait doublon avec les boutons de réponse,
+    // désormais eux-mêmes numérotés et déplacés directement sous les images — voir plus bas) ; la
+    // loupe progressive prend sa place, en haut de chaque image plutôt qu'en bas (voir
+    // .intrus-image-choice .loupe-progressive dans style.css).
     promptCard.innerHTML = `<div class="intrus-image-choices">${q.choices.map((c, i) =>
-      `<button type="button" class="intrus-image-choice" data-index="${i}"><span class="intrus-image-number">${i + 1}</span><img src="${escapeHtml(imageSourceSized(c.image, 300))}" alt="" style="max-width:${sizes[i]}px;max-height:${sizes[i]}px;" /></button>`
+      `<button type="button" class="intrus-image-choice" data-index="${i}"><img src="${escapeHtml(imageSourceSized(c.image, 300))}" alt="" style="max-width:${sizes[i]}px;max-height:${sizes[i]}px;" /></button>`
+    ).join('')}</div>
+    <div class="intrus-answer-buttons intrus-answer-buttons-inline">${q.choices.map((c, i) =>
+      `<button type="button" class="intrus-answer-choice" data-index="${i}">${i + 1}</button>`
     ).join('')}</div>`;
     // La loupe passe l'image choisie en solo plein cadre par-dessus les deux autres (masquées) au
     // palier 1, puis l'agrandit et la rend déplaçable comme dans Imprégnation au palier 2 —
@@ -8858,15 +8882,15 @@ function intrusShowQuestion() {
         zoomFor: (level) => (level === 2 ? 2.2 : 1),
       });
     });
+    // v77 : les boutons de réponse numérotés ont déménagé DANS #intrus-prompt-card (juste
+    // au-dessus), directement sous les images — #intrus-choices ne garde plus que la référence à
+    // retrouver (la phrase d'instruction "Appuie sur le bouton..." devient inutile : les boutons
+    // sont maintenant visuellement rattachés aux images qu'ils désignent).
     $('intrus-choices').innerHTML = `<div class="correction-details">
       <span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>
       <span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>
-    </div>
-    <p class="intrus-answer-instruction">Appuie sur le bouton qui correspond à la référence annoncée.</p>
-    <div class="intrus-answer-buttons">${q.choices.map((c, i) =>
-      `<button type="button" class="intrus-answer-choice" data-index="${i}">${i + 1}</button>`
-    ).join('')}</div>`;
-    $('intrus-choices').querySelectorAll('.intrus-answer-choice').forEach((btn) => {
+    </div>`;
+    promptCard.querySelectorAll('.intrus-answer-choice').forEach((btn) => {
       btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
     });
     intrusSpeak(`${q.correct.artist} — « ${q.correct.title} »`);
@@ -8898,7 +8922,7 @@ function intrusRefreshCorrectionDetails() {
   if (showFullCorrection || intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if ((showFullCorrection || intrusExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if ((showFullCorrection || intrusExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
-  if (showFullCorrection || intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
+  if (showFullCorrection || intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu de conservation actuel</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
 }
 // v65 (INTRUS item 4) : révèle une œuvre en solo dans #intrus-prompt-card, avec une légende et sa

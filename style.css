@@ -371,12 +371,42 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intrus-confusion-ref { font-family:Georgia,serif; font-size:1rem; text-align:center; color:var(--ink); }
 .intrus-confusion-ref em { font-style:italic; }
 .intrus-verdict { font-family:Arial,sans-serif; font-weight:700; }
-/* Pastille numérotée sur chaque image d'Intrus (mode « images intruses ») : relie chaque image à
-   son bouton de réponse numéroté (voir .intrus-answer-buttons), maintenant que cliquer l'image
-   elle-même ne répond plus — elle ne fait que zoomer (voir attachProgressiveLoupe). */
-.intrus-image-number { position:absolute; top:6px; left:6px; width:24px; height:24px; border-radius:50%; background:rgba(20,20,20,.72); color:#fff; font-family:Arial,sans-serif; font-weight:700; font-size:.85rem; display:flex; align-items:center; justify-content:center; z-index:2; }
 .intrus-answer-instruction { font-family:Arial,sans-serif; font-size:.85rem; color:var(--muted); margin:16px 0 10px; }
 .intrus-answer-buttons { display:flex; gap:10px; }
+/* v77 (docx 29 sept : « mettre les loupes en haut de l'image à la place des chiffres qu'on enlève,
+   mettre les 3 boutons de sélection en dessous de l'image ») : la pastille numérotée par image a
+   disparu (voir intrusShowQuestion dans app.js, qui ne la génère plus) — la loupe progressive
+   (générique, positionnée en bas par défaut pour NE PAS la recouvrir jusqu'ici) prend sa place, en
+   haut de chaque image ; scopé à .intrus-image-choice uniquement pour ne pas déplacer la loupe
+   d'Imprégnation/Famille, qui garde sa position d'origine. Les boutons de réponse eux-mêmes ont
+   déménagé DANS #intrus-prompt-card (juste sous la grille d'images, qu'ils remplacent comme repère
+   numéroté) — .intrus-answer-buttons-inline les recentre et les empêche de s'étirer sur toute la
+   largeur de l'écran comme le ferait .intrus-answer-buttons tout seul (display:flex + flex:1 sur
+   chaque bouton, voir plus haut). */
+.intrus-image-choice .loupe-progressive { top:4px; left:4px; bottom:auto; }
+/* v77 : #intrus-instruction perd son "font-size:1.2rem" en ligne dans le HTML (un style en ligne
+   l'aurait sinon toujours emporté sur la réduction mobile ci-dessous, quelle que soit la
+   spécificité du sélecteur — même défaut déjà rencontré et corrigé pour Imprégnation, voir
+   attachProgressiveLoupe) : la taille par défaut (desktop, ou mode "références intruses") est fixée
+   ici, la réduction mobile (mode "images intruses" uniquement) est définie plus bas et l'emporte
+   par spécificité (#id.classe.classe h2 > #id seul). */
+#intrus-instruction { font-size:1.2rem; }
+.intrus-answer-buttons-inline { max-width:420px; width:100%; margin:0 auto; }
+/* #intrus-quiz-grid passe en une seule colonne à TOUTE largeur d'écran (PC et mobile) quand la
+   question est en mode "images intruses" (classe posée/retirée par intrusShowQuestion) : la colonne
+   .answer-card (consigne, puis référence à retrouver) s'affiche alors sous .artwork-column (image +
+   boutons), plutôt qu'à côté — en mode "références intruses", .intrus-image-layout n'est jamais
+   posée, et la mise en page desktop à 2 colonnes reste inchangée. #intrus-prompt-card passe en
+   colonne flexible pour empiler la grille d'images ET les boutons de réponse (au lieu de les mettre
+   côte à côte, comportement par défaut de .artwork-card, partagé avec les autres exercices). */
+#intrus-quiz-grid.intrus-image-layout { grid-template-columns:1fr; }
+/* min-height:min(640px,72vh) (règle .artwork-card partagée, plus haut) était pensé pour UNE image
+   plein cadre ; ici la carte contient la grille d'images ET les boutons, plus compacts — sans ce
+   correctif, "justify-content:center" (idem .artwork-card) centrait ce contenu dans une boîte
+   restée artificiellement haute, avec un grand vide noir au-dessus et en dessous (visible aux
+   captures d'écran de vérification). min-height:auto + justify-content:flex-start font que le fond
+   noir épouse le contenu réel plutôt qu'un gabarit prévu pour un autre cas d'usage. */
+#intrus-quiz-grid.intrus-image-layout #intrus-prompt-card { flex-direction:column; gap:14px; min-height:auto; justify-content:flex-start; padding:18px; }
 /* Fond blanc fixe plutôt que var(--paper) : en exercice (.in-exercise), --paper prend la teinte
    sombre propre à chaque ambiance (vert, bleu, brun...), ce qui rendait ces boutons trop pâles /
    peu visibles selon le thème — signalé par Stéphane ( « mets les boutons 1 2 3 en blanc » ). */
@@ -630,7 +660,6 @@ body.lefty .quiz-grid .answer-card { order:1; }
 #imp-quiz-grid .answer-card h2 { order:0; }
 #imp-correction-details { order:1; }
 #imp-nav-row { order:2; }
-#imp-hub-row { order:3; }
 /* v65 (INTRUS item 3, document du 29 sept : « à la correction, la consigne disparaît, le bouton
    suivant passe en dessous de l'image ») : même mécanique que ci-dessus pour Imprégnation —
    .answer-card passe en colonne flexible pour pouvoir réordonner ses enfants via "order" ci-dessous
@@ -656,7 +685,6 @@ body.lefty .quiz-grid .answer-card { order:1; }
 #vf-verdict { order:1; }
 #vf-field-rows { order:2; }
 #vf-nav-row { order:3; }
-#vf-hub-row { order:4; }
 #vf-verdict { text-align:center; font-family:Arial,sans-serif; font-weight:700; font-size:1.1rem; margin:0 0 14px; }
 /* RECONSTITUTION (docx 29 sept, item 1 : « à la correction la consigne doit disparaître, le bouton
    suivant remonte sous l'image ») + item 4 (« tout bloquer sur une page, pas de scroll ») : même
@@ -670,7 +698,6 @@ body.lefty .quiz-grid .answer-card { order:1; }
 #recon-choices { order:1; }
 #recon-correction { display:contents; }
 #recon-next-button { order:2; }
-#recon-hub-row { order:3; }
 /* Item 3 : les rubriques supplémentaires (Date/Matériau/Dimensions/Lieu) apparaissent dans le
    bouton de réponse choisi lui-même — même style de grille que .correction-details ailleurs, mais
    sans répéter Auteur/Titre (déjà dans le texte du bouton juste au-dessus). */
@@ -691,7 +718,6 @@ body.lefty .quiz-grid .answer-card { order:1; }
 #famille-panel .answer-card h2 { order:0; flex-shrink:0; }
 #fam-step0 { order:1; }
 #fam-correction { order:1; }
-#fam-hub-row { order:2; flex-shrink:0; }
 #imp-correction-details { display:grid; grid-template-columns:max-content 1fr; column-gap:14px; row-gap:4px; align-items:baseline; }
 #imp-correction-details .correction-label { grid-column:1; font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; }
 #imp-correction-details .correction-value { grid-column:1/-1; font-size:1.1rem; font-weight:700; color:var(--ink); line-height:1.3; margin-bottom:14px; min-height:1.3em; opacity:0; transform:translateY(3px); transition:opacity .35s, transform .35s; }
@@ -1567,14 +1593,6 @@ body.has-other-works .correction-label { font-size:.76rem; }
   #intrus-next-button { order:1; }
   #intrus-choices { order:2; }
   #intrus-correction-details { order:3; }
-  /* Bug réel découvert en testant la clarification ci-dessous par capture d'écran (jamais visible
-     dans les vérifications précédentes, qui ne mesuraient que les positions relatives des éléments
-     déjà réordonnés, jamais l'ensemble de la page) : "Retour au menu des jeux"/"Voir la correction
-     complète" n'avait jamais reçu d'ordre explicite (contrairement à Imprégnation, où #imp-hub-row
-     en a un depuis le début) — resté à 0 par défaut, il remontait donc AVANT les boutons 1-2-3 et
-     la référence (order 2), aussi bien avant qu'après réponse. Corrigé en lui donnant le plus grand
-     ordre (4), pour qu'il reste toujours en dernier. */
-  #intrus-hub-row { order:4; }
   /* VRAI/FAUX item 2 : dès que la grille passe en une seule colonne, le bouton Valider/Suivant
      remonte juste sous le verdict (donc juste sous la consigne), avant la liste des rubriques —
      avec jusqu'à 6 rubriques affichées, il fallait sinon défiler toute la liste à chaque question
@@ -1591,26 +1609,19 @@ body.has-other-works .correction-label { font-size:.76rem; }
   #imp-quiz-grid .answer-card h2 { display:none; }
   #imp-correction-details .correction-label { font-size:.68rem; }
   #imp-correction-details .correction-value { font-size:.92rem; margin-bottom:6px; }
-  /* INTRUS — clarification orale de Stéphane après la livraison de la VERSION 68 : la consigne du
-     h2 ("Appuyer sur le bouton...") doit être REMPLACÉE par les boutons 1-2-3 eux-mêmes, pas juste
-     suivie par eux plus bas — sur mobile la consigne disparaît donc complètement (comme pour
-     Imprégnation/VRAI-FAUX ci-dessus), à tout moment (pas seulement à la correction), et les
-     boutons 1-2-3 remontent directement à sa place, sous l'image. #intrus-choices n'est rempli
-     avec cette structure (.correction-details + .intrus-answer-instruction + .intrus-answer-buttons)
-     qu'en mode « images intruses » — en mode « références intruses » il contient une liste
-     différente (.intrus-choice-list), non concernée ici et donc inchangée. Le paragraphe
-     d'instruction interne ("Appuie sur le bouton qui correspond...") redevient redondant une fois
-     que les boutons prennent visuellement la place de la consigne — masqué sur mobile pour gagner
-     de la place, comme demandé (« qu'on n'ait pas à scroller »). La référence à retrouver
-     (Auteur/Titre) est compactée avec le même resserrement que la correction plus bas ("façon
-     Famille, en petit"). */
-  #intrus-quiz-grid .answer-card h2 { display:none; }
-  #intrus-choices { display:flex; flex-direction:column; }
-  #intrus-choices .intrus-answer-buttons { order:0; margin-top:0; }
-  #intrus-choices .correction-details { order:1; }
-  #intrus-choices .intrus-answer-instruction { display:none; }
-  #intrus-choices .correction-details .correction-label { font-size:.68rem; }
-  #intrus-choices .correction-details .correction-value { font-size:.92rem; margin-bottom:4px; }
+  /* INTRUS (docx 29 sept, v77) : contrairement à Imprégnation/VRAI-FAUX ci-dessus, la consigne ne
+     disparaît plus jamais entièrement sur mobile — les boutons 1-2-3 ayant déménagé sous les images
+     (voir plus haut, hors media query : ce déplacement vaut maintenant pour PC ET mobile), la
+     consigne garde son utilité ; elle est seulement réduite (« en plus petit »), MOBILE SEULEMENT
+     (sur PC elle garde sa taille normale, demande explicite de Stéphane : « pour pc on laisse tel
+     que »). Elle continue de se masquer À LA CORRECTION comme les autres exercices, mais via la
+     même classe .hidden posée par intrusAnswer() (indépendante du viewport) — rien à faire ici pour
+     ce masquage. La référence à retrouver (Auteur/Titre, dans #intrus-choices) est en revanche
+     compactée dans un "cartouche" (fond + bordure), façon Famille, MOBILE SEULEMENT aussi. */
+  #intrus-quiz-grid.intrus-image-layout .answer-card h2 { font-size:.85rem; margin-bottom:8px; }
+  #intrus-quiz-grid.intrus-image-layout #intrus-choices .correction-details { background:var(--canvas); border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-top:8px; }
+  #intrus-quiz-grid.intrus-image-layout #intrus-choices .correction-details .correction-label { font-size:.68rem; }
+  #intrus-quiz-grid.intrus-image-layout #intrus-choices .correction-details .correction-value { font-size:.92rem; margin-bottom:4px; }
   #intrus-correction-details .correction-label { font-size:.68rem; }
   #intrus-correction-details .correction-value { font-size:.92rem; margin-bottom:6px; }
   /* RECONSTITUTION item 1 (docx 29 sept : « à la correction la consigne doit disparaître, le bouton
