@@ -243,7 +243,15 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .chrono-source-item { display:flex; flex-direction:column; gap:2px; }
 .chrono-tap-button { flex:1; min-height:0; min-width:0; display:flex; align-items:center; justify-content:center; border:0; background:none; padding:0; cursor:pointer; width:100%; }
 .chrono-tap-button img { width:100%; height:100%; object-fit:contain; background:#1b1c1e; border-radius:4px; display:block; }
-.chrono-loupe-zone { min-height:22px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+/* v82 (retour Stéphane : « accrocher la loupe au coin supérieur gauche extérieur des cadres, aucune
+   confusion possible avec une sélection par toucher, sinon elle flotte trop n'importe où — valable
+   pour tous les jeux ») : la bande en flux (au-dessus ou en dessous de l'image selon le jeu,
+   inconsistant d'un jeu à l'autre) devient un badge ancré au coin haut-gauche du cadre, comme la
+   loupe par défaut d'Imprégnation (voir .loupe-progressive plus bas, même coin désormais) — la case
+   (position:relative, posée par attachProgressiveLoupe) sert d'ancrage. Rester une case SŒUR du
+   bouton-image (jamais un descendant) continue de garantir qu'un tap sur la loupe ne déclenche
+   jamais la sélection dessous, quel que soit le chevauchement visuel. */
+.chrono-loupe-zone { position:absolute; top:4px; left:4px; z-index:4; }
 .chrono-loupe-zone .loupe-progressive { position:static; bottom:auto; left:auto; flex-direction:row; }
 .chrono-slot-num { position:absolute; top:4px; left:4px; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:.85rem; display:flex; align-items:center; justify-content:center; z-index:2; }
 .chrono-target-slot.wrong { border-color:var(--wrong); }
@@ -256,14 +264,16 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
    sélectionné/correct/faux, posé maintenant sur ce conteneur plutôt que sur l'ancien bouton unique. */
 .fam-image-cell { display:flex; flex-direction:column; gap:2px; }
 .fam-image-tap-button { flex:1; min-width:0; min-height:0; display:flex; align-items:center; justify-content:center; border:0; background:none; padding:0; cursor:pointer; width:100%; }
-.fam-image-loupe-zone { min-height:22px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+/* v82 : voir le commentaire sur .chrono-loupe-zone plus haut — même badge ancré au coin haut-gauche
+   du cadre, plutôt qu'une bande en flux. */
+.fam-image-loupe-zone { position:absolute; top:4px; left:4px; z-index:4; }
 .fam-image-loupe-zone .loupe-progressive { position:static; bottom:auto; left:auto; flex-direction:row; }
 .fam-image-tap-button:disabled { cursor:not-allowed; }
 .fam-image-cell img { width:100%; height:100%; object-fit:contain; background:#1b1c1e; border-radius:4px; display:block; }
 .fam-image-cell.selected { border-color:var(--accent); }
 /* Rouge explicite (pas la couleur d'ambiance variable) : un point de sélection net et identifiable
-   au premier coup d'œil, quelle que soit l'ambiance active — et bien à l'opposé de la loupe
-   (déplacée en bas à gauche, voir attachZoomHold) pour ne jamais prêter à confusion. */
+   au premier coup d'œil, quelle que soit l'ambiance active — et bien à l'opposé de la loupe (coin
+   haut-GAUCHE depuis v82, voir .loupe-progressive) pour ne jamais prêter à confusion. */
 .fam-image-cell.selected::after { content:attr(data-num); position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%; background:#d61f26; color:#fff; font-weight:700; font-size:1rem; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.4); }
 .fam-title-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
 .fam-title-row .fam-num-badge { flex:0 0 28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; font-family:Arial,sans-serif; font-weight:700; font-size:.9rem; display:flex; align-items:center; justify-content:center; }
@@ -281,11 +291,14 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .fam-image-cell.wrong { border-color:var(--wrong); }
 .fam-image-cell.right { border-color:var(--ok); }
 .fam-image-cell:disabled { cursor:not-allowed; }
-/* Loupe progressive partagée (Imprégnation, Intrus, Famille — voir attachProgressiveLoupe dans
-   app.js). En bas à GAUCHE, à l'opposé de toute pastille de sélection/numéro (toujours en haut,
-   voir .fam-image-cell.selected::after et .intrus-image-number) pour ne jamais s'y superposer ni
-   prêter à confusion au doigt sur petit écran. */
-.loupe-progressive { position:absolute; bottom:4px; left:4px; z-index:4; display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
+/* Loupe progressive partagée (Imprégnation, Intrus, Famille, Chronologie — voir
+   attachProgressiveLoupe dans app.js). v82 (retour Stéphane : « accrocher la loupe au coin
+   supérieur gauche extérieur des cadres [...] valable pour tous les jeux ») : coin HAUT-GAUCHE
+   partout désormais (auparavant en bas à gauche ici, mais au-dessus ou en dessous de l'image selon
+   le jeu pour Chrono/Famille/Intrus — voir leurs .xxx-loupe-zone respectives, repositionnées au même
+   coin). La pastille de sélection de Famille reste en haut à DROITE (.fam-image-cell.selected::after)
+   donc toujours à l'opposé, sans confusion possible. */
+.loupe-progressive { position:absolute; top:4px; left:4px; z-index:4; display:flex; flex-direction:column; align-items:flex-start; gap:2px; }
 .loupe-progressive-icons { display:flex; gap:4px; align-items:center; }
 .loupe-progressive-icon { border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; line-height:1; border:1px solid rgba(255,255,255,.65); touch-action:none; transition:filter .15s, opacity .15s, transform .15s; }
 .loupe-progressive-icon.lit { background:rgba(0,0,0,.72); color:#fff; filter:none; opacity:1; }
@@ -412,7 +425,10 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
    SŒUR du bouton (au-dessus de l'image), toutes deux dans la même cellule .intrus-image-choice —
    qui passe donc en colonne (zone loupe, puis bouton-image) plutôt qu'en simple centrage. */
 .intrus-image-choice { flex-direction:column; gap:4px; }
-.intrus-image-loupe-zone { min-height:22px; display:flex; align-items:center; justify-content:center; }
+/* v82 : voir le commentaire sur .chrono-loupe-zone plus haut — même badge ancré au coin haut-gauche
+   du cadre (Intrus l'avait mise au-dessus de l'image en v78, seul jeu à le faire), plutôt qu'une
+   bande en flux. */
+.intrus-image-loupe-zone { position:absolute; top:4px; left:4px; z-index:4; }
 .intrus-image-loupe-zone .loupe-progressive { position:static; bottom:auto; left:auto; flex-direction:row; }
 .intrus-image-tap-button { border:none; background:none; padding:0; margin:0; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:1; width:100%; min-width:0; min-height:0; }
 .intrus-image-tap-button:disabled { cursor:not-allowed; }
@@ -640,11 +656,25 @@ body.lefty .hamburger-menu { right:auto; left:16px; }
 .gc-game-hint { font-family:Arial,sans-serif; font-size:.78rem; color:var(--muted); margin:0 0 8px 28px; }
 
 .quiz-topbar { display:flex; justify-content:flex-end; gap:8px; margin-bottom:6px; }
-.hidden { display:none !important; }.quiz-reference { margin:0; font-family:Arial,sans-serif; font-size:.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }.progress-row { display:none; }.score-summary-highlight { color:#c0392b; font-weight:800; font-size:1rem; white-space:nowrap; }.progress-track { height:7px; overflow:hidden; margin:0 0 20px; background:#ddd7cd; border-radius:10px; }.progress-bar { height:100%; width:0; background:var(--accent); transition:width .25s; }
-/* v81 (docx 29 sept, INTRUS item 1 : « rendre plus discret le nombre de questions réussies, pas de
-   rouge, en blanc comme le reste ») : override par ID (plus spécifique que .score-summary-highlight
-   ci-dessus, partagé par les autres jeux qui ne sont pas concernés par cette demande). */
-#intrus-score-label { color:#fff; font-weight:600; font-size:.85rem; }
+.hidden { display:none !important; }.quiz-reference { margin:0; font-family:Arial,sans-serif; font-size:.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }.progress-row { display:none; }
+/* v83 (retour Stéphane : « certains jeux ont encore inscrit en rouge le score 0/0 réponse correcte.
+   Trop voyant et le rouge renvoie à une notion d'erreur. À mettre partout en blanc ») : cette classe
+   est partagée par les 6 jeux à score (#score-summary du Quiz, #recon-/#vf-/#fam-/#chrono-score-
+   label et #intrus-score-label) — seul Intrus avait été passé en blanc en v81 (voir son override
+   par ID juste en dessous, qui ne concerne plus que sa taille, plus discrète), les 5 autres
+   restaient rouges. Bug réel : le rouge, couleur des textes d'erreur ailleurs dans l'appli
+   (var(--wrong)), pouvait laisser croire à un score en échec même à 0/0 (avant toute réponse).
+   Le blanc fixe demandé littéralement est en fait dangereux ici : .progress-row (donc ce span)
+   est posé directement sur le fond du panneau d'exercice, qui suit l'ambiance choisie (var(--paper)/
+   --canvas) — or plusieurs ambiances ont un fond CLAIR (l'ambiance par défaut sans thème choisi,
+   Espace, Wedgwood), où un texte blanc fixe deviendrait invisible. On utilise donc var(--ink), la
+   couleur de texte que chaque ambiance définit déjà pour rester lisible sur son propre fond (clair
+   ou sombre) — cela retire le rouge "erreur" comme demandé, sans jamais disparaître selon le thème. */
+.score-summary-highlight { color:var(--ink); font-weight:800; font-size:1rem; white-space:nowrap; }.progress-track { height:7px; overflow:hidden; margin:0 0 20px; background:#ddd7cd; border-radius:10px; }.progress-bar { height:100%; width:0; background:var(--accent); transition:width .25s; }
+/* v81 (docx 29 sept, INTRUS item 1 : « rendre plus discret le nombre de questions réussies ») :
+   toujours plus petit/léger que les autres jeux — la couleur, elle, vient maintenant de la classe
+   partagée ci-dessus. */
+#intrus-score-label { font-weight:600; font-size:.85rem; }
 /* v81 (docx 29 sept, FAMILLE/RECONSTITUTION/VRAI-FAUX/CHRONOLOGIE, « même système ») : le texte
    "Exact"/"À réviser" disparaît, remplacé par ce petit carré coloré à côté du bouton Suivant/
    Valider — gris/transparent tant qu'il n'y a pas de réponse, vert ou rouge une fois validée (voir

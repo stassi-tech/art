@@ -7125,6 +7125,24 @@ function vfSameArtist(a, b) {
   if (bSurnom && bSurnom === aArtist) return true;
   return aArtist === bArtist;
 }
+// Bug réel signalé par Stéphane (« l'app pense que "huile sur bois" et "huile sur panneau de bois"
+// sont deux choses différentes et compte comme une erreur ») : le tirage de la « fausse » valeur
+// pour la rubrique Matériau (voir errorFields plus bas) ne vérifiait, comme pour l'artiste ci-dessus,
+// que l'égalité EXACTE des deux chaînes normalisées — deux formulations qui décrivent en réalité la
+// même technique (l'une plus précise que l'autre : « bois » ⊂ « panneau de bois ») passaient donc
+// pour une vraie substitution, alors qu'un joueur qui les juge équivalentes a parfaitement raison.
+// Retour de Stéphane : « comme dans quiz l'app doit se référer à des mots clés » — même principe de
+// comparaison par mots significatifs déjà utilisé pour les titres dans Intrus (voir intrusTitleWords
+// et INTRUS_STOPWORDS, plus bas dans ce fichier) : deux matériaux sont jugés « trop semblables pour
+// servir de piège » dès que tous les mots significatifs de la formulation la plus courte se
+// retrouvent dans l'autre.
+function vfSameMaterials(a, b) {
+  const wordsOf = (r) => new Set(intrusTitleWords(vfFieldValue(r, 'materials')));
+  const wa = wordsOf(a), wb = wordsOf(b);
+  if (!wa.size || !wb.size) return false;
+  const [smaller, larger] = wa.size <= wb.size ? [wa, wb] : [wb, wa];
+  return [...smaller].every((w) => larger.has(w));
+}
 
 let VF_SESSION = [], vfIndex = 0, vfScore = 0, vfAnswered = false, vfAudioOn = true, vfSelectedVoiceRef = null, vfTimers = [], vfFieldLabel = '';
 const vfTimer = createTimer('topbar-timer');
@@ -7213,16 +7231,19 @@ $('vf-start-button')?.addEventListener('click', async () => {
         // est concerné, puis Titre, Date, etc.) : on retrie après le tirage au sort aléatoire.
         errorFields.sort((a, b) => activeFields.findIndex((f) => f.key === a) - activeFields.findIndex((f) => f.key === b));
         errorFields.forEach((key) => {
-          // v82 (voir vfSameArtist ci-dessus) : pour la rubrique Auteur, on exclut aussi les lignes
-          // qui désignent en réalité le même artiste que la bonne réponse (même sous un nom écrit
-          // différemment) — sinon la « fausse » attribution proposée n'en est pas une. Dans tous les
-          // cas, on exclut aussi une ligne dont la valeur affichée serait identique (une fois
-          // normalisée) à la bonne réponse : ce ne serait alors pas une erreur détectable.
+          // v82 (voir vfSameArtist/vfSameMaterials ci-dessus) : pour la rubrique Auteur, on exclut
+          // aussi les lignes qui désignent en réalité le même artiste que la bonne réponse (même
+          // sous un nom écrit différemment) ; pour la rubrique Matériau, celles dont la formulation
+          // est trop proche pour constituer une vraie erreur repérable (« huile sur bois » vs
+          // « huile sur panneau de bois ») — sinon la « fausse » valeur proposée n'en est pas une.
+          // Dans tous les cas, on exclut aussi une ligne dont la valeur affichée serait identique
+          // (une fois normalisée) à la bonne réponse : ce ne serait alors pas une erreur détectable.
           const correctValueKey = keyName(vfFieldValue(correct, key));
           const others = pool.filter((r) => r !== correct
             && vfFieldValue(r, key)
             && keyName(vfFieldValue(r, key)) !== correctValueKey
-            && (key !== 'artist' || !vfSameArtist(r, correct)));
+            && (key !== 'artist' || !vfSameArtist(r, correct))
+            && (key !== 'materials' || !vfSameMaterials(r, correct)));
           if (others.length) {
             const swapped = others[Math.floor(Math.random() * others.length)];
             displayed[key] = vfFieldValue(swapped, key);
@@ -9177,7 +9198,17 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     let allRows = [];
     for (const art of arts) {
       for (const century of centuries) {
-        try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+        // v82 (retour Stéphane : « la voix dit encore tableau quand c'est une sculpture », exemple
+        // donné : le Mercure volant de Giambologna) : même bug déjà corrigé en v65 pour Famille
+        // (voir plus haut dans ce fichier) — Intrus ne posait jamais r.artType sur ses lignes, alors
+        // qu'artDesignation() (utilisée depuis cette session dans la voix de la mauvaise réponse, et
+        // dans son repli quand la colonne « Nature de l'objet » ne contient pas de mot-clé reconnu)
+        // en a besoin pour savoir qu'il s'agit d'une sculpture plutôt qu'un tableau.
+        try {
+          const rows = await fetchQuizRows(art, century);
+          rows.forEach((r) => { r.artType = art; });
+          allRows.push(...rows);
+        } catch (e) { /* fichier absent, ignoré */ }
       }
     }
     if (allRows.length < 3) { feedback.textContent = "Pas assez d'œuvres disponibles pour ce choix (3 minimum)."; return; }
