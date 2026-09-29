@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=210" />
+    <link rel="stylesheet" href="style.css?v=211" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1031,6 +1031,7 @@
               <button type="button" class="secondary-button" id="artist-list-mode-filtered">Liste par choix des critères</button>
             </div>
             <p class="modal-hint" id="artist-list-status">Chargement…</p>
+            <input type="text" id="artist-list-search" class="artist-list-search-input" placeholder="Rechercher un artiste ou une œuvre…" autocomplete="off" />
             <div class="artist-list-filters hidden" id="artist-list-filters">
               <select id="filter-nationalite"><option value="">Toutes nationalités</option></select>
               <select id="filter-art"><option value="">Tous arts</option></select>
@@ -1173,7 +1174,7 @@
                  pour rester visible sur LES DEUX écrans (couloir ET plan rapproché), pas seulement
                  sur le tout premier — utile puisque c'est justement de la version affichée PARTOUT
                  qu'on veut être sûr. -->
-            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 64</div>
+            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 67</div>
             <!-- Couloir : vue à l'échelle réelle, mur du fond en face, 2 piliers de premier plan.
                  v57 : plus de tourniquet à franchir ici (retiré, voir plus bas) — on peut
                  directement soit marcher sur le côté (#scale-checkpoint-floor-dot, pour choisir la
@@ -1729,6 +1730,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=292"></script>
+    <script src="app.js?v=295"></script>
   </body>
 </html>

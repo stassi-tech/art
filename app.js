@@ -816,11 +816,19 @@ $('pf-fields-clear')?.addEventListener('click', () => {
 // celui des exercices eux-mêmes : rien coché = tout accepté).
 function artistMatchesCurrentField(row) {
   const fields = readGlobalFieldDefaults();
-  // La colonne « Art(s) » a disparu du fichier maître (même restructuration que le correctif de
-  // la salle d'exposition) : on ne peut plus savoir ici si un artiste donné fait de la peinture,
-  // de la sculpture, ou les deux. Plutôt que d'exclure silencieusement tout le monde dès qu'un
-  // art précis est coché (bug réel repéré : plus aucun artiste ne passait ce filtre), on renonce
-  // à filtrer sur cette dimension — un artiste reste proposé quel que soit l'art coché.
+  // v65 (retour de Stéphane, document du 29 sept : « si on demande sculpture 16e au niveau de mon
+  // compte, les peintres font partie des choix ») : le commentaire ci-dessous expliquait pourquoi
+  // le filtre par art avait été désactivé ici (colonne « Art(s) » disparue du fichier maître à
+  // l'époque) — mais cette colonne est revenue depuis (elle est déjà utilisée avec succès par
+  // filteredArtistListRows, pour le filtre de la Liste des artistes elle-même) sans que cette
+  // fonction-ci, écrite avant son retour, n'ait été mise à jour pour s'en resservir. Résultat :
+  // un peintre pur restait proposé même en cochant seulement « sculpture », exactement comme
+  // rapporté. Même logique de correspondance que filteredArtistListRows (recherche de
+  // sous-chaîne dans la colonne brute, qui peut lister plusieurs arts séparés par des virgules).
+  if (fields.arts?.length) {
+    const rowArts = String(row['Art(s)'] || '');
+    if (!fields.arts.some((a) => rowArts.includes(a))) return false;
+  }
   const rowCenturies = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim());
   if (fields.centuries?.length && !rowCenturies.some((c) => fields.centuries.includes(c))) return false;
   if (fields.zones?.length) {
@@ -962,8 +970,12 @@ $('pf-validate-button')?.addEventListener('click', () => {
   // de seulement 500ms — elle était donc interrompue brutalement en plein milieu d'une pulsation,
   // ce qui donnait un effet de clignotement disgracieux plutôt qu'une confirmation nette. Retirée :
   // le changement de page lui-même sert déjà de confirmation visuelle suffisante.
-  // Valider depuis Mon compte (accès « par les menus ») active aussi le mode simplifié du tableau
-  // des exercices : plus de texte de présentation, juste la phrase de configuration en haut.
+  // Valider depuis Mon compte (accès « par les menus », donc aussi le parcours rapide une fois
+  // configuré) active aussi le mode simplifié du tableau des exercices : plus de texte de
+  // présentation, juste la phrase de configuration en haut. Ne PAS activer guidedTourActive ici en
+  // revanche (v65) : ce bouton n'est pas le vrai parcours guidé pas-à-pas, la règle du jeu + la
+  // voix sur la page d'attente doivent donc continuer à suivre "showExplanations"/"audioOn" tels
+  // que réglés dans cette même page Mon compte, pas être forcées.
   guidedModeActive = true;
   localStorage.setItem('guidedModeActive', 'true');
   showPanel('training-hub');
@@ -1110,20 +1122,21 @@ function populateReadyExplanation(prefix) {
   const el = $(`${prefix}-ready-explanation`);
   if (!el) return;
   const rules = EXERCISE_RULES[prefix];
-  // En parcours guidé, la règle du jeu doit toujours apparaître (et se dire à voix haute plus bas)
+  // En VRAI parcours guidé (guidedTourActive, pas guidedModeActive — voir le commentaire complet
+  // à sa déclaration), la règle du jeu doit toujours apparaître (et se dire à voix haute plus bas)
   // sur cette page d'attente, même si "showExplanations" a été désactivé par ailleurs (ex. via
   // « Effacer la sélection » dans Mon compte) — cette préférence ne doit régir que le hors-parcours
-  // guidé, exactement comme guidedModeActive force déjà la voix indépendamment de audioOn ci-dessous.
-  const show = !!rules && (guidedModeActive || getGlobalPrefs().showExplanations);
+  // guidé (dont le parcours rapide, même une fois configuré via « Valider mes paramètres »).
+  const show = !!rules && (guidedTourActive || getGlobalPrefs().showExplanations);
   el.classList.toggle('hidden', !show);
   if (show) el.textContent = rules.texte;
   // Retour de Stéphane : le bouton qui lance l'exercice répond parfois avec un peu de retard
   // (chargement des données) — plutôt que de laisser ce temps d'attente inoccupé, la voix lit
   // maintenant la règle du jeu affichée ci-dessus sur cette même page d'attente, exactement
   // comme elle lisait déjà l'objectif court de l'écran de configuration précédent (voir
-  // speakObjective). En parcours guidé la voix reste obligatoire (guidedModeActive, comme pour
-  // guidedSpeak) ; hors parcours guidé elle suit la préférence audioOn, comme partout ailleurs.
-  if (show && window.speechSynthesis && (guidedModeActive || getGlobalPrefs().audioOn)) {
+  // speakObjective). En VRAI parcours guidé la voix reste obligatoire (guidedTourActive) ; hors
+  // parcours guidé (dont le parcours rapide) elle suit la préférence audioOn, comme partout ailleurs.
+  if (show && window.speechSynthesis && (guidedTourActive || getGlobalPrefs().audioOn)) {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(rules.texte));
     u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
@@ -2770,6 +2783,19 @@ function renderCorrection(answer, question) {
   if (spokenParts.length) quizSpeak(spokenParts.join(' '));
 }
 let currentArtistWorksIndex = -1;
+// v65 (retour de Stéphane, document du 29 sept : « quand on est dans la liste, la flèche de
+// retour doit ramener à la page d'accueil de la liste et pas au menu général ») : la modale
+// modal-artist-list s'ouvre par-dessus n'importe quel panneau (menu-item-artistes, accessible
+// depuis partout) sans jamais passer par showPanel — elle ne pose donc AUCUNE halte dans
+// l'historique interne. Cliquer un artiste (openArtistWorksPage) ferme cette modale et appelle
+// showPanel('other-works'), qui lui POSE une halte, juste par-dessus celle du panneau qui était
+// affiché avant même l'ouverture de la modale. #global-back-button, qui ne connaît pas encore ce
+// cas particulier (voir les cas déjà traités pour Mon compte/parcours guidé un peu plus bas),
+// retombe alors sur history.back() — qui saute tout droit par-dessus la modale, jusqu'à ce
+// panneau d'avant, jamais jusqu'à la liste elle-même. On mémorise donc ici quel panneau était
+// actif juste avant d'entrer dans une fiche artiste, pour que la flèche de retour puisse y
+// revenir ET rouvrir la modale par-dessus, plutôt que de laisser history.back() deviner.
+let panelBeforeArtistList = null;
 // Galerie du bas : photos complémentaires (portrait de l'artiste, vue du lieu de conservation)
 // posées lors des corrections, quand ces colonnes existent dans le fichier. Cliquables, ouvrent la
 // même visionneuse plein écran que les vignettes d'œuvres.
@@ -5145,6 +5171,10 @@ function hideBottomGallery() {
 async function openArtistWorksPage(idx) {
   const row = artistListSortedRows[idx];
   if (!row) return;
+  // Ne mémoriser le panneau de départ qu'à la PREMIÈRE entrée dans une fiche artiste — les clics
+  // précédent/suivant (other-works-back-button/-next-button) rappellent aussi cette fonction alors
+  // qu'on est déjà sur 'other-works', ce qui écraserait sinon le bon panneau de départ.
+  if (currentPanelName !== 'other-works') panelBeforeArtistList = currentPanelName;
   currentArtistWorksIndex = idx;
   const artistName = [row['Prénom'], row['Patronyme']].filter(Boolean).join(' ').trim();
   const displayName = String(row['Surnom'] || '').trim() || artistName;
@@ -5175,8 +5205,16 @@ async function openArtistWorksPage(idx) {
       } catch (e) { /* fichier absent, ignoré */ }
     }
   }
+  // v65 (retour de Stéphane, document du 29 sept : « certaines pages de la liste sont vides. Ex
+  // Rien dans Bronzino. Problème des surnoms ? ») : ce filtre ne comparait que artistName
+  // (Prénom+Patronyme du fichier maître, ex. « Agnolo Bronzino ») au champ artist des fichiers de
+  // quiz — or ces fichiers utilisent souvent le surnom seul (ex. « Bronzino »), exactement le nom
+  // déjà retenu dans displayName ci-dessus pour l'affichage. Résultat : aucune ligne ne correspond
+  // dès qu'un artiste est connu par un surnom, la page reste vide alors que ses œuvres existent
+  // bel et bien dans les fichiers. On accepte donc aussi une correspondance sur le surnom seul.
+  const surnomKey = row['Surnom'] ? keyName(row['Surnom']) : '';
   const works = allRows
-    .filter((w) => keyName(w.artist) === keyName(artistName))
+    .filter((w) => { const wKey = keyName(w.artist); return wKey === keyName(artistName) || (surnomKey && wKey === surnomKey); })
     .sort((a, b) => {
       const yearA = yearsOf(a.date)[0]; const yearB = yearsOf(b.date)[0];
       if (yearA == null && yearB == null) return 0;
@@ -5328,6 +5366,10 @@ let artistListLoaded = false;
 let artistListRows = [];
 let artistListSort = { col: 'Patronyme', dir: 1 };
 let artistListFilters = { nationalite: '', art: '', siecle: '' };
+// v65 (document du 29 sept, LISTE item 2 : « créer une entrée dans la liste par saisie d'un nom ou
+// d'un titre ») : terme tapé dans la barre de recherche de la liste, s'applique EN PLUS du mode
+// (complète ou filtrée) — pas un mode à part — donc combinable avec les 3 menus filtre-par-choix.
+let artistListSearchTerm = '';
 let artistListMode = 'full'; // 'full' = liste complète non filtrée, 'filtered' = avec les 3 menus
 const ARTIST_LIST_COLS = [
   { key: 'Patronyme', label: 'Artiste' },
@@ -5354,15 +5396,50 @@ function formatArtistListName(row) {
   const prenomPart = prenom ? ` ${escapeHtml(prenom)}` : '';
   return `<strong>${escapeHtml(nom)}</strong>${prenomPart}`;
 }
+function artistRowNameKeys(row) {
+  const artistName = [row['Prénom'], row['Patronyme']].filter(Boolean).join(' ').trim();
+  const surnomKey = row['Surnom'] ? keyName(row['Surnom']) : '';
+  return { nameKey: keyName(artistName), surnomKey };
+}
+function titleMatchesForRow(row, term) {
+  // Recherche par titre d'œuvre : parcourt les fichiers de quiz déjà chargés (quizRowsResolvedCache
+  // — remplis en tâche de fond dès l'écran d'accueil par updateHomeStatsCounter, ou déjà consultés
+  // via une fiche artiste ouverte plus tôt dans la session) et regarde si l'un des titres des
+  // œuvres DE CET ARTISTE contient le terme tapé. Même logique de correspondance nom/surnom que
+  // openArtistWorksPage, pour rester cohérent avec « quelles œuvres s'affichent si je clique ».
+  const { nameKey, surnomKey } = artistRowNameKeys(row);
+  for (const rows of quizRowsResolvedCache.values()) {
+    for (const w of rows) {
+      const wKey = keyName(w.artist);
+      if (wKey === nameKey || (surnomKey && wKey === surnomKey)) {
+        if (keyName(w.title || '').includes(term)) return true;
+      }
+    }
+  }
+  return false;
+}
+function artistRowMatchesSearch(row, term) {
+  const { nameKey, surnomKey } = artistRowNameKeys(row);
+  const patronymeKey = keyName(row['Patronyme'] || '');
+  const prenomKey = keyName(row['Prénom'] || '');
+  if (nameKey.includes(term) || patronymeKey.includes(term) || prenomKey.includes(term)) return true;
+  if (surnomKey && surnomKey.includes(term)) return true;
+  return titleMatchesForRow(row, term);
+}
 function filteredArtistListRows() {
-  if (artistListMode === 'full') return artistListRows;
-  const { nationalite, art, siecle } = artistListFilters;
-  return artistListRows.filter((r) => {
-    if (nationalite && r['Nationalité'] !== nationalite) return false;
-    if (art && !String(r['Art(s)'] || '').includes(art)) return false;
-    if (siecle && !String(r['Siècle(s)'] || '').includes(siecle)) return false;
-    return true;
-  });
+  let rows = artistListRows;
+  if (artistListMode !== 'full') {
+    const { nationalite, art, siecle } = artistListFilters;
+    rows = rows.filter((r) => {
+      if (nationalite && r['Nationalité'] !== nationalite) return false;
+      if (art && !String(r['Art(s)'] || '').includes(art)) return false;
+      if (siecle && !String(r['Siècle(s)'] || '').includes(siecle)) return false;
+      return true;
+    });
+  }
+  const term = keyName(artistListSearchTerm.trim());
+  if (term) rows = rows.filter((r) => artistRowMatchesSearch(r, term));
+  return rows;
 }
 let artistListSortedRows = [];
 function artFormIcons(rawValue) {
@@ -5409,9 +5486,10 @@ function renderArtistListTable() {
     btn.addEventListener('click', () => openArtistWorksPage(Number(btn.dataset.idx)));
   });
   const status = $('artist-list-status');
-  const hasFilter = artistListMode === 'filtered' && (artistListFilters.nationalite || artistListFilters.art || artistListFilters.siecle);
-  status.textContent = hasFilter
-    ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant au filtre (sur ${artistListRows.length} au total).`
+  const hasMenuFilter = artistListMode === 'filtered' && (artistListFilters.nationalite || artistListFilters.art || artistListFilters.siecle);
+  const hasSearch = artistListSearchTerm.trim().length > 0;
+  status.textContent = (hasMenuFilter || hasSearch)
+    ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant${sorted.length > 1 ? 's' : ''} (sur ${artistListRows.length} au total).`
     : `${artistListRows.length} artistes référencés dans les quiz. Cliquez sur un nom pour voir ses œuvres.`;
 }
 function setArtistListMode(mode) {
@@ -5438,6 +5516,10 @@ function populateArtistListFilters() {
 $('filter-nationalite')?.addEventListener('change', (e) => { artistListFilters.nationalite = e.target.value; renderArtistListTable(); });
 $('filter-art')?.addEventListener('change', (e) => { artistListFilters.art = e.target.value; renderArtistListTable(); });
 $('filter-siecle')?.addEventListener('change', (e) => { artistListFilters.siecle = e.target.value; renderArtistListTable(); });
+// v65 (LISTE item 2) : barre de recherche par nom OU titre d'œuvre, combinable avec les menus
+// ci-dessus. 'input' (pas 'change') pour filtrer au fur et à mesure de la frappe, comme attendu
+// d'une barre de recherche.
+$('artist-list-search')?.addEventListener('input', (e) => { artistListSearchTerm = e.target.value; renderArtistListTable(); });
 async function loadArtistListIfNeeded() {
   if (artistListLoaded) return true;
   try {
@@ -5701,6 +5783,10 @@ document.addEventListener('click', (event) => {
 
 $('menu-item-artistes')?.addEventListener('click', async () => {
   closeHamburgerMenu();
+  // v65 : repartir sans recherche résiduelle d'une visite précédente de la liste — sinon un
+  // artiste pourrait sembler manquer alors qu'il est juste filtré par un texte oublié.
+  artistListSearchTerm = '';
+  if ($('artist-list-search')) $('artist-list-search').value = '';
   openModal('modal-artist-list');
   if (artistListLoaded) return;
   const status = $('artist-list-status');
@@ -5759,6 +5845,16 @@ $('global-back-button')?.addEventListener('click', () => {
     const steps = [...document.querySelectorAll('.gc-step')];
     const idx = steps.indexOf(activeGuidedStep);
     if (idx > 0) { steps.forEach((s, i) => s.classList.toggle('hidden', i !== idx - 1)); return; }
+  }
+  // v65 : même bug de fond que les 2 cas ci-dessus (une page qui ne pose pas sa propre halte dans
+  // l'historique, ici modal-artist-list — voir le commentaire complet sur panelBeforeArtistList) —
+  // depuis une fiche artiste (other-works-panel), on revient donc au panneau mémorisé AVANT
+  // d'entrer dans la liste, et on rouvre la modale par-dessus, plutôt que de laisser history.back()
+  // sauter tout droit jusqu'à ce panneau sans repasser par la liste.
+  if (!$('other-works-panel')?.classList.contains('hidden')) {
+    showPanel(panelBeforeArtistList || 'welcome');
+    openModal('modal-artist-list');
+    return;
   }
   history.back();
 });
@@ -7378,6 +7474,8 @@ function loadSavedGuidedConfig(name, savedConfigs) {
   loadedGuidedConfigName = name;
   guidedModeActive = true;
   localStorage.setItem('guidedModeActive', 'true');
+  guidedTourActive = true;
+  localStorage.setItem('guidedTourActive', 'true');
   showPanel('training-hub');
   updateExerciseSummaries();
   applyFieldLinkedAmbiance();
@@ -7462,6 +7560,19 @@ let loadedGuidedConfigName = '';
 // l'identique), jusqu'à ce que le joueur sorte vraiment vers le menu par les icônes (accès
 // confirmé). Mémorisé pour survivre à un rechargement de page en cours de partie.
 let guidedModeActive = localStorage.getItem('guidedModeActive') === 'true';
+// v65 (document du 29 sept, PARCOURS RAPIDE item 1 : « la voix redit la règle sur la page
+// mosaïque avant que le jeu commence, alors que la case "afficher les explications" est décochée
+// — ça ne devrait être obligatoire que dans le parcours guidé ») : guidedModeActive ci-dessus sert
+// à DEUX choses différentes qui n'ont plus de raison d'être liées : (1) simplifier l'affichage du
+// tableau des exercices (pas de texte d'intro, phrase de configuration en haut — voir plus bas),
+// et (2) rendre obligatoires le texte de règle + la voix sur la page d'attente (populateReadyExplanation),
+// même préférence "showExplanations" décochée. Le bouton « Valider mes paramètres » de Mon compte
+// (accès « par les menus », donc AUSSI le parcours rapide une fois configuré) active (1) — ce qui
+// est voulu — mais activait par la même occasion (2), ce qui ne devrait arriver que dans le
+// VRAI parcours guidé (l'assistant pas-à-pas gc-*, ou la reprise d'une configuration enregistrée).
+// guidedTourActive isole donc (2) : posé à true aux mêmes endroits que guidedModeActive SAUF au
+// bouton « Valider mes paramètres », remis à false avec guidedModeActive au vrai « accès rapide ».
+let guidedTourActive = localStorage.getItem('guidedTourActive') === 'true';
 function applyGamesFilterToHub() {
   let gg = {};
   try { gg = JSON.parse(localStorage.getItem('globalGamesDefaults') || '{}'); } catch (e) {}
@@ -7652,6 +7763,8 @@ $('open-training')?.addEventListener('click', () => {
   // joueur y règle ses choix (technique, esthétique, champ, rubrique, artiste) avant de valider.
   guidedModeActive = false;
   localStorage.removeItem('guidedModeActive');
+  guidedTourActive = false;
+  localStorage.removeItem('guidedTourActive');
   localStorage.removeItem('globalGamesDefaults');
   loadedGuidedConfigName = '';
   showPanel('profile');
@@ -7868,6 +7981,8 @@ $('gc-rubrique-finish')?.addEventListener('click', () => {
   localStorage.removeItem('globalGamesDefaults');
   guidedModeActive = true;
   localStorage.setItem('guidedModeActive', 'true');
+  guidedTourActive = true;
+  localStorage.setItem('guidedTourActive', 'true');
   showPanel('training-hub');
   updateExerciseSummaries();
   applyFieldLinkedAmbiance();
@@ -7884,6 +7999,8 @@ $('gc-start-button')?.addEventListener('click', () => {
   // joueur choisit lui-même, dans ce tableau réduit, par lequel commencer.
   guidedModeActive = true;
   localStorage.setItem('guidedModeActive', 'true');
+  guidedTourActive = true;
+  localStorage.setItem('guidedTourActive', 'true');
   showPanel('training-hub');
   updateExerciseSummaries();
   applyFieldLinkedAmbiance();
@@ -8593,6 +8710,14 @@ const DATA_CACHE_BUST = Date.now();
 // c'est ce qui rendait les boutons lents et capricieux : plusieurs téléchargements complets du
 // même gros fichier se disputaient la bande passante en même temps.
 const quizRowsCache = new Map();
+// v65 (document du 29 sept, LISTE item 2 : « créer une entrée dans la liste par saisie d'un nom
+// OU D'UN TITRE ») : miroir synchrone de quizRowsCache, rempli au fur et à mesure que chaque
+// fichier de quiz finit de charger. La recherche par titre dans la liste des artistes (plus bas,
+// titleMatchesForRow) doit pouvoir consulter les lignes déjà chargées SANS attendre une promesse
+// (elle est appelée depuis le rendu synchrone de la table) — la plupart du temps ces fichiers sont
+// déjà en cache de toute façon, updateHomeStatsCounter() les ayant tous préchargés en arrière-plan
+// dès l'écran d'accueil.
+const quizRowsResolvedCache = new Map();
 async function fetchQuizRows(art, century) {
   // Un seul fichier par (art, siècle) désormais : le filtrage par niveau se fait côté appli via
   // la colonne "Niveau" de chaque ligne (voir plus bas), plus de suffixe "-niveauX" dans l'URL.
@@ -8615,6 +8740,7 @@ async function fetchQuizRows(art, century) {
   quizRowsCache.set(cacheKey, promise);
   try {
     const cached = await promise;
+    quizRowsResolvedCache.set(cacheKey, cached);
     return [...cached]; // copie superficielle : chaque appelant peut trier/modifier son propre
     // tableau (ex. mélanger l'ordre des questions) sans jamais altérer le cache partagé par les
     // autres appels — seul le contenu (déjà téléchargé et lu) est réutilisé, pas la structure.
