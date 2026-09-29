@@ -1983,7 +1983,18 @@ function normaliseRows(rows) {
     const artistImageKey = findColumn(row, ["image de l artiste", 'portrait artiste', 'photo artiste']);
     // "image 1 du cycle" : nom de colonne du nouveau modèle (la 2e image, « image 2 du cycle »,
     // n'est pas encore exploitée par l'appli — récupérable plus tard si besoin).
-    const locationImageKey = findColumn(row, ['images du lieu', 'image du lieu', 'photo lieu', 'photo musee', 'photo musée']);
+    // v78 (retour de Stéphane : « j'ai mis dans la colonne H la photo de la façade, qui correspond
+    // au commentaire de la colonne G [Lieu] — elle n'apparaît pas, on n'en tient pas compte ») :
+    // contrairement à « image 1 du cycle » (colonne M de son fichier, qui elle est bien reconnue,
+    // voir cycleImageKey juste en dessous), aucune variante testée ici ne couvrait l'intitulé qu'il a
+    // employé pour cette colonne. On avait ajouté « image 1 du lieu », par symétrie avec « image 1 du
+    // cycle » — mais toujours sans effet pour l'œuvre « Cérès » (retour Stéphane 29/09 suivant :
+    // « je n'ai toujours pas l'image de la colonne H, image du sous lieu »). Il donne cette fois
+    // l'intitulé lui-même : ce n'est donc pas « lieu » mais bien « sous lieu » (voir sousLieuKey,
+    // juste plus bas — un champ TEXTE distinct, présent depuis la restructuration Ville/Lieu
+    // précis/Sous-lieu) qui figure dans le nom de sa colonne photo. On ajoute donc les variantes
+    // correspondantes, par la même symétrie que pour « cycle ».
+    const locationImageKey = findColumn(row, ['images du lieu', 'image du lieu', 'image 1 du lieu', 'images 1 du lieu', 'photo lieu', 'photo musee', 'photo musée', 'image du sous lieu', 'images du sous lieu', 'image 1 du sous lieu', 'images 1 du sous lieu', 'photo sous lieu', 'photo du sous lieu']);
     const cycleImageKey = findColumn(row, ['images du cycle', 'image 1 du cycle', 'image du cycle', 'photo cycle']);
     let artistImage = artistImageKey ? String(row[artistImageKey] || '').trim() : '';
     const locationImage = locationImageKey ? String(row[locationImageKey] || '').trim() : '';
@@ -2119,6 +2130,11 @@ function normaliseRows(rows) {
     // donc toujours chercher la ligne du fichier maître (plus seulement quand une des autres
     // colonnes manque).
     let bio = '';
+    // v79 (retour Stéphane : « la photo de l'artiste à gauche, la bio à droite, dans l'écran ») :
+    // légende du portrait (onglet Images, colonne « Légende 1 ») — voir loadArtistListIfNeeded,
+    // qui la fusionne dans masterRow sous "Légende de l'artiste", même mécanique que la photo
+    // elle-même juste au-dessus (artistImage).
+    let artistImageCaption = '';
     const masterRow = findArtistMasterRow(prenom, patronyme);
     if (masterRow) {
       if (!surnomFrKey && masterRow['Surnom']) surnomFr = String(masterRow['Surnom']).trim();
@@ -2127,6 +2143,7 @@ function normaliseRows(rows) {
       }
       if (!nationalityKey && masterRow['Nationalité']) nationality = String(masterRow['Nationalité']).trim();
       if (!artistImageKey && masterRow["Image de l'artiste"]) artistImage = String(masterRow["Image de l'artiste"]).trim();
+      if (masterRow["Légende de l'artiste"]) artistImageCaption = String(masterRow["Légende de l'artiste"]).trim();
       if (masterRow['Bio']) bio = String(masterRow['Bio']).trim();
     }
 
@@ -2134,7 +2151,7 @@ function normaliseRows(rows) {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, locationImage, cycleImage, bio,
+      artistImage, artistImageCaption, locationImage, cycleImage, bio,
       row: rowIndex + 2
     };
   }).filter((question) => question.image || question.artist || question.date || question.location || question.title);
@@ -2870,6 +2887,13 @@ function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
   const container = options.container || null; // mode 'solo' uniquement : la grille dont il faut masquer les autres cases pendant que celle-ci est agrandie
   const zoomFor = options.zoomFor || ((level) => 1 + level * 1.1); // facteur de zoom au palier où le zoom optique s'applique (voir panActive)
   const onLevelChange = options.onLevelChange || null;
+  // v78 (retour de Stéphane : « on essaie de garder la loupe, mais soit en dessous de ce cadre
+  // sensible, soit au-dessus, pour que toucher la loupe ne touche pas le cadre ») : par défaut, la
+  // loupe est ajoutée DANS cellEl lui-même (comportement historique, inchangé pour Imprégnation/
+  // Famille, qui ne passent jamais cette option). iconHost permet de la loger ailleurs — un élément
+  // FRÈRE de la zone cliquable plutôt qu'un DESCENDANT — pour qu'aucun tap sur la loupe ne puisse
+  // jamais atteindre un bouton de sélection qui l'engloberait (Intrus, voir intrusShowQuestion).
+  const iconHost = options.iconHost || null;
 
   cellEl.style.position = cellEl.style.position || 'relative';
   cellEl.style.overflow = 'hidden';
@@ -2878,7 +2902,7 @@ function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
 
   const wrap = document.createElement('span');
   wrap.className = 'loupe-progressive';
-  cellEl.appendChild(wrap);
+  (iconHost || cellEl).appendChild(wrap);
   const iconsRow = document.createElement('span');
   iconsRow.className = 'loupe-progressive-icons';
   wrap.appendChild(iconsRow);
@@ -5420,20 +5444,51 @@ function artistRowNameKeys(row) {
   const surnomKey = row['Surnom'] ? keyName(row['Surnom']) : '';
   return { nameKey: keyName(artistName), surnomKey };
 }
-function titleMatchesForRow(row, term) {
-  // Recherche par titre d'œuvre : parcourt les fichiers de quiz déjà chargés (quizRowsResolvedCache
-  // — remplis en tâche de fond dès l'écran d'accueil par updateHomeStatsCounter, ou déjà consultés
-  // via une fiche artiste ouverte plus tôt dans la session) et regarde si l'un des titres des
-  // œuvres DE CET ARTISTE contient le terme tapé. Même logique de correspondance nom/surnom que
-  // openArtistWorksPage, pour rester cohérent avec « quelles œuvres s'affichent si je clique ».
-  const { nameKey, surnomKey } = artistRowNameKeys(row);
+// v79 (retour Stéphane : « LISTE, impossible d'écrire dans le cartouche de recherche, ça bloque »,
+// après l'envoi des 14 fichiers ŒUVRES peinture/sculpture 14e-20e + fichier maître) : titleMatchesForRow
+// parcourait TOUT quizRowsResolvedCache (tous les fichiers déjà chargés, préchargés en tâche de fond
+// dès l'écran d'accueil) pour CHAQUE artiste de la liste, À CHAQUE frappe au clavier (pas de
+// limitation de fréquence sur l'écouteur 'input' juste plus bas) — un coût proportionnel à (nombre
+// d'artistes × nombre total d'œuvres dans tous les fichiers), qui restait discret avec quelques
+// fichiers de démonstration mais devient très lourd avec 14 fichiers complets : le fil principal du
+// navigateur reste occupé plusieurs secondes à chaque caractère tapé, ce qui bloque l'écriture et
+// déclenche l'alerte native du navigateur (« cette page ne répond plus »), avec son propre bouton
+// pour la fermer — pas un bouton de l'application. Deux correctifs : un index (artiste -> titres de
+// ses œuvres) est maintenant construit UNE SEULE FOIS (pas à chaque frappe), reconstruit seulement
+// si le cache de fichiers a grossi depuis — ramenant le coût par artiste au nombre de SES propres
+// œuvres, pas au total ; et l'écouteur 'input' (plus bas) est maintenant limité à une fois toutes les
+// 200ms de frappe continue, pour ne jamais recalculer toute la liste à chaque caractère.
+let titleSearchIndex = null;
+let titleSearchIndexCacheSize = -1;
+function buildTitleSearchIndexIfNeeded() {
+  if (titleSearchIndex && titleSearchIndexCacheSize === quizRowsResolvedCache.size) return titleSearchIndex;
+  const index = new Map();
   for (const rows of quizRowsResolvedCache.values()) {
     for (const w of rows) {
       const wKey = keyName(w.artist);
-      if (wKey === nameKey || (surnomKey && wKey === surnomKey)) {
-        if (keyName(w.title || '').includes(term)) return true;
-      }
+      if (!wKey) continue;
+      const titleKey = keyName(w.title || '');
+      if (!titleKey) continue;
+      if (!index.has(wKey)) index.set(wKey, []);
+      index.get(wKey).push(titleKey);
     }
+  }
+  titleSearchIndex = index;
+  titleSearchIndexCacheSize = quizRowsResolvedCache.size;
+  return index;
+}
+function titleMatchesForRow(row, term) {
+  // Recherche par titre d'œuvre : regarde si l'un des titres des œuvres DE CET ARTISTE (via l'index
+  // ci-dessus, construit à partir des fichiers déjà chargés) contient le terme tapé. Même logique de
+  // correspondance nom/surnom que openArtistWorksPage, pour rester cohérent avec « quelles œuvres
+  // s'affichent si je clique ».
+  const { nameKey, surnomKey } = artistRowNameKeys(row);
+  const index = buildTitleSearchIndexIfNeeded();
+  const nameTitles = index.get(nameKey);
+  if (nameTitles && nameTitles.some((k) => k.includes(term))) return true;
+  if (surnomKey) {
+    const surnomTitles = index.get(surnomKey);
+    if (surnomTitles && surnomTitles.some((k) => k.includes(term))) return true;
   }
   return false;
 }
@@ -5538,7 +5593,17 @@ $('filter-siecle')?.addEventListener('change', (e) => { artistListFilters.siecle
 // v65 (LISTE item 2) : barre de recherche par nom OU titre d'œuvre, combinable avec les menus
 // ci-dessus. 'input' (pas 'change') pour filtrer au fur et à mesure de la frappe, comme attendu
 // d'une barre de recherche.
-$('artist-list-search')?.addEventListener('input', (e) => { artistListSearchTerm = e.target.value; renderArtistListTable(); });
+// v79 (retour Stéphane : « impossible d'écrire dans le cartouche, ça bloque » — voir le commentaire
+// complet au-dessus de titleMatchesForRow) : le recalcul complet de la liste (recherche + tri +
+// reconstruction de tout le tableau HTML) est maintenant limité à une fois toutes les 200ms de
+// frappe continue, plutôt qu'à chaque caractère — la frappe elle-même (l'affichage du texte tapé
+// dans le champ) reste instantanée, gérée nativement par le navigateur, indépendamment de ce délai.
+let artistListSearchDebounceTimer = null;
+$('artist-list-search')?.addEventListener('input', (e) => {
+  const value = e.target.value;
+  clearTimeout(artistListSearchDebounceTimer);
+  artistListSearchDebounceTimer = setTimeout(() => { artistListSearchTerm = value; renderArtistListTable(); }, 200);
+});
 async function loadArtistListIfNeeded() {
   if (artistListLoaded) return true;
   try {
@@ -5559,14 +5624,23 @@ async function loadArtistListIfNeeded() {
     if (imagesSheet) {
       const imageRows = XLSX.utils.sheet_to_json(imagesSheet, { defval: '' });
       const photoByKey = new Map();
+      // v79 (retour Stéphane : « écran splitté en deux, la photo de l'artiste à gauche, la bio à
+      // droite, dans l'écran ») : la « Légende 1 » (colonne D de l'onglet Images, juste après
+      // « Photo 1 ») n'était encore lue nulle part — elle sert maintenant de légende sous le
+      // portrait dans ce nouvel écran (voir openImpArtistBio plus bas). Même jointure Prénom+
+      // Patronyme que pour la photo elle-même juste au-dessus.
+      const captionByKey = new Map();
       imageRows.forEach((r) => {
         const key = keyName(`${r['Prénom'] || ''} ${r['Patronyme'] || ''}`);
         if (key && r['Photo 1']) photoByKey.set(key, String(r['Photo 1']).trim());
+        if (key && r['Légende 1']) captionByKey.set(key, String(r['Légende 1']).trim());
       });
       rows.forEach((r) => {
         const key = keyName(`${r['Prénom'] || ''} ${r['Patronyme'] || ''}`);
         const photo = photoByKey.get(key);
         if (photo) r["Image de l'artiste"] = photo;
+        const caption = captionByKey.get(key);
+        if (caption) r["Légende de l'artiste"] = caption;
       });
     }
     // v76 (retour Stéphane 29/09 : « rendre le nom de l'artiste cliquable — portrait puis bio lue,
@@ -5824,6 +5898,10 @@ $('menu-item-artistes')?.addEventListener('click', async () => {
   closeHamburgerMenu();
   // v65 : repartir sans recherche résiduelle d'une visite précédente de la liste — sinon un
   // artiste pourrait sembler manquer alors qu'il est juste filtré par un texte oublié.
+  // v79 : on annule aussi un éventuel calcul de recherche encore en attente (voir le debounce de
+  // l'écouteur 'input' plus bas) — sinon il pourrait se déclencher après cette réouverture et
+  // réafficher un terme déjà effacé.
+  clearTimeout(artistListSearchDebounceTimer);
   artistListSearchTerm = '';
   if ($('artist-list-search')) $('artist-list-search').value = '';
   openModal('modal-artist-list');
@@ -5898,6 +5976,7 @@ $('global-back-button')?.addEventListener('click', () => {
   history.back();
 });
 
+
 // ============================================================
 // MODULE RECONSTITUTION — un détail très resserré (< 10 % de la surface) sert d'indice ; 3
 // références (artiste + titre) sont proposées. Même mécanique de correction que Intrus (référence
@@ -5921,7 +6000,7 @@ $('open-reconstitution-setup')?.addEventListener('click', () => {
   // d'empiler une entrée d'historique pour ce passage transitoire (sinon la flèche "précédent" du
   // navigateur, qui remplace le bouton "Retour au menu des jeux" retiré plus haut, ramènerait sur
   // cet écran de configuration au lieu du menu des jeux).
-  suppressHistoryPush = true; showPanel('reconstitution-setup'); suppressHistoryPush = false;
+  showPanel('reconstitution-setup');
   speakObjective('recon'); $('recon-start-button')?.click();
 });
 $('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
@@ -5939,7 +6018,7 @@ function showVfConfig() {
 $('open-vraifaux-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('vf');
   suppressSaveLastSelection = true;
-  suppressHistoryPush = true; showPanel('vraifaux-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
+  showPanel('vraifaux-setup'); // v77 : voir open-reconstitution-setup
   speakObjective('vf'); $('vf-start-button')?.click();
 });
 $('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
@@ -5950,13 +6029,24 @@ $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel();
 // (1re validation), puis doit retrouver le titre de chacune des 4 œuvres (2e validation).
 // Tout-ou-rien : 1 point seulement si artiste + les 4 titres sont exacts.
 // ============================================================
+// v78 (retour de Stéphane, voir plus bas dans fam-start-button) : les libellés « 3/4 en commun »
+// du panneau de configuration Famille annoncent toujours un partage moitié-moitié — faux avec
+// exactement 2 artistes choisis, où le partage réel est désormais décalé (4/5 en commun). Tenu à
+// jour à chaque ouverture du panneau pour ne jamais afficher un chiffre qui ne sera pas le bon.
+function famUpdateImagesLabels() {
+  const n = (readGlobalArtistDefaults().artists || []).length;
+  const sixLabel = $('fam-images-6-label'), eightLabel = $('fam-images-8-label');
+  if (sixLabel) sixLabel.textContent = n === 2 ? '6 images (4 en commun)' : '6 images (3 en commun)';
+  if (eightLabel) eightLabel.textContent = n === 2 ? '8 images (5 en commun)' : '8 images (4 en commun)';
+}
 function showFamConfig() {
-  showPanel('famille-setup'); populateFamVoices(); speakObjective('fam'); restoreLastSelection('famille-setup-panel');
+  showPanel('famille-setup'); populateFamVoices(); speakObjective('fam'); restoreLastSelection('famille-setup-panel'); famUpdateImagesLabels();
 }
 $('open-famille-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('fam');
   suppressSaveLastSelection = true;
-  suppressHistoryPush = true; showPanel('famille-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
+  showPanel('famille-setup'); // v77 : voir open-reconstitution-setup
+  famUpdateImagesLabels();
   speakObjective('fam'); $('fam-start-button')?.click();
 });
 $('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
@@ -5983,7 +6073,7 @@ function showChronoConfig() {
 $('open-chrono-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('chrono');
   suppressSaveLastSelection = true;
-  suppressHistoryPush = true; showPanel('chrono-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
+  showPanel('chrono-setup'); // v77 : voir open-reconstitution-setup
   speakObjective('chrono'); $('chrono-start-button')?.click();
 });
 $('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('chrono-setup'); });
@@ -6446,14 +6536,20 @@ $('fam-start-button')?.addEventListener('click', async () => {
     const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
     const count = countChoice === 'max' ? 40 : Number(countChoice);
     let imgCountChoice = Number(document.querySelector('input[name="fam-images"]:checked').value);
-    // Avec exactement 2 artistes choisis, le partage famille/intrus est toujours moitié-moitié
-    // (la moitié des images vient forcément de l'autre artiste, faute d'un 3e) — sur une grille de
-    // 4 images, ça donne 2 paires très reconnaissables d'un coup d'œil. On passe alors à 6 images
-    // pour que ce soit un peu moins immédiat, même si le partage reste 50/50 dans ce cas précis.
+    // Avec exactement 2 artistes choisis, l'autre artiste choisi est forcément la seule source
+    // d'œuvres intruses possible (faute d'un 3e) — sur une grille de 4 images, ça donne 2 paires
+    // très reconnaissables d'un coup d'œil. On passe alors à 6 images pour que ce soit un peu moins
+    // immédiat.
     const globalArtistsCount = (readGlobalArtistDefaults().artists || []).length;
     if (globalArtistsCount === 2 && imgCountChoice < 6) imgCountChoice = 6;
-    // La moitié des images ont le point commun (règle simple, quel que soit le nombre choisi).
-    const familySize = imgCountChoice / 2;
+    // v78 (retour de Stéphane : avec 2 artistes choisis — ex. Jean Goujon et Jean de Bologne — un
+    // partage 50/50 (4 œuvres de chacun) ne laisse aucune majorité : rien ne distingue à l'œil la
+    // « famille » du lot d'intrus, d'où des erreurs quand le joueur désigne le mauvais groupe de 4.
+    // On décale alors le partage de 2 en faveur de la famille (5-3 pour 8 images, 4-2 pour 6 images)
+    // — voir famUpdateImagesLabels, qui tient les libellés du panneau de configuration à jour de ce
+    // décalage. Avec 3 artistes ou plus, le partage reste la simple moitié (déjà naturellement
+    // majoritaire face à des intrus venant de plusieurs artistes différents).
+    const familySize = globalArtistsCount === 2 ? (imgCountChoice / 2) + 1 : imgCountChoice / 2;
     const distractorCount = imgCountChoice - familySize;
 
     const questions = [];
@@ -7543,7 +7639,7 @@ refreshSavedChoiceButton();
 $('open-quiz-setup')?.addEventListener('click', () => {
   applyGlobalDefaultsToQuiz();
   suppressSaveLastSelection = true;
-  suppressHistoryPush = true; showPanel('quiz-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
+  showPanel('quiz-setup'); // v77 : voir open-reconstitution-setup
   speakObjective('quiz'); $('launch-quiz-button')?.click();
 });
 $('load-saved-choice-button')?.addEventListener('click', () => {
@@ -8241,7 +8337,7 @@ function showImpConfig() {
 $('open-impregnation-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('imp');
   suppressSaveLastSelection = true;
-  suppressHistoryPush = true; showPanel('impregnation-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
+  showPanel('impregnation-setup'); // v77 : voir open-reconstitution-setup
   speakObjective('imp'); $('imp-start-button')?.click();
 });
 $('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
@@ -8484,17 +8580,34 @@ function impShowCurrent() {
   // la voix doit d'abord lire le commentaire, l'image n'apparaît que 3-4 secondes après, doucement »)
   // : la bascule d'image (Lieu/Ensemble) ne dépend plus du tout du rythme STAGGER du texte affiché —
   // elle est désormais programmée ici, au moment précis où la LECTURE du segment vocal qui la
-  // concerne commence (juste avant l'appel à impSpeak ci-dessous), avec un délai fixe de 3,5s. Le
-  // joueur entend donc toujours le commentaire *avant* de voir l'image qu'il décrit, jamais l'
-  // inverse. Chaque segment ne contient jamais plus d'un champ Ensemble/Lieu à la fois (chacun
-  // démarre toujours son propre segment, voir startsNewSegment plus haut).
+  // concerne commence (juste avant l'appel à impSpeak ci-dessous). Le joueur entend donc toujours le
+  // commentaire *avant* de voir l'image qu'il décrit, jamais l'inverse. Chaque segment ne contient
+  // jamais plus d'un champ Ensemble/Lieu à la fois (chacun démarre toujours son propre segment, voir
+  // startsNewSegment plus haut).
+  // v79 (retour Stéphane 29/09 : « l'image de Saint-Germain-l'Auxerrois arrive après le lieu de
+  // conservation, donc on a l'impression que c'est le musée du Louvre [...] il faudrait qu'elle
+  // arrive deux, trois secondes après le début de l'écriture et de la lecture de la rubrique
+  // ensemble — c'était mieux avant ») : le délai était fixé à 3,5s, mesuré depuis le DÉBUT du
+  // segment — mais un segment « Ensemble » court (texte bref) peut finir d'être lu, puis laisser les
+  // 2s de silence s'écouler, et voir le segment SUIVANT (« Lieu ») déjà commencé, en MOINS de 3,5s
+  // (durée minimale d'un segment ~1,6s + 2s de silence = 3,2s, déjà plus courte que le délai fixe).
+  // L'image d'Ensemble apparaissait donc parfois une fois « Lieu » déjà entamé, donnant
+  // l'impression qu'elle illustre le lieu de conservation plutôt que l'ensemble. Le délai est
+  // maintenant calculé à partir de la durée de lecture ESTIMÉE du segment lui-même (même formule que
+  // le filet de sécurité d'impSpeak juste au-dessus) : autour de 2 à 3s pour un segment de longueur
+  // normale, comme demandé, mais automatiquement raccourci pour un segment plus court, afin que
+  // l'image ne puisse plus jamais déborder sur le segment suivant.
   function impSpeakSegment(i) {
     if (i >= speechSegments.length) return;
     const segment = speechSegments[i];
     const text = segment.map((f) => f.spoken || f.value).join(' — ') || work.artist;
     const flowField = segment.find((f) => f.key === 'cycle' || f.key === 'location');
     const flowImage = flowField?.key === 'location' ? work.locationImage : flowField?.key === 'cycle' ? work.cycleImage : null;
-    if (flowImage) impTimers.push(setTimeout(() => impShowFlowImage(flowImage, flowField.label), 3500));
+    if (flowImage) {
+      const estimatedSegDurMs = Math.max(1200, (text.length / 13) * 1000) + 400;
+      const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
+      impTimers.push(setTimeout(() => impShowFlowImage(flowImage, flowField.label), flowDelayMs));
+    }
     impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), 2000)); });
   }
   if (speechSegments.length) impSpeakSegment(0); else impSpeak(work.artist);
@@ -8573,31 +8686,45 @@ function impShowFlowImage(url, label) {
   nextImg.onerror = runCrossfade; // n'empêche jamais la suite si l'image ne charge pas
   nextImg.src = src;
 }
-// v76 : ouvre le petit panneau dédié (voir #imp-artist-bio-panel dans index.html) avec le portrait
-// de l'artiste (s'il existe) et sa bio (si le fichier maître, onglet Bio, en fournit une pour lui) —
-// lue à voix haute dès l'ouverture, comme le reste de l'exercice. Interrompt la narration en cours
-// de l'œuvre (speechSynthesis.cancel(), déjà fait par impSpeak lui-même) plutôt que de la faire
-// jouer en même temps que la bio, ce qui serait incompréhensible à l'oreille.
+// v76 : ouvre un écran de bio avec le portrait de l'artiste (s'il existe) et sa bio (si le fichier
+// maître, onglet Bio, en fournit une pour lui) — lue à voix haute dès l'ouverture, comme le reste
+// de l'exercice. Interrompt la narration en cours de l'œuvre (speechSynthesis.cancel(), déjà fait
+// par impSpeak lui-même) plutôt que de la faire jouer en même temps que la bio, ce qui serait
+// incompréhensible à l'oreille.
+// v79 (retour Stéphane : « l'écran se divise en deux, la photo à gauche, la bio à droite — il faut
+// que ce soit vraiment DANS l'écran, qu'on ait l'impression que ça fait partie du même déroulé
+// d'image que les œuvres ») : #imp-bio-split remplace l'ancien #imp-artist-bio-panel (une fenêtre
+// par-dessus tout l'écran, hors de la figure) — il vit DANS la même figure que imp-stage-img et la
+// recouvre en position:absolute;inset:0 (voir le CSS), exactement comme le fait déjà la loupe en
+// mode "solo" (.loupe-solo-active) : le joueur reste dans le même cadre, comme si la bio faisait
+// partie du même déroulé que les photos du lieu/de l'ensemble. On coupe aussi le déroulé
+// automatique pendant que la bio est ouverte (impClearTimers) — sinon l'image du lieu/de l'ensemble
+// pourrait basculer PENDANT la lecture de la bio, invisible sous ce nouvel écran mais reprenant à
+// un moment incohérent une fois refermé.
 function openImpArtistBio(work) {
-  const portrait = $('imp-artist-bio-portrait');
+  impClearTimers();
+  const portrait = $('imp-bio-split-portrait');
   if (portrait) {
     if (work.artistImage) { portrait.src = imageSourceSized(work.artistImage, 700); portrait.classList.remove('hidden'); }
     else portrait.classList.add('hidden');
   }
-  const nameEl = $('imp-artist-bio-name');
+  // Légende du portrait (onglet Images, colonne « Légende 1 ») : petite mention façon cartel de
+  // musée sous la photo, absente si le fichier n'en fournit pas pour cet artiste.
+  const captionEl = $('imp-bio-split-caption');
+  if (captionEl) captionEl.textContent = work.artistImageCaption || '';
+  const nameEl = $('imp-bio-split-name');
   if (nameEl) nameEl.textContent = formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
   const bioText = work.bio || 'Aucune biographie n’est encore disponible pour cet artiste.';
-  const textEl = $('imp-artist-bio-text');
+  const textEl = $('imp-bio-split-text');
   if (textEl) textEl.textContent = bioText;
-  $('imp-artist-bio-panel')?.classList.remove('hidden');
+  $('imp-bio-split')?.classList.remove('hidden');
   if (work.bio) impSpeak(work.bio);
 }
 function closeImpArtistBio() {
-  $('imp-artist-bio-panel')?.classList.add('hidden');
+  $('imp-bio-split')?.classList.add('hidden');
   speechSynthesis.cancel();
 }
-$('imp-artist-bio-close')?.addEventListener('click', closeImpArtistBio);
-$('imp-artist-bio-panel')?.addEventListener('click', (e) => { if (e.target.id === 'imp-artist-bio-panel') closeImpArtistBio(); });
+$('imp-bio-split-close')?.addEventListener('click', closeImpArtistBio);
 
 // v77 (docx 29 sept : « enlever le bouton correction complète, trop compliqué ») : les 4 boutons
 // et leur texte partagé ont disparu de l'écran — showFullCorrection/FULL_CORRECTION_PANELS/
@@ -8634,7 +8761,7 @@ $('open-intrus-setup')?.addEventListener('click', () => {
   applyGlobalFieldDefaultsTo('intrus');
   suppressSaveLastSelection = true;
   applyDefaultAdvance('intrus-opt-autoadvance', 'intrus-opt-delay', 'intrus-delay-row');
-  suppressHistoryPush = true; showPanel('intrus-setup'); suppressHistoryPush = false; // v77 : voir open-reconstitution-setup
+  showPanel('intrus-setup'); // v77 : voir open-reconstitution-setup
   speakObjective('intrus'); $('intrus-start-button')?.click();
 });
 let returnToExercisePanel = null; // mémorise l'exercice en cours quand on consulte les scores depuis là
@@ -8853,46 +8980,40 @@ function intrusShowQuestion() {
     // maximum) plutôt que 3 vignettes uniformes — on retrouve un peu le sens des proportions
     // réelles entre les œuvres comparées, sans rendre la plus petite illisible.
     const sizes = relativeImageSizes(q.choices);
-    // Bug de confusion signalé par Stéphane : chaque image était à la fois la cible de la loupe
-    // ET le bouton de réponse — un tap visant la loupe pouvait valider une réponse par erreur, et
-    // inversement. Désormais l'image ne fait plus QUE zoomer (via la loupe progressive) ; répondre
-    // se fait via 3 boutons numérotés séparés, directement sous les images (v77 : auparavant plus
-    // bas dans la colonne de droite, avec une pastille numérotée par image pour les relier).
-    // v77 : la pastille numérotée disparaît (elle faisait doublon avec les boutons de réponse,
-    // désormais eux-mêmes numérotés et déplacés directement sous les images — voir plus bas) ; la
-    // loupe progressive prend sa place, en haut de chaque image plutôt qu'en bas (voir
-    // .intrus-image-choice .loupe-progressive dans style.css).
+    // v78 (retour de Stéphane : « avec à la fois les loupes et les boutons, c'est trop compliqué —
+    // ce sont les loupes qui nous ont induits en erreur ») : retour à l'ancien système, plus
+    // simple — on touche directement l'image pour la sélectionner (le "cadre sensible" est
+    // maintenant #intrus-image-tap-button, PAS le bouton numéroté séparé, retiré). Stéphane veut
+    // quand même garder la loupe, mais plus jamais superposée à ce cadre sensible (c'est ce
+    // chevauchement qui causait la confusion signalée) : elle vit maintenant dans
+    // .intrus-image-loupe-zone, une bande SŒUR du bouton — DANS la même cellule .intrus-image-choice
+    // (pour rester positionnée/agrandie avec elle en mode solo, voir applySolo plus haut) mais en
+    // dehors du bouton lui-même, donc jamais dans son aire de clic (voir attachProgressiveLoupe,
+    // option iconHost).
     promptCard.innerHTML = `<div class="intrus-image-choices">${q.choices.map((c, i) =>
-      `<button type="button" class="intrus-image-choice" data-index="${i}"><img src="${escapeHtml(imageSourceSized(c.image, 300))}" alt="" style="max-width:${sizes[i]}px;max-height:${sizes[i]}px;" /></button>`
-    ).join('')}</div>
-    <div class="intrus-answer-buttons intrus-answer-buttons-inline">${q.choices.map((c, i) =>
-      `<button type="button" class="intrus-answer-choice" data-index="${i}">${i + 1}</button>`
+      `<div class="intrus-image-choice" data-index="${i}">
+        <div class="intrus-image-loupe-zone"></div>
+        <button type="button" class="intrus-image-tap-button" data-index="${i}"><img src="${escapeHtml(imageSourceSized(c.image, 300))}" alt="" style="max-width:${sizes[i]}px;max-height:${sizes[i]}px;" /></button>
+      </div>`
     ).join('')}</div>`;
-    // La loupe passe l'image choisie en solo plein cadre par-dessus les deux autres (masquées) au
-    // palier 1, puis l'agrandit et la rend déplaçable comme dans Imprégnation au palier 2 —
-    // remplace l'ancienne approche par grid-column/grid-row (span), qui ne faisait que déplacer
-    // les deux autres images sans jamais les recouvrir, et rétrécissait au lieu d'agrandir au
-    // palier maximal.
+    promptCard.querySelectorAll('.intrus-image-tap-button').forEach((btn) => {
+      btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
+    });
     const intrusImageChoicesEl = promptCard.querySelector('.intrus-image-choices');
-    promptCard.querySelectorAll('.intrus-image-choice').forEach((btn) => {
-      attachProgressiveLoupe(btn, btn.querySelector('img'), {
+    promptCard.querySelectorAll('.intrus-image-choice').forEach((cell) => {
+      attachProgressiveLoupe(cell, cell.querySelector('img'), {
         mode: 'solo',
         maxLevel: 2,
         container: intrusImageChoicesEl,
+        iconHost: cell.querySelector('.intrus-image-loupe-zone'),
         zoomFor: (level) => (level === 2 ? 2.2 : 1),
       });
     });
-    // v77 : les boutons de réponse numérotés ont déménagé DANS #intrus-prompt-card (juste
-    // au-dessus), directement sous les images — #intrus-choices ne garde plus que la référence à
-    // retrouver (la phrase d'instruction "Appuie sur le bouton..." devient inutile : les boutons
-    // sont maintenant visuellement rattachés aux images qu'ils désignent).
+    // #intrus-choices ne garde que la référence à retrouver (inchangé).
     $('intrus-choices').innerHTML = `<div class="correction-details">
       <span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>
       <span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>
     </div>`;
-    promptCard.querySelectorAll('.intrus-answer-choice').forEach((btn) => {
-      btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
-    });
     intrusSpeak(`${q.correct.artist} — « ${q.correct.title} »`);
   } else {
     // Image en haut à gauche. Choix à droite : le plus souvent le nom du peintre seul (le cas
@@ -8948,7 +9069,13 @@ function intrusRenderConfusionStep(work, label, isCorrectStep, titleOnly = false
 // question, pas de classe hidden) : on ne le masque donc que ponctuellement dans le cas concerné, et
 // cette fonction le réaffiche explicitement à chaque fois qu'elle est appelée.
 function intrusRevealCorrectionControls() {
-  intrusRefreshCorrectionDetails();
+  // v78 (retour de Stéphane : « on n'a plus besoin de hauteur, titre de l'œuvre, etc. — tu remets
+  // tout dans l'écran ») : en mode images, la référence complète (auteur + titre) est déjà donnée
+  // dans l'écran (voir intrusRenderConfusionStep) — ce bloc, qui la répétait avec en plus les
+  // rubriques annexes (date/matériau/dimensions/lieu), ne s'affiche donc plus que pour le mode
+  // "références intruses" (inchangé, jamais concerné par ce doublon).
+  if (intrusMode === 'image') { $('intrus-correction-details').innerHTML = ''; }
+  else { intrusRefreshCorrectionDetails(); }
   $('intrus-correction').classList.remove('hidden');
   $('intrus-hub-row')?.classList.remove('hidden');
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
@@ -8971,7 +9098,10 @@ function intrusAnswer(chosenIndex) {
     // v65 : plus de garder/retirer les boutons existants — l'image (correcte ou, en cas d'erreur,
     // d'abord la mauvaise) est reconstruite en solo via intrusRenderConfusionStep, qui gère aussi
     // le bug de spécificité CSS qui rendait cette image quasi invisible (voir style.css).
-    document.querySelectorAll('#intrus-choices .intrus-answer-choice').forEach((btn) => { btn.disabled = true; });
+    // v78 : on répond désormais en touchant l'image elle-même, via .intrus-image-tap-button (voir
+    // intrusShowQuestion) — .intrus-image-choice est maintenant la cellule englobante (image +
+    // loupe), plus le bouton lui-même, donc plus ce qu'il faut désactiver ici.
+    document.querySelectorAll('#intrus-prompt-card .intrus-image-tap-button').forEach((btn) => { btn.disabled = true; });
     if (isCorrect) {
       intrusRenderConfusionStep(q.correct, 'Exact !', true);
     } else {
@@ -8983,7 +9113,12 @@ function intrusAnswer(chosenIndex) {
       // suivante avant d'avoir vu et entendu la bonne réponse, révélée à l'étape 2 ci-dessous.
       $('intrus-hub-row')?.classList.add('hidden');
     }
-    $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
+    // v78 (retour de Stéphane : « on voit deux fois exact ») : #intrus-choices contenait jusqu'ici,
+    // pendant la question, la référence-indice (Auteur/Titre) — et à la correction, on écrivait
+    // PAR-DESSUS un texte "Exact"/"À réviser" qui doublonnait le verdict déjà affiché DANS l'écran
+    // (via intrusRenderConfusionStep, juste au-dessus). On vide simplement ce bloc à la correction :
+    // tout (image + verdict + référence) reste dans l'écran, rien ne se répète en dessous.
+    $('intrus-choices').innerHTML = '';
     if (isCorrect) {
       intrusSpeak(`Exact. ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
     } else {

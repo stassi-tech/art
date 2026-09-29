@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=221" />
+    <link rel="stylesheet" href="style.css?v=222" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -289,6 +289,14 @@
           </div>
 
           <button type="button" class="home-mode-button quiz-final-button" id="open-quiz-setup"><span class="exercise-num">Autoévaluation</span><span class="label">Quiz final</span><span class="exercise-summary" id="quiz-hub-summary"></span></button>
+          <!-- v78 (retour de Stéphane : « je suis incapable de savoir si la version a changé, si
+               elle s'est déployée ou pas — tu marques le numéro de version dans un endroit discret
+               sur la page d'accueil ») : remplace le repère temporaire (bandeau rouge plein écran,
+               posé dans la salle d'exposition — voir plus haut, retiré) par une mention permanente
+               et discrète, ici sur l'écran d'accueil (le menu des jeux) — à mettre à jour à CHAQUE
+               livraison, en même temps que le numéro dans app.js et les paramètres ?v= de app.js et
+               style.css juste en dessous dans le <head>. -->
+          <p style="font-family:Arial,sans-serif;font-size:.7rem;color:var(--muted);text-align:right;opacity:.55;margin:14px 2px 0;">v79</p>
         </section>
 
         <section id="impregnation-setup-panel" class="welcome-panel hidden">
@@ -387,6 +395,26 @@
                      Ensemble), sans aucune action du joueur ; ce petit badge indique juste ce qui est
                      affiché à chaque changement. Voir imp-flow-label dans app.js (impShowCurrent). -->
                 <span id="imp-flow-label" class="imp-flow-label hidden"></span>
+                <!-- v79 (retour Stéphane : « quand le joueur clique sur le nom de l'artiste, l'écran
+                     se divise en deux, la photo de l'artiste à gauche, la bio à droite — il faut que
+                     ce soit vraiment DANS l'écran, qu'on ait l'impression que ça fait partie du même
+                     déroulé d'image que les œuvres ») : remplace l'ancien panneau séparé
+                     (#imp-artist-bio-panel, un cadre par-dessus TOUT l'écran, hors de la figure) —
+                     ce nouveau bloc vit DANS la figure elle-même (même figure que imp-stage-img),
+                     recouvre son contenu en position:absolute;inset:0 (même mécanique que
+                     .loupe-solo-active ailleurs dans l'appli) plutôt que d'ouvrir une fenêtre à
+                     part. Voir openImpArtistBio dans app.js. Masqué par défaut. -->
+                <div id="imp-bio-split" class="imp-bio-split hidden">
+                  <button type="button" class="modal-close-x" id="imp-bio-split-close" aria-label="Fermer" title="Fermer">✕</button>
+                  <div class="imp-bio-photo-col">
+                    <img id="imp-bio-split-portrait" class="imp-bio-split-portrait hidden" alt="" />
+                    <span id="imp-bio-split-caption" class="imp-bio-split-caption"></span>
+                  </div>
+                  <div class="imp-bio-text-col">
+                    <h3 id="imp-bio-split-name" style="font-family:Georgia,serif;margin:0 0 10px;"></h3>
+                    <p id="imp-bio-split-text" style="font-family:Arial,sans-serif;font-size:.92rem;line-height:1.5;white-space:pre-line;"></p>
+                  </div>
+                </div>
               </figure>
             </div>
             <section class="answer-card" aria-label="Rubriques">
@@ -398,18 +426,6 @@
               </div>
               <div class="correction-details" id="imp-correction-details"></div>
             </section>
-          </div>
-          <!-- v76 (retour Stéphane 29/09 : « puisqu'on a supprimé la tablette, rendre le nom de
-               l'artiste cliquable : portrait puis bio lue ») : petit panneau dédié plutôt que la
-               visionneuse partagée (#image-lightbox, alourdie par la vue « à l'échelle » du Quiz
-               final, sans rapport ici) — voir openImpArtistBio dans app.js. Masqué par défaut. -->
-          <div id="imp-artist-bio-panel" class="imp-artist-bio-panel hidden">
-            <div class="imp-artist-bio-card">
-              <button type="button" class="modal-close-x" id="imp-artist-bio-close" aria-label="Fermer" title="Fermer">✕</button>
-              <img id="imp-artist-bio-portrait" class="imp-artist-bio-portrait hidden" alt="" />
-              <h3 id="imp-artist-bio-name" style="font-family:Georgia,serif;margin:0 0 10px;"></h3>
-              <p id="imp-artist-bio-text" style="font-family:Arial,sans-serif;font-size:.92rem;line-height:1.5;color:var(--ink);white-space:pre-line;"></p>
-            </div>
           </div>
         </section>
 
@@ -606,7 +622,7 @@
             <section class="answer-card" aria-label="Choix">
               <!-- v76 (docx 29 sept, RECONSTITUTION) : id ajouté pour pouvoir la masquer à la
                    correction (item 1), comme pour les autres jeux. -->
-              <h2 id="recon-instruction" style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Cliquez sur la référence qui correspond à l'œuvre dont vous voyez un détail.</h2>
+              <h2 id="recon-instruction" style="font-family:Arial,sans-serif;font-weight:700;margin:0 0 16px;">Cliquez sur la référence qui correspond à l'œuvre dont vous voyez un détail.</h2>
               <div id="recon-choices"></div>
               <!-- v76 : #recon-correction-details a disparu — les rubriques supplémentaires
                    (item 3 : « les références apparaissent dans le bouton, pas en dessous, cela
@@ -1188,13 +1204,6 @@
                  clic sur une œuvre, voir enterScaleView/enterCheckpointCorridor dans app.js. Repère
                  de version et bouton de fermeture du musée (qui vivaient tous deux sur cette façade)
                  déplacés ci-dessous pour rester joignables. -->
-            <!-- REPÈRE TEMPORAIRE DE VERSION — à retirer une fois que Stéphane a confirmé qu'il
-                 teste bien la bonne version envoyée. Ne rien construire par-dessus. Posé ici,
-                 directement sous #lightbox-scale-view (pas dans #scale-checkpoint ni #scale-wall),
-                 pour rester visible sur LES DEUX écrans (couloir ET plan rapproché), pas seulement
-                 sur le tout premier — utile puisque c'est justement de la version affichée PARTOUT
-                 qu'on veut être sûr. -->
-            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 78</div>
             <!-- Couloir : vue à l'échelle réelle, mur du fond en face, 2 piliers de premier plan.
                  v57 : plus de tourniquet à franchir ici (retiré, voir plus bas) — on peut
                  directement soit marcher sur le côté (#scale-checkpoint-floor-dot, pour choisir la
@@ -1750,6 +1759,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=305"></script>
+    <script src="app.js?v=306"></script>
   </body>
 </html>
