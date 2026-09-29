@@ -8347,13 +8347,12 @@ function impShowCurrent() {
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
     { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },
-    { key: 'location', label: 'Lieu', value: cityFlag(work.ville) ? `${escapeHtml(work.location)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${cityFlag(work.ville)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
     // Nouvelle rubrique demandée par Stéphane : quand l'œuvre appartient à un ensemble plus vaste
     // (un cycle de fresques, un manuscrit...), le texte qui le décrit (déjà récupéré dans
     // work.cycle — jusqu'ici seulement glissé dans le titre via formatTitleWithCycle) s'affiche
-    // maintenant aussi comme sa propre ligne juste sous le lieu, et se lit à voix haute. Volontairement
-    // pas soumis à fieldOn/aux cases à cocher de rubriques : comme l'auteur et le titre, c'est une
-    // information contextuelle sur l'œuvre elle-même, pas un choix de ce qui est testé.
+    // maintenant aussi comme sa propre ligne, et se lit à voix haute. Volontairement pas soumis à
+    // fieldOn/aux cases à cocher de rubriques : comme l'auteur et le titre, c'est une information
+    // contextuelle sur l'œuvre elle-même, pas un choix de ce qui est testé.
     // v66 (docx 29 sept, item 3 : « la colonne ensemble apparaît quand on n'a demandé que la
     // rubrique artiste ») : Ensemble n'a pas de case à cocher dédiée (comme Auteur/Titre en ont
     // une) — le commentaire au-dessus disait la traiter « comme l'auteur et le titre », mais
@@ -8364,7 +8363,13 @@ function impShowCurrent() {
     // #imp-field-cycle) — la rubrique ne s'affiche donc désormais que quand AUCUNE rubrique
     // précise n'a été choisie (réglage par défaut « tout afficher ») ou en mode correction complète
     // (🔎), exactement comme un joueur qui n'a rien restreint continue de la voir.
+    // v74 (retour Stéphane 29/09 : « on voit le lieu avant qu'on précise que le bas-relief faisait
+    // partie de l'ensemble ») : Ensemble est déplacé AVANT Lieu (il était juste après) — on établit
+    // désormais d'abord le contexte plus large (l'ensemble dont l'œuvre fait partie) avant de dire
+    // où elle se trouve précisément, dans les deux sens (texte affiché, ordre des champs plus bas
+    // pour la voix et pour le déroulé d'images) plutôt que l'inverse.
     { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: (showFullCorrection || !anyFieldChecked) && !!work.cycle },
+    { key: 'location', label: 'Lieu', value: cityFlag(work.ville) ? `${escapeHtml(work.location)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${cityFlag(work.ville)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
   ].filter((f) => f.on);
 
   $('imp-correction-details').innerHTML = fields.map((f) =>
@@ -8376,18 +8381,18 @@ function impShowCurrent() {
   // jusqu'ici toute la référence était lue d'un seul bloc (un seul appel à la synthèse vocale, tout
   // enchaîné) — impossible d'y ménager un vrai silence. On découpe maintenant en segments lus l'un
   // après l'autre, avec 2 secondes de silence entre deux segments : un nouveau segment démarre
-  // juste avant "Lieu" quand il suit directement "Matériau" (les deux rubriques se suivent alors
-  // sans aucune pause, ce qui arrive dès que Dimensions est absente entre les deux), et TOUJOURS
-  // juste avant "Ensemble" (rubrique à part, ajoutée après la référence principale). Le reste de la
-  // référence continue de se lire d'une traite, comme avant. Le rythme d'affichage progressif du
-  // texte (STAGGER, juste plus bas) n'a pas besoin d'être synchronisé à ces pauses : il ne l'était
-  // déjà pas exactement avec la voix avant ce changement (durées de synthèse vocale variables).
+  // TOUJOURS juste avant "Ensemble" (rubrique à part), et aussi juste avant "Lieu" quand il suit
+  // directement "Matériau" OU "Ensemble" (v74 : Ensemble précède désormais Lieu, voir plus haut —
+  // ce test couvre donc les deux cas, selon qu'Ensemble existe ou non pour l'œuvre affichée). Le
+  // reste de la référence continue de se lire d'une traite, comme avant. Le rythme d'affichage
+  // progressif du texte (STAGGER, juste plus bas) n'a pas besoin d'être synchronisé à ces pauses :
+  // il ne l'était déjà pas exactement avec la voix avant ce changement (durées de synthèse variables).
   currentSpeechNationality = work.nationality || '';
   const speechSegments = [];
   let currentSpeechSegment = [];
   fields.forEach((f, i) => {
     const prev = fields[i - 1];
-    const startsNewSegment = f.key === 'cycle' || (f.key === 'location' && prev?.key === 'materiaux');
+    const startsNewSegment = f.key === 'cycle' || (f.key === 'location' && (prev?.key === 'materiaux' || prev?.key === 'cycle'));
     if (startsNewSegment && currentSpeechSegment.length) { speechSegments.push(currentSpeechSegment); currentSpeechSegment = []; }
     currentSpeechSegment.push(f);
   });
@@ -8400,19 +8405,33 @@ function impShowCurrent() {
   if (speechSegments.length) impSpeakSegment(0); else impSpeak(work.artist);
 
   const STAGGER = impDelayMs * 0.5;
+  // v74 : le fondu au noir (impShowFlowImage) prend 400ms — si Ensemble ET Lieu ont chacun leur
+  // propre photo, ils sont désormais adjacents (voir le réordonnancement plus haut) et leurs
+  // créneaux STAGGER (200ms d'écart par défaut) se chevaucheraient sinon en pleine bascule. On
+  // calcule donc une file d'attente séparée pour les bascules d'image (nextFlowSwapAt), qui ne
+  // démarre jamais avant le créneau naturel du champ mais respecte toujours un écart minimal par
+  // rapport à la bascule précédente — la révélation du TEXTE, elle, garde son rythme STAGGER
+  // habituel, inchangé.
+  let nextFlowSwapAt = 0;
+  const FLOW_SWAP_GAP = 450;
   fields.forEach((f, i) => {
+    const textDelay = 400 + i * STAGGER;
     impTimers.push(setTimeout(() => {
       const el = $(`imp-val-${f.key}`);
       if (el) {
         if (f.key === 'dimensions' || f.key === 'title' || f.key === 'artist' || f.key === 'location') el.innerHTML = f.value; else el.textContent = f.value;
         el.classList.add('written');
       }
-      // v73 : déroulé fluide (voir plus haut) — bascule l'image de la case exactement quand son
-      // texte apparaît, jamais avant ni après ; ne revient pas en arrière ensuite (l'œuvre suivante
-      // repart de zéro via la remise à zéro du badge en tête de fonction).
-      if (f.key === 'location' && work.locationImage) impShowFlowImage(work.locationImage, 'Lieu');
-      else if (f.key === 'cycle' && work.cycleImage) impShowFlowImage(work.cycleImage, 'Ensemble');
-    }, 400 + i * STAGGER));
+    }, textDelay));
+    // v73 : déroulé fluide (voir plus haut) — bascule l'image de la case au fil de la référence,
+    // jamais avant que son propre texte n'apparaisse ; ne revient pas en arrière ensuite (l'œuvre
+    // suivante repart de zéro via la remise à zéro du badge en tête de fonction).
+    const flowImage = f.key === 'location' ? work.locationImage : f.key === 'cycle' ? work.cycleImage : null;
+    if (flowImage) {
+      const swapAt = Math.max(textDelay, nextFlowSwapAt);
+      nextFlowSwapAt = swapAt + FLOW_SWAP_GAP;
+      impTimers.push(setTimeout(() => impShowFlowImage(flowImage, f.label), swapAt));
+    }
   });
 
 }
@@ -8420,19 +8439,33 @@ function impShowCurrent() {
 // de l'ensemble/cycle, avec un badge indiquant laquelle — la loupe progressive existante reste
 // active sur cette nouvelle image (repartant à zéro, sans hériter du zoom de l'image précédente),
 // mais rien d'autre n'exige d'action du joueur : la bascule elle-même est entièrement automatique.
+// v74 (retour Stéphane 29/09 : « pas de saut, il faut un fondu enchaîné ou un fondu au noir ») :
+// l'image ne change plus d'un coup — elle s'efface d'abord vers le fond déjà presque noir de la
+// case (#1b1c1e, voir .artwork-card), puis la nouvelle image apparaît. Un vrai fondu ENCHAÎNÉ
+// (fondu croisé entre les deux images) demanderait deux <img> superposées ; ce fondu au noir, sur
+// la même balise, est plus simple et fiable pour un gain visuel très proche ici.
 function impShowFlowImage(url, label) {
-  $('imp-stage-img').src = imageSourceSized(url, 900);
+  const img = $('imp-stage-img');
   const labelEl = $('imp-flow-label');
-  if (labelEl) {
-    labelEl.textContent = label;
-    labelEl.classList.remove('hidden');
-    // Force un reflow avant d'ajouter la classe d'opacité, pour garantir le fondu (sinon le
-    // navigateur peut regrouper les deux changements de classe dans la même image et sauter
-    // directement à l'état final, sans transition visible).
-    void labelEl.offsetWidth;
-    labelEl.classList.add('imp-flow-visible');
-  }
-  impLoupe?.setLevel(0);
+  // Le badge s'efface en même temps que l'image (sa propre transition d'opacité, déjà en CSS,
+  // s'en charge dès qu'on lui retire cette classe) plutôt que de disparaître d'un coup ou de rester
+  // affiché avec l'ancien texte pendant que l'image change déjà.
+  labelEl?.classList.remove('imp-flow-visible');
+  img.classList.add('imp-flow-fading');
+  impTimers.push(setTimeout(() => {
+    img.src = imageSourceSized(url, 900);
+    img.classList.remove('imp-flow-fading');
+    impLoupe?.setLevel(0);
+    if (labelEl) {
+      labelEl.textContent = label;
+      labelEl.classList.remove('hidden');
+      // Force un reflow avant d'ajouter la classe d'opacité, pour garantir le fondu (sinon le
+      // navigateur peut regrouper les deux changements de classe dans la même image et sauter
+      // directement à l'état final, sans transition visible).
+      void labelEl.offsetWidth;
+      labelEl.classList.add('imp-flow-visible');
+    }
+  }, 400)); // doit correspondre à la durée de transition de #imp-stage-img en CSS
 }
 
 // Bouton texte partagé (bandeau du haut, à côté de « Retour au menu des exercices ») plutôt que

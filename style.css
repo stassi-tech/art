@@ -594,6 +594,11 @@ body.lefty .quiz-grid .answer-card { order:1; }
    d'œuvre déjà présent ailleurs à l'écran ; apparition en fondu, sans action requise du joueur. */
 .imp-flow-label { position:absolute; left:12px; top:10px; color:#fff; background:rgba(20,20,20,.65); padding:5px 12px; border-radius:20px; font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; opacity:0; transition:opacity .5s; }
 .imp-flow-label.imp-flow-visible { opacity:1; }
+/* v74 (retour Stéphane 29/09 : « pas de saut, un fondu au noir ») : #imp-stage-img seulement (pas
+   toutes les .artwork-card img des autres jeux) — voir impShowFlowImage dans app.js, qui ajoute
+   puis retire cette classe juste avant/après avoir changé la source de l'image. */
+#imp-stage-img { transition:opacity .4s ease; }
+#imp-stage-img.imp-flow-fading { opacity:0; }
 .answer-card { padding:30px 26px; }.answer-card h2 { margin-bottom:7px; font-size:1.3rem; }.answer-card form { display:grid; gap:14px; }.answer-card label { display:grid; gap:6px; font-family:Arial,sans-serif; font-size:.82rem; font-weight:700; }.answer-card input { width:100%; padding:10px; color:#2b2620; border:1px solid #cfc8bc; border-radius:4px; background:#fff; transition:background .15s, border-color .15s; }.answer-card input:focus { outline:2px solid #df947f; border-color:var(--accent); }.answer-card input:disabled { background:#f4f1eb; }
 #impregnation-panel .answer-card { display:flex; flex-direction:column; min-height:100%; }
 /* Ordre par défaut (grand écran, image et texte côte à côte) : titre, références, boutons de
