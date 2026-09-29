@@ -7771,7 +7771,22 @@ function reconAnswer(chosenIndex) {
   const inlineDetailsHtml = '<div class="correction-details recon-inline-details"></div>';
   $('recon-choices').querySelectorAll('.intrus-choice-btn').forEach((btn, i) => {
     btn.disabled = true;
-    if (i === chosenIndex) btn.insertAdjacentHTML('beforeend', inlineDetailsHtml);
+    if (i === chosenIndex) {
+      // v83 (retour Stéphane : bug signalé avec copie d'écran — en cas de mauvaise réponse, le
+      // bouton gardait le texte du choix ERRONÉ (ex. « Jean Bologne, Florence triomphant de Pise »)
+      // tandis que reconRefreshCorrectionDetails() y injecte juste après les rubriques (Date/
+      // Matériau/Dimensions/Lieu) de la bonne œuvre — ici celles de Jean Goujon. Résultat : ces
+      // rubriques semblaient décrire l'artiste erroné affiché au-dessus, alors qu'elles décrivent
+      // en réalité la bonne réponse. La voix (spokenReconWrong, juste plus bas) dit d'ailleurs déjà
+      // « Ce détail appartenait en réalité à... » suivi de la bonne référence — l'écran doit
+      // afficher la même chose : quand c'est faux, on remplace donc Auteur/Titre affichés dans ce
+      // bouton par ceux de la bonne œuvre (q.correct), pour que tout le contenu du bouton (texte +
+      // rubriques ajoutées ensuite) parle bien de la même référence.
+      if (!isCorrect) {
+        btn.innerHTML = `<strong>${escapeHtml(q.correct.artist)}</strong><br><em>« ${escapeHtml(q.correct.title || q.correct.date || 'œuvre non titrée')} »</em>`;
+      }
+      btn.insertAdjacentHTML('beforeend', inlineDetailsHtml);
+    }
     else btn.remove();
   });
   // v81/v82 (docx 29 sept + retour Stéphane) : carré coloré agrandi, "Exact."/"Faux" écrit dedans.
