@@ -594,11 +594,31 @@ body.lefty .quiz-grid .answer-card { order:1; }
    d'œuvre déjà présent ailleurs à l'écran ; apparition en fondu, sans action requise du joueur. */
 .imp-flow-label { position:absolute; left:12px; top:10px; color:#fff; background:rgba(20,20,20,.65); padding:5px 12px; border-radius:20px; font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; opacity:0; transition:opacity .5s; }
 .imp-flow-label.imp-flow-visible { opacity:1; }
-/* v74 (retour Stéphane 29/09 : « pas de saut, un fondu au noir ») : #imp-stage-img seulement (pas
-   toutes les .artwork-card img des autres jeux) — voir impShowFlowImage dans app.js, qui ajoute
-   puis retire cette classe juste avant/après avoir changé la source de l'image. */
-#imp-stage-img { transition:opacity .4s ease; }
+/* v76 (retour Stéphane 29/09 : « le fondu va trop vite, il faut que ce soit lent — c'est un exercice
+   de relaxation, rien ne doit être heurté. On peut essayer un fondu enchaîné ») : remplace le fondu
+   au noir (v74, une seule balise qui passait par opacité 0) par un vrai fondu ENCHAÎNÉ — deux <img>
+   superposées (#imp-stage-img-next par-dessus #imp-stage-img, voir index.html), qui se dissolvent
+   l'une dans l'autre : jamais un instant où l'on ne voit ni l'une ni l'autre, sur une durée bien plus
+   longue (2s, contre .4s avant) pour une sensation posée plutôt que heurtée. Voir impShowFlowImage
+   dans app.js : #imp-stage-img-next reçoit la nouvelle image et s'affiche par-dessus en fondu ; une
+   fois le fondu terminé, #imp-stage-img reprend cette même image et #imp-stage-img-next redevient
+   invisible, prête pour la bascule suivante. */
+#imp-stage-img { transition:opacity 2s ease; }
 #imp-stage-img.imp-flow-fading { opacity:0; }
+#imp-stage-img-next { position:absolute; inset:0; margin:auto; opacity:0; transition:opacity 2s ease; pointer-events:none; }
+#imp-stage-img-next.imp-flow-next-visible { opacity:1; }
+/* v76 (retour Stéphane 29/09 : « rendre le nom de l'artiste cliquable — portrait puis bio lue ») :
+   petit panneau dédié (pas la visionneuse partagée #image-lightbox, alourdie par la vue « à
+   l'échelle » du Quiz final, sans rapport ici) — voir openImpArtistBio dans app.js. Le bouton de
+   fermeture a son propre style ici plutôt que de dépendre de .modal-close-x (qui ne s'affiche que
+   sous body.config-popup-mode, un contexte différent de celui-ci). */
+.imp-artist-bio-panel { position:fixed; inset:0; z-index:300; background:rgba(10,10,10,.75); display:flex; align-items:center; justify-content:center; padding:20px; }
+.imp-artist-bio-card { position:relative; max-width:560px; width:100%; max-height:84vh; overflow-y:auto; background:var(--paper); border-radius:10px; padding:32px 28px; box-shadow:0 20px 50px rgba(0,0,0,.35); }
+.imp-artist-bio-portrait { display:block; max-width:100%; max-height:280px; object-fit:contain; margin:0 auto 18px; border-radius:6px; }
+#imp-artist-bio-close { display:flex; position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--paper); border:1px solid var(--border); color:var(--ink); font-size:1rem; align-items:center; justify-content:center; cursor:pointer; z-index:5; box-shadow:0 1px 4px rgba(0,0,0,.15); }
+#imp-artist-bio-close:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); }
+.imp-artist-name-button { background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; font-weight:inherit; cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:3px; }
+.imp-artist-name-button:hover { color:var(--accent); }
 .answer-card { padding:30px 26px; }.answer-card h2 { margin-bottom:7px; font-size:1.3rem; }.answer-card form { display:grid; gap:14px; }.answer-card label { display:grid; gap:6px; font-family:Arial,sans-serif; font-size:.82rem; font-weight:700; }.answer-card input { width:100%; padding:10px; color:#2b2620; border:1px solid #cfc8bc; border-radius:4px; background:#fff; transition:background .15s, border-color .15s; }.answer-card input:focus { outline:2px solid #df947f; border-color:var(--accent); }.answer-card input:disabled { background:#f4f1eb; }
 #impregnation-panel .answer-card { display:flex; flex-direction:column; min-height:100%; }
 /* Ordre par défaut (grand écran, image et texte côte à côte) : titre, références, boutons de
@@ -638,6 +658,40 @@ body.lefty .quiz-grid .answer-card { order:1; }
 #vf-nav-row { order:3; }
 #vf-hub-row { order:4; }
 #vf-verdict { text-align:center; font-family:Arial,sans-serif; font-weight:700; font-size:1.1rem; margin:0 0 14px; }
+/* RECONSTITUTION (docx 29 sept, item 1 : « à la correction la consigne doit disparaître, le bouton
+   suivant remonte sous l'image ») + item 4 (« tout bloquer sur une page, pas de scroll ») : même
+   mécanique de réordonnancement que VF/Intrus/Imprégnation ci-dessus. #recon-correction passe en
+   "display:contents" (comme #intrus-correction) pour que son seul enfant (#recon-next-button)
+   participe directement à cet ordre — il n'y a plus de bloc de correction séparé à l'intérieur
+   (voir item 3 plus bas : les rubriques supplémentaires sont désormais injectées DANS le bouton de
+   réponse choisi, dans #recon-choices, pas dans un conteneur à part). */
+#recon-quiz-grid .answer-card { display:flex; flex-direction:column; }
+#recon-quiz-grid .answer-card h2 { order:0; }
+#recon-choices { order:1; }
+#recon-correction { display:contents; }
+#recon-next-button { order:2; }
+#recon-hub-row { order:3; }
+/* Item 3 : les rubriques supplémentaires (Date/Matériau/Dimensions/Lieu) apparaissent dans le
+   bouton de réponse choisi lui-même — même style de grille que .correction-details ailleurs, mais
+   sans répéter Auteur/Titre (déjà dans le texte du bouton juste au-dessus). */
+.recon-inline-details .correction-label { grid-column:1; font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; }
+.recon-inline-details .correction-value { grid-column:1/-1; font-size:1.05rem; font-weight:700; color:var(--ink); line-height:1.3; margin-bottom:14px; }
+/* v76 (retour Stéphane 29/09 : « sur Famille, le bouton de menu des jeux ne répond pas sur PC, il
+   fonctionne sur mobile ») : FAMILLE était le seul des 5 jeux à n'avoir JAMAIS reçu ce traitement —
+   sans "display:flex" sur .answer-card, le "margin-top:auto" posé sur #fam-hub-row (index.html)
+   n'avait strictement aucun effet (cette propriété n'agit qu'en contexte flex/grid), ce qui pouvait
+   laisser le pied de page mal positionné selon la hauteur exacte du contenu déjà affiché — jamais
+   reproduit tel quel dans nos tests automatisés (voir test_v76_famille), mais corrigé par précaution
+   avec exactement le même traitement que les 4 autres jeux. #fam-quiz-grid .answer-card garde en
+   plus overflow-y:auto : la grille parente (.quiz-grid) a overflow:hidden (pour ses coins arrondis),
+   qui aurait sinon simplement fait disparaître silencieusement tout contenu dépassant la hauteur de
+   la rangée — avec ce défilement interne de secours, un tel dépassement resterait accessible en
+   faisant défiler la colonne de droite, plutôt que de rendre le bouton invisible ET inatteignable. */
+#famille-panel .answer-card { display:flex; flex-direction:column; overflow-y:auto; }
+#famille-panel .answer-card h2 { order:0; flex-shrink:0; }
+#fam-step0 { order:1; }
+#fam-correction { order:1; }
+#fam-hub-row { order:2; flex-shrink:0; }
 #imp-correction-details { display:grid; grid-template-columns:max-content 1fr; column-gap:14px; row-gap:4px; align-items:baseline; }
 #imp-correction-details .correction-label { grid-column:1; font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; }
 #imp-correction-details .correction-value { grid-column:1/-1; font-size:1.1rem; font-weight:700; color:var(--ink); line-height:1.3; margin-bottom:14px; min-height:1.3em; opacity:0; transform:translateY(3px); transition:opacity .35s, transform .35s; }
@@ -1559,6 +1613,21 @@ body.has-other-works .correction-label { font-size:.76rem; }
   #intrus-choices .correction-details .correction-value { font-size:.92rem; margin-bottom:4px; }
   #intrus-correction-details .correction-label { font-size:.68rem; }
   #intrus-correction-details .correction-value { font-size:.92rem; margin-bottom:6px; }
+  /* RECONSTITUTION item 1 (docx 29 sept : « à la correction la consigne doit disparaître, le bouton
+     suivant remonte sous l'image ») : la consigne (h2) se masque déjà à la correction quelle que
+     soit la largeur d'écran (via la classe .hidden ajoutée par reconAnswer() en JS, indépendante du
+     viewport) — rien à faire ici pour elle. Ce qui ne concerne QUE le mobile (comme pour Intrus/VF/
+     Imprégnation ci-dessus, où l'image passe au-dessus du texte en une seule colonne dès 1024px) :
+     le bouton "Suivant" doit remonter AVANT la liste des choix (qui reste affichée, désactivée, avec
+     le verdict et les rubriques supplémentaires) pour ne plus avoir à défiler jusqu'en bas — d'où son
+     ordre abaissé sous celui de #recon-choices, alors qu'ils gardent l'ordre inverse (1 puis 2) sur
+     grand écran où la question ne se pose pas (image et texte côte à côte). Item 3 : les rubriques
+     supplémentaires dans le bouton choisi sont compactées au même resserrement que partout ailleurs
+     (« façon Famille, en petit »). */
+  #recon-next-button { order:0; }
+  #recon-choices { order:1; }
+  .recon-inline-details .correction-label { font-size:.68rem; }
+  .recon-inline-details .correction-value { font-size:.92rem; margin-bottom:4px; }
 }
 
 @media (max-width:640px) {

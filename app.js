@@ -2114,23 +2114,27 @@ function normaliseRows(rows) {
     // les récupère donc ici par une jointure sur Prénom+Patronyme — uniquement pour les champs
     // absents de la ligne elle-même, ce qui laisse les anciens fichiers (pas encore convertis, qui
     // portent encore ces colonnes inline) parfaitement inchangés.
-    if (!surnomFrKey || !surnomOrigKey || !naissanceKey || !mortKey || !nationalityKey || !artistImageKey) {
-      const masterRow = findArtistMasterRow(prenom, patronyme);
-      if (masterRow) {
-        if (!surnomFrKey && masterRow['Surnom']) surnomFr = String(masterRow['Surnom']).trim();
-        if (!naissanceKey && !mortKey && masterRow['Année de naissance'] && masterRow['Année de mort']) {
-          artistDates = `${masterRow['Année de naissance']}-${masterRow['Année de mort']}`;
-        }
-        if (!nationalityKey && masterRow['Nationalité']) nationality = String(masterRow['Nationalité']).trim();
-        if (!artistImageKey && masterRow["Image de l'artiste"]) artistImage = String(masterRow["Image de l'artiste"]).trim();
+    // v76 : la bio (onglet « Bio » du fichier maître) ne vit jamais dans le fichier ŒUVRES
+    // lui-même — contrairement aux autres champs ci-dessus, pas de clé "bioKey" à vérifier, on va
+    // donc toujours chercher la ligne du fichier maître (plus seulement quand une des autres
+    // colonnes manque).
+    let bio = '';
+    const masterRow = findArtistMasterRow(prenom, patronyme);
+    if (masterRow) {
+      if (!surnomFrKey && masterRow['Surnom']) surnomFr = String(masterRow['Surnom']).trim();
+      if (!naissanceKey && !mortKey && masterRow['Année de naissance'] && masterRow['Année de mort']) {
+        artistDates = `${masterRow['Année de naissance']}-${masterRow['Année de mort']}`;
       }
+      if (!nationalityKey && masterRow['Nationalité']) nationality = String(masterRow['Nationalité']).trim();
+      if (!artistImageKey && masterRow["Image de l'artiste"]) artistImage = String(masterRow["Image de l'artiste"]).trim();
+      if (masterRow['Bio']) bio = String(masterRow['Bio']).trim();
     }
 
     return {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, locationImage, cycleImage,
+      artistImage, locationImage, cycleImage, bio,
       row: rowIndex + 2
     };
   }).filter((question) => question.image || question.artist || question.date || question.location || question.title);
@@ -3006,7 +3010,16 @@ function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
   });
 
   imgEl.style.transformOrigin = 'center center';
-  imgEl.style.transition = 'transform .18s ease-out';
+  // v76 : bug réel découvert en testant le ralentissement du fondu enchaîné d'Imprégnation (item 1,
+  // docx 29 sept) — "transition" est une propriété UNIQUE : cette affectation en ligne (posée ici
+  // pour le zoom/déplacement de la loupe, sur #imp-stage-img entre autres) écrasait ENTIÈREMENT la
+  // règle "transition:opacity 2s ease" du fichier CSS pour ce même élément (le style en ligne
+  // l'emporte toujours sur une feuille de style, quel que soit l'ordre) — l'opacité changeait donc
+  // alors instantanément, sans aucun fondu, malgré la règle CSS qui semblait pourtant correcte :
+  // c'est very probablement la vraie cause du fondu « heurté » signalé, dès la version précédente
+  // (v74) déjà. Inoffensif d'ajouter l'opacité ici pour toutes les cases (Intrus/Famille compris) :
+  // seule la case d'Imprégnation bascule un jour sa classe d'opacité.
+  imgEl.style.transition = 'transform .18s ease-out, opacity 2s ease';
   // Le déplacement (pointermove/up) s'écoute sur le DOCUMENT plutôt que sur l'image elle-même —
   // seul le pointerdown de départ est pris sur l'image. Avec setPointerCapture posé sur l'image,
   // un navigateur peut, dans certaines conditions, arrêter de délivrer les événements suivants dès
@@ -3035,7 +3048,7 @@ function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
   const stopDrag = () => {
     if (!dragging) return;
     dragging = false;
-    imgEl.style.transition = 'transform .18s ease-out';
+    imgEl.style.transition = 'transform .18s ease-out, opacity 2s ease';
     if (panActive()) imgEl.style.cursor = 'grab';
   };
   document.addEventListener('pointerup', stopDrag);
@@ -5559,6 +5572,26 @@ async function loadArtistListIfNeeded() {
         if (photo) r["Image de l'artiste"] = photo;
       });
     }
+    // v76 (retour Stéphane 29/09 : « rendre le nom de l'artiste cliquable — portrait puis bio lue,
+    // la bio à la première personne écrite dans le fichier maître, onglet Bio ») : même mécanique de
+    // jointure par Prénom+Patronyme que l'onglet « Images » juste au-dessus. Nom de colonne flexible
+    // (findColumn) tant que Stéphane n'a pas confirmé l'intitulé exact de sa colonne dans cet onglet.
+    const bioSheet = book.Sheets['Bio'];
+    if (bioSheet) {
+      const bioRows = XLSX.utils.sheet_to_json(bioSheet, { defval: '' });
+      const bioByKey = new Map();
+      bioRows.forEach((r) => {
+        const key = keyName(`${r['Prénom'] || ''} ${r['Patronyme'] || ''}`);
+        const bioCol = findColumn(r, ['bio', 'biographie', 'texte', 'bilan de ma vie', 'bilan de vie']);
+        const text = bioCol ? String(r[bioCol] || '').trim() : '';
+        if (key && text) bioByKey.set(key, text);
+      });
+      rows.forEach((r) => {
+        const key = keyName(`${r['Prénom'] || ''} ${r['Patronyme'] || ''}`);
+        const bio = bioByKey.get(key);
+        if (bio) r['Bio'] = bio;
+      });
+    }
     artistListRows = rows;
     artistListLoaded = true;
     return true;
@@ -7266,6 +7299,9 @@ function reconShowQuestion() {
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
   updateTopBannerScore(`${reconCorrectCount}/${reconIndex}`);
   $('recon-progress-bar').style.width = `${(reconIndex / RECON_SESSION.length) * 100}%`;
+  // v76 (docx 29 sept, item 1) : la consigne réapparaît pour chaque nouvelle question (elle est
+  // masquée à la correction, voir reconAnswer ci-dessous).
+  $('recon-instruction')?.classList.remove('hidden');
   $('recon-correction').classList.add('hidden');
   $('recon-choices').classList.remove('hidden');
 
@@ -7281,18 +7317,23 @@ function reconShowQuestion() {
 
 // Même principe que pour Intrus : fonction isolée, sans effet de bord, pour rafraîchir la
 // correction affichée dès qu'on active/désactive la correction complète.
+// v76 (docx 29 sept, item 3 : « les références apparaissent dans le bouton, pas en dessous, cela
+// fait répétition ») : Auteur/Titre restent uniquement dans le texte déjà présent sur le bouton
+// choisi (voir reconAnswer) — on n'injecte ici QUE les rubriques supplémentaires (Date/Matériau/
+// Dimensions/Lieu), dans le conteneur .recon-inline-details ajouté DANS ce bouton (le bloc séparé
+// #recon-correction-details a disparu du DOM).
 function reconRefreshCorrectionDetails() {
   const q = RECON_SESSION[reconIndex];
   if (!q) return;
+  const el = document.querySelector('#recon-choices .recon-inline-details');
+  if (!el) return;
   const dims = formatDimensionsDisplay(q.correct);
   const detailsParts = [];
-  detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
-  detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>«\u00a0${escapeHtml(q.correct.title)}\u00a0»</em></span>`);
   if (showFullCorrection || reconExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
   if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if ((showFullCorrection || reconExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
   if (showFullCorrection || reconExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
-  $('recon-correction-details').innerHTML = detailsParts.join('');
+  el.innerHTML = detailsParts.join('');
 }
 function reconAnswer(chosenIndex) {
   if (reconAnswered) return;
@@ -7303,9 +7344,14 @@ function reconAnswer(chosenIndex) {
   if (isCorrect) reconCorrectCount++;
 
   const verdictHtml = ` <span class="intrus-verdict" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? '— Exact' : '— À réviser'}</span>`;
+  // v76 (docx 29 sept, item 3) : les rubriques supplémentaires (Date/Matériau/Dimensions/Lieu)
+  // s'affichent désormais DANS ce bouton même, via ce conteneur — plus de bloc séparé qui répétait
+  // Auteur/Titre une seconde fois (ces deux-là restent uniquement dans le texte déjà présent
+  // ci-dessus sur le bouton). Rempli juste après par reconRefreshCorrectionDetails().
+  const inlineDetailsHtml = '<div class="correction-details recon-inline-details"></div>';
   $('recon-choices').querySelectorAll('.intrus-choice-btn').forEach((btn, i) => {
     btn.disabled = true;
-    if (i === chosenIndex) btn.insertAdjacentHTML('beforeend', verdictHtml);
+    if (i === chosenIndex) btn.insertAdjacentHTML('beforeend', verdictHtml + inlineDetailsHtml);
     else btn.remove();
   });
 
@@ -7317,6 +7363,9 @@ function reconAnswer(chosenIndex) {
   // cohérent avec ce que fait déjà Chronologie.
   reconSpeak(`${isCorrect ? 'Exact' : 'À réviser'}. ${spokenFullReference(q.correct, showFullCorrection ? null : reconExtraFields)}`);
   reconRefreshCorrectionDetails();
+  // v76 (docx 29 sept, item 1 : « à la correction la consigne doit disparaître ») : même principe
+  // déjà appliqué à Intrus/VF/Impregnation.
+  $('recon-instruction')?.classList.add('hidden');
   $('recon-correction').classList.remove('hidden');
   $('recon-score-label').textContent = `${reconCorrectCount} / ${reconIndex + 1} réponse${reconCorrectCount > 1 ? 's' : ''} correcte${reconCorrectCount > 1 ? 's' : ''}`;
   updateTopBannerScore(`${reconCorrectCount}/${reconIndex + 1}`);
@@ -8206,6 +8255,13 @@ function impSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_un
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
 let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impFieldLabel = '';
+// v76 : horodatage (Date.now()) jusqu'auquel une bascule d'image de case (Lieu/Ensemble) est déjà
+// « réservée » par la précédente — garantit qu'on ne lance jamais un second fondu enchaîné avant que
+// le précédent soit terminé, quelle que soit la vitesse de la voix (remis à zéro à chaque nouvelle
+// œuvre, voir impShowCurrent). Remplace nextFlowSwapAt/FLOW_SWAP_GAP (v74, basé sur le rythme
+// STAGGER du texte) : la bascule est désormais programmée depuis le début de lecture du segment
+// vocal concerné (voir impSpeakSegment), pas depuis ce rythme.
+let impFlowBusyUntil = 0;
 const impTimer = createTimer('topbar-timer');
 
 function impClearTimers() { impTimers.forEach(clearTimeout); impTimers = []; }
@@ -8331,6 +8387,9 @@ function impShowCurrent() {
   // (imp-flow-label) indiquant ce qui est affiché. On repart systématiquement sans badge affiché.
   $('imp-flow-label')?.classList.remove('imp-flow-visible');
   $('imp-flow-label')?.classList.add('hidden');
+  $('imp-stage-img-next')?.classList.remove('imp-flow-next-visible');
+  $('imp-stage-img')?.classList.remove('imp-flow-fading');
+  impFlowBusyUntil = 0;
 
   const dims = formatDimensionsDisplay(work);
   const anyFieldChecked = ['artist', 'title', 'date', 'materiaux', 'dimensions', 'location'].some((k) => $(`imp-field-${k}`)?.checked);
@@ -8342,7 +8401,15 @@ function impShowCurrent() {
     // (juste en dessous) mais jamais pour l'artiste ici, alors que la même info existe pour les
     // deux (colonne Nationalité) — désormais affiché de la même façon (drapeau + info-bulle avec
     // le nom du pays au survol), qu'on peut désactiver indépendamment dans Mon compte.
-    { key: 'artist', label: 'Auteur', value: artistFlag(work.nationality) ? `${formatArtistDisplayName(work)} <span title="${escapeHtml(nationalityCountryName(work.nationality))}">${artistFlag(work.nationality)}</span>` : formatArtistDisplayName(work), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
+    // v76 (retour Stéphane 29/09 : « puisqu'on a supprimé la tablette, rendre le nom de l'artiste
+    // cliquable : portrait puis bio lue ») : le nom devient un bouton cliquable UNIQUEMENT quand il
+    // y a quelque chose à montrer (portrait et/ou bio) — pas de bouton mort pour un artiste sans
+    // l'un ni l'autre. Voir openImpArtistBio plus bas, et le rattachement du clic après l'affichage
+    // du texte (boucle STAGGER, plus bas) puisque cet id n'existe qu'une fois le HTML injecté.
+    { key: 'artist', label: 'Auteur', value: (() => {
+      const nameHtml = artistFlag(work.nationality) ? `${formatArtistDisplayName(work)} <span title="${escapeHtml(nationalityCountryName(work.nationality))}">${artistFlag(work.nationality)}</span>` : formatArtistDisplayName(work);
+      return (work.bio || work.artistImage) ? `<button type="button" class="imp-artist-name-button" id="imp-artist-name-button">${nameHtml}</button>` : nameHtml;
+    })(), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
     { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
@@ -8397,23 +8464,26 @@ function impShowCurrent() {
     currentSpeechSegment.push(f);
   });
   if (currentSpeechSegment.length) speechSegments.push(currentSpeechSegment);
+  // v76 (retour Stéphane 29/09 : « le commentaire arrive après l'image, ça devrait être l'inverse —
+  // la voix doit d'abord lire le commentaire, l'image n'apparaît que 3-4 secondes après, doucement »)
+  // : la bascule d'image (Lieu/Ensemble) ne dépend plus du tout du rythme STAGGER du texte affiché —
+  // elle est désormais programmée ici, au moment précis où la LECTURE du segment vocal qui la
+  // concerne commence (juste avant l'appel à impSpeak ci-dessous), avec un délai fixe de 3,5s. Le
+  // joueur entend donc toujours le commentaire *avant* de voir l'image qu'il décrit, jamais l'
+  // inverse. Chaque segment ne contient jamais plus d'un champ Ensemble/Lieu à la fois (chacun
+  // démarre toujours son propre segment, voir startsNewSegment plus haut).
   function impSpeakSegment(i) {
     if (i >= speechSegments.length) return;
-    const text = speechSegments[i].map((f) => f.spoken || f.value).join(' — ') || work.artist;
+    const segment = speechSegments[i];
+    const text = segment.map((f) => f.spoken || f.value).join(' — ') || work.artist;
+    const flowField = segment.find((f) => f.key === 'cycle' || f.key === 'location');
+    const flowImage = flowField?.key === 'location' ? work.locationImage : flowField?.key === 'cycle' ? work.cycleImage : null;
+    if (flowImage) impTimers.push(setTimeout(() => impShowFlowImage(flowImage, flowField.label), 3500));
     impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), 2000)); });
   }
   if (speechSegments.length) impSpeakSegment(0); else impSpeak(work.artist);
 
   const STAGGER = impDelayMs * 0.5;
-  // v74 : le fondu au noir (impShowFlowImage) prend 400ms — si Ensemble ET Lieu ont chacun leur
-  // propre photo, ils sont désormais adjacents (voir le réordonnancement plus haut) et leurs
-  // créneaux STAGGER (200ms d'écart par défaut) se chevaucheraient sinon en pleine bascule. On
-  // calcule donc une file d'attente séparée pour les bascules d'image (nextFlowSwapAt), qui ne
-  // démarre jamais avant le créneau naturel du champ mais respecte toujours un écart minimal par
-  // rapport à la bascule précédente — la révélation du TEXTE, elle, garde son rythme STAGGER
-  // habituel, inchangé.
-  let nextFlowSwapAt = 0;
-  const FLOW_SWAP_GAP = 450;
   fields.forEach((f, i) => {
     const textDelay = 400 + i * STAGGER;
     impTimers.push(setTimeout(() => {
@@ -8421,17 +8491,12 @@ function impShowCurrent() {
       if (el) {
         if (f.key === 'dimensions' || f.key === 'title' || f.key === 'artist' || f.key === 'location') el.innerHTML = f.value; else el.textContent = f.value;
         el.classList.add('written');
+        // v76 : le bouton nom-d'artiste cliquable (voir plus haut) est réinjecté à chaque œuvre avec
+        // le reste du HTML de la rubrique — son écouteur de clic doit donc être rattaché à chaque
+        // fois, l'ancien élément (et son écouteur) ayant disparu avec l'ancien innerHTML.
+        if (f.key === 'artist') { $('imp-artist-name-button')?.addEventListener('click', () => openImpArtistBio(work)); }
       }
     }, textDelay));
-    // v73 : déroulé fluide (voir plus haut) — bascule l'image de la case au fil de la référence,
-    // jamais avant que son propre texte n'apparaisse ; ne revient pas en arrière ensuite (l'œuvre
-    // suivante repart de zéro via la remise à zéro du badge en tête de fonction).
-    const flowImage = f.key === 'location' ? work.locationImage : f.key === 'cycle' ? work.cycleImage : null;
-    if (flowImage) {
-      const swapAt = Math.max(textDelay, nextFlowSwapAt);
-      nextFlowSwapAt = swapAt + FLOW_SWAP_GAP;
-      impTimers.push(setTimeout(() => impShowFlowImage(flowImage, f.label), swapAt));
-    }
   });
 
 }
@@ -8439,34 +8504,84 @@ function impShowCurrent() {
 // de l'ensemble/cycle, avec un badge indiquant laquelle — la loupe progressive existante reste
 // active sur cette nouvelle image (repartant à zéro, sans hériter du zoom de l'image précédente),
 // mais rien d'autre n'exige d'action du joueur : la bascule elle-même est entièrement automatique.
-// v74 (retour Stéphane 29/09 : « pas de saut, il faut un fondu enchaîné ou un fondu au noir ») :
-// l'image ne change plus d'un coup — elle s'efface d'abord vers le fond déjà presque noir de la
-// case (#1b1c1e, voir .artwork-card), puis la nouvelle image apparaît. Un vrai fondu ENCHAÎNÉ
-// (fondu croisé entre les deux images) demanderait deux <img> superposées ; ce fondu au noir, sur
-// la même balise, est plus simple et fiable pour un gain visuel très proche ici.
+// v76 (retour Stéphane 29/09 : « le fondu au noir va trop vite, il faut que ce soit lent, on peut
+// essayer un fondu enchaîné ») : remplace le fondu au noir (v74, une seule balise) par un vrai fondu
+// ENCHAÎNÉ — #imp-stage-img-next (superposée, voir CSS) reçoit la nouvelle image et apparaît
+// PAR-DESSUS #imp-stage-img en fondu (2s, contre .4s avant) ; une fois le fondu terminé,
+// #imp-stage-img reprend cette même image et #imp-stage-img-next redevient invisible, prête pour la
+// bascule suivante — aucun instant où l'on ne voit ni l'une ni l'autre. On attend que la nouvelle
+// image soit chargée avant de lancer le fondu (sinon on verrait l'image suivante apparaître déjà
+// blanche/vide le temps du téléchargement, un « à-coup » que le fondu devait justement éviter).
 function impShowFlowImage(url, label) {
   const img = $('imp-stage-img');
+  const nextImg = $('imp-stage-img-next');
   const labelEl = $('imp-flow-label');
+  if (!img || !nextImg) return;
   // Le badge s'efface en même temps que l'image (sa propre transition d'opacité, déjà en CSS,
   // s'en charge dès qu'on lui retire cette classe) plutôt que de disparaître d'un coup ou de rester
   // affiché avec l'ancien texte pendant que l'image change déjà.
   labelEl?.classList.remove('imp-flow-visible');
-  img.classList.add('imp-flow-fading');
-  impTimers.push(setTimeout(() => {
-    img.src = imageSourceSized(url, 900);
-    img.classList.remove('imp-flow-fading');
-    impLoupe?.setLevel(0);
-    if (labelEl) {
-      labelEl.textContent = label;
-      labelEl.classList.remove('hidden');
-      // Force un reflow avant d'ajouter la classe d'opacité, pour garantir le fondu (sinon le
-      // navigateur peut regrouper les deux changements de classe dans la même image et sauter
-      // directement à l'état final, sans transition visible).
-      void labelEl.offsetWidth;
-      labelEl.classList.add('imp-flow-visible');
-    }
-  }, 400)); // doit correspondre à la durée de transition de #imp-stage-img en CSS
+  const src = imageSourceSized(url, 900);
+  const CROSSFADE_MS = 2000;
+  const runCrossfade = () => {
+    // v76 : garde-fou (impFlowBusyUntil, voir sa déclaration) — ne démarre jamais un nouveau fondu
+    // avant que le précédent n'ait eu le temps de se terminer, même si cet appel arrive très près du
+    // précédent (segment de voix particulièrement court). En usage normal (voix bien plus longue que
+    // 3,5s + 2s), ce délai supplémentaire est nul.
+    const now = Date.now();
+    const startAt = Math.max(now, impFlowBusyUntil);
+    impFlowBusyUntil = startAt + CROSSFADE_MS;
+    impTimers.push(setTimeout(() => {
+      img.classList.add('imp-flow-fading');
+      nextImg.classList.add('imp-flow-next-visible');
+      impTimers.push(setTimeout(() => {
+        img.src = src;
+        img.classList.remove('imp-flow-fading');
+        nextImg.classList.remove('imp-flow-next-visible');
+        impLoupe?.setLevel(0);
+      }, CROSSFADE_MS)); // doit correspondre à la durée de transition en CSS
+      if (labelEl) {
+        labelEl.textContent = label;
+        labelEl.classList.remove('hidden');
+        // Force un reflow avant d'ajouter la classe d'opacité, pour garantir le fondu (sinon le
+        // navigateur peut regrouper les deux changements de classe dans la même image et sauter
+        // directement à l'état final, sans transition visible).
+        void labelEl.offsetWidth;
+        labelEl.classList.add('imp-flow-visible');
+      }
+    }, startAt - now));
+  };
+  nextImg.onload = null; nextImg.onerror = null;
+  if (nextImg.src === src && nextImg.complete && nextImg.naturalWidth) { runCrossfade(); return; }
+  nextImg.onload = runCrossfade;
+  nextImg.onerror = runCrossfade; // n'empêche jamais la suite si l'image ne charge pas
+  nextImg.src = src;
 }
+// v76 : ouvre le petit panneau dédié (voir #imp-artist-bio-panel dans index.html) avec le portrait
+// de l'artiste (s'il existe) et sa bio (si le fichier maître, onglet Bio, en fournit une pour lui) —
+// lue à voix haute dès l'ouverture, comme le reste de l'exercice. Interrompt la narration en cours
+// de l'œuvre (speechSynthesis.cancel(), déjà fait par impSpeak lui-même) plutôt que de la faire
+// jouer en même temps que la bio, ce qui serait incompréhensible à l'oreille.
+function openImpArtistBio(work) {
+  const portrait = $('imp-artist-bio-portrait');
+  if (portrait) {
+    if (work.artistImage) { portrait.src = imageSourceSized(work.artistImage, 700); portrait.classList.remove('hidden'); }
+    else portrait.classList.add('hidden');
+  }
+  const nameEl = $('imp-artist-bio-name');
+  if (nameEl) nameEl.textContent = formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
+  const bioText = work.bio || 'Aucune biographie n’est encore disponible pour cet artiste.';
+  const textEl = $('imp-artist-bio-text');
+  if (textEl) textEl.textContent = bioText;
+  $('imp-artist-bio-panel')?.classList.remove('hidden');
+  if (work.bio) impSpeak(work.bio);
+}
+function closeImpArtistBio() {
+  $('imp-artist-bio-panel')?.classList.add('hidden');
+  speechSynthesis.cancel();
+}
+$('imp-artist-bio-close')?.addEventListener('click', closeImpArtistBio);
+$('imp-artist-bio-panel')?.addEventListener('click', (e) => { if (e.target.id === 'imp-artist-bio-panel') closeImpArtistBio(); });
 
 // Bouton texte partagé (bandeau du haut, à côté de « Retour au menu des exercices ») plutôt que
 // des icônes 🔎 séparées — plus clair et directement à côté du bouton retour propre à chaque jeu.

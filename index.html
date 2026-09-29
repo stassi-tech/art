@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=218" />
+    <link rel="stylesheet" href="style.css?v=219" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -374,6 +374,12 @@
             <div class="artwork-column">
               <figure class="artwork-card">
                 <img id="imp-stage-img" alt="Œuvre" />
+                <!-- v76 (retour Stéphane 29/09 : « le fondu va trop vite, il faut que ce soit lent,
+                     essayer un fondu enchaîné ») : image superposée pour un vrai fondu ENCHAÎNÉ
+                     (fondu croisé entre les deux images superposées) plutôt qu'un fondu au noir sur
+                     une seule balise — voir impShowFlowImage dans app.js. aria-hidden : purement
+                     décorative pendant la transition, imp-stage-img reste la seule image "officielle". -->
+                <img id="imp-stage-img-next" class="imp-stage-img-overlay" alt="" aria-hidden="true" />
                 <a id="imp-source-link" class="artwork-source-link hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>
                 <!-- v73 (retour Stéphane 29/09 : « supprime la tablette ») : remplace le bandeau de
                      vignettes cliquables (photo du lieu / de l'ensemble, appuyer pour agrandir) par
@@ -396,6 +402,18 @@
                 <button type="button" class="secondary-button exercise-correction-toggle-button imp-full-correction-button" id="imp-full-correction-button">Voir la correction complète</button>
               </div>
             </section>
+          </div>
+          <!-- v76 (retour Stéphane 29/09 : « puisqu'on a supprimé la tablette, rendre le nom de
+               l'artiste cliquable : portrait puis bio lue ») : petit panneau dédié plutôt que la
+               visionneuse partagée (#image-lightbox, alourdie par la vue « à l'échelle » du Quiz
+               final, sans rapport ici) — voir openImpArtistBio dans app.js. Masqué par défaut. -->
+          <div id="imp-artist-bio-panel" class="imp-artist-bio-panel hidden">
+            <div class="imp-artist-bio-card">
+              <button type="button" class="modal-close-x" id="imp-artist-bio-close" aria-label="Fermer" title="Fermer">✕</button>
+              <img id="imp-artist-bio-portrait" class="imp-artist-bio-portrait hidden" alt="" />
+              <h3 id="imp-artist-bio-name" style="font-family:Georgia,serif;margin:0 0 10px;"></h3>
+              <p id="imp-artist-bio-text" style="font-family:Arial,sans-serif;font-size:.92rem;line-height:1.5;color:var(--ink);white-space:pre-line;"></p>
+            </div>
           </div>
         </section>
 
@@ -594,13 +612,19 @@
               <figure class="artwork-card" id="recon-prompt-card"></figure>
             </div>
             <section class="answer-card" aria-label="Choix">
-              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Cliquez sur la référence qui correspond à l'œuvre dont vous voyez un détail.</h2>
+              <!-- v76 (docx 29 sept, RECONSTITUTION) : id ajouté pour pouvoir la masquer à la
+                   correction (item 1), comme pour les autres jeux. -->
+              <h2 id="recon-instruction" style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Cliquez sur la référence qui correspond à l'œuvre dont vous voyez un détail.</h2>
               <div id="recon-choices"></div>
+              <!-- v76 : #recon-correction-details a disparu — les rubriques supplémentaires
+                   (item 3 : « les références apparaissent dans le bouton, pas en dessous, cela
+                   fait répétition ») sont désormais injectées DANS le bouton choisi lui-même (voir
+                   reconAnswer/reconRefreshCorrectionDetails dans app.js), pas dans un bloc séparé
+                   qui répétait Auteur/Titre une seconde fois. -->
               <div id="recon-correction" class="hidden">
-                <div class="correction-details" id="recon-correction-details"></div>
                 <button type="button" class="primary-button" id="recon-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
-              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:10px;justify-content:center;">
+              <div id="recon-hub-row" style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:10px;justify-content:center;">
                 <button type="button" class="exercise-hub-text-button" id="recon-hub-link" aria-label="Retour au menu des jeux" title="Retour au menu des jeux">Retour au menu des jeux</button>
                 <button type="button" class="secondary-button exercise-correction-toggle-button recon-full-correction-button" id="recon-full-correction-button">Voir la correction complète</button>
               </div>
@@ -799,6 +823,18 @@
                    petite loupe posée au coin de chaque cadre (appui maintenu = agrandissement) l'a
                    remplacée avec succès. -->
             </div>
+            <!-- v76 (retour Stéphane 29/09 : « sur Famille, le bouton de menu des jeux ne répond pas
+                 sur PC, il fonctionne sur mobile ») : contrairement à Imprégnation/Intrus/VRAI-FAUX/
+                 Reconstitution, cette section n'avait JAMAIS reçu le traitement flex+order qui leur a
+                 été appliqué (voir style.css), ni l'id sur ce pied de page (#fam-hub-row, ajouté ici
+                 comme pour les autres) — le bug de réordonnancement documenté pour Intrus (un enfant
+                 flex sans "order" explicite peut passer devant ses voisins, ou ici : sans "display:
+                 flex" du tout sur .answer-card, "margin-top:auto" ci-dessous n'avait AUCUN effet, ce
+                 qui pouvait laisser le bouton mal placé — voire recouvert par un autre élément — sur
+                 grand écran uniquement, jamais reproduit ici en test automatisé mais corrigé par
+                 précaution avec le même traitement que les 4 autres jeux, plus un défilement interne
+                 de secours (overflow-y:auto en CSS) si jamais le contenu dépassait la hauteur de la
+                 rangée. -->
             <section class="answer-card" aria-label="Sélection">
               <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">La moitié de ces images est du même artiste. Retrouve cette famille en cliquant sur les images.</h2>
               <div id="fam-step0">
@@ -808,7 +844,7 @@
                 <p id="fam-verdict" style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.3rem;margin:0 0 16px;"></p>
                 <button type="button" class="primary-button" id="fam-next-button" style="width:100%;margin-top:16px;">Suivant →</button>
               </div>
-              <div style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:10px;justify-content:center;">
+              <div id="fam-hub-row" style="text-align:center;margin-top:auto;padding-top:14px;display:flex;gap:10px;justify-content:center;">
                 <button type="button" class="exercise-hub-text-button" id="fam-hub-link" aria-label="Retour au menu des jeux" title="Retour au menu des jeux">Retour au menu des jeux</button>
               </div>
             </section>
@@ -1180,7 +1216,7 @@
                  pour rester visible sur LES DEUX écrans (couloir ET plan rapproché), pas seulement
                  sur le tout premier — utile puisque c'est justement de la version affichée PARTOUT
                  qu'on veut être sûr. -->
-            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 75</div>
+            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 76</div>
             <!-- Couloir : vue à l'échelle réelle, mur du fond en face, 2 piliers de premier plan.
                  v57 : plus de tourniquet à franchir ici (retiré, voir plus bas) — on peut
                  directement soit marcher sur le côté (#scale-checkpoint-floor-dot, pour choisir la
@@ -1736,6 +1772,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=302"></script>
+    <script src="app.js?v=303"></script>
   </body>
 </html>
