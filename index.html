@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=220" />
+    <link rel="stylesheet" href="style.css?v=221" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -507,7 +507,7 @@
               </figure>
             </div>
             <section class="answer-card" aria-label="Choix">
-              <h2 id="intrus-instruction" style="font-family:Arial,sans-serif;font-weight:700;margin:0 0 16px;">Appuyer sur le bouton correspondant à l'œuvre dont on vous donne les références.</h2>
+              <h2 id="intrus-instruction" style="font-family:Arial,sans-serif;font-weight:700;margin:0 0 16px;">Appuyer sur l'image correspondant à l'œuvre dont on vous donne les références.</h2>
               <div id="intrus-choices"></div>
               <div id="intrus-correction" class="hidden">
                 <div class="correction-details" id="intrus-correction-details"></div>
@@ -765,8 +765,8 @@
           <div class="config-table config-table-3">
             <div>
               <p class="config-table-col-title">Images par question</p>
-              <label class="rubrique-option"><input type="radio" name="fam-images" value="6" /><span>6 images (3 en commun)</span></label>
-              <label class="rubrique-option"><input type="radio" name="fam-images" value="8" checked /><span>8 images (4 en commun)</span></label>
+              <label class="rubrique-option"><input type="radio" name="fam-images" value="6" /><span id="fam-images-6-label">6 images (3 en commun)</span></label>
+              <label class="rubrique-option"><input type="radio" name="fam-images" value="8" checked /><span id="fam-images-8-label">8 images (4 en commun)</span></label>
             </div>
             <div>
               <p class="config-table-col-title">Niveau</p>
@@ -1194,7 +1194,7 @@
                  pour rester visible sur LES DEUX écrans (couloir ET plan rapproché), pas seulement
                  sur le tout premier — utile puisque c'est justement de la version affichée PARTOUT
                  qu'on veut être sûr. -->
-            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 77</div>
+            <div style="position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#e2453c;color:#fff;font-family:Arial,sans-serif;font-weight:800;font-size:1.1rem;padding:8px 20px;border-radius:6px;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:210;letter-spacing:.04em;">VERSION 78</div>
             <!-- Couloir : vue à l'échelle réelle, mur du fond en face, 2 piliers de premier plan.
                  v57 : plus de tourniquet à franchir ici (retiré, voir plus bas) — on peut
                  directement soit marcher sur le côté (#scale-checkpoint-floor-dot, pour choisir la
@@ -1750,6 +1750,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=304"></script>
+    <script src="app.js?v=305"></script>
   </body>
 </html>

@@ -373,17 +373,13 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intrus-verdict { font-family:Arial,sans-serif; font-weight:700; }
 .intrus-answer-instruction { font-family:Arial,sans-serif; font-size:.85rem; color:var(--muted); margin:16px 0 10px; }
 .intrus-answer-buttons { display:flex; gap:10px; }
-/* v77 (docx 29 sept : « mettre les loupes en haut de l'image à la place des chiffres qu'on enlève,
-   mettre les 3 boutons de sélection en dessous de l'image ») : la pastille numérotée par image a
-   disparu (voir intrusShowQuestion dans app.js, qui ne la génère plus) — la loupe progressive
-   (générique, positionnée en bas par défaut pour NE PAS la recouvrir jusqu'ici) prend sa place, en
-   haut de chaque image ; scopé à .intrus-image-choice uniquement pour ne pas déplacer la loupe
-   d'Imprégnation/Famille, qui garde sa position d'origine. Les boutons de réponse eux-mêmes ont
-   déménagé DANS #intrus-prompt-card (juste sous la grille d'images, qu'ils remplacent comme repère
-   numéroté) — .intrus-answer-buttons-inline les recentre et les empêche de s'étirer sur toute la
-   largeur de l'écran comme le ferait .intrus-answer-buttons tout seul (display:flex + flex:1 sur
-   chaque bouton, voir plus haut). */
-.intrus-image-choice .loupe-progressive { top:4px; left:4px; bottom:auto; }
+/* v78 (retour de Stéphane : « avec à la fois les loupes et les boutons, c'est trop compliqué — ce
+   sont les loupes qui nous ont induits en erreur ») : retour en arrière sur la tentative v77 — plus
+   de pastille numérotée, plus de boutons de réponse séparés, plus de loupe non plus (pour l'instant).
+   On touche directement l'image pour répondre (voir intrusShowQuestion dans app.js). Les règles
+   .intrus-image-choice .loupe-progressive et .intrus-answer-buttons-inline (positionnement de la
+   loupe en haut de l'image, recentrage des boutons sous la grille) sont donc retirées : plus aucun
+   des deux éléments qu'elles ciblaient n'est généré par ce mode. */
 /* v77 : #intrus-instruction perd son "font-size:1.2rem" en ligne dans le HTML (un style en ligne
    l'aurait sinon toujours emporté sur la réduction mobile ci-dessous, quelle que soit la
    spécificité du sélecteur — même défaut déjà rencontré et corrigé pour Imprégnation, voir
@@ -391,7 +387,6 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
    ici, la réduction mobile (mode "images intruses" uniquement) est définie plus bas et l'emporte
    par spécificité (#id.classe.classe h2 > #id seul). */
 #intrus-instruction { font-size:1.2rem; }
-.intrus-answer-buttons-inline { max-width:420px; width:100%; margin:0 auto; }
 /* #intrus-quiz-grid passe en une seule colonne à TOUTE largeur d'écran (PC et mobile) quand la
    question est en mode "images intruses" (classe posée/retirée par intrusShowQuestion) : la colonne
    .answer-card (consigne, puis référence à retrouver) s'affiche alors sous .artwork-column (image +
