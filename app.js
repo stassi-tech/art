@@ -6360,7 +6360,13 @@ $('fam-start-button')?.addEventListener('click', async () => {
       for (const century of centuries) {
         try {
           const rows = await fetchQuizRows(art, century);
-          rows.forEach((r) => { r.century = century; });
+          // v65 (retour de Stéphane : « à la correction la voix dit encore tableau pour des
+          // sculptures ») : contrairement à Vrai/Faux et Reconstitution (voir plus bas dans ce
+          // fichier), Famille ne posait jamais r.artType sur ses lignes — artDesignation() (utilisée
+          // dans announceWrong ci-dessous) retombe alors sur son repli peinture/sculpture dès que la
+          // colonne « Nature de l'objet » ne contient pas un mot-clé reconnu (souvent vide, ou juste
+          // un matériau comme « Marbre »), et ce repli disait toujours "tableau" faute d'artType.
+          rows.forEach((r) => { r.century = century; r.artType = art; });
           allRows.push(...rows);
         } catch (e) { /* fichier absent, ignoré */ }
       }
@@ -6790,9 +6796,14 @@ function vfShowQuestion() {
   $('vf-progress-bar').style.width = `${(vfIndex / VF_SESSION.length) * 100}%`;
   $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''}`;
   updateTopBannerScore(`${vfScore} pt${Math.abs(vfScore) >= 2 ? 's' : ''}`);
-  $('vf-correction').classList.add('hidden');
+  // v65 (docx 29 sept, item 4 : « 1 seul bouton suffit ») : Valider et Suivant sont désormais LE
+  // MÊME bouton (#vf-validate-button), qui change juste de texte selon l'état — on le remet à
+  // "Valider" à chaque nouvelle question, et on masque le verdict global (item 1) de la question
+  // précédente.
   $('vf-validate-button').classList.remove('hidden');
+  $('vf-validate-button').textContent = 'Valider';
   $('vf-validate-button').disabled = false;
+  $('vf-verdict')?.classList.add('hidden');
   $('vf-stage-img').src = imageSourceSized(q.correct.image, 700);
   preloadImage(VF_SESSION[vfIndex + 1]?.correct?.image, 700);
 
@@ -6838,12 +6849,40 @@ $('vf-launch-first-button')?.addEventListener('click', () => {
   vfTimer.start();
   vfShowQuestion();
 });
-$('vf-validate-button')?.addEventListener('click', () => {
-  if (vfAnswered) return;
+$('vf-validate-button')?.addEventListener('click', async () => {
+  // v65 (docx 29 sept, item 4 : « 1 seul bouton suffit ») : ce bouton sert à la fois à valider
+  // (1er clic, tant que vfAnswered est faux, ci-dessous) et à passer à la suite (2e clic, tout en
+  // bas de cette fonction) — il change de texte ("Valider" → "Suivant"/"Terminer") mais reste
+  // toujours le même élément ; il n'est donc plus désactivé après validation (il doit rester
+  // cliquable pour avancer).
+  if (vfAnswered) {
+    if (vfIndex < VF_SESSION.length - 1) {
+      vfIndex++;
+      vfShowQuestion();
+    } else {
+      if (firebaseReady && currentUser) {
+        try {
+          await db.collection('users').doc(currentUser.uid).collection('scores').add({
+            type: 'entrainement',
+            exerciseName: 'Vrai/Faux',
+            timeSpent: vfTimer.stop(),
+            correct: vfScore, possible: VF_SESSION.length,
+            percent: Math.round((vfScore / VF_SESSION.length) * 100),
+            questionCount: VF_SESSION.length,
+            quizLabel: 'Vrai/Faux',
+            quizLevel: vfSelectedLevels().map((lvl) => `Niveau ${lvl}`).join(' + '),
+            quizArts: vfSelectedArts(), quizCenturies: vfSelectedCenturies(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+        } catch (e) { /* enregistrement best-effort */ }
+      }
+      showExerciseResultsModal('Vrai/Faux', vfScore, VF_SESSION.length, 'training-hub');
+    }
+    return;
+  }
   vfAnswered = true;
   const q = VF_SESSION[vfIndex];
   const artWord = artDesignation(q.correct);
-  $('vf-validate-button').disabled = true;
   document.querySelectorAll('.vf-toggle button').forEach((b) => { b.disabled = true; });
 
   // Barème : 1 point si toutes les erreurs réelles sont repérées (ou, s'il n'y en a pas, si rien
@@ -6864,6 +6903,17 @@ $('vf-validate-button')?.addEventListener('click', () => {
   vfScore = Math.round((vfScore + questionScore) * 10) / 10;
   $('vf-score-label').textContent = `${vfScore} point${Math.abs(vfScore) >= 2 ? 's' : ''}`;
   updateTopBannerScore(`${vfScore} pt${Math.abs(vfScore) >= 2 ? 's' : ''}`);
+
+  // v65 (docx 29 sept, item 1 : « exact/à réviser doit être marqué à la correction ») : verdict
+  // global affiché juste sous la consigne — les indications déjà présentes rubrique par rubrique
+  // (vf-was-wrong / vf-updated, plus bas) montrent le détail, mais rien ne donnait avant ça le
+  // verdict d'ensemble d'un coup d'œil.
+  const vfVerdictEl = $('vf-verdict');
+  if (vfVerdictEl) {
+    vfVerdictEl.textContent = questionScore === 1 ? 'Exact' : 'À réviser';
+    vfVerdictEl.style.color = questionScore === 1 ? 'var(--ok)' : 'var(--wrong)';
+    vfVerdictEl.classList.remove('hidden');
+  }
 
   // Correction vocale (retour de Stéphane, 22/09) : on ne raconte plus systématiquement chaque
   // rubrique cochée — seulement ce qu'il y a d'intéressant à dire. Si tout est bon partout (aucune
@@ -6937,7 +6987,20 @@ $('vf-validate-button')?.addEventListener('click', () => {
   // seule phrase de synthèse suffit — pas besoin de dérouler chaque rubrique une par une.
   const anyNoteworthy = q.activeFields.some((f) => vfFieldIsNoteworthy(f.key));
   if (!anyNoteworthy) {
-    vfTimers.push(setTimeout(() => { vfSpeak("Exact, l'ensemble des références sont bonnes."); }, 300));
+    // v65 (docx 29 sept, item 3) : « Exact, l'ensemble des références sont bonnes » ne fait pas
+    // sens quand il n'y a qu'UNE seule rubrique affichée (ce n'est pas un "ensemble") — dans ce
+    // cas précis, phrase spécifique à cette rubrique unique. Pour l'artiste, la formulation exacte
+    // demandée par Stéphane ; pour les autres rubriques, on réutilise le même texte de confirmation
+    // que celui déjà employé quand une rubrique notable s'avère exacte (vfFieldCorrectionContent).
+    let goodSentence = "Exact, l'ensemble des références sont bonnes.";
+    if (q.activeFields.length === 1) {
+      const soleKey = q.activeFields[0].key;
+      const trueValue = vfFieldValue(q.correct, soleKey) || '—';
+      goodSentence = soleKey === 'artist'
+        ? `La référence est bonne. Cette œuvre est bien de ${trueValue}.`
+        : `La référence est bonne. ${vfFieldCorrectionContent(soleKey, true, null, trueValue)}`;
+    }
+    vfTimers.push(setTimeout(() => { vfSpeak(goodSentence); }, 300));
   } else {
     // Chaque rubrique notable est traitée l'une après l'autre, en attendant la fin réelle de la
     // phrase précédente (pas de minuteur à durée fixe) pour ne jamais couper la voix au milieu
@@ -6985,33 +7048,10 @@ $('vf-validate-button')?.addEventListener('click', () => {
     speakFieldCorrection(0);
   }
 
-  $('vf-correction').classList.remove('hidden');
-  $('vf-next-button').textContent = vfIndex === VF_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
-});
-
-$('vf-next-button')?.addEventListener('click', async () => {
-  if (vfIndex < VF_SESSION.length - 1) {
-    vfIndex++;
-    vfShowQuestion();
-  } else {
-    if (firebaseReady && currentUser) {
-      try {
-        await db.collection('users').doc(currentUser.uid).collection('scores').add({
-          type: 'entrainement',
-          exerciseName: 'Vrai/Faux',
-          timeSpent: vfTimer.stop(),
-          correct: vfScore, possible: VF_SESSION.length,
-          percent: Math.round((vfScore / VF_SESSION.length) * 100),
-          questionCount: VF_SESSION.length,
-          quizLabel: 'Vrai/Faux',
-          quizLevel: vfSelectedLevels().map((lvl) => `Niveau ${lvl}`).join(' + '),
-          quizArts: vfSelectedArts(), quizCenturies: vfSelectedCenturies(),
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-      } catch (e) { /* enregistrement best-effort */ }
-    }
-    showExerciseResultsModal('Vrai/Faux', vfScore, VF_SESSION.length, 'training-hub');
-  }
+  // Le verdict (item 1, plus haut) et les repères par rubrique (vf-was-wrong / vf-updated,
+  // ci-dessus) suffisent désormais à montrer que la correction est affichée — plus besoin de
+  // révéler un conteneur #vf-correction séparé, supprimé avec la fusion des boutons (item 4).
+  $('vf-validate-button').textContent = vfIndex === VF_SESSION.length - 1 ? 'Terminer' : 'Suivant →';
 });
 
 function populateReconVoices() {
@@ -8329,12 +8369,22 @@ function intrusSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`intr
 let INTRUS_SESSION = [], intrusIndex = 0, intrusCorrectCount = 0, intrusAnswered = false, intrusAudioOn = true, intrusSelectedVoice = null, intrusAutoAdvance = false, intrusAutoAdvanceDelay = 5000, intrusExtraFields = [], intrusTimers = [], intrusFieldLabel = '';
 const intrusTimer = createTimer('topbar-timer');
 $('intrus-opt-autoadvance')?.addEventListener('change', () => { $('intrus-delay-row').style.display = $('intrus-opt-autoadvance').checked ? 'flex' : 'none'; });
-function intrusSpeak(text) {
-  if (!intrusAudioOn || !window.speechSynthesis) return;
+// v65 (INTRUS item 4, système « Vous avez confondu » en 2 temps) : onEnd optionnel, même
+// mécanique que famSpeak/famSpeak2 — rappelé à la fin de la phrase parlée (avec un filet de
+// sécurité par minuterie si la voix est coupée ou échoue), pour enchaîner l'étape 2 (révélation de
+// la bonne image) uniquement une fois l'étape 1 lue.
+function intrusSpeak(text, onEnd) {
+  if (!intrusAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.85; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (intrusSelectedVoice) u.voice = intrusSelectedVoice;
+  if (onEnd) {
+    let done = false;
+    const finish = () => { if (!done) { done = true; onEnd(); } };
+    u.onend = finish; u.onerror = finish;
+    intrusTimers.push(setTimeout(finish, Math.max(1200, (text.length / 13) * 1000) + 400));
+  }
   speechSynthesis.speak(u);
 }
 const INTRUS_STOPWORDS = new Set(['le', 'la', 'les', 'de', 'du', 'des', 'un', 'une', 'et', 'à', 'au', 'aux', 'en', 'dans', 'sur', 'avec', 'sans', 'pour', 'par', 'ou', 'se', 'son', 'sa', 'ses', 'l']);
@@ -8472,6 +8522,7 @@ function intrusShowQuestion() {
   $('intrus-progress-bar').style.width = `${(intrusIndex / INTRUS_SESSION.length) * 100}%`;
   $('intrus-correction').classList.add('hidden');
   $('intrus-choices').classList.remove('hidden');
+  $('intrus-instruction')?.classList.remove('hidden'); // v65 : réapparaît pour la nouvelle question (masquée à la correction)
 
   const promptCard = $('intrus-prompt-card');
   if (intrusMode === 'image') {
@@ -8546,6 +8597,19 @@ function intrusRefreshCorrectionDetails() {
   if (showFullCorrection || intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
 }
+// v65 (INTRUS item 4) : révèle une œuvre en solo dans #intrus-prompt-card, avec une légende et sa
+// référence — utilisé pour les 2 temps du système « Vous avez confondu » en mode images intruses
+// (d'abord l'image cliquée à tort, puis la bonne), et aussi pour la réponse correcte (1 seul temps).
+function intrusRenderConfusionStep(work, label, isCorrectStep) {
+  const promptCard = $('intrus-prompt-card');
+  promptCard.innerHTML = `<div class="intrus-image-choices">
+    <div class="intrus-image-choice intrus-image-choice-solo intrus-confusion-step">
+      <span class="intrus-confusion-label" style="color:${isCorrectStep ? 'var(--ok)' : 'var(--wrong)'}">${escapeHtml(label)}</span>
+      <img src="${escapeHtml(imageSourceSized(work.image, 700))}" alt="" />
+      <span class="intrus-confusion-ref">${formatArtistDisplayName(work)} — <em>« ${escapeHtml(work.title)} »</em></span>
+    </div>
+  </div>`;
+}
 function intrusAnswer(chosenIndex) {
   if (intrusAnswered) return;
   intrusAnswered = true;
@@ -8554,38 +8618,44 @@ function intrusAnswer(chosenIndex) {
   const isCorrect = chosen === q.correct;
   if (isCorrect) intrusCorrectCount++;
 
-  const choiceSelector = intrusMode === 'image' ? '.intrus-image-choice' : '.intrus-choice-btn';
-  const verdictHtml = ` <span class="intrus-verdict" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? '— Exact' : '— À réviser'}</span>`;
-  // Images intruses : on garde uniquement la BONNE image (en grand) ; en référence intruses, on
-  // garde uniquement la case CHOISIE (avec son verdict écrit dedans) — les deux autres disparaissent.
-  const keepIndex = intrusMode === 'image' ? q.choices.indexOf(q.correct) : chosenIndex;
-  document.querySelectorAll(`#intrus-prompt-card ${choiceSelector}, #intrus-choices ${choiceSelector}`).forEach((btn, i) => {
-    btn.disabled = true;
-    if (i === keepIndex) {
-      if (intrusMode !== 'image') btn.insertAdjacentHTML('beforeend', verdictHtml);
-    } else {
-      btn.remove();
-    }
-  });
   if (intrusMode === 'image') {
-    const kept = $('intrus-prompt-card').querySelector('.intrus-image-choice');
-    if (kept) {
-      kept.classList.add('intrus-image-choice-solo');
-      // Bug réel repéré : la taille relative (max-width/max-height posée en direct sur l'image
-      // pendant la comparaison) restait accrochée à l'image une fois la correction affichée,
-      // empêchant la règle CSS "-solo" (plein écran) de reprendre la main — l'inline gagne
-      // toujours sur la classe pour une même propriété. On l'efface explicitement ici.
-      const img = kept.querySelector('img');
-      if (img) { img.style.maxWidth = ''; img.style.maxHeight = ''; }
+    // v65 : plus de garder/retirer les boutons existants — l'image (correcte ou, en cas d'erreur,
+    // d'abord la mauvaise) est reconstruite en solo via intrusRenderConfusionStep, qui gère aussi
+    // le bug de spécificité CSS qui rendait cette image quasi invisible (voir style.css).
+    document.querySelectorAll('#intrus-choices .intrus-answer-choice').forEach((btn) => { btn.disabled = true; });
+    if (isCorrect) {
+      intrusRenderConfusionStep(q.correct, 'Exact !', true);
+    } else {
+      // Étape 1 : l'image cliquée à tort, avec SA vraie référence (différente de celle annoncée) —
+      // « Vous avez confondu avec... ».
+      intrusRenderConfusionStep(chosen, 'Vous avez confondu avec :', false);
     }
-    // On ne garde plus la référence initiale (Auteur/Titre) affichée à droite : juste le verdict.
     $('intrus-choices').innerHTML = `<p style="text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:1.1rem;color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? 'Exact' : 'À réviser'}</p>`;
+    if (isCorrect) {
+      intrusSpeak(`Exact. ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
+    } else {
+      // Étape 2 (après la phrase de l'étape 1) : révèle la bonne image + sa référence — même
+      // enchaînement parlé que Famille (announceWrong → announceFound), adapté à une seule image.
+      intrusSpeak(`À réviser. Vous avez confondu avec ${spokenFullReference(chosen, showFullCorrection ? null : intrusExtraFields)}`, () => {
+        intrusRenderConfusionStep(q.correct, 'La bonne référence était :', true);
+        intrusSpeak(spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields));
+      });
+    }
+  } else {
+    // Référence intruses : inchangé — on garde la case CHOISIE (avec son verdict écrit dedans),
+    // les deux autres disparaissent ; la bonne réponse reste lisible plus bas via correction-details.
+    const verdictHtml = ` <span class="intrus-verdict" style="color:${isCorrect ? 'var(--ok)' : 'var(--wrong)'}">${isCorrect ? '— Exact' : '— À réviser'}</span>`;
+    document.querySelectorAll('#intrus-choices .intrus-choice-btn').forEach((btn, i) => {
+      btn.disabled = true;
+      if (i === chosenIndex) btn.insertAdjacentHTML('beforeend', verdictHtml);
+      else btn.remove();
+    });
+    intrusSpeak(`${isCorrect ? 'Exact' : 'À réviser'}. ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
   }
 
-  // « Exact »/« À réviser » dit à voix haute avant la référence — même logique que Reconstitution.
-  intrusSpeak(`${isCorrect ? 'Exact' : 'À réviser'}. ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
   intrusRefreshCorrectionDetails();
   $('intrus-correction').classList.remove('hidden');
+  $('intrus-instruction')?.classList.add('hidden');
   $('intrus-score-label').textContent = `${intrusCorrectCount} / ${intrusIndex + 1} réponse${intrusCorrectCount > 1 ? 's' : ''} correcte${intrusCorrectCount > 1 ? 's' : ''}`;
   updateTopBannerScore(`${intrusCorrectCount}/${intrusIndex + 1}`);
   $('intrus-next-button').textContent = intrusIndex === INTRUS_SESSION.length - 1 ? 'Terminer' : 'Suivant →';

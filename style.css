@@ -337,13 +337,35 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intrus-image-choices { position:relative; display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; width:100%; height:100%; }
 .intrus-image-choice { border:2px solid transparent; border-radius:6px; padding:6px; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s; min-width:0; }
 .intrus-image-choice:hover:not(:disabled) { border-color:var(--accent); background:rgba(255,255,255,.06); }
-.intrus-image-choice img { width:100%; max-height:min(600px, 68vh); object-fit:contain; display:block; }
+/* v65 (document du 29 sept, INTRUS item 4 : « l'image de correction quand la réponse est fausse
+   ne s'affiche pas ») : bug réel confirmé par mesure (Playwright + getComputedStyle), pas
+   seulement à la réponse fausse en fait — À CHAQUE réponse, juste/fausse. #intrus-prompt-card
+   porte aussi la classe .artwork-card (partagée avec Reconstitution/Quiz final/etc.), et
+   ".artwork-card img" (plus bas dans ce fichier) a EXACTEMENT la même spécificité que
+   ".intrus-image-choice img" (une classe + un type) — à spécificité égale, la règle la plus TARDIVE
+   dans le fichier gagne, et ".artwork-card img" vient après avec "width:auto;height:auto" : tant
+   qu'un style en ligne (max-width/max-height) protégeait l'image, ça ne se voyait pas, mais dès la
+   réponse donnée, intrusAnswer() efface justement ce style en ligne (voir plus haut) pour laisser
+   la classe -solo prendre le relais — sauf qu'elle perdait la bataille de spécificité, et l'image
+   retombait à sa taille intrinsèque (donc à peu près invisible, un pixel ou presque, dans un
+   conteneur qui s'effondre avec elle). Corrigé en substituant l'ID du conteneur (#intrus-prompt-card),
+   qui l'emporte sans ambiguïté sur une simple classe, plutôt que de dépendre de l'ordre des règles. */
+#intrus-prompt-card .intrus-image-choice img { width:100%; max-height:min(600px, 68vh); object-fit:contain; display:block; }
 .intrus-image-choice.correct { border-color:var(--ok); }
 .intrus-image-choice.wrong { border-color:var(--wrong); }
 .intrus-image-choice:disabled { cursor:not-allowed; }
 .intrus-image-choices:has(.intrus-image-choice-solo) { display:flex; align-items:center; justify-content:center; }
 .intrus-image-choice-solo { width:100%; }
-.intrus-image-choice-solo img { max-height:min(760px, 78vh); }
+#intrus-prompt-card .intrus-image-choice-solo img { max-height:min(760px, 78vh); }
+/* v65 (INTRUS item 4, système « Vous avez confondu » en 2 temps, mode images intruses) : révèle
+   d'abord l'image cliquée à tort avec sa vraie référence, puis (une fois la phrase parlée finie)
+   la remplace par l'image réellement demandée — même esprit que la révélation en 2 temps de
+   Famille (erreurs d'abord, famille ensuite), adapté à une seule image plutôt qu'une grille. */
+.intrus-confusion-step { flex-direction:column; gap:10px; padding:14px; }
+#intrus-prompt-card .intrus-confusion-step img { max-height:min(660px, 68vh); }
+.intrus-confusion-label { font-family:Arial,sans-serif; font-weight:700; font-size:1rem; text-align:center; }
+.intrus-confusion-ref { font-family:Georgia,serif; font-size:1rem; text-align:center; color:var(--ink); }
+.intrus-confusion-ref em { font-style:italic; }
 .intrus-verdict { font-family:Arial,sans-serif; font-weight:700; }
 /* Pastille numérotée sur chaque image d'Intrus (mode « images intruses ») : relie chaque image à
    son bouton de réponse numéroté (voir .intrus-answer-buttons), maintenant que cliquer l'image
@@ -574,6 +596,33 @@ body.lefty .quiz-grid .answer-card { order:1; }
 #imp-correction-details { order:1; }
 #imp-nav-row { order:2; }
 #imp-hub-row { order:3; }
+/* v65 (INTRUS item 3, document du 29 sept : « à la correction, la consigne disparaît, le bouton
+   suivant passe en dessous de l'image ») : même mécanique que ci-dessus pour Imprégnation —
+   .answer-card passe en colonne flexible pour pouvoir réordonner ses enfants via "order" ci-dessous
+   (uniquement en dessous de 1024px, où la grille passe en une seule colonne empilée, juste comme
+   pour Imprégnation : sur grand écran, l'image et les boutons sont déjà côte à côte, rien à
+   réordonner). #intrus-correction passe en "display:contents" (au lieu de rester un simple <div>)
+   pour que SES enfants (#intrus-next-button, #intrus-correction-details) participent directement à
+   cet ordre, comme s'ils étaient eux-mêmes des enfants directs de .answer-card — la classe .hidden
+   (display:none !important) continue de primer normalement pour le masquer entièrement tant qu'on
+   n'a pas encore répondu. */
+#intrus-quiz-grid .answer-card { display:flex; flex-direction:column; }
+#intrus-correction { display:contents; }
+/* VRAI/FAUX item 2 (docx 29 sept : « sur mobile faire passer les boutons Valider et Suivant en
+   dessous de la consigne ») : même mécanique de réordonnancement que ci-dessus, mais avec un enfant
+   de plus (#vf-verdict, le verdict global de l'item 1) — on fixe donc explicitement l'ordre de
+   TOUS les enfants flex à leur position naturelle par défaut (desktop), pour que le remplacement
+   ci-dessous (mobile uniquement) ne fasse bouger QUE le bouton, sans faire remonter accidentellement
+   le pied de page (#vf-hub-row) au même niveau que le titre — un enfant flex sans "order" explicite
+   vaut 0 par défaut et se retrouverait sinon groupé avec le h2 et le verdict au lieu de rester en
+   dernier. */
+#vf-quiz-grid .answer-card { display:flex; flex-direction:column; }
+#vf-quiz-grid .answer-card h2 { order:0; }
+#vf-verdict { order:1; }
+#vf-field-rows { order:2; }
+#vf-nav-row { order:3; }
+#vf-hub-row { order:4; }
+#vf-verdict { text-align:center; font-family:Arial,sans-serif; font-weight:700; font-size:1.1rem; margin:0 0 14px; }
 #imp-correction-details { display:grid; grid-template-columns:max-content 1fr; column-gap:14px; row-gap:4px; align-items:baseline; }
 #imp-correction-details .correction-label { grid-column:1; font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; }
 #imp-correction-details .correction-value { grid-column:1/-1; font-size:1.1rem; font-weight:700; color:var(--ink); line-height:1.3; margin-bottom:14px; min-height:1.3em; opacity:0; transform:translateY(3px); transition:opacity .35s, transform .35s; }
@@ -1443,6 +1492,18 @@ body.has-other-works .correction-label { font-size:.76rem; }
 @media (max-width:1024px) {
   #imp-nav-row { order:1; }
   #imp-correction-details { order:2; }
+  /* INTRUS item 3 : le bouton "Suivant" remonte juste sous l'image (dès que la grille passe en une
+     seule colonne empilée), avant le texte de correction — plus besoin de défiler jusqu'en bas pour
+     passer à la question suivante. */
+  #intrus-next-button { order:1; }
+  #intrus-choices { order:2; }
+  #intrus-correction-details { order:3; }
+  /* VRAI/FAUX item 2 : dès que la grille passe en une seule colonne, le bouton Valider/Suivant
+     remonte juste sous le verdict (donc juste sous la consigne), avant la liste des rubriques —
+     avec jusqu'à 6 rubriques affichées, il fallait sinon défiler toute la liste à chaque question
+     pour l'atteindre. */
+  #vf-nav-row { order:2; }
+  #vf-field-rows { order:3; }
 }
 
 @media (max-width:640px) {
