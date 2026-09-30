@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=243" />
+    <link rel="stylesheet" href="style.css?v=245" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -174,6 +174,19 @@
           <rect x="24" y="52" width="42" height="38" rx="10" fill="#a81824"/>
           <circle cx="45" cy="30" r="5" fill="#b5902a"/>
         </svg>
+        <!-- v103 (retour Stéphane : « des lunettes sur le visage du personnage... en cliquant, on
+             verrait une incrustation ronde, comme une loupe grossissante, de ce qu'il voit en face
+             de lui — utile pour les petites œuvres (médaillons...) où on ne voit qu'un petit point
+             sur le mur ») : petites lunettes posées à hauteur des yeux (voir positionnement en JS,
+             setupGalleryWalk), cliquables, jamais masquées — voir openGalleryLoupe/closeGalleryLoupe
+             et #gallery-proto-loupe (l'incrustation elle-même) dans ce même fichier, plus bas. -->
+        <svg id="gallery-proto-glasses" viewBox="0 0 60 26" aria-hidden="true">
+          <circle cx="16" cy="13" r="11" fill="none" stroke="#2a2620" stroke-width="4"/>
+          <circle cx="44" cy="13" r="11" fill="none" stroke="#2a2620" stroke-width="4"/>
+          <path d="M27 13 h6" stroke="#2a2620" stroke-width="4" stroke-linecap="round"/>
+          <path d="M5 9 q-5 0 -5 6" fill="none" stroke="#2a2620" stroke-width="3" stroke-linecap="round"/>
+          <path d="M55 9 q5 0 5 6" fill="none" stroke="#2a2620" stroke-width="3" stroke-linecap="round"/>
+        </svg>
         <!-- v100 (retour Stéphane : « ... avec les éléments de décor, le cordon, etc. ») : cordon rouge
              à 8 potelets dorés repris À L'IDENTIQUE de #scale-rope-barrier (ancien couloir, plus bas
              dans ce fichier) — même tracé SVG, mêmes couleurs — sous un id propre à cet écran
@@ -197,6 +210,15 @@
             </radialGradient>
           </defs>
         </svg>
+      </div>
+      <!-- v103 : l'incrustation ronde elle-même — posée en frère de #gallery-proto-row plutôt qu'à
+           l'intérieur (qui est en overflow:hidden et pointer-events:none, voir style.css), pour
+           qu'elle puisse s'afficher en entier, par-dessus tout, et rester cliquable pour se
+           refermer. Vide au départ ; #gallery-proto-loupe-img reçoit son src au moment de l'ouvrir
+           (voir openGalleryLoupe dans app.js), toujours l'œuvre la plus proche du personnage — jamais
+           une œuvre choisie au hasard. -->
+      <div id="gallery-proto-loupe" class="hidden" aria-label="Vue rapprochée de l'œuvre la plus proche">
+        <img id="gallery-proto-loupe-img" alt="" />
       </div>
     </div>
     <div class="app-shell">
@@ -1946,6 +1968,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=328"></script>
+    <script src="app.js?v=330"></script>
   </body>
 </html>

@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v102';
+const APP_VERSION = 'v104';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4454,6 +4454,11 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx) {
     const img = document.createElement('img');
     img.className = 'scale-checkpoint-work';
     img.alt = '';
+    // v103 (retour Stéphane : « des lunettes... on verrait ce qu'il voit ») : référence directe vers
+    // l'œuvre, retrouvée par findNearestGalleryWork() sans jamais avoir à re-parser le DOM ou
+    // re-chercher dans state.scaleViewCandidates — une simple propriété posée sur l'élément lui-même,
+    // ramassée avec lui si jamais il est un jour recréé (track.innerHTML = '' dans buildGalleryTrack).
+    img._galleryWork = work;
     // v101 (retour Stéphane, exposition Monet réelle : « il faut ressortir de l'exposition, la
     // recharger, et petit à petit l'exposition charge les tableaux... alors que sur la liste, ils
     // viennent immédiatement ») : cette fonction posait TOUTES les <img> de TOUS les emplacements
@@ -4871,7 +4876,7 @@ function buildGalleryTrack() {
   let cursorPx = 0;
   let cumulativeCm = 0;
   const pilasterWidthPx = GALLERY_PILASTER_WIDTH_CM * pxPerCm;
-  gallerySegments.forEach((segment) => {
+  gallerySegments.forEach((segment, segmentIndex) => {
     const entryPilaster = document.createElement('div');
     entryPilaster.className = 'gallery-proto-pilaster';
     entryPilaster.style.left = `${cursorPx}px`;
@@ -4896,8 +4901,18 @@ function buildGalleryTrack() {
     worksEl.className = 'gallery-proto-wall-works scale-checkpoint-wall-works';
     wallEl.appendChild(worksEl);
     // v97 (retour Stéphane : « enlève les cadrans, ils sont beaucoup trop voyants — contentons-nous
-    // de l'essentiel ») : plus posée du tout pour l'instant — buildGalleryNiche() reste définie
-    // (probablement à réintroduire plus tard, en plus discret) mais n'est plus appelée ici.
+    // de l'essentiel ») : l'ancien cadran multi-salles (buildGalleryNiche(), plusieurs cases + point
+    // mobile, centré en bas du mur) reste défini plus bas mais n'est plus appelé ici.
+    // v104 (retour Stéphane : « un écran de contrôle par salle... au pied du pilastre, sur la gauche,
+    // en bas du mur — ça ne gênera rien, personne n'y mettra un tableau ») : repère très discret, un
+    // par mur, juste le numéro de la salle — pas de point mobile ni de rangée de cases comme l'ancien
+    // cadran, donc pas besoin de mise à jour continue : il est fixé une fois pour toutes à la
+    // construction du mur. Volontairement collé au pilastre d'ENTRÉE (bord gauche du mur, dans l'ordre
+    // du parcours), jamais au centre ni sur la zone où des œuvres pourraient être accrochées.
+    const roomPlaque = document.createElement('div');
+    roomPlaque.className = 'gallery-proto-room-plaque';
+    roomPlaque.textContent = `Salle ${segmentIndex + 1}/${gallerySegments.length}`;
+    wallEl.appendChild(roomPlaque);
     const wallWidthPx = GALLERY_SEGMENT_LENGTH_CM * pxPerCm;
     wallEl.style.left = `${cursorPx}px`;
     wallEl.style.width = `${wallWidthPx}px`;
@@ -4953,10 +4968,14 @@ function stopGalleryWalking() {
 function updateGalleryWalkVisual() {
   const dot = $('gallery-proto-floor-dot');
   const sil = $('gallery-proto-silhouette');
+  const glasses = $('gallery-proto-glasses');
   const track = $('gallery-proto-track');
   const tx = galleryProgress * galleryWalkRangePx;
   if (dot) dot.style.transform = `translateX(${tx}px)`;
   if (sil) sil.style.transform = `translateX(${tx}px)`;
+  // v103 : les lunettes avancent avec le personnage, exactement comme le sac à dos (même tx) — sinon
+  // elles resteraient plantées derrière lui dès qu'il marche.
+  if (glasses) glasses.style.transform = `translateX(${tx}px)`;
   const pillarTx = -galleryProgress * galleryPanTravelPx;
   if (track) track.style.transform = `translateX(${pillarTx}px)`;
   updateGalleryProgressIndicator();
@@ -4983,7 +5002,15 @@ function setupGalleryWalk() {
   sil.style.transform = 'translateX(0px)';
   dot.style.transform = 'translateX(0px)';
   galleryProgress = 0;
-  dot.classList.toggle('hidden', galleryPanTravelPx <= 0);
+  // v102bis (retour Stéphane : « il n'y a pas de raison que le sac à dos soit réservé à un
+  // déplacement sur deux salles, il faut qu'il en ait tout le temps ») : jusqu'ici, une petite
+  // exposition qui tenait déjà entière à l'écran (galleryPanTravelPx <= 0, rien à faire défiler)
+  // cachait complètement le sac à dos — logique tant que c'était un simple repère « il y a de quoi
+  // marcher ou pas », mais plus du tout une fois devenu le personnage lui-même. Le sac à dos reste
+  // maintenant toujours visible ; s'il n'y a rien à parcourir, le glisser reste possible mais n'a
+  // simplement aucun effet visible (galleryWalkRangePx très petit) — jamais une erreur, juste rien
+  // à voir de plus loin.
+  dot.classList.remove('hidden');
   const rowRect = row.getBoundingClientRect();
   const silRect = sil.getBoundingClientRect();
   if (!rowRect.width || !silRect.width) return;
@@ -5000,9 +5027,79 @@ function setupGalleryWalk() {
   // la hauteur du personnage depuis le sommet de la tête. -21 = moitié des 42px de haut du sac à
   // dos, pour que ce soit bien son CENTRE (pas son coin) qui tombe à cette hauteur-là.
   dot.style.top = `${silRect.top - rowRect.top + silRect.height * 0.24 - 21}px`;
+  // v103 (retour Stéphane : « des lunettes sur le visage du personnage ») : même principe que le sac
+  // à dos ci-dessus, mais à hauteur des yeux plutôt que du dos — sur le tracé SVG de la silhouette
+  // (viewBox 0 0 100 340), la tête occupe grossièrement y=8 à y=36 ; le niveau des yeux tombe donc à
+  // peu près à 7% de la hauteur totale depuis le sommet. Jamais masquées (pas de classList ici), et
+  // on referme toujours une éventuelle loupe restée ouverte d'une visite précédente.
+  const glasses = $('gallery-proto-glasses');
+  if (glasses) {
+    glasses.style.transform = 'translateX(0px)';
+    glasses.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 13}px`;
+    glasses.style.top = `${silRect.top - rowRect.top + silRect.height * 0.07 - 6}px`;
+  }
+  closeGalleryLoupe();
   galleryWalkRangePx = Math.max(160, window.innerWidth - silRect.right - 40);
   updateGalleryWalkVisual();
 }
+// v103 (retour Stéphane : « des lunettes... en cliquant, on verrait une incrustation ronde de ce
+// qu'il voit en face de lui, comme une loupe grossissante » — puis précision : « pas obligé que ça
+// occupe tout l'écran, une incrustation dans le plan objectif, pour revenir en arrière il suffirait
+// de recliquer sur le plan objectif ») : répond au problème concret des petites œuvres (médaillons,
+// etc.) qu'on ne peut pas cliquer avec précision tant elles sont petites à l'écran — au lieu de
+// cliquer l'œuvre elle-même, on clique les lunettes, et c'est le programme qui détermine l'œuvre la
+// plus proche du personnage, jamais l'utilisateur qui doit viser un point minuscule.
+function findNearestGalleryWork() {
+  const sil = $('gallery-proto-silhouette');
+  if (!sil) return null;
+  const silRect = sil.getBoundingClientRect();
+  if (!silRect.width) return null;
+  const refX = silRect.left + silRect.width / 2;
+  let best = null;
+  let bestDist = Infinity;
+  document.querySelectorAll('#gallery-proto-track .scale-checkpoint-work').forEach((img) => {
+    const r = img.getBoundingClientRect();
+    if (!r.width) return;
+    const dist = Math.abs(r.left + r.width / 2 - refX);
+    if (dist < bestDist) { bestDist = dist; best = img; }
+  });
+  return best;
+}
+function openGalleryLoupe() {
+  const loupe = $('gallery-proto-loupe');
+  const img = $('gallery-proto-loupe-img');
+  const nearest = findNearestGalleryWork();
+  if (!loupe || !img || !nearest || !nearest._galleryWork) return;
+  // Toujours redemandée en grand (700px), jamais réutilisée à la petite taille d'affichage réel sur
+  // le mur (Math.max(widthPx, 40), voir buildCheckpointCorridorWorks) — sans quoi l'agrandissement
+  // ne ferait qu'étirer une image déjà minuscule, floue.
+  img.src = imageSourceSized(nearest._galleryWork.image, 700);
+  loupe.classList.remove('hidden');
+}
+function closeGalleryLoupe() {
+  $('gallery-proto-loupe')?.classList.add('hidden');
+}
+$('gallery-proto-glasses')?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  const loupe = $('gallery-proto-loupe');
+  if (loupe && !loupe.classList.contains('hidden')) { closeGalleryLoupe(); return; }
+  openGalleryLoupe();
+});
+// Cliquer l'incrustation elle-même la referme aussi (petit raccourci en plus du clic « à côté »
+// ci-dessous — n'importe quel clic dans la zone visible de la loupe la referme, jamais besoin de
+// viser précisément les lunettes une seconde fois).
+$('gallery-proto-loupe')?.addEventListener('click', (event) => {
+  event.stopPropagation();
+  closeGalleryLoupe();
+});
+// v103 : « pour revenir en arrière, il suffirait de recliquer sur le plan objectif » — un clic
+// n'importe où ailleurs dans #gallery-proto (le personnage, le mur, le cordon...) referme la loupe si
+// elle est ouverte. Les deux écouteurs ci-dessus arrêtent la propagation, donc ce troisième ne se
+// déclenche jamais pour un clic sur les lunettes ou sur la loupe elle-même.
+$('gallery-proto')?.addEventListener('click', () => {
+  const loupe = $('gallery-proto-loupe');
+  if (loupe && !loupe.classList.contains('hidden')) closeGalleryLoupe();
+});
 // v100 (retour Stéphane : « ... avec les éléments de décor, le cordon, etc. ») : reprend le cordon
 // réel (#scale-rope-barrier, même tracé SVG, mêmes potelets dorés — voir index.html) sur cet écran,
 // sous le nom #gallery-rope-barrier. Sur l'ancien couloir, ce cordon vit dans une rangée flex
@@ -5950,6 +6047,7 @@ function exitScaleView() {
   // des éléments habituels, et sa marche arrêtée (sinon l'animation continuerait en arrière-plan,
   // invisible mais toujours active, voir stopGalleryWalking).
   stopGalleryWalking();
+  closeGalleryLoupe();
   $('gallery-proto')?.classList.add('hidden');
   $('lightbox-scale-view').classList.add('hidden');
   $('lightbox-scale-back-button').classList.add('hidden');

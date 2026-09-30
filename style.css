@@ -2144,3 +2144,42 @@ body.stephane-test-decor .scale-wall-pillar {
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.5)); pointer-events:auto;
 }
 #gallery-proto-floor-dot.hidden { display:none; }
+/* v103 (retour Stéphane : « des lunettes sur le visage du personnage... en cliquant, on verrait une
+   incrustation ronde de ce qu'il voit en face de lui, comme une loupe grossissante ») : petites
+   lunettes à hauteur des yeux (position exacte posée en JS, voir setupGalleryWalk dans app.js, comme
+   le sac à dos) — jamais masquées (contrairement à l'ancien sac à dos avant le correctif « il faut
+   qu'il en ait tout le temps », il n'y a d'ailleurs ici aucune raison de les cacher). */
+#gallery-proto-glasses {
+  position:absolute; width:26px; height:12px; cursor:pointer; pointer-events:auto;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));
+}
+/* L'incrustation elle-même : ronde, cadre doré repris du cordon voisin (#b5902a/#7a0f18) pour
+   rappeler un miroir grossissant/une loupe de collection plutôt qu'un simple cadre technique.
+   Centrée en haut de l'écran (jamais sur le personnage ni sur le mur qu'elle montre justement en
+   agrandi) — v103 (retour Stéphane, précision orale : « pas obligé que ça occupe tout l'écran... une
+   incrustation dans le plan objectif ») : PAS un plein écran, juste ce cercle, le reste de la vue
+   (personnage, mur, cordon) reste visible et actif derrière. */
+#gallery-proto-loupe {
+  position:absolute; top:6vh; left:50%; transform:translateX(-50%);
+  width:32vh; height:32vh; border-radius:50%; overflow:hidden;
+  background:#111; cursor:pointer; z-index:30;
+  border:9px solid #b5902a; box-shadow:0 0 0 3px #7a0f18, 0 12px 34px rgba(0,0,0,.55);
+}
+#gallery-proto-loupe.hidden { display:none; }
+#gallery-proto-loupe img {
+  position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);
+  max-width:none; max-height:none; height:112%; width:auto;
+}
+/* v104 (retour Stéphane : « un écran de contrôle par salle... au pied du pilastre, sur la gauche, en
+   bas du mur — ça ne gênera rien, ni les éléments architecturaux ni les tableaux, parce que personne
+   n'en mettra là ») : petit repère fixe par mur — juste le numéro de salle, jamais l'ancien cadran
+   multi-salles (.gallery-proto-niche, ci-dessus) avec ses cases et son point mobile, explicitement jugé
+   « trop voyant » en v97. Collé au pilastre d'entrée (bord gauche du mur), tout en bas, très discret. */
+.gallery-proto-room-plaque {
+  position:absolute; bottom:1.4%; left:1.6%;
+  background:rgba(20,16,10,.72); border:1px solid rgba(255,255,255,.32); border-radius:3px;
+  padding:3px 7px; z-index:5; pointer-events:none;
+  font-family:Arial, sans-serif; font-size:.62rem; font-weight:700; color:#dcd3bd;
+  letter-spacing:.02em; white-space:nowrap; box-shadow:0 1px 3px rgba(0,0,0,.4);
+  opacity:.82;
+}
