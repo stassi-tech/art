@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v101';
+const APP_VERSION = 'v102';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4987,11 +4987,19 @@ function setupGalleryWalk() {
   const rowRect = row.getBoundingClientRect();
   const silRect = sil.getBoundingClientRect();
   if (!rowRect.width || !silRect.width) return;
-  // v101 : -17 (moitié des 34px de large du sac à dos, était -14 pour l'ancien point de 28px) pour
-  // rester centré sur le personnage ; -30 (était -20) pour la nouvelle hauteur (42px, était 28px) —
-  // pose le sac à dos au sol, contre les pieds, comme l'était l'ancien point.
+  // v101 : -17, moitié des 34px de large du sac à dos — reste centré horizontalement sur le
+  // personnage, comme l'était l'ancien point.
   dot.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 17}px`;
-  dot.style.top = `${silRect.bottom - rowRect.top - 30}px`;
+  // v101bis (retour Stéphane, capture à l'appui : « le sac à dos... il est sur le pied, il n'est pas
+  // sur ton dos, il faut que le sac à dos remonte sur son dos ») : la toute première pose (ci-dessus,
+  // silRect.bottom - 30) collait le sac à dos au sol, contre les pieds — logique pour un simple
+  // repère au sol (l'ancien point), mais plus du tout une fois devenu un sac à dos censé être PORTÉ.
+  // Recalculé à partir du HAUT de la silhouette plutôt que du bas : le tracé SVG de la silhouette
+  // (voir #gallery-proto-silhouette, viewBox 0 0 100 340) place les épaules vers y=34 et la taille
+  // vers y=104 sur cette hauteur totale de 340 — le haut du dos se centre donc à peu près à 24% de
+  // la hauteur du personnage depuis le sommet de la tête. -21 = moitié des 42px de haut du sac à
+  // dos, pour que ce soit bien son CENTRE (pas son coin) qui tombe à cette hauteur-là.
+  dot.style.top = `${silRect.top - rowRect.top + silRect.height * 0.24 - 21}px`;
   galleryWalkRangePx = Math.max(160, window.innerWidth - silRect.right - 40);
   updateGalleryWalkVisual();
 }
