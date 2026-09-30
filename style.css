@@ -1411,8 +1411,16 @@ body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .sca
    en dur — voir leur code). Valeur d'essai à confirmer/ajuster avec Stéphane une fois vu en vrai :
    pas de bonne proportion évidente sans un aller-retour sur ce point précis.
    Voir aussi CHECKPOINT_MAX_WORK_CM (app.js, v87 : la vraie échelle du Courbet du mur du fond)
-   pour l'autre moitié de cette même préoccupation (le tableau qui manque de place). */
-#scale-checkpoint-silhouette { height:18vh; margin-bottom:1.5vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; }
+   pour l'autre moitié de cette même préoccupation (le tableau qui manque de place).
+   v93 (retour Stéphane : « je le trouve un peu petit » — le personnage de CE plan, près du cordon,
+   comparé à celui du plan rapproché) : 18vh → 22vh. Toujours largement sous le plafond des 30% posé
+   ci-dessus (mesuré : la rangée ne montait qu'à 19,5% de la hauteur à 18vh, voir
+   test_v89_room_proportion.js) — de la marge restait donc disponible pour agrandir un peu SANS
+   revenir sur l'équilibre déjà validé avec Stéphane. Cette valeur sert aussi maintenant de RÉFÉRENCE
+   au calcul du plan rapproché (CHECKPOINT_CLOSEUP_SILHOUETTE_VH, app.js) — voir son commentaire
+   complet : le rapport entre les deux (×2) est dérivé d'une hypothèse de profondeur réelle de salle,
+   pas choisi séparément au jugé. */
+#scale-checkpoint-silhouette { height:22vh; margin-bottom:1.5vh; color:#5c6a5a; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.2)); transform-origin:50% 100%; }
 /* v45 (retour de Stéphane : « il ne passe pas du tout dans la salle ») : copie visuelle du
    personnage ci-dessus, à l'identique (même height, couleur, ombre), mais position:fixed — donc
    jamais concernée par l'overflow:hidden de #scale-checkpoint-row (voir le commentaire complet dans

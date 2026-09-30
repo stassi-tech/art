@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v92';
+const APP_VERSION = 'v93';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4548,11 +4548,29 @@ function buildCheckpointTrack() {
 // v92 (retour Stéphane : « rajoute le plan rapproché... en gardant exactement la même disposition,
 // mais en rapprochant le personnage des tableaux ») : hauteur cible de la copie décorative du
 // personnage (#scale-checkpoint-floor-silhouette) en plan rapproché — nettement plus grande que les
-// 18vh de la vue d'ensemble (personnage plus proche, donc pxPerCm plus grand, voir buildCheckpointTrack
+// 22vh de la vue d'ensemble (personnage plus proche, donc pxPerCm plus grand, voir buildCheckpointTrack
 // ci-dessus), mais volontairement plus modeste que les 70vh de l'ancien plan rapproché
 // (buildContinuousWall, désormais mort) : Stéphane a précisé vouloir « un peu plus loin des tableaux »
-// que cette ancienne version. Valeur d'essai, à ajuster avec lui une fois vue en vrai.
-const CHECKPOINT_CLOSEUP_SILHOUETTE_VH = 34;
+// que cette ancienne version.
+// v93 (retour Stéphane : « je le trouve un peu petit par rapport à après... ce serait presque un
+// calcul mathématique, combien de mètres entre le cordon et les tableaux ») : ce rapport (34/18 ≈
+// 1,89, choisi au jugé en v92) devient un vrai calcul, sur une hypothèse de profondeur RÉELLE de
+// salle, plutôt que 2 tailles choisies séparément. CHECKPOINT_ROOM_DEPTH_CM (5 m) est la distance
+// supposée entre le cordon (où se tient le personnage en vue d'ensemble — donc TOUTE la profondeur
+// du sol) et le mur ; le plan rapproché le place à mi-chemin (CHECKPOINT_ROOM_DEPTH_CM / 2 — « au
+// milieu du parquet », déjà demandé pour repositionCheckpointFloorSilhouette). Principe de
+// perspective basique : la taille apparente d'une chose vue de face est INVERSEMENT
+// proportionnelle à la distance qui nous en sépare — être 2 fois plus proche du mur (mi-profondeur
+// plutôt que profondeur entière) doit donc faire apparaître le personnage (ET le mur, ET les
+// tableaux, déjà à la même échelle pxPerCm que lui — voir buildCheckpointTrack) exactement 2 fois
+// plus grand, pas 1,89 fois comme avant. Le point de départ (22vh, voir #scale-checkpoint-silhouette
+// dans style.css) a lui aussi été agrandi (18vh → 22vh, toujours sous le plafond des 30% de la
+// rangée, voir son commentaire) pour répondre à « il est un peu petit » dans l'absolu — le plan
+// rapproché suit donc mécaniquement (22 × 2 = 44), sans plus être réglé séparément à l'œil.
+const CHECKPOINT_ROOM_DEPTH_CM = 500; // profondeur supposée du sol, cordon → mur (vue d'ensemble)
+const CHECKPOINT_CLOSEUP_DISTANCE_CM = CHECKPOINT_ROOM_DEPTH_CM / 2; // « au milieu du parquet »
+const CHECKPOINT_OVERVIEW_SILHOUETTE_VH = 22; // doit rester IDENTIQUE à #scale-checkpoint-silhouette (style.css)
+const CHECKPOINT_CLOSEUP_SILHOUETTE_VH = CHECKPOINT_OVERVIEW_SILHOUETTE_VH * (CHECKPOINT_ROOM_DEPTH_CM / CHECKPOINT_CLOSEUP_DISTANCE_CM);
 let checkpointCloseUp = false;
 // Positionne la copie décorative du plan rapproché : centrée horizontalement dans la salle (comme le
 // vrai personnage l'est déjà dans la rangée du bas), les pieds à mi-profondeur du sol à croisillons
@@ -5029,7 +5047,29 @@ function enterFocusView(work, hCm, note) {
   $('scale-focus-view').classList.remove('hidden');
   const maxArtH = window.innerHeight * 0.82;
   const maxArtW = window.innerWidth * 0.62;
-  const pxPerCm = Math.min(maxArtH / hCm, maxArtW / lCm);
+  // BUG corrigé v93 (retour Stéphane : « quand on clique sur un tableau... on peut se rapprocher, on
+  // voit les jambes du personnage au niveau du tableau ») : pxPerCm ne visait jusqu'ici qu'à remplir
+  // le cadre au maximum avec L'ŒUVRE (maxArtH/hCm, maxArtW/lCm) — pour une PETITE œuvre (hCm faible),
+  // ce calcul produit un pxPerCm énorme, et donc une silhouette de comparaison (170 cm à CETTE même
+  // échelle) bien plus haute que l'écran. Comme elle reste ancrée par ses PIEDS (silhH soustrait de
+  // son top, voir plus bas), le haut — tête, torse, bras — se retrouve simplement hors-cadre, par le
+  // haut : il ne restait donc visible, en bas de l'écran, que ses jambes, à peu près à la hauteur du
+  // bas du tableau. Deux garde-fous supplémentaires, donc : maxSilH (jamais plus de 86% de la
+  // fenêtre pour la silhouette SEULE) — mais insuffisant à lui seul : une petite œuvre a un bas
+  // (l'ancrage des pieds) situé plutôt au milieu de l'écran, pas tout en bas, donc même une
+  // silhouette de 86vh peut encore déborder par le haut depuis cette ancre-là. D'où
+  // maxPxPerCmForSilhTop, qui borne pxPerCm pour que le HAUT de la silhouette (son ancre aux pieds,
+  // moins sa propre hauteur) reste toujours sous topMarginPx : pour une petite œuvre, c'est
+  // maintenant cette limite qui l'emporte, l'œuvre s'affiche alors plus petite que le maximum permis
+  // par son propre cadre, mais la silhouette de comparaison reste entière, lisible, et alignée sur
+  // le bas de l'œuvre — ce qui est tout le but de cette vue.
+  const maxSilH = window.innerHeight * 0.86;
+  const topMarginPx = 24;
+  const silhTopConstraintDenom = CHECKPOINT_PERSON_HEIGHT_CM - hCm / 2;
+  const maxPxPerCmForSilhTop = silhTopConstraintDenom > 0
+    ? (window.innerHeight / 2 - topMarginPx) / silhTopConstraintDenom
+    : Infinity; // œuvre déjà aussi haute (ou plus) que le personnage : cette contrainte ne s'applique pas
+  const pxPerCm = Math.min(maxArtH / hCm, maxArtW / lCm, maxSilH / CHECKPOINT_PERSON_HEIGHT_CM, maxPxPerCmForSilhTop);
   const artH = hCm * pxPerCm;
   const artW = lCm * pxPerCm;
   const silhH = 170 * pxPerCm;
