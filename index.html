@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=236" />
+    <link rel="stylesheet" href="style.css?v=237" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -64,9 +64,44 @@
         <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-ambiance">🎨 Changer l'ambiance</button>
         <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-exhibition">🖼️ Salle d'exposition</button>
         <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-account">👤 Mon compte</button>
+        <!-- v94 (retour de Stéphane, 2 messages : « on va supprimer la profondeur... une galerie
+             rythmée par des pilastres... chaque espace peut avoir sa couleur, ses tableaux » puis
+             « le sol sur lequel marche le personnage, les murs entre les pilastres, et éventuellement
+             les pilastres eux-mêmes... le joueur sélectionne un certain nombre d'emplacements ») :
+             entrée TEMPORAIRE, le temps que Stéphane valide le principe, vers le prototype technique
+             de la nouvelle galerie configurable (voir enterGalleryProto dans app.js) — pas encore le
+             vrai configurateur (nombre d'emplacements, ambiances, réarrangement des œuvres), juste la
+             mécanique de marche/pilastres/cadrans généralisée, avec une démo à 3 emplacements. À
+             retirer du menu une fois le principe validé et le vrai configurateur construit par-dessus. -->
+        <button type="button" class="hamburger-item" id="menu-item-gallery-proto">🏛️ Prototype galerie (démo)</button>
         <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Comment fonctionne l'application</button>
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 Liste des artistes et des œuvres</button>
         <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
+      </div>
+    </div>
+    <!-- v94 : prototype technique de la nouvelle galerie configurable, écran ENTIÈREMENT NOUVEAU et
+         AUTONOME (pas une modification du couloir #scale-checkpoint existant, déjà testé/livré) —
+         posé ici, en dehors de #lightbox-scale-view/.app-shell, pour pouvoir s'ouvrir depuis
+         n'importe où (menu hamburger, voir menu-item-gallery-proto plus haut) sans dépendre d'une
+         exposition en cours. Reprend le principe déjà validé du couloir à mur unique (personnage à
+         l'échelle réelle, marche latérale qui fait défiler le décor, cadran de progression sur les
+         pilastres) mais SANS profondeur/perspective (retour de Stéphane : « on va supprimer la
+         profondeur... c'est comme la galerie du Louvre ») et avec plusieurs murs/emplacements
+         séparés par des pilastres plats plutôt qu'un seul mur continu — voir enterGalleryProto/
+         buildGalleryTrack dans app.js pour la construction, entièrement en JS (le nombre
+         d'emplacements étant appelé à varier une fois le vrai configurateur construit). -->
+    <div id="gallery-proto" class="hidden">
+      <button type="button" id="gallery-proto-back" aria-label="Fermer le prototype" title="Fermer le prototype">◄ Retour</button>
+      <p id="gallery-proto-label">Prototype — galerie configurable (démo à 3 emplacements)</p>
+      <div id="gallery-proto-room">
+        <div id="gallery-proto-track"></div>
+        <div id="gallery-proto-floor" aria-hidden="true"></div>
+      </div>
+      <div id="gallery-proto-row">
+        <svg id="gallery-proto-silhouette" viewBox="0 0 100 340" aria-hidden="true">
+          <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
+        </svg>
+        <div id="gallery-proto-floor-dot" class="hidden" aria-hidden="true"></div>
       </div>
     </div>
     <div class="app-shell">
@@ -1829,6 +1864,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=320"></script>
+    <script src="app.js?v=321"></script>
   </body>
 </html>

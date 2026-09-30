@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v93';
+const APP_VERSION = 'v94';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4646,6 +4646,295 @@ window.addEventListener('resize', () => {
     updateCheckpointWalkVisual();
   }
 });
+// ================================================================================================
+// v94 — PROTOTYPE de la nouvelle galerie configurable (retour de Stéphane, 2 messages du
+// 30/09/2026 : « on va supprimer la profondeur... les piliers, ce ne sont plus des piliers, ce sont
+// des pilastres... le mur, c'est un mur de galerie, comme la galerie du Louvre... chaque espace peut
+// avoir sa couleur, ses tableaux » puis « le joueur sélectionne un certain nombre d'emplacements...
+// j'ai besoin de quatre emplacements entre deux pilastres... ça nous fait huit pilastres à mettre »),
+// puis un 3e message donnant les mesures précises : « des emplacements de 10 mètres... les pilastres
+// fassent à peu près un mètre de large... le personnage serait à peu près à trois mètres du mur ».
+//
+// Écran ENTIÈREMENT NOUVEAU (#gallery-proto, voir index.html), qui ne modifie RIEN au couloir
+// #scale-checkpoint déjà testé et livré (v91-v93) — juste posé à côté, pour montrer la mécanique de
+// base à Stéphane avant de construire le vrai configurateur (choix du nombre d'emplacements,
+// ambiance/couleur par emplacement, réarrangement des œuvres). Reprend, généralisée, exactement la
+// mécanique déjà éprouvée sur le couloir : personnage à échelle réelle (pxPerCm dérivé de sa hauteur
+// à l'écran, jamais de la largeur du mur), marche latérale qui fait défiler le décor derrière lui,
+// cadran de progression sur les pilastres (ancien updateCheckpointRoomIndicator, ici généralisé à N
+// cases au lieu de 2 fixes).
+//
+// Choix retenu pour « 8 pilastres pour 4 emplacements » : PAS le modèle de l'ancien système à 2
+// salles (3 piliers PARTAGÉS entre les 2 salles, donc N+1 pilastres pour N salles) — ici, chaque
+// emplacement a ses 2 PROPRES pilastres (entrée + sortie), jamais partagés avec le voisin, ce qui
+// donne bien 2×N pilastres, donc 8 pour 4 emplacements — exactement le compte donné par Stéphane.
+// Deux pilastres adjacents (sortie de l'emplacement n, entrée de l'emplacement n+1) se touchent donc
+// bord à bord sans être fusionnés en un seul plus large : chaque emplacement reste un module
+// autonome avec son propre couple de pilastres, ce qui correspond mieux à « chaque espace peut avoir
+// sa couleur, ses tableaux » (un module complet, plutôt qu'un mur unique découpé après coup par des
+// marques partagées). Avantage pratique supplémentaire : chaque emplacement occupe alors un
+// « créneau » de longueur FIXE (1 pilastre + 1 mur + 1 pilastre), donc l'emplacement actif se déduit
+// directement de la distance parcourue (voir updateGalleryProgressIndicator), sans avoir besoin
+// d'hystérésis comme l'ancien CHECKPOINT_PILLAR_START/END (nécessaire là-bas uniquement parce que le
+// pilier central était partagé entre les 2 salles).
+const GALLERY_SEGMENT_LENGTH_CM = 1000; // 10 m entre les 2 pilastres d'un même emplacement
+const GALLERY_PILASTER_WIDTH_CM = 100; // 1 m — « facile à calculer après au niveau des proportions »
+// Distance supposée cordon → mur (3 m, « le personnage serait à peu près à trois mètres du mur »).
+// Contrairement à CHECKPOINT_ROOM_DEPTH_CM (couloir existant), cette valeur ne change PAS l'échelle
+// des œuvres elles-mêmes (déjà toujours correcte, voir galleryPxPerCm ci-dessous, dérivé uniquement
+// de la hauteur du personnage à l'écran, jamais de la distance) — elle ne servirait qu'à calculer un
+// éventuel futur plan rapproché sur ce nouvel écran, avec le même principe 2× déjà validé sur le
+// couloir (buildCheckpointTrack : moitié de distance = 2 fois plus grand). Posée en constante dès
+// maintenant pour ne pas avoir à la re-choisir au jugé plus tard.
+const GALLERY_CHARACTER_DEPTH_CM = 300;
+let galleryProgress = 0; // 0..1, fraction du trajet total (tout premier pilastre → tout dernier)
+let galleryWalkRangePx = 220;
+let galleryPanTravelPx = 0;
+let galleryPxPerCm = 0;
+let gallerySegments = []; // rempli par enterGalleryProto — [{ colorHex, works }, ...]
+let galleryTotalLengthCm = 0; // longueur réelle totale (tous pilastres + tous murs confondus)
+let galleryWalkAnimationId = null;
+let galleryWalkDirection = 0;
+// Démo à 3 emplacements : reprend les œuvres réellement en cours (state.scaleViewCandidates) si une
+// exposition est active, sinon un jeu d'œuvres factices — dont "Un enterrement à Ornans" à la taille
+// que Stéphane lui a lui-même donnée (« à peu près sept mètres de long » → 315 x 668 cm, ses vraies
+// dimensions) pour vérifier concrètement, avec un chiffre qu'il connaît, que ses proportions (10 m
+// d'emplacement, personnage à 3 m du mur) tiennent bien à l'écran une fois construites.
+function galleryProtoPlaceholderWork(hexColor, artist, title, hCm, lCm) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="#${hexColor}"/></svg>`;
+  return { artist, title, image: 'data:image/svg+xml;base64,' + btoa(svg), hauteur: String(hCm), longueur: String(lCm), date: '', location: '' };
+}
+function buildGalleryDemoSegments() {
+  const realWorks = (state.scaleViewCandidates || []).filter(Boolean);
+  // Teintes reprises des ambiances versailles / pitti / ermitage (voir body[data-ambiance=...] dans
+  // style.css) — repli rapide en attendant que Stéphane confirme s'il veut réutiliser les 8
+  // ambiances existantes comme source de couleur par emplacement (proposé) ou des pickers dédiés.
+  const AMBIANCE_LIKE_COLORS = ['5c1015', '0c3c2f', '0a2745'];
+  if (realWorks.length >= 3) {
+    const perSegment = Math.ceil(realWorks.length / 3);
+    return [0, 1, 2]
+      .map((i) => ({ colorHex: AMBIANCE_LIKE_COLORS[i], works: realWorks.slice(i * perSegment, (i + 1) * perSegment) }))
+      .filter((seg) => seg.works.length);
+  }
+  return [
+    { colorHex: AMBIANCE_LIKE_COLORS[0], works: [galleryProtoPlaceholderWork('4a4a4a', 'Gustave Courbet', 'Un enterrement à Ornans (démo)', 315, 668)] },
+    { colorHex: AMBIANCE_LIKE_COLORS[1], works: [
+      galleryProtoPlaceholderWork('7f8c8d', 'Démo', 'Petite œuvre 1', 80, 60),
+      galleryProtoPlaceholderWork('8c4a4a', 'Démo', 'Petite œuvre 2', 100, 140),
+      galleryProtoPlaceholderWork('4a8c5a', 'Démo', 'Petite œuvre 3', 60, 90),
+    ] },
+    { colorHex: AMBIANCE_LIKE_COLORS[2], works: [
+      galleryProtoPlaceholderWork('8c7a4a', 'Démo', 'Moyenne œuvre 1', 180, 220),
+      galleryProtoPlaceholderWork('5a4a8c', 'Démo', 'Moyenne œuvre 2', 150, 120),
+    ] },
+  ];
+}
+// Construit une niche de cadran vide (une case par emplacement) — son contenu (case active, point
+// rouge) est ensuite tenu à jour par updateGalleryProgressIndicator à chaque pas de marche, jamais
+// reconstruit ici (même principe que l'ancien système : la niche elle-même ne change plus après sa
+// création, seul son intérieur bouge).
+function buildGalleryNiche() {
+  const niche = document.createElement('div');
+  niche.className = 'gallery-proto-niche';
+  niche.setAttribute('aria-hidden', 'true');
+  const title = document.createElement('p');
+  title.className = 'gallery-proto-niche-title';
+  title.textContent = 'Emplacement actuel';
+  const boxesRow = document.createElement('div');
+  boxesRow.className = 'gallery-proto-niche-boxes';
+  gallerySegments.forEach((seg, i) => {
+    const box = document.createElement('div');
+    box.className = 'gallery-proto-box';
+    box.dataset.segmentIndex = String(i);
+    box.textContent = String(i + 1);
+    boxesRow.appendChild(box);
+  });
+  const dot = document.createElement('div');
+  dot.className = 'gallery-proto-dot';
+  boxesRow.appendChild(dot);
+  niche.appendChild(title);
+  niche.appendChild(boxesRow);
+  return niche;
+}
+// Construit #gallery-proto-track : pour chaque emplacement, un pilastre d'entrée, un mur (portant
+// ses œuvres à leur vraie échelle — réutilise buildCheckpointCorridorWorks telle quelle, déjà
+// générique), un pilastre de sortie — bord à bord, jamais partagés avec l'emplacement voisin (voir
+// le commentaire d'ensemble plus haut sur le compte de pilastres). Renvoie la distance de
+// panoramique disponible, exactement comme buildCheckpointTrack.
+function buildGalleryTrack() {
+  const room = $('gallery-proto-room');
+  const track = $('gallery-proto-track');
+  const sil = $('gallery-proto-silhouette');
+  if (!room || !track || !sil) return 0;
+  const roomRect = room.getBoundingClientRect();
+  if (!roomRect.width || !roomRect.height) return 0;
+  const silRect = sil.getBoundingClientRect();
+  const pxPerCm = silRect.height ? silRect.height / CHECKPOINT_PERSON_HEIGHT_CM : roomRect.width / (GALLERY_SEGMENT_LENGTH_CM * 3);
+  galleryPxPerCm = pxPerCm;
+  const windowH = roomRect.height;
+  track.innerHTML = '';
+  let cursorPx = 0;
+  let cumulativeCm = 0;
+  const pilasterWidthPx = GALLERY_PILASTER_WIDTH_CM * pxPerCm;
+  gallerySegments.forEach((segment) => {
+    const entryPilaster = document.createElement('div');
+    entryPilaster.className = 'gallery-proto-pilaster';
+    entryPilaster.appendChild(buildGalleryNiche());
+    entryPilaster.style.left = `${cursorPx}px`;
+    entryPilaster.style.width = `${pilasterWidthPx}px`;
+    track.appendChild(entryPilaster);
+    cursorPx += pilasterWidthPx;
+    cumulativeCm += GALLERY_PILASTER_WIDTH_CM;
+
+    const wallEl = document.createElement('div');
+    wallEl.className = 'gallery-proto-wall';
+    wallEl.style.backgroundColor = `#${segment.colorHex}`;
+    const worksEl = document.createElement('div');
+    // v94 : porte AUSSI la classe scale-checkpoint-wall-works, purement comme repère JS pour
+    // buildCheckpointCorridorWorks (qui la cherche par ce nom exact) — aucune règle CSS ne cible ce
+    // nom en dehors du couloir existant, donc aucun style supplémentaire n'est appliqué ici par ce
+    // biais ; gallery-proto-wall-works porte déjà tout le style nécessaire pour cet écran.
+    worksEl.className = 'gallery-proto-wall-works scale-checkpoint-wall-works';
+    wallEl.appendChild(worksEl);
+    const wallWidthPx = GALLERY_SEGMENT_LENGTH_CM * pxPerCm;
+    wallEl.style.left = `${cursorPx}px`;
+    wallEl.style.width = `${wallWidthPx}px`;
+    track.appendChild(wallEl);
+    buildCheckpointCorridorWorks(wallEl, segment.works, pxPerCm, windowH);
+    cursorPx += wallWidthPx;
+    cumulativeCm += GALLERY_SEGMENT_LENGTH_CM;
+
+    const exitPilaster = document.createElement('div');
+    exitPilaster.className = 'gallery-proto-pilaster';
+    exitPilaster.appendChild(buildGalleryNiche());
+    exitPilaster.style.left = `${cursorPx}px`;
+    exitPilaster.style.width = `${pilasterWidthPx}px`;
+    track.appendChild(exitPilaster);
+    cursorPx += pilasterWidthPx;
+    cumulativeCm += GALLERY_PILASTER_WIDTH_CM;
+  });
+  track.style.width = `${cursorPx}px`;
+  track.style.transform = 'translateX(0px)';
+  galleryTotalLengthCm = cumulativeCm;
+  updateGalleryProgressIndicator();
+  return Math.max(0, cursorPx - roomRect.width);
+}
+// Généralisation de l'ancien updateCheckpointRoomIndicator (2 cases fixes, salle 1/salle 2) à un
+// nombre VARIABLE de cases (une par emplacement) : chaque emplacement possède désormais son propre
+// créneau de longueur fixe (voir le commentaire d'ensemble plus haut), donc l'emplacement actif se
+// déduit directement de la distance parcourue, sans hystérésis à gérer.
+function updateGalleryProgressIndicator() {
+  const niches = document.querySelectorAll('.gallery-proto-niche');
+  if (!niches.length || !gallerySegments.length) return;
+  const traveledCm = galleryProgress * galleryTotalLengthCm;
+  const slotCm = GALLERY_SEGMENT_LENGTH_CM + 2 * GALLERY_PILASTER_WIDTH_CM;
+  const activeIndex = Math.min(gallerySegments.length - 1, Math.max(0, Math.floor(traveledCm / slotCm)));
+  niches.forEach((niche) => {
+    const boxesRow = niche.querySelector('.gallery-proto-niche-boxes');
+    if (!boxesRow) return;
+    boxesRow.querySelectorAll('.gallery-proto-box').forEach((box) => {
+      box.classList.toggle('active', Number(box.dataset.segmentIndex) === activeIndex);
+    });
+    const dot = boxesRow.querySelector('.gallery-proto-dot');
+    if (dot) {
+      const travel = Math.max(0, boxesRow.clientWidth - dot.offsetWidth);
+      dot.style.left = `${galleryProgress * travel}px`;
+    }
+  });
+}
+function stopGalleryWalking() {
+  if (galleryWalkAnimationId) clearTimeout(galleryWalkAnimationId);
+  galleryWalkAnimationId = null;
+  galleryWalkDirection = 0;
+}
+// Même mécanique que updateCheckpointWalkVisual : petit déplacement à l'écran du personnage/point,
+// grand panoramique en sens inverse du rail — plus la mise à jour du cadran généralisé au passage.
+function updateGalleryWalkVisual() {
+  const dot = $('gallery-proto-floor-dot');
+  const sil = $('gallery-proto-silhouette');
+  const track = $('gallery-proto-track');
+  const tx = galleryProgress * galleryWalkRangePx;
+  if (dot) dot.style.transform = `translateX(${tx}px)`;
+  if (sil) sil.style.transform = `translateX(${tx}px)`;
+  const pillarTx = -galleryProgress * galleryPanTravelPx;
+  if (track) track.style.transform = `translateX(${pillarTx}px)`;
+  updateGalleryProgressIndicator();
+}
+function startGalleryWalking(direction) {
+  stopGalleryWalking();
+  galleryWalkDirection = direction;
+  const step = () => {
+    galleryProgress = Math.min(1, Math.max(0, galleryProgress + galleryWalkDirection * 0.018));
+    updateGalleryWalkVisual();
+    if ((galleryWalkDirection > 0 && galleryProgress >= 1) || (galleryWalkDirection < 0 && galleryProgress <= 0)) {
+      stopGalleryWalking();
+      return;
+    }
+    galleryWalkAnimationId = setTimeout(step, 16);
+  };
+  galleryWalkAnimationId = setTimeout(step, 16);
+}
+function setupGalleryWalk() {
+  const dot = $('gallery-proto-floor-dot');
+  const sil = $('gallery-proto-silhouette');
+  const row = $('gallery-proto-row');
+  if (!dot || !sil || !row) return;
+  sil.style.transform = 'translateX(0px)';
+  dot.style.transform = 'translateX(0px)';
+  galleryProgress = 0;
+  dot.classList.toggle('hidden', galleryPanTravelPx <= 0);
+  const rowRect = row.getBoundingClientRect();
+  const silRect = sil.getBoundingClientRect();
+  if (!rowRect.width || !silRect.width) return;
+  dot.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 14}px`;
+  dot.style.top = `${silRect.bottom - rowRect.top - 20}px`;
+  galleryWalkRangePx = Math.max(160, window.innerWidth - silRect.right - 40);
+  updateGalleryWalkVisual();
+}
+(function attachGalleryFloorDotDrag() {
+  const dot = $('gallery-proto-floor-dot');
+  if (!dot) return;
+  const DRAG_THRESHOLD = 8;
+  let dragging = false, downX = 0, startProgress = 0;
+  dot.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    dragging = true; downX = event.clientX; startProgress = galleryProgress;
+    dot.setPointerCapture?.(event.pointerId);
+    dot.style.cursor = 'grabbing';
+  });
+  dot.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const dx = event.clientX - downX;
+    if (Math.abs(dx) > DRAG_THRESHOLD) {
+      stopGalleryWalking();
+      galleryProgress = Math.min(1, Math.max(0, startProgress + dx / galleryWalkRangePx));
+      updateGalleryWalkVisual();
+    }
+  });
+  const stop = () => { dragging = false; dot.style.cursor = 'grab'; };
+  dot.addEventListener('pointerup', stop);
+  dot.addEventListener('pointercancel', stop);
+})();
+function enterGalleryProto() {
+  $('gallery-proto')?.classList.remove('hidden');
+  gallerySegments = buildGalleryDemoSegments();
+  requestAnimationFrame(() => {
+    galleryPanTravelPx = buildGalleryTrack();
+    setupGalleryWalk();
+  });
+}
+function exitGalleryProto() {
+  stopGalleryWalking();
+  $('gallery-proto')?.classList.add('hidden');
+}
+window.addEventListener('resize', () => {
+  if (!$('gallery-proto')?.classList.contains('hidden')) {
+    galleryPanTravelPx = buildGalleryTrack();
+    updateGalleryWalkVisual();
+  }
+});
+$('gallery-proto-back')?.addEventListener('click', () => exitGalleryProto());
+$('menu-item-gallery-proto')?.addEventListener('click', () => { closeHamburgerMenu(); enterGalleryProto(); });
 // v57 : plus de bouton « Entrée » ni de bouton « Ticket » (façade et machine à tickets toutes deux
 // retirées) — enterScaleView() appelle directement enterCheckpointCorridor(), et l'avancée
 // (armCheckpointApproach) s'arme désormais automatiquement au repos plutôt qu'au clic sur un
