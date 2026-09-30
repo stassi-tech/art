@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=241" />
+    <link rel="stylesheet" href="style.css?v=242" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -74,6 +74,44 @@
         <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
       </div>
     </div>
+    <!-- v101 (retour Stéphane, bug réel : « le bouton changer l'ambiance est inactif », « le bandeau
+         du haut est un peu bloqué ») : #ambiance-quick-picker et #exhibition-picker déplacés ICI
+         depuis leur ancien emplacement, profondément dans .app-shell — voir le commentaire complet
+         laissé à leur ancienne place (recherche « stacking context » dans ce fichier) pour le détail
+         du bug de superposition CSS corrigé par ce déplacement. Posés directement enfants de <body>,
+         juste après #global-topbar (z-index:200) : leur z-index:300 en ligne s'applique désormais
+         pour de vrai, au même niveau que #global-topbar et #gallery-proto (z-index:150) — plus aucun
+         ancêtre intermédiaire ne peut plus les piéger derrière eux. -->
+    <div id="ambiance-quick-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:10px;min-width:220px;">
+      <p style="font-family:Arial,sans-serif;font-size:.78rem;font-weight:700;color:var(--muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.03em;">Ambiance</p>
+      <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="gothique" /><span>Gothique international</span></label>
+      <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="renaissance" /><span>Galerie Renaissance</span></label>
+      <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="versailles" /><span>Château de Versailles</span></label>
+      <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="ermitage" /><span>Ermitage Rococo</span></label>
+      <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="wedgwood" /><span>Pure Wedgwood</span></label>
+      <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="pitti" /><span>Romantique Pitti</span></label>
+      <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="" /><span>Salon Renoir</span></label>
+      <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="bauhaus" /><span>Bauhaus</span></label>
+      <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="space" /><span>Space Age</span></label>
+    </div>
+    <div id="exhibition-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:16px;width:min(340px, 90vw);">
+      <!-- Proposé seulement quand une exposition est déjà en cours dans cette session : choix
+           entre y retourner directement ou repartir sur une nouvelle sélection d'artistes. -->
+      <div id="exhibition-resume-choice" class="hidden">
+        <p style="font-family:Georgia,serif;font-size:1rem;margin:0 0 10px;">Revoir l'exposition en cours, ou en choisir une autre ?</p>
+        <button type="button" class="primary-button" id="exhibition-resume-button" style="width:100%;margin-bottom:8px;">Revoir l'exposition →</button>
+        <button type="button" class="secondary-button" id="exhibition-change-button" style="width:100%;">Changer l'exposition</button>
+      </div>
+      <div id="exhibition-picker-form">
+        <p style="font-family:Georgia,serif;font-size:1rem;margin:0 0 10px;">Quel(s) artiste(s) veux-tu exposer dans la salle aujourd'hui ?</p>
+        <div id="exhibition-artist-inputs">
+          <input type="text" class="exhibition-artist-field" placeholder="Ex. Jean Fouquet" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;" />
+        </div>
+        <button type="button" id="exhibition-add-artist-button" class="secondary-button" style="width:100%;margin-bottom:8px;font-size:.85rem;padding:6px;">+ Ajouter un autre artiste</button>
+        <p id="exhibition-feedback" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--wrong);margin:0 0 8px;"></p>
+        <button type="button" class="primary-button" id="exhibition-launch-button" style="width:100%;">Entrer dans la salle →</button>
+      </div>
+    </div>
     <!-- v94 : né comme prototype technique de la nouvelle galerie configurable, écran ENTIÈREMENT
          NOUVEAU (pas une modification du couloir #scale-checkpoint existant) — posé ici, en dehors de
          #lightbox-scale-view/.app-shell (fixed, inset:0, z-index:150, voir style.css : couvre tout
@@ -94,10 +132,14 @@
          cet écran étant désormais atteint normalement, comme avant #scale-checkpoint). -->
     <div id="gallery-proto" class="hidden">
       <button type="button" id="gallery-proto-back" aria-label="Revenir à la vue normale" title="Revenir à la vue normale">◄ Retour</button>
-      <!-- Fermeture complète du musée (retour aux exercices) — même bouton/geste que l'ancien
-           #scale-close-museum du couloir existant (voir index.html plus bas), reproduit ici à
-           l'identique (position, style) pour cet écran. -->
-      <button type="button" id="gallery-close-museum" aria-label="Fermeture du musée, retour aux exercices" style="position:absolute;top:96px;left:16px;padding:8px 12px;border-radius:4px;border:2px solid #fff;background:#5a3a1a;color:#fff;font-size:.75rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.4);">🔔 Fermeture du musée</button>
+      <!-- v101 (retour Stéphane : « les espèces de petits fermetures du musée, les petits panneaux
+           là, ça fait moche, tu m'enlèves ça. On trouvera un moyen de sortir, par exemple, on tire
+           le personnage vers l'arrière ou quelque chose de plus joli ») : le bouton "Fermeture du
+           musée" (v100, ajouté ici) est retiré — remplacé par un geste : tirer le sac à dos vers
+           l'arrière, au-delà du tout premier pilastre, ferme complètement le musée (voir le seuil
+           GALLERY_EXIT_DRAG_THRESHOLD dans attachGalleryFloorDotDrag, app.js). "Retour" (ci-dessus)
+           n'est PAS concerné par cette demande — Stéphane ne l'a pas nommé — et reste donc en place,
+           pour la sortie "douce" (retour à l'image simple, sans fermer tout le musée). -->
       <!-- v96 (bug réel signalé par Stéphane, capture à l'appui : « la bande est toujours là... il n'y
            a plus les tableaux ») : #gallery-proto-floor vivait ICI, comme enfant de #gallery-proto-room
            — or #gallery-proto-room ne fait que 62% de la hauteur ET applique overflow:hidden. Son
@@ -117,7 +159,21 @@
         <svg id="gallery-proto-silhouette" viewBox="0 0 100 340" aria-hidden="true">
           <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
         </svg>
-        <div id="gallery-proto-floor-dot" class="hidden" aria-hidden="true"></div>
+        <!-- v101 (retour Stéphane : « au lieu qu'il y ait un point rouge pour tirer le personnage,
+             qu'on lui mette un sac à dos rouge... c'est plus réaliste, si tu veux, on visite un
+             musée, on a un sac à dos ») : remplace l'ancien simple point rouge (cercle plat) par un
+             petit sac à dos illustré, MÊME poignée de glisser (même id, mêmes gestes JS — voir
+             attachGalleryFloorDotDrag dans app.js, qui ne regarde que sa position, jamais sa forme).
+             Couleurs reprises du cordon voisin (rouge #c81f2c/#7a0f18, boucle dorée #b5902a) pour
+             rester cohérent avec le reste du décor. -->
+        <svg id="gallery-proto-floor-dot" class="hidden" viewBox="0 0 90 110" aria-hidden="true">
+          <path d="M28 20 Q 26 8 33 4" fill="none" stroke="#7a0f18" stroke-width="7" stroke-linecap="round"/>
+          <path d="M62 20 Q 64 8 57 4" fill="none" stroke="#7a0f18" stroke-width="7" stroke-linecap="round"/>
+          <rect x="10" y="24" width="70" height="76" rx="18" fill="#c81f2c"/>
+          <rect x="16" y="10" width="58" height="34" rx="16" fill="#7a0f18"/>
+          <rect x="24" y="52" width="42" height="38" rx="10" fill="#a81824"/>
+          <circle cx="45" cy="30" r="5" fill="#b5902a"/>
+        </svg>
         <!-- v100 (retour Stéphane : « ... avec les éléments de décor, le cordon, etc. ») : cordon rouge
              à 8 potelets dorés repris À L'IDENTIQUE de #scale-rope-barrier (ancien couloir, plus bas
              dans ce fichier) — même tracé SVG, mêmes couleurs — sous un id propre à cet écran
@@ -1671,37 +1727,24 @@
 
         <div id="bottom-gallery" class="bottom-gallery hidden"></div>
 
-        <div id="ambiance-quick-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:10px;min-width:220px;">
-          <p style="font-family:Arial,sans-serif;font-size:.78rem;font-weight:700;color:var(--muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.03em;">Ambiance</p>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="gothique" /><span>Gothique international</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="renaissance" /><span>Galerie Renaissance</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="versailles" /><span>Château de Versailles</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="ermitage" /><span>Ermitage Rococo</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="wedgwood" /><span>Pure Wedgwood</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="pitti" /><span>Romantique Pitti</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="" /><span>Salon Renoir</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="bauhaus" /><span>Bauhaus</span></label>
-          <label class="rubrique-option"><input type="radio" name="quick-ambiance" value="space" /><span>Space Age</span></label>
-        </div>
-
-        <div id="exhibition-picker" class="hidden" style="position:fixed;top:56px;right:16px;z-index:300;background:var(--paper);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:16px;width:min(340px, 90vw);">
-          <!-- Proposé seulement quand une exposition est déjà en cours dans cette session : choix
-               entre y retourner directement ou repartir sur une nouvelle sélection d'artistes. -->
-          <div id="exhibition-resume-choice" class="hidden">
-            <p style="font-family:Georgia,serif;font-size:1rem;margin:0 0 10px;">Revoir l'exposition en cours, ou en choisir une autre ?</p>
-            <button type="button" class="primary-button" id="exhibition-resume-button" style="width:100%;margin-bottom:8px;">Revoir l'exposition →</button>
-            <button type="button" class="secondary-button" id="exhibition-change-button" style="width:100%;">Changer l'exposition</button>
-          </div>
-          <div id="exhibition-picker-form">
-            <p style="font-family:Georgia,serif;font-size:1rem;margin:0 0 10px;">Quel(s) artiste(s) veux-tu exposer dans la salle aujourd'hui ?</p>
-            <div id="exhibition-artist-inputs">
-              <input type="text" class="exhibition-artist-field" placeholder="Ex. Jean Fouquet" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font:inherit;margin-bottom:6px;" />
-            </div>
-            <button type="button" id="exhibition-add-artist-button" class="secondary-button" style="width:100%;margin-bottom:8px;font-size:.85rem;padding:6px;">+ Ajouter un autre artiste</button>
-            <p id="exhibition-feedback" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--wrong);margin:0 0 8px;"></p>
-            <button type="button" class="primary-button" id="exhibition-launch-button" style="width:100%;">Entrer dans la salle →</button>
-          </div>
-        </div>
+        <!-- v101 (retour Stéphane, bug réel : « le bouton changer l'ambiance est inactif » dans la
+             galerie, et « le bandeau du haut est un peu bloqué » dans une exposition) : #ambiance-quick-picker
+             ET #exhibition-picker vivaient ICI, profondément imbriqués dans .app-shell — qui pose
+             elle-même position:relative + z-index:1 (voir style.css). Un élément position:fixed
+             n'échappe PAS au contexte d'empilement (« stacking context ») d'un ancêtre qui en crée un :
+             son propre z-index (300 en ligne, ici) n'est alors comparé qu'aux AUTRES enfants de
+             .app-shell, jamais directement à #global-topbar (z-index:200) ni à #gallery-proto
+             (z-index:150), qui sont des frères de .app-shell, pas des enfants. Résultat : .app-shell
+             tout entière (z-index:1) passait TOUJOURS derrière eux, quel que soit le 300 affiché en
+             ligne sur ces deux panneaux — le bouton 🎨 (dans le bandeau, z-index:200, donc PAS piégé)
+             continuait bien à réagir au clic (bascule la classe hidden), mais le panneau qui s'ouvrait
+             restait invisible et incliquable, cachė derrière la galerie ou le bandeau. Corrigé en
+             sortant ces deux panneaux de .app-shell : ils vivent désormais juste après #global-topbar
+             (voir plus haut dans ce fichier), directement enfants de <body>, au même niveau que
+             #global-topbar et #gallery-proto — leur z-index:300 s'applique alors pour de vrai. Rien
+             d'autre ne change : ce sont des position:fixed (positionnés par rapport à la fenêtre, pas à
+             leur parent), et le JS les retrouve par id (getElementById), jamais par leur place dans le
+             DOM. -->
 
         <section id="results-panel" class="results-panel hidden">
           <p class="eyebrow">QUIZ TERMINÉ</p>
@@ -1903,6 +1946,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=326"></script>
+    <script src="app.js?v=327"></script>
   </body>
 </html>

@@ -2133,8 +2133,14 @@ body.stephane-test-decor .scale-wall-pillar {
    pour rester au même niveau que les pieds de la silhouette, jamais transformé pendant la marche
    (même principe que l'ancien cordon, toujours statique, voir positionGalleryRopeBarrier). */
 #gallery-rope-barrier { position:absolute; bottom:0; height:14.71vh; }
+/* v101 (retour Stéphane : « qu'on lui mette un sac à dos rouge... c'est plus réaliste ») : ancien
+   simple point rond (border-radius:50%, background plat) remplacé par le sac à dos illustré
+   (voir index.html) — taille/position ajustées en JS (voir setupGalleryWalk dans app.js, mêmes
+   -width/2 pour centrer horizontalement sur le personnage, offset vertical adapté à la nouvelle
+   forme, plus haute qu'un simple point). drop-shadow au lieu de box-shadow (cercle) pour donner un
+   peu de relief à la forme illustrée. */
 #gallery-proto-floor-dot {
-  position:absolute; width:28px; height:28px; border-radius:50%; background:#e2453c; cursor:grab;
-  box-shadow:0 0 0 4px rgba(226,69,60,.28); pointer-events:auto;
+  position:absolute; width:34px; height:42px; cursor:grab;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.5)); pointer-events:auto;
 }
 #gallery-proto-floor-dot.hidden { display:none; }

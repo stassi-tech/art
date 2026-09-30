@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v100';
+const APP_VERSION = 'v101';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4454,7 +4454,33 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx) {
     const img = document.createElement('img');
     img.className = 'scale-checkpoint-work';
     img.alt = '';
-    img.src = imageSourceSized(work.image, Math.max(widthPx, 40));
+    // v101 (retour Stéphane, exposition Monet réelle : « il faut ressortir de l'exposition, la
+    // recharger, et petit à petit l'exposition charge les tableaux... alors que sur la liste, ils
+    // viennent immédiatement ») : cette fonction posait TOUTES les <img> de TOUS les emplacements
+    // dès la construction du mur (buildGalleryTrack les crée tous d'un coup, voir plus bas), sans
+    // loading="lazy" — le navigateur lançait donc, d'un coup, autant de téléchargements que
+    // d'œuvres dans toute l'exposition (potentiellement des dizaines pour une grande rétrospective),
+    // même pour les emplacements tout au bout de la galerie, jamais encore visités. La liste des
+    // autres œuvres (renderOtherWorksPanel, plus haut dans ce fichier) posait déjà loading="lazy" sur
+    // ses vignettes — d'où le contraste que Stéphane observait : instantané sur la liste, lent et
+    // « petit à petit » dans la galerie. Posé ici aussi désormais : chaque image ne se télécharge
+    // qu'au moment où elle s'approche réellement de l'écran (le navigateur suit le panoramique du
+    // rail, transform compris), exactement comme un vrai visiteur qui ne voit que ce qui l'entoure.
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    const sizedSrc = imageSourceSized(work.image, Math.max(widthPx, 40));
+    img.src = sizedSrc;
+    // v101 (même retour Stéphane, œuvres manquantes malgré leur présence « dans la liste ») : la
+    // liste (même fonction citée ci-dessus) sait déjà se rattraper sur un échec de chargement
+    // Wikimedia (miniature pas encore générée à cette taille précise, 404/timeout passager) en
+    // redemandant l'image via images.weserv.nl — ce filet de sécurité manquait ici, laissant
+    // certaines œuvres définitivement en échec (image cassée) alors qu'elles existent bel et bien.
+    // Même filet repris à l'identique.
+    img.addEventListener('error', () => {
+      if (img.dataset.fallbackTried) return;
+      img.dataset.fallbackTried = '1';
+      img.src = `https://images.weserv.nl/?url=${encodeURIComponent(sizedSrc)}&w=300`;
+    }, { once: true });
     img.style.left = `${cursor}px`;
     // Centré verticalement dans la hauteur visible de la fenêtre, comme avant (v87→v90) — inchangé,
     // déjà éprouvé.
@@ -4961,8 +4987,11 @@ function setupGalleryWalk() {
   const rowRect = row.getBoundingClientRect();
   const silRect = sil.getBoundingClientRect();
   if (!rowRect.width || !silRect.width) return;
-  dot.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 14}px`;
-  dot.style.top = `${silRect.bottom - rowRect.top - 20}px`;
+  // v101 : -17 (moitié des 34px de large du sac à dos, était -14 pour l'ancien point de 28px) pour
+  // rester centré sur le personnage ; -30 (était -20) pour la nouvelle hauteur (42px, était 28px) —
+  // pose le sac à dos au sol, contre les pieds, comme l'était l'ancien point.
+  dot.style.left = `${silRect.left + silRect.width / 2 - rowRect.left - 17}px`;
+  dot.style.top = `${silRect.bottom - rowRect.top - 30}px`;
   galleryWalkRangePx = Math.max(160, window.innerWidth - silRect.right - 40);
   updateGalleryWalkVisual();
 }
@@ -4992,6 +5021,17 @@ function positionGalleryRopeBarrier() {
   const dot = $('gallery-proto-floor-dot');
   if (!dot) return;
   const DRAG_THRESHOLD = 8;
+  // v101 (retour Stéphane : « on trouvera un moyen de sortir, par exemple on tire le personnage vers
+  // l'arrière ou quelque chose de plus joli », en remplacement du bouton "Fermeture du musée" retiré,
+  // voir plus bas dans ce fichier) : tirer le sac à dos vers l'ARRIÈRE (donc sous 0, jamais autorisé
+  // avant ce v101) simule qu'on recule hors de la galerie. GALLERY_EXIT_DRAG_FLOOR borne l'effet
+  // « élastique » du geste (au-delà, continuer à tirer ne fait plus reculer davantage à l'écran) ; si
+  // on relâche après avoir dépassé GALLERY_EXIT_DRAG_THRESHOLD (la moitié du plancher, pour qu'un
+  // petit rebond accidentel ne déclenche jamais la sortie), la visite se termine — même comportement
+  // que l'ancien bouton "Fermeture du musée" (exitScaleViewCompletely + retour à l'accueil) ; sinon on
+  // est ramené à 0, comme un personnage qui se replace après un pas manqué.
+  const GALLERY_EXIT_DRAG_FLOOR = -0.3;
+  const GALLERY_EXIT_DRAG_THRESHOLD = -0.15;
   let dragging = false, downX = 0, startProgress = 0;
   dot.addEventListener('pointerdown', (event) => {
     event.preventDefault();
@@ -5004,11 +5044,23 @@ function positionGalleryRopeBarrier() {
     const dx = event.clientX - downX;
     if (Math.abs(dx) > DRAG_THRESHOLD) {
       stopGalleryWalking();
-      galleryProgress = Math.min(1, Math.max(0, startProgress + dx / galleryWalkRangePx));
+      galleryProgress = Math.min(1, Math.max(GALLERY_EXIT_DRAG_FLOOR, startProgress + dx / galleryWalkRangePx));
       updateGalleryWalkVisual();
     }
   });
-  const stop = () => { dragging = false; dot.style.cursor = 'grab'; };
+  const stop = () => {
+    dragging = false;
+    dot.style.cursor = 'grab';
+    if (galleryProgress <= GALLERY_EXIT_DRAG_THRESHOLD) {
+      exitScaleViewCompletely();
+      showPanel('training-hub');
+      return;
+    }
+    if (galleryProgress < 0) {
+      galleryProgress = 0;
+      updateGalleryWalkVisual();
+    }
+  };
   dot.addEventListener('pointerup', stop);
   dot.addEventListener('pointercancel', stop);
 })();
@@ -5044,7 +5096,11 @@ window.addEventListener('resize', () => {
 // sortie que l'ancien couloir (#lightbox-scale-back-button) : exitScaleView() (voir plus bas dans ce
 // fichier), qui masque maintenant #gallery-proto en plus de ses éléments habituels.
 $('gallery-proto-back')?.addEventListener('click', () => exitScaleView());
-$('gallery-close-museum')?.addEventListener('click', () => { exitScaleViewCompletely(); showPanel('training-hub'); });
+// v101 (retour Stéphane : « les petits panneaux [Fermeture du musée], ça fait moche, tu m'enlèves
+// ça. On trouvera un moyen de sortir, par exemple, on tire le personnage vers l'arrière ou quelque
+// chose de plus joli ») : le bouton "Fermeture du musée" (v100) est retiré (voir index.html) — sa
+// sortie complète est désormais un GESTE, voir GALLERY_EXIT_DRAG_THRESHOLD dans
+// attachGalleryFloorDotDrag plus haut.
 // v57 : plus de bouton « Entrée » ni de bouton « Ticket » (façade et machine à tickets toutes deux
 // retirées) — enterScaleView() appelle directement enterCheckpointCorridor(), et l'avancée
 // (armCheckpointApproach) s'arme désormais automatiquement au repos plutôt qu'au clic sur un
