@@ -2402,3 +2402,59 @@ body.stephane-test-decor .scale-wall-pillar {
   position:fixed; pointer-events:none; z-index:999; opacity:.9; border-radius:3px;
   box-shadow:0 4px 14px rgba(0,0,0,.5);
 }
+
+/* v113 (atelier de placement, retours de Stéphane après avoir essayé la v112) — voir le grand
+   commentaire sur #placement-proto, index.html, pour le contexte complet. */
+
+/* Étape 1 : nombre de salles, demandée avant d'afficher les feuilles (retour Stéphane : « au
+   départ, combien de salles voulez-vous ? »). Masquée par défaut ; affichée uniquement pendant le
+   mode « configuration » (#placement-proto.placement-proto-setup-mode), qui masque en même temps
+   les commandes qui n'ont pas encore de sens à ce stade (pagination, +Ajouter une salle, Générer). */
+#placement-proto-setup { display:none; position:absolute; inset:0; z-index:10; align-items:center; justify-content:center; background:rgba(17,18,20,.92); }
+#placement-proto.placement-proto-setup-mode #placement-proto-setup { display:flex; }
+#placement-proto.placement-proto-setup-mode #placement-proto-body,
+#placement-proto.placement-proto-setup-mode #placement-proto-page-label,
+#placement-proto.placement-proto-setup-mode #placement-proto-prev-page,
+#placement-proto.placement-proto-setup-mode #placement-proto-next-page,
+#placement-proto.placement-proto-setup-mode #placement-proto-add-room,
+#placement-proto.placement-proto-setup-mode #placement-proto-generate { display:none; }
+#placement-proto-setup-card {
+  background:#f4f1ea; border-radius:8px; box-shadow:0 8px 28px rgba(0,0,0,.5); padding:28px 32px;
+  width:min(380px, 84vw); text-align:center;
+}
+#placement-proto-setup-title {
+  font-family:Georgia,'Times New Roman',serif; font-size:1.05rem; color:#2a2a2a; margin:0 0 16px;
+}
+#placement-proto-room-count {
+  width:80px; font-size:1.2rem; text-align:center; padding:6px; border:1px solid #8a7f6a;
+  border-radius:4px; font-family:inherit; margin:0 0 18px; display:block; margin-left:auto; margin-right:auto;
+}
+#placement-proto-setup-confirm { width:100%; }
+
+/* Bouton « Générer l'exposition » — mis en avant (couleur d'accent) dans le bandeau, à côté des
+   commandes plus neutres (fermer, pagination, +Ajouter une salle). */
+#placement-proto-generate {
+  margin-left:12px; background:#3d6a3d !important; border-color:#2e522e !important;
+}
+#placement-proto-generate:hover { background:#4a7d4a !important; }
+
+/* Rond de couleur par salle (retour Stéphane : « il faut déjà pouvoir décider de la couleur de la
+   salle ») — posé dans le coin haut-droit de chaque feuille, juste au-dessus de son bord. */
+.placement-proto-sheet-ambiance-btn {
+  position:absolute; top:-30px; right:0; width:20px; height:20px; border-radius:50%;
+  border:2px solid #cfcfcf; cursor:pointer; padding:0;
+}
+.placement-proto-sheet-ambiance-btn:hover { border-color:#fff; }
+.placement-proto-ambiance-popover {
+  position:fixed; z-index:1000; background:#232426; border:1px solid #454647; border-radius:6px;
+  box-shadow:0 8px 20px rgba(0,0,0,.5); padding:6px; min-width:200px; max-height:70vh; overflow-y:auto;
+}
+.placement-proto-ambiance-option {
+  display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; color:#eee;
+  font-family:Arial,sans-serif; font-size:.82rem; padding:6px 8px; border-radius:4px; cursor:pointer; text-align:left;
+}
+.placement-proto-ambiance-option:hover { background:#3a3b3d; }
+.placement-proto-ambiance-swatch {
+  width:16px; height:16px; border-radius:50%; border:1px solid rgba(255,255,255,.35); flex:0 0 auto;
+}
+.placement-proto-ambiance-swatch-none { border-style:dashed; background:transparent; }

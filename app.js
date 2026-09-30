@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v112';
+const APP_VERSION = 'v113';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4504,12 +4504,21 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
     }
     return { work, heightPx, widthPx };
   });
+  // v113 (atelier de placement manuel, retour Stéphane : « une fois que le placement est fini,
+  // l'application n'a plus qu'à générer la même disposition sur les murs ») : quand les œuvres
+  // portent une position choisie par le joueur lui-même (work._manualXCm, posée par
+  // placementGenerateExhibition), on la respecte à la lettre — jamais recentrée/redistribuée par le
+  // calcul habituel ci-dessous (v110→v111, pensé pour la répartition AUTOMATIQUE uniquement). Un
+  // chevauchement éventuel n'est pas corrigé : le joueur en a déjà été prévenu dans l'atelier (éclair
+  // + bip, jamais bloquant) — même liberté laissée ici.
+  const manualMode = works.length > 0 && works.every((w) => w._manualXCm != null);
   const totalWorksWidthPx = sizedWorks.reduce((sum, s) => sum + s.widthPx, 0);
-  const gapPx = availableWidthPx != null
+  const gapPx = manualMode ? 0 : (availableWidthPx != null
     ? Math.max(0, availableWidthPx - totalWorksWidthPx) / (sizedWorks.length + 1)
-    : CHECKPOINT_GAP_CM * pxPerCm;
-  let cursor = gapPx; // marge avant la toute première œuvre — désormais partagée, jamais fixe (voir ci-dessus)
+    : CHECKPOINT_GAP_CM * pxPerCm);
+  let cursor = manualMode ? 0 : gapPx; // marge avant la toute première œuvre — désormais partagée, jamais fixe (voir ci-dessus)
   sizedWorks.forEach(({ work, heightPx, widthPx }) => {
+    if (manualMode) cursor = work._manualXCm * pxPerCm;
     const img = document.createElement('img');
     img.className = 'scale-checkpoint-work';
     img.alt = '';
@@ -4838,6 +4847,24 @@ const GALLERY_PERSON_HEIGHT_CM = 190;
 // #gallery-proto-room) — posée ici en constante nommée pour que ce soit la donnée qu'on annonce aux
 // joueurs, jamais un nombre magique caché dans le CSS.
 const GALLERY_WALL_HEIGHT_CM = 500;
+// v113 (atelier de placement, retour Stéphane : « il faut déjà pouvoir décider de la couleur de la
+// salle ») : reprend TELLES QUELLES les 8 ambiances déjà utilisées par le bandeau global (mêmes
+// couleurs, mêmes images — voir AMBIANCE_NAMES et les règles body[data-ambiance=...] .gallery-proto-wall
+// dans style.css) plutôt que d'inventer un jeu de couleurs séparé : un joueur qui choisit « Château de
+// Versailles » pour une salle voit exactement le même mur que l'ambiance globale du même nom. Posée
+// ici en JS (et pas seulement en CSS) parce que le choix se fait maintenant PAR SALLE — un style
+// INLINE posé par buildGalleryTrack, indépendant de body[data-ambiance=...] qui reste, lui, une
+// ambiance unique pour toute la session.
+const GALLERY_AMBIANCE_WALL_STYLE = {
+  gothique: { colorHex: '101d70', image: 'assets/salle-gothique-mur.jpg' },
+  renaissance: { colorHex: '7a3820', image: 'assets/salle-renaissance-mur.jpg' },
+  versailles: { colorHex: '5c1015', image: 'assets/salle-versailles-mur.jpg' },
+  ermitage: { colorHex: '0a2745', image: 'assets/salle-ermitage-mur.jpg' },
+  wedgwood: { colorHex: 'a8c0d4', image: 'assets/salle-wedgwood-mur.jpg' },
+  pitti: { colorHex: '0c3c2f', image: 'assets/salle-pitti-mur.jpg' },
+  bauhaus: { colorHex: '3d3d3f', image: 'assets/salle-bauhaus-mur.jpg' },
+  space: { colorHex: 'e07a2e', image: 'assets/salle-space-mur.jpg' },
+};
 // Distance supposée cordon → mur (3 m, « le personnage serait à peu près à trois mètres du mur »).
 // Contrairement à CHECKPOINT_ROOM_DEPTH_CM (couloir existant), cette valeur ne change PAS l'échelle
 // des œuvres elles-mêmes (déjà toujours correcte, voir galleryPxPerCm ci-dessous, dérivé uniquement
@@ -4997,7 +5024,15 @@ function buildGalleryTrack() {
     // alors normalement, comme sur l'ancien mur unique #scale-checkpoint-wall. colorHex ne reste utile
     // que pour la démo (buildGalleryDemoSegments), où chaque emplacement factice garde sa couleur
     // propre pour bien distinguer les 3 emplacements à l'œil sans dépendre d'une vraie ambiance.
-    if (segment.colorHex) wallEl.style.backgroundColor = `#${segment.colorHex}`;
+    // v113 (atelier de placement, retour Stéphane : « il faut déjà pouvoir décider de la couleur de
+    // la salle ») : chaque salle peut désormais porter sa PROPRE ambiance (une des 8 déjà utilisées
+    // par le bandeau global, voir GALLERY_AMBIANCE_WALL_STYLE/AMBIANCE_NAMES) plutôt que de dépendre
+    // de l'ambiance globale de la session — posée en style INLINE, donc sans toucher à
+    // body[data-ambiance=...] ni aux autres salles.
+    if (segment.ambiance && GALLERY_AMBIANCE_WALL_STYLE[segment.ambiance]) {
+      wallEl.style.backgroundColor = `#${GALLERY_AMBIANCE_WALL_STYLE[segment.ambiance].colorHex}`;
+      wallEl.style.backgroundImage = `url('${GALLERY_AMBIANCE_WALL_STYLE[segment.ambiance].image}')`;
+    } else if (segment.colorHex) wallEl.style.backgroundColor = `#${segment.colorHex}`;
     const worksEl = document.createElement('div');
     // v94 : porte AUSSI la classe scale-checkpoint-wall-works, purement comme repère JS pour
     // buildCheckpointCorridorWorks (qui la cherche par ce nom exact) — aucune règle CSS ne cible ce
@@ -5502,7 +5537,15 @@ function positionGalleryRopeBarrier() {
 // Le masquage/restauration séparé ci-dessus (GALLERY_PROTO_LEGACY_SCALE_IDS) devenait donc pure
 // redondance une fois le menu hamburger retiré (voir plus bas) — supprimé.
 function enterGalleryProto(candidates) {
-  gallerySegments = (candidates && candidates.length) ? packGallerySegments(candidates) : buildGalleryDemoSegments();
+  const segments = (candidates && candidates.length) ? packGallerySegments(candidates) : buildGalleryDemoSegments();
+  enterGalleryProtoWithSegments(segments);
+}
+// v113 (atelier de placement manuel, retour Stéphane : « une fois que le placement est fini,
+// l'application n'a plus qu'à générer la même disposition sur les murs ») : extrait de
+// enterGalleryProto ci-dessus pour pouvoir entrer dans la salle avec des emplacements DÉJÀ décidés
+// (voir placementGenerateExhibition) plutôt que de les faire recalculer par packGallerySegments.
+function enterGalleryProtoWithSegments(segments) {
+  gallerySegments = segments;
   $('gallery-proto')?.classList.remove('hidden');
   requestAnimationFrame(() => {
     galleryPanTravelPx = buildGalleryTrack();
@@ -7042,17 +7085,26 @@ $('exhibition-add-artist-button')?.addEventListener('click', () => {
 // Logique commune de chargement des œuvres d'une exposition (à partir de noms d'artistes) et
 // d'entrée dans la vue à l'échelle — utilisée à la fois par la création d'une nouvelle exposition
 // et par « Revoir l'exposition » quand les œuvres ne sont plus en mémoire (nouvelle session).
-async function loadAndEnterExhibition(names, feedback) {
+// v113 (atelier de placement, bouton « Fabriquer une exposition ») : la partie recherche/récupération
+// des œuvres d'une liste d'artistes, sans l'entrée automatique dans la salle — extraite de
+// loadAndEnterExhibition ci-dessous (qui l'appelle maintenant elle-même) pour pouvoir, à la place,
+// ouvrir l'atelier de placement (enterPlacementProto) avec ces mêmes œuvres.
+async function loadExhibitionWorksOnly(names, feedback) {
   if (feedback) { feedback.style.color = 'var(--muted)'; feedback.textContent = 'Recherche en cours…'; }
   const ok = await loadArtistListIfNeeded();
-  if (!ok) { if (feedback) { feedback.style.color = 'var(--wrong)'; feedback.textContent = "La liste des artistes n'est pas disponible pour le moment."; } return false; }
+  if (!ok) { if (feedback) { feedback.style.color = 'var(--wrong)'; feedback.textContent = "La liste des artistes n'est pas disponible pour le moment."; } return null; }
   const matchedRows = [];
   names.forEach((name) => { const row = findArtistRow(name); if (row) matchedRows.push(row); });
-  if (!matchedRows.length) { if (feedback) { feedback.style.color = 'var(--wrong)'; feedback.textContent = 'Aucun artiste trouvé.'; } return false; }
+  if (!matchedRows.length) { if (feedback) { feedback.style.color = 'var(--wrong)'; feedback.textContent = 'Aucun artiste trouvé.'; } return null; }
   let allWorks = [];
   for (const row of matchedRows) allWorks = allWorks.concat(await fetchWorksForArtistRow(row));
-  if (!allWorks.length) { if (feedback) { feedback.style.color = 'var(--wrong)'; feedback.textContent = 'Aucune œuvre trouvée pour cette sélection.'; } return false; }
+  if (!allWorks.length) { if (feedback) { feedback.style.color = 'var(--wrong)'; feedback.textContent = 'Aucune œuvre trouvée pour cette sélection.'; } return null; }
   allWorks.sort((a, b) => (a.artCategory === b.artCategory ? 0 : a.artCategory === 'sculpture' ? 1 : -1));
+  return allWorks;
+}
+async function loadAndEnterExhibition(names, feedback) {
+  const allWorks = await loadExhibitionWorksOnly(names, feedback);
+  if (!allWorks) return false;
   state.currentOtherWorks = allWorks;
   const firstWithHeight = allWorks.find((w) => parseCmValue(w.hauteur)) || allWorks[0];
   const titleValue = formatCorrectionValue('title', firstWithHeight.title);
@@ -7080,6 +7132,22 @@ $('exhibition-change-button')?.addEventListener('click', () => {
   $('exhibition-resume-choice').classList.add('hidden');
   $('exhibition-picker-form').classList.remove('hidden');
   $('exhibition-picker').querySelector('.exhibition-artist-field')?.focus();
+});
+// v113 (retour Stéphane, après avoir essayé le prototype v112 : « avec "fabriquer une exposition",
+// on appuie et on tombe sur l'application ») : reprend les MÊMES œuvres que l'exposition en cours
+// (jamais une nouvelle recherche d'artiste — ce bouton n'apparaît que si une exposition existe déjà,
+// voir hasCurrentExhibition ci-dessus) et ouvre l'atelier de placement (enterPlacementProto) avec,
+// plutôt que d'entrer directement dans la salle avec une répartition automatique.
+$('exhibition-build-button')?.addEventListener('click', async () => {
+  $('exhibition-picker').classList.add('hidden');
+  if (state.currentOtherWorks && state.currentOtherWorks.length) {
+    enterPlacementProto(state.currentOtherWorks);
+    return;
+  }
+  let lastArtists = [];
+  try { lastArtists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
+  const works = lastArtists.length ? await loadExhibitionWorksOnly(lastArtists, null) : null;
+  enterPlacementProto(works);
 });
 // Libellé compact des artistes en cours d'exposition, sur le bouton salle lui-même — même
 // principe que sur les boutons de jeux, pour qu'on sache d'un coup d'œil ce qui est chargé.
@@ -7204,13 +7272,35 @@ $('menu-item-ambiance')?.addEventListener('click', (event) => { event.stopPropag
 $('menu-item-exhibition')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-exhibition-button')?.click(); });
 $('menu-item-account')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-account-button')?.click(); });
 $('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
-$('global-home-button')?.addEventListener('click', () => showPanel('welcome'));
+// v113 (retour Stéphane : « tirer le personnage, ça ne vient pas trop... pour sortir de la salle,
+// soit on appuie sur maison et on retombe sur la page d'accueil, soit on appuie sur la flèche et on
+// retombe sur le menu des exercices — ça suffit, pas la peine d'en rajouter ») : bug réel — ces deux
+// boutons existaient déjà dans le bandeau général (toujours au-dessus de #gallery-proto/#image-
+// lightbox, z-index:200) mais ne savaient pas fermer la visionneuse/la salle avant de changer de
+// panneau ; on se retrouvait donc avec la salle toujours affichée par-dessus, comme si le bouton
+// n'avait rien fait. exitScaleViewCompletely() (déjà utilisée par #scale-close-museum et le geste du
+// sac à dos) referme tout ça avant de naviguer. Le geste du sac à dos n'est pas retiré (pas demandé
+// explicitement, et il reste une façon plus « incarnée » de sortir) — ces deux boutons deviennent
+// simplement, en plus, une sortie fiable et déjà connue des joueurs.
+$('global-home-button')?.addEventListener('click', () => {
+  if (!$('image-lightbox')?.classList.contains('hidden')) exitScaleViewCompletely();
+  showPanel('welcome');
+});
 // Bouton « page précédente » — utile seulement quand l'appli est installée comme application
 // (barre d'adresse du navigateur, avec son propre bouton retour, non visible dans ce mode) : on
 // s'appuie sur l'historique interne déjà tenu à jour par showPanel() à chaque navigation.
 const isStandaloneApp = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
 if (isStandaloneApp) $('global-back-button')?.classList.remove('hidden');
 $('global-back-button')?.addEventListener('click', () => {
+  // v113 (retour Stéphane, voir le commentaire complet sur global-home-button juste au-dessus) :
+  // depuis la salle d'exposition/la visionneuse, la flèche doit ramener au menu des exercices —
+  // même destination que #scale-close-museum et le geste du sac à dos — plutôt que de laisser
+  // history.back() naviguer en dessous, sans jamais refermer la salle affichée par-dessus.
+  if (!$('image-lightbox')?.classList.contains('hidden')) {
+    exitScaleViewCompletely();
+    showPanel('training-hub');
+    return;
+  }
   // Sur une page de configuration (Mon compte ou parcours guidé), la flèche doit ramener à
   // l'étape de configuration précédente plutôt qu'à l'accueil — bug réel repéré : ces pages ne
   // posent pas leur propre halte dans l'historique du navigateur, donc history.back() sautait
@@ -11105,6 +11195,8 @@ let placementBoxes = []; // { uid, work, sheetIndex, xCm, yCm, wCm, hCm, tooClos
 let placementTotalSheets = PLACEMENT_SHEETS_PER_PAGE;
 let placementCurrentPage = 0;
 let placementAudioCtx = null;
+// v113 (retour Stéphane : « il faut déjà pouvoir décider de la couleur de la salle ») : { [sheetIndex]: ambianceKey }
+let placementSheetAmbiance = {};
 
 function placementDemoWorks() {
   return [
@@ -11119,15 +11211,31 @@ function placementDemoWorks() {
   ];
 }
 
+// v113 (retour Stéphane : « au départ, combien de salles voulez-vous ? ») : n'affiche plus les
+// feuilles directement — passe d'abord par #placement-proto-setup (voir placementConfirmRoomCount)
+// pour demander le nombre de salles, avec une suggestion de départ reprise de packGallerySegments
+// (la même estimation que l'ancienne répartition automatique), simplement modifiable par le joueur.
 function enterPlacementProto(candidates) {
   const works = (candidates && candidates.length) ? candidates.filter(Boolean) : placementDemoWorks();
   placementUidCounter = 0;
   placementUnplaced = works.map((work) => ({ uid: ++placementUidCounter, work }));
   placementBoxes = [];
+  placementSheetAmbiance = {};
   placementCurrentPage = 0;
-  placementTotalSheets = PLACEMENT_SHEETS_PER_PAGE;
+  const suggestedRooms = Math.max(1, Math.min(24, packGallerySegments(works).length || PLACEMENT_SHEETS_PER_PAGE));
+  const roomCountInput = $('placement-proto-room-count');
+  if (roomCountInput) roomCountInput.value = String(suggestedRooms);
   document.querySelectorAll('.welcome-panel').forEach((p) => p.classList.add('hidden'));
   $('placement-proto')?.classList.remove('hidden');
+  $('placement-proto')?.classList.add('placement-proto-setup-mode');
+}
+function placementConfirmRoomCount() {
+  const input = $('placement-proto-room-count');
+  let count = parseInt(input?.value, 10);
+  if (!count || count < 1) count = 1;
+  if (count > 24) count = 24;
+  placementTotalSheets = count;
+  $('placement-proto')?.classList.remove('placement-proto-setup-mode');
   placementRenderAll();
 }
 
@@ -11355,6 +11463,21 @@ function placementRenderSheets() {
     label.className = 'placement-proto-sheet-label';
     label.textContent = `Salle ${sheetIndex + 1}`;
     sheetEl.appendChild(label);
+    // v113 (retour Stéphane : « il faut déjà pouvoir décider de la couleur de la salle ») : petit
+    // rond de couleur par salle, reprenant TELLES QUELLES les 8 ambiances déjà existantes (voir
+    // GALLERY_AMBIANCE_WALL_STYLE/AMBIANCE_NAMES) — ouvre un petit choix au clic (placementOpenAmbiancePicker).
+    const ambianceKey = placementSheetAmbiance[sheetIndex];
+    const ambianceBtn = document.createElement('button');
+    ambianceBtn.type = 'button';
+    ambianceBtn.className = 'placement-proto-sheet-ambiance-btn';
+    ambianceBtn.style.background = ambianceKey ? `#${GALLERY_AMBIANCE_WALL_STYLE[ambianceKey].colorHex}` : 'transparent';
+    ambianceBtn.title = ambianceKey ? `Couleur de la salle : ${AMBIANCE_NAMES[ambianceKey] || ambianceKey}` : 'Choisir une couleur pour cette salle';
+    ambianceBtn.setAttribute('aria-label', 'Choisir la couleur de cette salle');
+    ambianceBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      placementOpenAmbiancePicker(sheetIndex, ambianceBtn);
+    });
+    sheetEl.appendChild(ambianceBtn);
     placementBoxes.filter((b) => b.sheetIndex === sheetIndex).forEach((box) => {
       sheetEl.appendChild(placementBuildBoxEl(box));
     });
@@ -11390,10 +11513,92 @@ function placementRenderAll() {
   placementUpdatePager();
 }
 
+// v113 (retour Stéphane : « il faut déjà pouvoir décider de la couleur de la salle ») : petit menu
+// flottant listant les 8 ambiances existantes (+ « Aucune »), ouvert au clic sur le rond de couleur
+// d'une salle (voir placementRenderSheets) — même esprit que #ambiance-quick-picker (bandeau
+// général), mais POSÉ PAR SALLE plutôt que global à toute la session.
+function placementCloseAmbiancePopover() {
+  document.querySelector('.placement-proto-ambiance-popover')?.remove();
+}
+function placementOpenAmbiancePicker(sheetIndex, anchorBtn) {
+  placementCloseAmbiancePopover();
+  const popover = document.createElement('div');
+  popover.className = 'placement-proto-ambiance-popover';
+  const buildOption = (key, label, colorHex) => {
+    const opt = document.createElement('button');
+    opt.type = 'button';
+    opt.className = 'placement-proto-ambiance-option';
+    const swatch = document.createElement('span');
+    swatch.className = 'placement-proto-ambiance-swatch';
+    if (colorHex) swatch.style.background = `#${colorHex}`;
+    else swatch.classList.add('placement-proto-ambiance-swatch-none');
+    opt.appendChild(swatch);
+    const text = document.createElement('span');
+    text.textContent = label;
+    opt.appendChild(text);
+    opt.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (key) placementSheetAmbiance[sheetIndex] = key;
+      else delete placementSheetAmbiance[sheetIndex];
+      placementCloseAmbiancePopover();
+      placementRenderSheets();
+    });
+    popover.appendChild(opt);
+  };
+  buildOption(null, 'Aucune (par défaut)', null);
+  Object.keys(GALLERY_AMBIANCE_WALL_STYLE).forEach((key) => {
+    buildOption(key, AMBIANCE_NAMES[key] || key, GALLERY_AMBIANCE_WALL_STYLE[key].colorHex);
+  });
+  document.body.appendChild(popover);
+  const rect = anchorBtn.getBoundingClientRect();
+  popover.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
+  popover.style.top = `${rect.bottom + 4}px`;
+}
+document.addEventListener('click', (event) => {
+  if (event.target.closest?.('.placement-proto-sheet-ambiance-btn') || event.target.closest?.('.placement-proto-ambiance-popover')) return;
+  placementCloseAmbiancePopover();
+});
+
+// v113 (retour Stéphane : « une fois que le placement est fini, l'application n'a plus qu'à générer
+// la même disposition sur les murs ») : construit gallerySegments DIRECTEMENT à partir des positions
+// choisies par le joueur (une salle = un placementBoxes.sheetIndex, dans l'ordre des salles), sans
+// jamais repasser par packGallerySegments/la répartition automatique centrée de v111 — chaque œuvre
+// garde sa position x EXACTE (voir work._manualXCm, lu par buildCheckpointCorridorWorks) plutôt que
+// d'être recentrée. Le chevauchement éventuel n'est pas corrigé ici non plus : le joueur en a été
+// informé dans l'atelier (éclair + bip) mais jamais empêché d'aller plus loin — même logique côté
+// vraie salle.
+function placementGenerateExhibition() {
+  if (placementUnplaced.length > 0) {
+    const continuer = window.confirm(`Il reste ${placementUnplaced.length} œuvre(s) non placée(s) — elles ne seront pas incluses dans l'exposition.\n\nContinuer quand même ?`);
+    if (!continuer) return;
+  }
+  const segments = [];
+  for (let sheetIndex = 0; sheetIndex < placementTotalSheets; sheetIndex += 1) {
+    const boxes = placementBoxes.filter((b) => b.sheetIndex === sheetIndex).sort((a, b) => a.xCm - b.xCm);
+    const works = boxes.map((box) => { box.work._manualXCm = box.xCm; return box.work; });
+    segments.push({ ambiance: placementSheetAmbiance[sheetIndex] || undefined, works });
+  }
+  const allPlacedWorks = segments.flatMap((s) => s.works);
+  if (allPlacedWorks.length) {
+    state.currentOtherWorks = allPlacedWorks;
+    state.scaleViewCandidates = allPlacedWorks;
+    currentLightboxWork = allPlacedWorks[0];
+  }
+  $('placement-proto')?.classList.add('hidden');
+  $('image-lightbox')?.classList.remove('hidden');
+  enterGalleryProtoWithSegments(segments);
+}
+
 $('placement-proto-close')?.addEventListener('click', () => {
   $('placement-proto')?.classList.add('hidden');
+  $('placement-proto')?.classList.remove('placement-proto-setup-mode');
   $('welcome-panel')?.classList.remove('hidden');
 });
+$('placement-proto-setup-confirm')?.addEventListener('click', placementConfirmRoomCount);
+$('placement-proto-room-count')?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') placementConfirmRoomCount();
+});
+$('placement-proto-generate')?.addEventListener('click', placementGenerateExhibition);
 $('placement-proto-prev-page')?.addEventListener('click', () => placementGoToPage(-1));
 $('placement-proto-next-page')?.addEventListener('click', () => placementGoToPage(1));
 $('placement-proto-add-room')?.addEventListener('click', () => {
