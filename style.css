@@ -2273,14 +2273,18 @@ body.stephane-test-decor .scale-wall-pillar {
    fait pour les autres jeux, une loupe à trois positions ») : petit bouton rond collé juste à gauche
    du cartel (voir addCartels, app.js) — volontairement plus grand/lisible que le cartel lui-même (qui
    reste minuscule à dessein, voir plus haut) puisque ceci est un contrôle à atteindre au doigt/à la
-   souris, jamais un élément du décor du musée. */
-.gallery-proto-work-loupe-icon {
-  position:absolute; width:20px; height:20px; border-radius:50%;
-  background:rgba(0,0,0,.72); color:#fff; display:flex; align-items:center; justify-content:center;
-  font-size:12px; line-height:1; cursor:pointer; border:1px solid rgba(255,255,255,.65);
-  box-shadow:0 1px 3px rgba(0,0,0,.5); z-index:5; transition:transform .15s;
-}
-.gallery-proto-work-loupe-icon:hover { transform:scale(1.1); }
+   souris, jamais un élément du décor du musée.
+   v111 (retour Stéphane, juste après livraison : « enlève les loupes dans la salle... ça fait quand
+   même un peu bizarre dans une salle d'exposition. On préviendra les joueurs qu'il suffit d'appuyer
+   sur les cartels pour agrandir les tableaux ») : masquée ici plutôt que retirée du DOM/JS — même
+   principe que #gallery-proto-glasses (v109) — le cartel ET l'œuvre elle-même restent cliquables et
+   ouvrent toujours la même vue agrandie (voir openLoupe, app.js), donc rien d'autre à changer ; seule
+   cette icône disparaît de la salle. Les 3 petites loupes de PROGRESSION (à l'intérieur de la vue
+   agrandie elle-même, une fois ouverte, pour aller jusqu'au zoom) restent, elles, bien visibles —
+   Stéphane les distingue explicitement : « tu peux laisser les loupes comme tu as fait sur le côté
+   pour prendre la troisième loupe pour fouiller dans le tableau » — ce sont les icônes générées par
+   attachProgressiveLoupe (voir .loupe-progressive, plus bas), pas celle-ci. */
+.gallery-proto-work-loupe-icon { display:none; }
 /* v110 : l'emplacement AGRANDI lui-même — voir le commentaire complet dans index.html, à côté de
    #gallery-proto-loupe-solo, sur pourquoi il doit être un frère de #gallery-proto-track et jamais un
    descendant. Caché par défaut ; attachProgressiveLoupe (mode 'solo', app.js) lui ajoute/retire

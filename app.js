@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v110';
+const APP_VERSION = 'v111';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4459,7 +4459,7 @@ function buildCheckpointWindowWorks(windowEl, works, windowWidthPx, pxPerCm, win
 const GALLERY_CARTEL_WIDTH_PX = 66;
 // v110 : taille de la petite loupe posée juste à gauche du cartel (voir addCartels ci-dessous).
 const GALLERY_LOUPE_ICON_SIZE_PX = 20;
-function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCartels) {
+function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCartels, availableWidthPx) {
   const worksEl = wallEl.querySelector('.scale-checkpoint-wall-works');
   if (!worksEl) return 0;
   worksEl.innerHTML = '';
@@ -4472,14 +4472,28 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
   // lambris ou un carrelage qui se répète, plutôt qu'une seule photo géante.
   wallEl.style.backgroundSize = 'auto 100%';
   wallEl.style.backgroundRepeat = 'repeat-x';
-  const gapPx = CHECKPOINT_GAP_CM * pxPerCm;
   // v87 (repris ici à l'identique) : jamais plus de 92% de la hauteur de fenêtre pour une œuvre —
   // évite qu'une œuvre exceptionnellement haute ne soit rognée par l'overflow:hidden du mur, tout en
   // restant à peu près à sa vraie échelle pour toute œuvre réaliste (CHECKPOINT_MAX_WORK_CM reste le
   // vrai garde-fou contre une donnée aberrante dans le fichier).
   const maxHeightPx = winHeightPx * 0.92;
-  let cursor = gapPx; // petite marge avant la toute première œuvre, pour ne pas la coller au pilier
-  works.forEach((work) => {
+  // BUG corrigé v110 (retour Stéphane, exemple chiffré à l'appui : « un espace de 10 mètres, un
+  // premier tableau de 6 mètres, un deuxième de 5 mètres — immédiatement rejeté dans le prochain
+  // emplacement puisque 6+5 = 11. Mais le tableau de 6 mètres ne va pas être centré, il reste collé à
+  // gauche, comme s'il attendait un tableau de 3 mètres à côté ») : jusqu'ici, un SEUL passage plaçait
+  // chaque œuvre au fil de l'eau (cursor += largeur + marge FIXE de CHECKPOINT_GAP_CM), sans jamais
+  // regarder combien de place il restait une fois toutes les œuvres posées — tout l'espace non rempli
+  // de l'emplacement (ici GALLERY_SEGMENT_LENGTH_CM, 10 m) finissait donc en vide, collé au pilier de
+  // sortie, plutôt que réparti autour des œuvres. Deux passages désormais : on calcule d'abord la
+  // taille RÉELLE (après rétrécissement éventuel par maxHeightPx) de chaque œuvre, puis on partage
+  // tout l'espace restant en (nombre d'œuvres + 1) marges égales — avant la première, entre chaque
+  // paire, après la dernière — exactement comme Stéphane l'a détaillé : 1 œuvre de 6 m sur 10 m disponibles
+  // → 2 marges de 2 m ; 6 m + 3 m sur 10 m → 3 marges de (10-9)/3 ≈ 33 cm. Seule la galerie réelle
+  // (buildGalleryTrack) connaît une largeur d'emplacement FIXE et passe donc availableWidthPx ; l'ancien
+  // couloir mort (buildCheckpointTrack) ne le passe pas — son mur unique épouse déjà exactement la
+  // largeur de son contenu (comportement d'origine, inchangé, sans effet puisqu'il n'y a alors aucun
+  // espace à répartir).
+  const sizedWorks = works.map((work) => {
     const { hCm, lCm } = checkpointSanitizedSizeCm(work);
     let heightPx = Math.max(4, hCm * pxPerCm);
     let widthPx = Math.max(4, lCm * pxPerCm);
@@ -4488,6 +4502,14 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
       heightPx *= shrink;
       widthPx *= shrink;
     }
+    return { work, heightPx, widthPx };
+  });
+  const totalWorksWidthPx = sizedWorks.reduce((sum, s) => sum + s.widthPx, 0);
+  const gapPx = availableWidthPx != null
+    ? Math.max(0, availableWidthPx - totalWorksWidthPx) / (sizedWorks.length + 1)
+    : CHECKPOINT_GAP_CM * pxPerCm;
+  let cursor = gapPx; // marge avant la toute première œuvre — désormais partagée, jamais fixe (voir ci-dessus)
+  sizedWorks.forEach(({ work, heightPx, widthPx }) => {
     const img = document.createElement('img');
     img.className = 'scale-checkpoint-work';
     img.alt = '';
@@ -4565,6 +4587,12 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
       // petite loupe au niveau de ce cadre et du cartel ») : une petite loupe cliquable, collée juste à
       // gauche du cartel — jamais à l'intérieur (même logique v78 que pour Intrus/Famille : un tap sur
       // la loupe ne doit jamais se confondre avec un tap sur le cartel/l'œuvre qui l'engloberait).
+      // v111 (retour Stéphane, juste après livraison : « enlève les loupes dans la salle... ça fait
+      // bizarre dans une salle d'exposition — appuyer sur les cartels suffira ») : masquée en CSS
+      // (display:none, voir .gallery-proto-work-loupe-icon, style.css) plutôt que retirée d'ici — même
+      // logique que #gallery-proto-glasses (v109). Construite et câblée exactement comme avant, donc
+      // toujours prête si on change d'avis, mais invisible et injoignable ; le cartel et l'œuvre
+      // elle-même (déjà cliquables) restent les deux seules portes d'entrée vers la loupe.
       const loupeIcon = document.createElement('div');
       loupeIcon.className = 'gallery-proto-work-loupe-icon';
       loupeIcon.textContent = '🔍';
@@ -4994,7 +5022,7 @@ function buildGalleryTrack() {
     wallEl.style.left = `${cursorPx}px`;
     wallEl.style.width = `${wallWidthPx}px`;
     track.appendChild(wallEl);
-    buildCheckpointCorridorWorks(wallEl, segment.works, pxPerCm, windowH, true);
+    buildCheckpointCorridorWorks(wallEl, segment.works, pxPerCm, windowH, true, wallWidthPx);
     cursorPx += wallWidthPx;
     cumulativeCm += GALLERY_SEGMENT_LENGTH_CM;
 
