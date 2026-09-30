@@ -2159,14 +2159,28 @@ body.stephane-test-decor .scale-wall-pillar {
    (personnage, mur, cordon) reste visible et actif derrière. */
 /* v106 (retour Stéphane : « il faudrait que tu agrandisses un peu ta loupe ») : 32vh → 40vh (25 %
    plus grande), même reste de la mise en page (top:6vh, centrée) — GALLERY_LOUPE_ZOOM (app.js) est
-   indépendant de cette taille, ne change pas ici. */
+   indépendant de cette taille, ne change pas ici.
+   v108 (retour Stéphane, à nouveau : « il faut aussi que tu l'agrandisses la loupe ») : 40vh → 50vh. */
 #gallery-proto-loupe {
-  position:absolute; top:6vh; left:50%; transform:translateX(-50%);
-  width:40vh; height:40vh; border-radius:50%; overflow:hidden;
+  position:absolute; top:4vh; left:50%; transform:translateX(-50%);
+  width:50vh; height:50vh; border-radius:50%; overflow:hidden;
   background:#111; cursor:pointer; z-index:30;
   border:9px solid #b5902a; box-shadow:0 0 0 3px #7a0f18, 0 12px 34px rgba(0,0,0,.55);
 }
 #gallery-proto-loupe.hidden { display:none; }
+/* v108 (retour Stéphane : « on puisse déplacer la loupe... quand on saisit le bord de la loupe, c'est
+   comme si le personnage baissait la tête et lisait le cartel ; on peut la remonter, la descendre ») :
+   petite poignée purement visuelle (jamais un vrai élément du DOM — un ::after CSS — pour ne rien
+   changer au décompte des enfants de #gallery-proto-loupe que vérifient déjà les tests existants) qui
+   indique où saisir. Le VRAI geste de préhension (n'importe où sur le bord, pas seulement ce repère)
+   est détecté en JS par la distance au centre — voir galleryLoupeIsEdgeGrab (app.js). */
+#gallery-proto-loupe::after {
+  content:'';
+  position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+  width:15%; height:5px; max-width:34px; border-radius:3px;
+  background:rgba(220,211,189,.55); box-shadow:0 1px 2px rgba(0,0,0,.4);
+  pointer-events:none;
+}
 /* v105 : le contenu n'est plus un unique <img> centré (une œuvre figée) mais un CLONE en direct de
    #gallery-proto-track (mur + œuvres + pilastres tels qu'affichés à l'instant), injecté/retiré par
    openGalleryLoupe/closeGalleryLoupe (app.js) et repositionné en continu par
@@ -2189,4 +2203,22 @@ body.stephane-test-decor .scale-wall-pillar {
   font-family:Arial, sans-serif; font-size:.62rem; font-weight:700; color:#dcd3bd;
   letter-spacing:.02em; white-space:nowrap; box-shadow:0 1px 3px rgba(0,0,0,.4);
   opacity:.82;
+}
+/* v108 (retour Stéphane : « sous les tableaux, mets des petits cartels avec le nom de l'artiste, le
+   titre du tableau et l'année ») : petit cartel de musée, collé juste sous chaque œuvre (voir
+   buildCheckpointCorridorWorks, app.js — addCartels), centré sur la même largeur que l'œuvre. Jamais
+   posé sur l'ancien couloir (scale-checkpoint-wall-works) : addCartels n'est passé à true que par
+   buildGalleryTrack. Assez discret pour ne pas concurrencer les œuvres à l'échelle normale — son
+   véritable usage est d'être lu EN GROS dans la loupe, une fois qu'on la fait descendre dessus (voir
+   #gallery-proto-loupe::after et galleryLoupeMaxOffset, app.js). */
+.gallery-proto-work-cartel {
+  position:absolute; text-align:center; pointer-events:none;
+  font-family:Georgia, 'Times New Roman', serif; color:#f1e9d6;
+  text-shadow:0 1px 2px rgba(0,0,0,.7);
+}
+.gallery-proto-work-cartel-artist {
+  font-size:.68rem; font-weight:700; letter-spacing:.02em; white-space:nowrap;
+}
+.gallery-proto-work-cartel-title {
+  font-size:.6rem; font-style:italic; opacity:.9; white-space:nowrap; margin-top:1px;
 }

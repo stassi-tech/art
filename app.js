@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v107';
+const APP_VERSION = 'v108';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4422,7 +4422,12 @@ function buildCheckpointWindowWorks(windowEl, works, windowWidthPx, pxPerCm, win
 // Le personnage est donc TOUJOURS à sa vraie échelle, dès l'entrée dans le couloir — plus besoin
 // d'aucune « avancée » qui le fasse rétrécir progressivement jusqu'à cette échelle : cette échelle
 // est la sienne depuis le début, elle ne change plus jamais.
-function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx) {
+// v108 (retour Stéphane : « sous les tableaux, mets des petits cartels avec le nom de l'artiste, le
+// titre du tableau et l'année ») : addCartels reste optionnel (par défaut absent/false) et n'est passé
+// à true QUE par buildGalleryTrack (le nouvel écran avec la loupe) — jamais par l'ancien couloir
+// (scale-checkpoint-wall-works, qui appelle aussi cette même fonction) : Stéphane n'a demandé ce petit
+// cartel que pour cet écran-ci, pas pour retoucher le couloir existant.
+function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCartels) {
   const worksEl = wallEl.querySelector('.scale-checkpoint-wall-works');
   if (!worksEl) return 0;
   worksEl.innerHTML = '';
@@ -4481,10 +4486,11 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx) {
       img.dataset.fallbackTried = '1';
       img.src = `https://images.weserv.nl/?url=${encodeURIComponent(sizedSrc)}&w=300`;
     }, { once: true });
+    const imgTopPx = winHeightPx / 2 - heightPx / 2;
     img.style.left = `${cursor}px`;
     // Centré verticalement dans la hauteur visible de la fenêtre, comme avant (v87→v90) — inchangé,
     // déjà éprouvé.
-    img.style.top = `${winHeightPx / 2 - heightPx / 2}px`;
+    img.style.top = `${imgTopPx}px`;
     img.style.width = `${widthPx}px`;
     img.style.height = `${heightPx}px`;
     img.style.cursor = 'pointer';
@@ -4493,6 +4499,27 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx) {
     // sans elle, ce plan unique aurait perdu quelque chose que l'ancien plan rapproché offrait.
     img.addEventListener('click', () => enterFocusView(work, hCm, ''));
     worksEl.appendChild(img);
+    // v108 : petit cartel de musée posé juste sous l'œuvre — nom de l'artiste, titre entre guillemets,
+    // année — voir le commentaire au-dessus de la signature de la fonction pour pourquoi addCartels
+    // n'est vrai que sur ce nouvel écran. Même largeur que l'œuvre (centré par le CSS,
+    // .gallery-proto-work-cartel), collé à 8px sous son bord inférieur — assez proche pour rester
+    // atteignable par le glisser-déposer de la loupe (voir galleryLoupeMaxOffset).
+    if (addCartels) {
+      const cartel = document.createElement('div');
+      cartel.className = 'gallery-proto-work-cartel';
+      cartel.style.left = `${cursor}px`;
+      cartel.style.width = `${widthPx}px`;
+      cartel.style.top = `${imgTopPx + heightPx + 8}px`;
+      const artistLine = document.createElement('div');
+      artistLine.className = 'gallery-proto-work-cartel-artist';
+      artistLine.textContent = work.artist || '';
+      const titleLine = document.createElement('div');
+      titleLine.className = 'gallery-proto-work-cartel-title';
+      titleLine.textContent = `« ${work.title || 'Sans titre'} »${work.date ? `, ${work.date}` : ''}`;
+      cartel.appendChild(artistLine);
+      cartel.appendChild(titleLine);
+      worksEl.appendChild(cartel);
+    }
     cursor += widthPx + gapPx;
   });
   return cursor;
@@ -4912,7 +4939,7 @@ function buildGalleryTrack() {
     wallEl.style.left = `${cursorPx}px`;
     wallEl.style.width = `${wallWidthPx}px`;
     track.appendChild(wallEl);
-    buildCheckpointCorridorWorks(wallEl, segment.works, pxPerCm, windowH);
+    buildCheckpointCorridorWorks(wallEl, segment.works, pxPerCm, windowH, true);
     cursorPx += wallWidthPx;
     cumulativeCm += GALLERY_SEGMENT_LENGTH_CM;
 
@@ -5060,6 +5087,14 @@ function setupGalleryWalk() {
 // vienne du glissement du sac à dos ou de la marche automatique. La loupe suit donc le personnage
 // exactement comme les lunettes ou le sac à dos suivent déjà son déplacement (même tx).
 const GALLERY_LOUPE_ZOOM = 2.6;
+// v108 (retour Stéphane : « je voudrais qu'on puisse déplacer la loupe... quand on saisit le bord de
+// la loupe, c'est comme si le personnage baissait la tête et lisait le cartel ; on peut la remonter, la
+// descendre ») : décalage vertical, ajouté par-dessus le point de référence automatique
+// (galleryLoupeReferencePoint), que l'utilisateur pilote lui-même en tirant le BORD de la loupe vers le
+// bas (pour lire le petit cartel posé sous l'œuvre, voir buildCheckpointCorridorWorks) ou vers le haut
+// (pour revenir à l'œuvre). Remis à zéro à chaque ouverture/fermeture — jamais de position « décalée »
+// qui resterait par surprise sur l'œuvre suivante.
+let galleryLoupeUserOffsetY = 0;
 // v106 (retour Stéphane, capture à l'appui : « le personnage est en face du tableau de Courbet...
 // dans la loupe on devrait voir le tableau agrandi, or on voit le bas du tableau tout en haut — ça ne
 // va pas du tout ») : la référence verticale de la v105 (hauteur des yeux fixe, silRect.height * 0.07)
@@ -5070,12 +5105,12 @@ const GALLERY_LOUPE_ZOOM = 2.6;
 // loupe sur CETTE œuvre — son propre centre, en X ET en Y — plutôt que sur un point fixe ; seulement
 // s'il n'y a aucune œuvre à cet endroit (mur nu, espace entre deux tableaux) on retombe sur l'ancien
 // repère par défaut (centre du personnage, hauteur des yeux).
-function galleryLoupeReferencePoint() {
-  const sil = $('gallery-proto-silhouette');
-  if (!sil) return null;
-  const silRect = sil.getBoundingClientRect();
-  if (!silRect.width) return null;
-  const silX = silRect.left + silRect.width / 2;
+// v108 : extrait de galleryLoupeReferencePoint pour être réutilisé par galleryLoupeMaxOffset
+// (attachGalleryLoupeDrag) — trouve l'élément <img> (pas seulement son rectangle) actuellement en face
+// du personnage, dont on a ensuite besoin pour retrouver son cartel (elementSuivant dans le DOM, voir
+// buildCheckpointCorridorWorks). Même logique de sélection que dans galleryLoupeReferencePoint (au plus
+// proche du centre X, si plusieurs correspondent).
+function galleryLoupeMatchedWorkEl(silX) {
   let best = null;
   let bestDist = Infinity;
   document.querySelectorAll('#gallery-proto-track .scale-checkpoint-work').forEach((img) => {
@@ -5083,15 +5118,24 @@ function galleryLoupeReferencePoint() {
     if (!r.width || !r.height) return;
     if (silX < r.left || silX > r.right) return; // le personnage doit être horizontalement devant elle
     const dist = Math.abs(r.left + r.width / 2 - silX);
-    if (dist < bestDist) { bestDist = dist; best = r; }
+    if (dist < bestDist) { bestDist = dist; best = img; }
   });
+  return best;
+}
+function galleryLoupeReferencePoint() {
+  const sil = $('gallery-proto-silhouette');
+  if (!sil) return null;
+  const silRect = sil.getBoundingClientRect();
+  if (!silRect.width) return null;
+  const silX = silRect.left + silRect.width / 2;
+  const best = galleryLoupeMatchedWorkEl(silX);
   // v106bis : X suit silX en continu (jamais figé sur le centre de l'œuvre) — important pour un très
   // grand format (« Un enterrement à Ornans », 668 cm de large réels) où le personnage peut passer
   // plusieurs secondes à marcher devant SANS que la loupe reste bloquée sur un seul point fixe ; pour
   // un format courant (plus étroit que le personnage n'a de marge pour s'en écarter), la différence
   // avec l'ancien centre fixe est de toute façon négligeable. Y, en revanche, reste le centre vertical
   // de l'œuvre (silX ne dit rien sur la hauteur) — c'est cette partie-là qui corrigeait le bug d'origine.
-  if (best) return { x: silX, y: best.top + best.height / 2 };
+  if (best) { const r = best.getBoundingClientRect(); return { x: silX, y: r.top + r.height / 2 }; }
   return { x: silX, y: silRect.top + silRect.height * 0.07 };
 }
 // Repositionne (et redimensionne) l'ENVELOPPE (.gallery-proto-loupe-content) à l'intérieur de la
@@ -5158,20 +5202,109 @@ function updateGalleryLoupePosition() {
     clone = wrapper.firstElementChild;
   }
   if (clone) clone.style.transform = track.style.transform;
-  positionGalleryLoupeContent(ref.x, ref.y);
+  positionGalleryLoupeContent(ref.x, ref.y + galleryLoupeUserOffsetY);
 }
 function openGalleryLoupe() {
   const loupe = $('gallery-proto-loupe');
   if (!loupe) return;
+  galleryLoupeUserOffsetY = 0;
   loupe.classList.remove('hidden');
   updateGalleryLoupePosition();
 }
 function closeGalleryLoupe() {
   const loupe = $('gallery-proto-loupe');
   if (!loupe) return;
+  galleryLoupeUserOffsetY = 0;
   loupe.classList.add('hidden');
-  loupe.innerHTML = '';
+  // v108 : ne retire QUE le clone du mur (.gallery-proto-loupe-content) — jamais tout le contenu de
+  // #gallery-proto-loupe avec un innerHTML='' comme avant, qui effacerait aussi la petite poignée
+  // visuelle posée une fois pour toutes en CSS (::after, voir style.css) sur le bord de la loupe.
+  const wrapper = loupe.querySelector('.gallery-proto-loupe-content');
+  if (wrapper) wrapper.remove();
 }
+// v108 : distance entre un point (clientX, clientY) et le CENTRE de la loupe, comparée à son rayon —
+// sert à distinguer une prise sur le BORD (pour la déplacer, voir attachGalleryLoupeDrag ci-dessous)
+// d'un clic dans le reste de son intérieur (qui doit continuer à simplement la refermer, comme depuis
+// la v103). GALLERY_LOUPE_EDGE_BAND_PX largeur généreuse (au-delà des 9px de la bordure dorée elle-même,
+// visible en CSS) pour rester facile à attraper sans viser au pixel près.
+const GALLERY_LOUPE_EDGE_BAND_PX = 24;
+function galleryLoupeIsEdgeGrab(loupe, clientX, clientY) {
+  const rect = loupe.getBoundingClientRect();
+  if (!rect.width) return false;
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const dist = Math.hypot(clientX - cx, clientY - cy);
+  const radius = rect.width / 2;
+  return dist >= radius - GALLERY_LOUPE_EDGE_BAND_PX;
+}
+// v108 : amplitude maximale du décalage manuel (galleryLoupeUserOffsetY), en coordonnées NON zoomées
+// (mêmes unités que galleryLoupeReferencePoint). Une amplitude FIXE (proportionnelle au seul rayon de
+// la loupe) suffit largement vers le haut (qui ne sert qu'à revenir en arrière si on est descendu trop
+// loin), mais pas vers le bas : le cartel est posé sous le BAS de l'œuvre, donc pour un très grand
+// format (« Un enterrement à Ornans », 315cm de haut réels), la distance entre le CENTRE de l'œuvre
+// (point de référence habituel) et son cartel peut largement dépasser un simple rayon de loupe. Vers le
+// bas, on vise donc directement le cartel de l'œuvre actuellement en face du personnage quand il y en a
+// une (voir galleryLoupeMatchedWorkEl) — jamais moins que l'amplitude fixe (cas du repli hors œuvre,
+// sans cartel à atteindre), au moins autant que ce qu'il faut pour amener tout le bas du cartel au
+// centre de la loupe (+ une petite marge de confort).
+function galleryLoupeMaxOffset(loupe, direction) {
+  const rect = loupe.getBoundingClientRect();
+  const radiusRef = (rect.width / 2) / GALLERY_LOUPE_ZOOM;
+  const fixedBound = direction === 'down' ? radiusRef * 0.9 : radiusRef * 0.5;
+  if (direction !== 'down') return fixedBound;
+  const sil = $('gallery-proto-silhouette');
+  if (!sil) return fixedBound;
+  const silRect = sil.getBoundingClientRect();
+  if (!silRect.width) return fixedBound;
+  const silX = silRect.left + silRect.width / 2;
+  const work = galleryLoupeMatchedWorkEl(silX);
+  const cartel = work && work.nextElementSibling;
+  if (!work || !cartel || !cartel.classList.contains('gallery-proto-work-cartel')) return fixedBound;
+  const workRect = work.getBoundingClientRect();
+  const cartelRect = cartel.getBoundingClientRect();
+  const workCenterY = workRect.top + workRect.height / 2;
+  return Math.max(fixedBound, cartelRect.bottom - workCenterY + 14);
+}
+// v108 : glisser depuis le BORD de la loupe la déplace verticalement (« on saisit le bord de la loupe,
+// c'est comme si le personnage baissait la tête et lisait le cartel ; on peut la remonter, la
+// descendre » — retour Stéphane). Le contenu suit le pointeur au pixel près (dy divisé par le zoom),
+// jamais l'inverse du mouvement du zoom : on tire la loupe vers le bas, l'œuvre remonte à l'écran comme
+// si on regardait plus bas dessus — exactement le geste attendu.
+function attachGalleryLoupeDrag() {
+  const loupe = $('gallery-proto-loupe');
+  if (!loupe) return;
+  let dragging = false;
+  let startClientY = 0;
+  let startOffset = 0;
+  loupe.addEventListener('pointerdown', (event) => {
+    if (!galleryLoupeIsEdgeGrab(loupe, event.clientX, event.clientY)) return;
+    dragging = true;
+    loupe.dataset.justDragged = '1';
+    startClientY = event.clientY;
+    startOffset = galleryLoupeUserOffsetY;
+    try { loupe.setPointerCapture(event.pointerId); } catch (e) { /* ignore */ }
+    event.stopPropagation();
+    event.preventDefault();
+  });
+  loupe.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const dy = event.clientY - startClientY;
+    const maxDown = galleryLoupeMaxOffset(loupe, 'down');
+    const maxUp = galleryLoupeMaxOffset(loupe, 'up');
+    galleryLoupeUserOffsetY = Math.min(maxDown, Math.max(-maxUp, startOffset + dy / GALLERY_LOUPE_ZOOM));
+    updateGalleryLoupePosition();
+    event.stopPropagation();
+  });
+  const endDrag = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    try { loupe.releasePointerCapture(event.pointerId); } catch (e) { /* ignore */ }
+    event.stopPropagation();
+  };
+  loupe.addEventListener('pointerup', endDrag);
+  loupe.addEventListener('pointercancel', endDrag);
+}
+attachGalleryLoupeDrag();
 $('gallery-proto-glasses')?.addEventListener('click', (event) => {
   event.stopPropagation();
   const loupe = $('gallery-proto-loupe');
@@ -5181,8 +5314,20 @@ $('gallery-proto-glasses')?.addEventListener('click', (event) => {
 // Cliquer l'incrustation elle-même la referme aussi (petit raccourci en plus du clic « à côté »
 // ci-dessous — n'importe quel clic dans la zone visible de la loupe la referme, jamais besoin de
 // viser précisément les lunettes une seconde fois).
+// v108 : sauf si ce clic conclut une prise sur le bord (voir attachGalleryLoupeDrag ci-dessus) —
+// loupe.dataset.justDragged, posé au pointerdown et consommé ici, évite qu'un simple glisser-déposer
+// pour lire le cartel referme la loupe au relâchement du doigt/de la souris.
+function consumeGalleryLoupeJustDragged(loupe) {
+  if (!loupe) return false;
+  if (loupe.dataset.justDragged === '1') {
+    loupe.dataset.justDragged = '';
+    return true;
+  }
+  return false;
+}
 $('gallery-proto-loupe')?.addEventListener('click', (event) => {
   event.stopPropagation();
+  if (consumeGalleryLoupeJustDragged($('gallery-proto-loupe'))) return;
   closeGalleryLoupe();
 });
 // v103 : « pour revenir en arrière, il suffirait de recliquer sur le plan objectif » — un clic
