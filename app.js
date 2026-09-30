@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v105';
+const APP_VERSION = 'v106';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -5060,19 +5060,33 @@ function setupGalleryWalk() {
 // vienne du glissement du sac à dos ou de la marche automatique. La loupe suit donc le personnage
 // exactement comme les lunettes ou le sac à dos suivent déjà son déplacement (même tx).
 const GALLERY_LOUPE_ZOOM = 2.6;
-// Point de référence = ce que le personnage a « en face de lui » : le centre horizontal de la
-// silhouette (même refX qu'utilisait l'ancien findNearestGalleryWork), à hauteur des yeux (même
-// niveau que les lunettes, silRect.height * 0.07 — voir setupGalleryWalk) plutôt qu'au milieu du
-// mur, pour rester cohérent avec « ce qu'il voit ».
+// v106 (retour Stéphane, capture à l'appui : « le personnage est en face du tableau de Courbet...
+// dans la loupe on devrait voir le tableau agrandi, or on voit le bas du tableau tout en haut — ça ne
+// va pas du tout ») : la référence verticale de la v105 (hauteur des yeux fixe, silRect.height * 0.07)
+// ne tombe pas forcément sur le tableau — un grand format (comme « Un enterrement à Ornans » ou
+// « L'Atelier du peintre ») est accroché sur une bien plus grande plage de hauteur que les seuls yeux
+// du personnage, donc la loupe ne cadrait souvent qu'un bord du tableau, voire le mur nu au-dessus ou
+// en dessous. Si une œuvre couvre horizontalement la position du personnage, on centre désormais la
+// loupe sur CETTE œuvre — son propre centre, en X ET en Y — plutôt que sur un point fixe ; seulement
+// s'il n'y a aucune œuvre à cet endroit (mur nu, espace entre deux tableaux) on retombe sur l'ancien
+// repère par défaut (centre du personnage, hauteur des yeux).
 function galleryLoupeReferencePoint() {
   const sil = $('gallery-proto-silhouette');
   if (!sil) return null;
   const silRect = sil.getBoundingClientRect();
   if (!silRect.width) return null;
-  return {
-    x: silRect.left + silRect.width / 2,
-    y: silRect.top + silRect.height * 0.07,
-  };
+  const silX = silRect.left + silRect.width / 2;
+  let best = null;
+  let bestDist = Infinity;
+  document.querySelectorAll('#gallery-proto-track .scale-checkpoint-work').forEach((img) => {
+    const r = img.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    if (silX < r.left || silX > r.right) return; // le personnage doit être horizontalement devant elle
+    const dist = Math.abs(r.left + r.width / 2 - silX);
+    if (dist < bestDist) { bestDist = dist; best = r; }
+  });
+  if (best) return { x: best.left + best.width / 2, y: best.top + best.height / 2 };
+  return { x: silX, y: silRect.top + silRect.height * 0.07 };
 }
 // Repositionne (et redimensionne) le clone à l'intérieur de la loupe pour que le point de référence
 // (clientX, clientY) se retrouve exactement au centre du cercle — voir le commentaire complet plus

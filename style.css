@@ -2157,9 +2157,12 @@ body.stephane-test-decor .scale-wall-pillar {
    agrandi) — v103 (retour Stéphane, précision orale : « pas obligé que ça occupe tout l'écran... une
    incrustation dans le plan objectif ») : PAS un plein écran, juste ce cercle, le reste de la vue
    (personnage, mur, cordon) reste visible et actif derrière. */
+/* v106 (retour Stéphane : « il faudrait que tu agrandisses un peu ta loupe ») : 32vh → 40vh (25 %
+   plus grande), même reste de la mise en page (top:6vh, centrée) — GALLERY_LOUPE_ZOOM (app.js) est
+   indépendant de cette taille, ne change pas ici. */
 #gallery-proto-loupe {
   position:absolute; top:6vh; left:50%; transform:translateX(-50%);
-  width:32vh; height:32vh; border-radius:50%; overflow:hidden;
+  width:40vh; height:40vh; border-radius:50%; overflow:hidden;
   background:#111; cursor:pointer; z-index:30;
   border:9px solid #b5902a; box-shadow:0 0 0 3px #7a0f18, 0 12px 34px rgba(0,0,0,.55);
 }
