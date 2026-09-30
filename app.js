@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v108';
+const APP_VERSION = 'v109';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4424,9 +4424,12 @@ function buildCheckpointWindowWorks(windowEl, works, windowWidthPx, pxPerCm, win
 // est la sienne depuis le début, elle ne change plus jamais.
 // v108 (retour Stéphane : « sous les tableaux, mets des petits cartels avec le nom de l'artiste, le
 // titre du tableau et l'année ») : addCartels reste optionnel (par défaut absent/false) et n'est passé
-// à true QUE par buildGalleryTrack (le nouvel écran avec la loupe) — jamais par l'ancien couloir
+// à true QUE par buildGalleryTrack (la nouvelle galerie) — jamais par l'ancien couloir
 // (scale-checkpoint-wall-works, qui appelle aussi cette même fonction) : Stéphane n'a demandé ce petit
 // cartel que pour cet écran-ci, pas pour retoucher le couloir existant.
+// v109 : taille FIXE du petit cartel (jamais proportionnelle à l'œuvre — voir le commentaire dans la
+// boucle ci-dessous, sur addCartels).
+const GALLERY_CARTEL_WIDTH_PX = 66;
 function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCartels) {
   const worksEl = wallEl.querySelector('.scale-checkpoint-wall-works');
   if (!worksEl) return 0;
@@ -4497,19 +4500,28 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
     // v91 : reprend enterFocusView (avant réservée au plan rapproché, voir buildWallSegment) pour
     // garder cette fonctionnalité utile (voir l'œuvre en très grand, silhouette de comparaison) —
     // sans elle, ce plan unique aurait perdu quelque chose que l'ancien plan rapproché offrait.
-    img.addEventListener('click', () => enterFocusView(work, hCm, ''));
+    // v109 (retour Stéphane : abandon de la loupe — voir #gallery-proto-glasses, style.css) : c'est
+    // maintenant CE clic (sur l'œuvre OU sur son cartel, voir plus bas) qui sert de « plan rapproché » :
+    // enterFocusView reçoit aussi le cartel en 4e argument pour l'afficher lisiblement là-bas.
+    const openFocus = () => enterFocusView(work, hCm, '', work);
+    img.addEventListener('click', openFocus);
     worksEl.appendChild(img);
-    // v108 : petit cartel de musée posé juste sous l'œuvre — nom de l'artiste, titre entre guillemets,
-    // année — voir le commentaire au-dessus de la signature de la fonction pour pourquoi addCartels
-    // n'est vrai que sur ce nouvel écran. Même largeur que l'œuvre (centré par le CSS,
-    // .gallery-proto-work-cartel), collé à 8px sous son bord inférieur — assez proche pour rester
-    // atteignable par le glisser-déposer de la loupe (voir galleryLoupeMaxOffset).
+    // v108 (retour Stéphane : « sous les tableaux, mets des petits cartels ») puis v109 (retour
+    // Stéphane, capture à l'appui d'un vrai musée : « c'est beaucoup trop gros, un tout petit cartel,
+    // on ne peut le lire que si on s'approche ») : la v108 étirait le cartel à la largeur de l'ŒUVRE et
+    // sa police restait fixe en rem — pour une œuvre modeste (la plupart), le texte se retrouvait
+    // proportionnellement énorme à côté d'elle. Un vrai cartel de musée a une taille PROPRE, toujours
+    // petite, jamais proportionnelle au format du tableau : taille fixe ici aussi (jamais liée à
+    // widthPx/heightPx), collé au coin bas-droit de l'œuvre comme sur la photo envoyée par Stéphane.
+    // Additionnellement cliquable (comme l'œuvre elle-même) : vu sa taille volontairement illisible à
+    // cette échelle, il faut pouvoir l'atteindre facilement pour se rapprocher (enterFocusView).
     if (addCartels) {
       const cartel = document.createElement('div');
       cartel.className = 'gallery-proto-work-cartel';
-      cartel.style.left = `${cursor}px`;
-      cartel.style.width = `${widthPx}px`;
-      cartel.style.top = `${imgTopPx + heightPx + 8}px`;
+      cartel.style.left = `${cursor + widthPx - GALLERY_CARTEL_WIDTH_PX}px`;
+      cartel.style.top = `${imgTopPx + heightPx + 3}px`;
+      cartel.style.cursor = 'pointer';
+      cartel.addEventListener('click', (event) => { event.stopPropagation(); openFocus(); });
       const artistLine = document.createElement('div');
       artistLine.className = 'gallery-proto-work-cartel-artist';
       artistLine.textContent = work.artist || '';
@@ -5838,7 +5850,12 @@ $('scale-checkpoint-back')?.addEventListener('click', exitScaleView);
 // tient juste à côté à sa vraie échelle relative — même principe que le mur, mais en très grand,
 // pour bien ressentir la taille d'une seule œuvre. On sort en tirant la silhouette hors du cadre ;
 // le mur retrouve sa position exacte (la promenade continue là où elle s'était arrêtée).
-function enterFocusView(work, hCm, note) {
+// v109 (retour Stéphane : abandon de la loupe — c'est maintenant enterFocusView qui sert de « plan
+// rapproché », voir buildCheckpointCorridorWorks) : 4e argument `work` optionnel — quand fourni, son
+// cartel (artiste, titre, année) s'affiche en grand et lisible ici, via #scale-focus-cartel, pendant
+// que #scale-focus-caption garde son rôle inchangé (juste la hauteur réelle). Optionnel (peut rester
+// undefined) car enterFocusView est aussi appelée ailleurs sans cette information.
+function enterFocusView(work, hCm, note, cartelWork) {
   // Garde-fou : sans hauteur réelle connue (donnée manquante ou invalide pour cette œuvre
   // précise), tous les calculs qui suivent partent en vrille (division par une valeur nulle,
   // tailles NaN) — l'œuvre se retrouvait réduite à rien, à hauteur des pieds de la silhouette.
@@ -5847,6 +5864,12 @@ function enterFocusView(work, hCm, note) {
   if (!hCm || hCm <= 0 || !isFinite(hCm)) return;
   const lCm = parseCmValue(work.longueur) || hCm * 1.3;
   $('scale-focus-view').classList.remove('hidden');
+  // v109 : #scale-focus-view est niché dans .app-shell (z-index:1 vu depuis <body>), alors que la
+  // galerie-couloir actuelle (#gallery-proto) est un enfant direct de <body> en z-index:150 — un
+  // z-index ne compte que dans SON contexte d'empilement, donc .app-shell perdait toujours contre
+  // #gallery-proto et la vue rapprochée restait invisible (bien qu'ouverte en JS). On surélève donc
+  // .app-shell juste pour la durée de cette vue — voir style.css, règle body.gallery-focus-active.
+  document.body.classList.add('gallery-focus-active');
   const maxArtH = window.innerHeight * 0.82;
   const maxArtW = window.innerWidth * 0.62;
   // BUG corrigé v93 (retour Stéphane : « quand on clique sur un tableau... on peut se rapprocher, on
@@ -5887,9 +5910,19 @@ function enterFocusView(work, hCm, note) {
   sil.style.left = `calc(50% - ${artW / 2 - 60}px - ${silW + 14}px)`;
   sil.style.top = `calc(50% + ${artH / 2}px - ${silhH}px)`;
   $('scale-focus-caption').textContent = `Hauteur réelle : ${hCm} cm${note}`;
+  const cartelEl = $('scale-focus-cartel');
+  if (cartelEl) {
+    if (cartelWork) {
+      cartelEl.textContent = `${cartelWork.artist || ''} — « ${cartelWork.title || 'Sans titre'} »${cartelWork.date ? `, ${cartelWork.date}` : ''}`;
+      cartelEl.classList.remove('hidden');
+    } else {
+      cartelEl.classList.add('hidden');
+    }
+  }
 }
 function exitFocusView() {
   $('scale-focus-view').classList.add('hidden');
+  document.body.classList.remove('gallery-focus-active');
 }
 makeSilhouetteDraggable($('scale-focus-silhouette'), {
   onDragEnd: (dx, dy) => {
@@ -6294,6 +6327,7 @@ function exitScaleView() {
   $('lightbox-scale-view').classList.add('hidden');
   $('lightbox-scale-back-button').classList.add('hidden');
   $('scale-focus-view').classList.add('hidden');
+  document.body.classList.remove('gallery-focus-active'); // filet de sécurité (v109) : au cas où on sortirait de toute la salle sans repasser par exitFocusView
   $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
 }
 // Sortie complète de la salle (geste du coin) : referme toute la visionneuse, pas seulement la

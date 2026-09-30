@@ -161,6 +161,18 @@ body.dragging-topbar { touch-action:none; user-select:none; }
 button, input { font:inherit; }
 
 .app-shell { width:min(1600px, calc(100% - 32px)); margin:0 auto; padding:56px 0 20px; display:flex; align-items:stretch; gap:26px; min-height:100vh; pointer-events:none; position:relative; z-index:1; }
+/* v109 : BUG PRÉ-EXISTANT trouvé en vérifiant à l'écran (pas seulement en JS) que le clic sur une
+   œuvre de la galerie (#gallery-proto, z-index:150, position:fixed, TOUJOURS un enfant direct de
+   <body> — voir plus bas) ouvrait bien enterFocusView (#scale-focus-view) par-dessus — un rectangle,
+   position:relative, z-index:1, ancêtre commun de #scale-focus-view via #image-lightbox/z-index:300)
+   n'établissait, vu depuis <body>, qu'une seule contribution : z-index:1. Un z-index n'a d'effet que
+   DANS le contexte d'empilement où il est posé — le 300 d'#image-lightbox ne comparait donc jamais
+   contre le 150 de #gallery-proto (contextes différents), et .app-shell (1) perdait toujours face à
+   #gallery-proto (150) : la vue rapprochée s'ouvrait bien en JS (classe hidden retirée), mais restait
+   invisible, cachée derrière toute la galerie. Corrigé en surélevant .app-shell UNIQUEMENT pendant
+   qu'une vue rapprochée est ouverte (classe posée par enterFocusView/retirée par exitFocusView, voir
+   app.js) — jamais en permanence, pour ne rien déplacer d'autre le reste du temps. */
+body.gallery-focus-active .app-shell { z-index:200; }
 .sidebar { flex:1 1 0; display:flex; flex-direction:column; gap:14px; justify-content:center; position:sticky; top:20px; align-self:stretch; background:#f6ecd6; border-radius:12px; padding:28px; }
 .main-content { flex:1 1 0; min-width:0; display:flex; flex-direction:column; justify-content:flex-start; }
 .main-content > * { pointer-events:auto; }
@@ -1716,6 +1728,16 @@ body[data-ambiance="gothique"] #scale-focus-view { background:#101d70; }
 #scale-focus-img { position:absolute; box-shadow:0 12px 32px rgba(0,0,0,.4); object-fit:contain; background:#fff; }
 #scale-focus-silhouette { position:absolute; color:#5c6a5a; opacity:.9; filter:drop-shadow(0 4px 6px rgba(0,0,0,.2)); cursor:grab; touch-action:none; z-index:2; }
 #scale-focus-caption { position:fixed; bottom:20px; right:24px; color:#4a453c; font-family:Arial,sans-serif; font-size:.9rem; margin:0; background:rgba(255,255,255,.85); padding:6px 12px; border-radius:4px; }
+/* v109 : version « en grand » du petit cartel du mur (.gallery-proto-work-cartel, même esprit —
+   fond gris, texte blanc — mais ici taille normale et lisible, puisque c'est justement le but de cette
+   vue rapprochée). Bottom-left, en écho au « Hauteur réelle » posé en bottom-right. */
+#scale-focus-cartel {
+  position:fixed; bottom:20px; left:24px; margin:0; max-width:min(60vw, 420px);
+  background:rgba(35,35,35,.9); color:#f2f2f2; font-family:Georgia,'Times New Roman',serif;
+  font-size:.85rem; font-style:italic; padding:8px 14px; border-radius:4px;
+  border:1px solid rgba(255,255,255,.15); box-shadow:0 2px 8px rgba(0,0,0,.4);
+}
+#scale-focus-cartel.hidden { display:none; }
 .other-works { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
 .other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }
 .other-works-list { display:flex; flex-wrap:wrap; gap:12px; }
@@ -2122,7 +2144,14 @@ body.stephane-test-decor .scale-wall-pillar {
    c'est le mur qui a été monté (#gallery-proto-room ci-dessus) pour que 1,90 m (GALLERY_PERSON_HEIGHT_CM,
    valeur ronde désormais) donne un mur à exactement 5 m, jamais la silhouette elle-même. */
 #gallery-proto-row { position:absolute; left:24px; bottom:6vh; right:24px; height:34.7vh; overflow:hidden; pointer-events:none; }
-#gallery-proto-silhouette { position:absolute; left:0; bottom:0; height:29.41vh; color:#d8d0c0; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.35)); }
+/* v109 (retour Stéphane, capture à l'appui d'un vrai musée : « le personnage, il est devant les
+   cordons... nous, on l'a mis derrière, ce qui n'est pas très logique, parce que les cordons sont
+   censés protéger les œuvres ») : z-index explicite ajouté ici — sans lui, l'ordre du DOM (le cordon,
+   posé APRÈS la silhouette dans #gallery-proto-row, voir index.html) le faisait passer PAR-DESSUS le
+   personnage partout où ils se chevauchent, comme si le visiteur avait déjà franchi la barrière. Le
+   personnage (et tout ce qui lui est attaché : sac à dos, ex-lunettes) doit au contraire rester devant
+   le cordon, jamais derrière — voir #gallery-rope-barrier plus bas pour le z-index inférieur associé. */
+#gallery-proto-silhouette { position:absolute; left:0; bottom:0; height:29.41vh; color:#d8d0c0; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.35)); z-index:4; }
 /* v100 (retour Stéphane : « ... avec les éléments de décor, le cordon, etc. ») : cordon repris de
    #scale-rope-barrier (ancien couloir, ratio hauteur cordon/personnage déjà validé par Stéphane là-bas :
    11vh / 22vh = exactement moitié de la hauteur du personnage) — appliqué ici au NOUVEAU personnage
@@ -2130,7 +2159,7 @@ body.stephane-test-decor .scale-wall-pillar {
    dans app.js), #gallery-proto-row n'étant pas une rangée flex comme #scale-checkpoint-row — bottom:0
    pour rester au même niveau que les pieds de la silhouette, jamais transformé pendant la marche
    (même principe que l'ancien cordon, toujours statique, voir positionGalleryRopeBarrier). */
-#gallery-rope-barrier { position:absolute; bottom:0; height:14.71vh; }
+#gallery-rope-barrier { position:absolute; bottom:0; height:14.71vh; z-index:1; }
 /* v101 (retour Stéphane : « qu'on lui mette un sac à dos rouge... c'est plus réaliste ») : ancien
    simple point rond (border-radius:50%, background plat) remplacé par le sac à dos illustré
    (voir index.html) — taille/position ajustées en JS (voir setupGalleryWalk dans app.js, mêmes
@@ -2138,7 +2167,7 @@ body.stephane-test-decor .scale-wall-pillar {
    forme, plus haute qu'un simple point). drop-shadow au lieu de box-shadow (cercle) pour donner un
    peu de relief à la forme illustrée. */
 #gallery-proto-floor-dot {
-  position:absolute; width:34px; height:42px; cursor:grab;
+  position:absolute; width:34px; height:42px; cursor:grab; z-index:4;
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.5)); pointer-events:auto;
 }
 #gallery-proto-floor-dot.hidden { display:none; }
@@ -2147,7 +2176,15 @@ body.stephane-test-decor .scale-wall-pillar {
    lunettes à hauteur des yeux (position exacte posée en JS, voir setupGalleryWalk dans app.js, comme
    le sac à dos) — jamais masquées (contrairement à l'ancien sac à dos avant le correctif « il faut
    qu'il en ait tout le temps », il n'y a d'ailleurs ici aucune raison de les cacher). */
+/* v109 (retour Stéphane : « on va laisser tomber la loupe... ça ne marche pas, on va perdre encore du
+   temps ») : abandon de la loupe — masquée ici plutôt que retirée du DOM/JS (même logique que
+   buildWallSegment/buildContinuousWall, laissés en l'état depuis le v91) : setupGalleryWalk continue à
+   positionner les lunettes sans que ça pose problème, mais display:none les rend invisibles ET
+   inatteignables — plus aucun moyen d'ouvrir #gallery-proto-loupe. Le rapprochement sur une œuvre passe
+   désormais par enterFocusView (clic sur l'œuvre — voir buildCheckpointCorridorWorks), pas par une
+   loupe séparée. */
 #gallery-proto-glasses {
+  display:none;
   position:absolute; width:26px; height:12px; cursor:pointer; pointer-events:auto;
   filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));
 }
@@ -2205,20 +2242,30 @@ body.stephane-test-decor .scale-wall-pillar {
   opacity:.82;
 }
 /* v108 (retour Stéphane : « sous les tableaux, mets des petits cartels avec le nom de l'artiste, le
-   titre du tableau et l'année ») : petit cartel de musée, collé juste sous chaque œuvre (voir
-   buildCheckpointCorridorWorks, app.js — addCartels), centré sur la même largeur que l'œuvre. Jamais
-   posé sur l'ancien couloir (scale-checkpoint-wall-works) : addCartels n'est passé à true que par
-   buildGalleryTrack. Assez discret pour ne pas concurrencer les œuvres à l'échelle normale — son
-   véritable usage est d'être lu EN GROS dans la loupe, une fois qu'on la fait descendre dessus (voir
-   #gallery-proto-loupe::after et galleryLoupeMaxOffset, app.js). */
+   titre du tableau et l'année ») : petit cartel de musée, collé sous chaque œuvre (voir
+   buildCheckpointCorridorWorks, app.js — addCartels). Jamais posé sur l'ancien couloir
+   (scale-checkpoint-wall-works) : addCartels n'est passé à true que par buildGalleryTrack.
+   v109 (retour Stéphane, capture à l'appui d'un vrai musée : « c'est beaucoup trop gros, ça gâche
+   tout... un tout petit cartel, fond gris, caractères blancs, qu'on ne peut lire que si on
+   s'approche ») : la v108 (texte seul, sans fond, étiré à la largeur de l'œuvre) est remplacée par une
+   vraie petite plaque — fond gris, texte blanc, largeur FIXE (GALLERY_CARTEL_WIDTH_PX, app.js) — collée
+   au coin bas-droit de l'œuvre, jamais centrée/étirée sur toute sa largeur. Volontairement minuscule et
+   à peine lisible à l'échelle normale, comme un vrai cartel vu de loin : pour le lire, il faut s'en
+   approcher via enterFocusView (clic sur l'œuvre OU sur le cartel lui-même, voir plus haut). */
+/* Largeur (66px) dupliquée depuis GALLERY_CARTEL_WIDTH_PX (app.js) — JS pose left en fonction de cette
+   même valeur pour caler le coin droit du cartel sur celui de l'œuvre ; à garder synchronisé si l'une
+   des deux valeurs change. */
 .gallery-proto-work-cartel {
-  position:absolute; text-align:center; pointer-events:none;
-  font-family:Georgia, 'Times New Roman', serif; color:#f1e9d6;
-  text-shadow:0 1px 2px rgba(0,0,0,.7);
+  position:absolute; width:66px; box-sizing:border-box; text-align:left;
+  background:rgba(42,42,42,.88); border:1px solid rgba(255,255,255,.15);
+  padding:2px 3px; box-shadow:0 1px 3px rgba(0,0,0,.5);
+  font-family:Arial, sans-serif; color:#f2f2f2;
 }
 .gallery-proto-work-cartel-artist {
-  font-size:.68rem; font-weight:700; letter-spacing:.02em; white-space:nowrap;
+  font-size:4.6px; font-weight:700; line-height:1.25; letter-spacing:.01em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .gallery-proto-work-cartel-title {
-  font-size:.6rem; font-style:italic; opacity:.9; white-space:nowrap; margin-top:1px;
+  font-size:4.1px; font-style:italic; line-height:1.25; opacity:.88; margin-top:.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
