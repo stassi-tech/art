@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=251" />
+    <link rel="stylesheet" href="style.css?v=252" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -236,6 +236,20 @@
            (.gallery-proto-loupe-content) est donc injecté/retiré dynamiquement en JS, jamais posé en
            dur ici. -->
       <div id="gallery-proto-loupe" class="hidden" aria-label="Vue rapprochée des œuvres devant le personnage"></div>
+      <!-- v110 (retour Stéphane : abandon du "plan rapproché" (enterFocusView) pour la galerie — « le
+           personnage n'est pas sur le sol » — remplacé par la loupe progressive à 3 paliers déjà
+           utilisée pour Intrus/Famille/Chronologie/Imprégnation, voir attachProgressiveLoupe/
+           galleryWorkLoupe dans app.js). Un SEUL emplacement partagé, rempli pour l'œuvre cliquée à
+           chaque fois (comme #imp-stage-img pour Imprégnation), plutôt qu'un jeu d'emplacements par
+           œuvre. Posé ICI, en FRÈRE DIRECT de #gallery-proto-track (qui subit lui un translateX pour
+           le défilement du mur) et jamais À L'INTÉRIEUR : un élément position:absolute niché dans un
+           ancêtre transformé ne remplit QUE la boîte de cet ancêtre (ici, toute la longueur du mur,
+           pas la fenêtre) — piège déjà rencontré et corrigé pour enterFocusView (voir .app-shell,
+           style.css). -->
+      <div id="gallery-proto-loupe-solo" aria-label="Œuvre agrandie">
+        <img id="gallery-proto-loupe-solo-img" alt="" />
+        <p id="gallery-proto-loupe-solo-cartel" class="hidden"></p>
+      </div>
     </div>
     <div class="app-shell">
 
@@ -1989,6 +2003,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=336"></script>
+    <script src="app.js?v=337"></script>
   </body>
 </html>

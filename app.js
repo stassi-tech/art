@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v109';
+const APP_VERSION = 'v110';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -3224,6 +3224,33 @@ function attachProgressiveLoupe(cellEl, imgEl, options = {}) {
   updateTouchAction();
   return { setLevel, getLevel: () => level };
 }
+// ============================================================
+// LOUPE DE LA GALERIE (v110) — retour Stéphane : « le plan rapproché, ça ne va pas parce que le
+// personnage n'est pas sur le sol » (abandon d'enterFocusView pour ce clic, voir
+// buildCheckpointCorridorWorks) « ... tu mets une petite loupe, comme on a fait pour les autres
+// jeux, une loupe à trois positions ». RÉUTILISE attachProgressiveLoupe TEL QUEL (mode 'solo',
+// maxLevel 2 = 3 paliers, exactement comme Intrus/Famille/Chronologie) plutôt que d'écrire un
+// nouveau mécanisme — zéro risque de régression sur ces 3 jeux, dont le code commun n'est pas touché.
+// Un SEUL emplacement partagé (#gallery-proto-loupe-solo, voir index.html), rempli/vidé à chaque
+// clic pour l'œuvre concernée — comme #imp-stage-img pour Imprégnation (impLoupe) — plutôt qu'un jeu
+// d'emplacements par œuvre (un mur peut en porter des dizaines).
+// Posé en FRÈRE DIRECT de #gallery-proto-track (jamais à l'intérieur) : #gallery-proto-track subit un
+// translateX (le défilement du mur, voir updateGalleryWalkVisual) — un élément position:absolute
+// niché DEDANS ne remplirait que SA boîte (toute la longueur du mur), jamais la fenêtre — exactement
+// le piège déjà rencontré et corrigé pour enterFocusView/.app-shell (voir style.css).
+const galleryWorkLoupe = attachProgressiveLoupe($('gallery-proto-loupe-solo'), $('gallery-proto-loupe-solo-img'), {
+  mode: 'solo',
+  maxLevel: 2,
+  zoomFor: (level) => (level === 2 ? 2.2 : 1),
+  onLevelChange: (level) => { $('gallery-proto-loupe-solo-cartel')?.classList.toggle('hidden', level === 0); },
+});
+function openGalleryWorkLoupe(work) {
+  const img = $('gallery-proto-loupe-solo-img');
+  if (img) img.src = imageSourceSized(work.image, 1000);
+  const cartel = $('gallery-proto-loupe-solo-cartel');
+  if (cartel) cartel.textContent = `${work.artist || ''} — « ${work.title || 'Sans titre'} »${work.date ? `, ${work.date}` : ''}`;
+  galleryWorkLoupe?.setLevel(1);
+}
 function setLightboxScaleData(work) {
   currentLightboxWork = work && parseCmValue(work.hauteur) ? work : null;
   $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
@@ -4430,6 +4457,8 @@ function buildCheckpointWindowWorks(windowEl, works, windowWidthPx, pxPerCm, win
 // v109 : taille FIXE du petit cartel (jamais proportionnelle à l'œuvre — voir le commentaire dans la
 // boucle ci-dessous, sur addCartels).
 const GALLERY_CARTEL_WIDTH_PX = 66;
+// v110 : taille de la petite loupe posée juste à gauche du cartel (voir addCartels ci-dessous).
+const GALLERY_LOUPE_ICON_SIZE_PX = 20;
 function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCartels) {
   const worksEl = wallEl.querySelector('.scale-checkpoint-wall-works');
   if (!worksEl) return 0;
@@ -4497,14 +4526,15 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
     img.style.width = `${widthPx}px`;
     img.style.height = `${heightPx}px`;
     img.style.cursor = 'pointer';
-    // v91 : reprend enterFocusView (avant réservée au plan rapproché, voir buildWallSegment) pour
-    // garder cette fonctionnalité utile (voir l'œuvre en très grand, silhouette de comparaison) —
-    // sans elle, ce plan unique aurait perdu quelque chose que l'ancien plan rapproché offrait.
-    // v109 (retour Stéphane : abandon de la loupe — voir #gallery-proto-glasses, style.css) : c'est
-    // maintenant CE clic (sur l'œuvre OU sur son cartel, voir plus bas) qui sert de « plan rapproché » :
-    // enterFocusView reçoit aussi le cartel en 4e argument pour l'afficher lisiblement là-bas.
-    const openFocus = () => enterFocusView(work, hCm, '', work);
-    img.addEventListener('click', openFocus);
+    // v91→v109 : ce clic ouvrait enterFocusView (le « plan rapproché », œuvre géante + silhouette de
+    // comparaison). v110 (retour Stéphane : « le plan rapproché, ça ne va pas parce que le personnage
+    // n'est pas sur le sol ») : abandonné à son tour — enterFocusView n'est pas supprimée (même
+    // principe que buildWallSegment/la loupe v103-108 : laissée en l'état, inerte, plus rien ne
+    // l'appelle plus depuis ici) — remplacée par la loupe progressive à 3 paliers ci-dessous, la MÊME
+    // que celle d'Intrus/Famille/Chronologie/Imprégnation (attachProgressiveLoupe), posée cette fois
+    // sur #gallery-proto-loupe-solo (voir ce constant partagé, juste après attachProgressiveLoupe).
+    const openLoupe = () => openGalleryWorkLoupe(work);
+    img.addEventListener('click', openLoupe);
     worksEl.appendChild(img);
     // v108 (retour Stéphane : « sous les tableaux, mets des petits cartels ») puis v109 (retour
     // Stéphane, capture à l'appui d'un vrai musée : « c'est beaucoup trop gros, un tout petit cartel,
@@ -4514,14 +4544,14 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
     // petite, jamais proportionnelle au format du tableau : taille fixe ici aussi (jamais liée à
     // widthPx/heightPx), collé au coin bas-droit de l'œuvre comme sur la photo envoyée par Stéphane.
     // Additionnellement cliquable (comme l'œuvre elle-même) : vu sa taille volontairement illisible à
-    // cette échelle, il faut pouvoir l'atteindre facilement pour se rapprocher (enterFocusView).
+    // cette échelle, il faut pouvoir l'atteindre facilement pour se rapprocher (voir la loupe, ci-dessous).
     if (addCartels) {
       const cartel = document.createElement('div');
       cartel.className = 'gallery-proto-work-cartel';
       cartel.style.left = `${cursor + widthPx - GALLERY_CARTEL_WIDTH_PX}px`;
       cartel.style.top = `${imgTopPx + heightPx + 3}px`;
       cartel.style.cursor = 'pointer';
-      cartel.addEventListener('click', (event) => { event.stopPropagation(); openFocus(); });
+      cartel.addEventListener('click', (event) => { event.stopPropagation(); openLoupe(); });
       const artistLine = document.createElement('div');
       artistLine.className = 'gallery-proto-work-cartel-artist';
       artistLine.textContent = work.artist || '';
@@ -4531,6 +4561,19 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
       cartel.appendChild(artistLine);
       cartel.appendChild(titleLine);
       worksEl.appendChild(cartel);
+      // v110 (retour Stéphane : « à partir du moment où il y a un tableau avec un cartel, tu mets une
+      // petite loupe au niveau de ce cadre et du cartel ») : une petite loupe cliquable, collée juste à
+      // gauche du cartel — jamais à l'intérieur (même logique v78 que pour Intrus/Famille : un tap sur
+      // la loupe ne doit jamais se confondre avec un tap sur le cartel/l'œuvre qui l'engloberait).
+      const loupeIcon = document.createElement('div');
+      loupeIcon.className = 'gallery-proto-work-loupe-icon';
+      loupeIcon.textContent = '🔍';
+      loupeIcon.setAttribute('role', 'button');
+      loupeIcon.setAttribute('aria-label', 'Agrandir cette œuvre');
+      loupeIcon.style.left = `${cursor + widthPx - GALLERY_CARTEL_WIDTH_PX - GALLERY_LOUPE_ICON_SIZE_PX - 4}px`;
+      loupeIcon.style.top = `${imgTopPx + heightPx + 3}px`;
+      loupeIcon.addEventListener('click', (event) => { event.stopPropagation(); openLoupe(); });
+      worksEl.appendChild(loupeIcon);
     }
     cursor += widthPx + gapPx;
   });
@@ -6328,6 +6371,14 @@ function exitScaleView() {
   $('lightbox-scale-back-button').classList.add('hidden');
   $('scale-focus-view').classList.add('hidden');
   document.body.classList.remove('gallery-focus-active'); // filet de sécurité (v109) : au cas où on sortirait de toute la salle sans repasser par exitFocusView
+  // BUG corrigé v110 (trouvé en régression, test_v100_real_gallery.js) : galleryWorkLoupe (la loupe
+  // progressive à 3 paliers, voir openGalleryWorkLoupe) n'était remise à son palier 0 que via ses
+  // propres icônes — jamais ici. En sortant de la salle SANS être déjà revenu au palier 0 (ex. en
+  // cliquant directement le geste du sac à dos, ou #scale-emergency-exit, pendant qu'une œuvre est
+  // agrandie), #gallery-proto-loupe-solo restait en .loupe-solo-active : à la prochaine visite,
+  // enterScaleView() rouvrait la salle avec la loupe déjà plein écran par-dessus, bloquant tout
+  // (notamment le glisser du sac à dos, testé juste après dans la suite).
+  galleryWorkLoupe?.setLevel(0);
   $('lightbox-scale-toggle-topbar')?.classList.toggle('hidden', !currentLightboxWork);
 }
 // Sortie complète de la salle (geste du coin) : referme toute la visionneuse, pas seulement la

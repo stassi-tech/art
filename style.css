@@ -2269,3 +2269,40 @@ body.stephane-test-decor .scale-wall-pillar {
   font-size:4.1px; font-style:italic; line-height:1.25; opacity:.88; margin-top:.5px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
+/* v110 (retour Stéphane : « au niveau de ce cadre et du cartel, tu mets une petite loupe, comme on a
+   fait pour les autres jeux, une loupe à trois positions ») : petit bouton rond collé juste à gauche
+   du cartel (voir addCartels, app.js) — volontairement plus grand/lisible que le cartel lui-même (qui
+   reste minuscule à dessein, voir plus haut) puisque ceci est un contrôle à atteindre au doigt/à la
+   souris, jamais un élément du décor du musée. */
+.gallery-proto-work-loupe-icon {
+  position:absolute; width:20px; height:20px; border-radius:50%;
+  background:rgba(0,0,0,.72); color:#fff; display:flex; align-items:center; justify-content:center;
+  font-size:12px; line-height:1; cursor:pointer; border:1px solid rgba(255,255,255,.65);
+  box-shadow:0 1px 3px rgba(0,0,0,.5); z-index:5; transition:transform .15s;
+}
+.gallery-proto-work-loupe-icon:hover { transform:scale(1.1); }
+/* v110 : l'emplacement AGRANDI lui-même — voir le commentaire complet dans index.html, à côté de
+   #gallery-proto-loupe-solo, sur pourquoi il doit être un frère de #gallery-proto-track et jamais un
+   descendant. Caché par défaut ; attachProgressiveLoupe (mode 'solo', app.js) lui ajoute/retire
+   .loupe-solo-active, qui le fait passer en plein cadre (règle partagée avec Intrus/Famille/
+   Chronologie, voir plus haut : position:absolute!important; inset:0; display:flex!important). */
+#gallery-proto-loupe-solo { display:none; }
+/* BUG corrigé pendant la vérification (capture à l'appui) : .loupe-progressive (Intrus/Famille/
+   Chronologie/Imprégnation) se pose systématiquement à top:4px — correct partout ailleurs, puisque
+   leur case solo ne démarre jamais tout en haut de l'écran. Ici, #gallery-proto-loupe-solo couvre
+   VRAIMENT tout l'écran dès y=0 — or .topbar-banner (le bandeau du haut, logo/compte/version) est
+   fixe, z-index:200, DONC toujours par-dessus, quel que soit l'écran affiché (déjà le cas avant cette
+   version) : les 3 loupes de progression se seraient retrouvées cachées dessous, injoignables. On les
+   repousse donc, ICI SEULEMENT (sélecteur propre à cet écran, aucun effet sur les 3 autres jeux), sous
+   ce bandeau (44px mesurés + une petite marge). */
+#gallery-proto-loupe-solo .loupe-progressive { top:52px; }
+#gallery-proto-loupe-solo-img { max-width:88vw; max-height:84vh; object-fit:contain; }
+/* Même habillage que #scale-focus-cartel (dormant, voir enterFocusView) — dupliqué sous un id propre
+   plutôt que partagé, pour ne jamais risquer de régresser ce code-là en retouchant celui-ci. */
+#gallery-proto-loupe-solo-cartel {
+  position:absolute; bottom:20px; left:24px; margin:0; max-width:min(60vw, 420px);
+  background:rgba(35,35,35,.9); color:#f2f2f2; font-family:Georgia,'Times New Roman',serif;
+  font-size:.85rem; font-style:italic; padding:8px 14px; border-radius:4px;
+  border:1px solid rgba(255,255,255,.15); box-shadow:0 2px 8px rgba(0,0,0,.4);
+}
+#gallery-proto-loupe-solo-cartel.hidden { display:none; }
