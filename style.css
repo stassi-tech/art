@@ -2038,10 +2038,12 @@ body.stephane-test-decor .scale-wall-pillar {
   background:rgba(0,0,0,.55); color:#fff; font-size:.72rem; font-weight:700; padding:5px 12px;
   border-radius:12px; letter-spacing:.02em; pointer-events:none;
 }
-/* Fenêtre visible : même principe que #scale-checkpoint-room (62% de hauteur = mur, le reste = sol),
-   mais sans --room-inner-x/--room-horizon-y en variables CSS — pas de piliers latéraux fixes en
-   trapèze ici, juste une fenêtre plate sur un rail qui défile, donc pas besoin de ces 2 variables. */
-#gallery-proto-room { position:absolute; top:0; left:0; right:0; height:62%; overflow:hidden; }
+/* Fenêtre visible : mur en haut, sol en bas — mais PAS la même proportion que #scale-checkpoint-room
+   (62/38, pensé pour une salle en profondeur). v97 (retour Stéphane, mesuré sur son Photoshop : « le
+   parquet occupe 27% de la hauteur de l'image... 38%, ça redonne une profondeur qui ne va pas ») :
+   sans profondeur/perspective ici (galerie plate, voir le commentaire d'ensemble plus haut), le sol
+   n'a plus besoin d'être aussi haut — Stéphane vise 25-27% pour le sol, donc 74% pour le mur. */
+#gallery-proto-room { position:absolute; top:0; left:0; right:0; height:74%; overflow:hidden; }
 #gallery-proto-track { position:absolute; top:0; left:0; height:100%; transition:none; }
 /* .gallery-proto-wall (un « emplacement ») et .gallery-proto-pilaster (la marque plate entre deux
    emplacements, ~1 m réel — voir GALLERY_PILASTER_WIDTH_CM dans app.js) : posés bord à bord sur le
@@ -2064,7 +2066,7 @@ body.stephane-test-decor .scale-wall-pillar {
 }
 .gallery-proto-wall-works { position:absolute; top:0; left:0; width:100%; height:100%; }
 .gallery-proto-work { position:absolute; cursor:pointer; }
-#gallery-proto-floor { position:absolute; top:62%; left:0; right:0; bottom:0; background:#3a352e; }
+#gallery-proto-floor { position:absolute; top:74%; left:0; right:0; bottom:0; background:#3a352e; }
 /* Cadran de progression généralisé — reprend le principe déjà validé de .scale-checkpoint-pillar-niche
    (retour de Stéphane, ancien système : « chaque pilier, il y avait une niche... le point rouge
    suit l'évolution du personnage »), mais avec un nombre de cases VARIABLE (une par emplacement,

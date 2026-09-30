@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v96';
+const APP_VERSION = 'v97';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4733,6 +4733,9 @@ function buildGalleryDemoSegments() {
 // rouge) est ensuite tenu à jour par updateGalleryProgressIndicator à chaque pas de marche, jamais
 // reconstruit ici (même principe que l'ancien système : la niche elle-même ne change plus après sa
 // création, seul son intérieur bouge).
+// v97 : plus APPELÉE pour l'instant (retour Stéphane : « enlève les cadrans, ils sont beaucoup trop
+// voyants — contentons-nous de l'essentiel ») — gardée définie, prête à être reposée plus tard sous
+// une forme plus discrète, voir buildGalleryTrack.
 function buildGalleryNiche() {
   const niche = document.createElement('div');
   niche.className = 'gallery-proto-niche';
@@ -4802,7 +4805,9 @@ function buildGalleryTrack() {
     // biais ; gallery-proto-wall-works porte déjà tout le style nécessaire pour cet écran.
     worksEl.className = 'gallery-proto-wall-works scale-checkpoint-wall-works';
     wallEl.appendChild(worksEl);
-    wallEl.appendChild(buildGalleryNiche()); // v96 : une seule niche par emplacement, sur le mur
+    // v97 (retour Stéphane : « enlève les cadrans, ils sont beaucoup trop voyants — contentons-nous
+    // de l'essentiel ») : plus posée du tout pour l'instant — buildGalleryNiche() reste définie
+    // (probablement à réintroduire plus tard, en plus discret) mais n'est plus appelée ici.
     const wallWidthPx = GALLERY_SEGMENT_LENGTH_CM * pxPerCm;
     wallEl.style.left = `${cursorPx}px`;
     wallEl.style.width = `${wallWidthPx}px`;
