@@ -2069,10 +2069,14 @@ body.stephane-test-decor .scale-wall-pillar {
    (retour de Stéphane, ancien système : « chaque pilier, il y avait une niche... le point rouge
    suit l'évolution du personnage »), mais avec un nombre de cases VARIABLE (une par emplacement,
    pas fixé à 2 — voir updateGalleryProgressIndicator dans app.js) puisqu'il peut désormais y avoir
-   plus de 2 emplacements. Posée en enfant de CHAQUE pilastre (comme avant : elle défile avec son
-   pilastre hôte automatiquement, aucune synchronisation de position séparée à faire). */
+   plus de 2 emplacements.
+   v96 (retour Stéphane : « enlève les compteurs sur les pilastres... mets-les sur le mur, en bas du
+   mur... il suffit qu'il y en ait un par salle, on a l'impression qu'il y en a trop ») : posée en
+   enfant du MUR (une seule par emplacement, voir buildGalleryTrack), près de son bord bas — plus en
+   enfant de chaque pilastre (avant : 2 par emplacement, une par pilastre, jugé en trop). Elle défile
+   toujours avec son mur hôte automatiquement, aucune synchronisation de position séparée à faire. */
 .gallery-proto-niche {
-  position:absolute; top:38%; left:50%; transform:translateX(-50%);
+  position:absolute; bottom:3%; left:50%; transform:translateX(-50%);
   background:rgba(20,20,20,.72); border:2px solid rgba(255,255,255,.5); border-radius:6px;
   z-index:5; padding:6px 8px; box-sizing:border-box; pointer-events:none; text-align:center;
   width:max-content; max-width:90%;

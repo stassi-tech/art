@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v95';
+const APP_VERSION = 'v96';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4761,6 +4761,13 @@ function buildGalleryNiche() {
 // générique), un pilastre de sortie — bord à bord, jamais partagés avec l'emplacement voisin (voir
 // le commentaire d'ensemble plus haut sur le compte de pilastres). Renvoie la distance de
 // panoramique disponible, exactement comme buildCheckpointTrack.
+// v96 (retour Stéphane : « enlève les compteurs sur les pilastres... mets-les sur le mur, en bas du
+// mur... tu n'en mets pas tant, il suffit qu'il y en ait un par salle, on a l'impression qu'il y en
+// a trop ») : une seule niche par emplacement désormais (avant : une par pilastre, donc 2 par
+// emplacement puisque chacun a 2 pilastres — voir le commentaire d'ensemble plus haut sur le compte
+// de pilastres, toujours valable pour LES PILASTRES eux-mêmes, juste plus pour la niche), posée en
+// enfant du MUR plutôt que du pilastre (voir buildGalleryNiche/CSS .gallery-proto-niche, repositionnée
+// en bas du mur plutôt qu'à mi-hauteur du pilastre).
 function buildGalleryTrack() {
   const room = $('gallery-proto-room');
   const track = $('gallery-proto-track');
@@ -4779,7 +4786,6 @@ function buildGalleryTrack() {
   gallerySegments.forEach((segment) => {
     const entryPilaster = document.createElement('div');
     entryPilaster.className = 'gallery-proto-pilaster';
-    entryPilaster.appendChild(buildGalleryNiche());
     entryPilaster.style.left = `${cursorPx}px`;
     entryPilaster.style.width = `${pilasterWidthPx}px`;
     track.appendChild(entryPilaster);
@@ -4796,6 +4802,7 @@ function buildGalleryTrack() {
     // biais ; gallery-proto-wall-works porte déjà tout le style nécessaire pour cet écran.
     worksEl.className = 'gallery-proto-wall-works scale-checkpoint-wall-works';
     wallEl.appendChild(worksEl);
+    wallEl.appendChild(buildGalleryNiche()); // v96 : une seule niche par emplacement, sur le mur
     const wallWidthPx = GALLERY_SEGMENT_LENGTH_CM * pxPerCm;
     wallEl.style.left = `${cursorPx}px`;
     wallEl.style.width = `${wallWidthPx}px`;
@@ -4806,7 +4813,6 @@ function buildGalleryTrack() {
 
     const exitPilaster = document.createElement('div');
     exitPilaster.className = 'gallery-proto-pilaster';
-    exitPilaster.appendChild(buildGalleryNiche());
     exitPilaster.style.left = `${cursorPx}px`;
     exitPilaster.style.width = `${pilasterWidthPx}px`;
     track.appendChild(exitPilaster);

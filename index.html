@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=237" />
+    <link rel="stylesheet" href="style.css?v=238" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -93,10 +93,21 @@
     <div id="gallery-proto" class="hidden">
       <button type="button" id="gallery-proto-back" aria-label="Fermer le prototype" title="Fermer le prototype">◄ Retour</button>
       <p id="gallery-proto-label">Prototype — galerie configurable (démo à 3 emplacements)</p>
+      <!-- v96 (bug réel signalé par Stéphane, capture à l'appui : « la bande est toujours là... il n'y
+           a plus les tableaux ») : #gallery-proto-floor vivait ICI, comme enfant de #gallery-proto-room
+           — or #gallery-proto-room ne fait que 62% de la hauteur ET applique overflow:hidden. Son
+           top:62%/bottom:0 (voir style.css) se calculait donc par rapport à CETTE boîte réduite (62%
+           de l'écran), pas par rapport à l'écran entier : le sol se retrouvait comprimé dans le tiers
+           bas du mur, en overflow:hidden partiel, coupant visuellement les tableaux — exactement ce
+           que Stéphane a vu. #gallery-proto-floor est maintenant un vrai FRÈRE de #gallery-proto-room
+           (jamais un enfant), exactement comme #scale-checkpoint-floor/#scale-checkpoint-room dans le
+           couloir existant (voir son commentaire dans style.css : « élément SÉPARÉ, frère de
+           #scale-checkpoint-track, pas un enfant du mur ») — même principe, cette fois appliqué
+           correctement dès le départ. -->
       <div id="gallery-proto-room">
         <div id="gallery-proto-track"></div>
-        <div id="gallery-proto-floor" aria-hidden="true"></div>
       </div>
+      <div id="gallery-proto-floor" aria-hidden="true"></div>
       <div id="gallery-proto-row">
         <svg id="gallery-proto-silhouette" viewBox="0 0 100 340" aria-hidden="true">
           <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
@@ -1864,6 +1875,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=322"></script>
+    <script src="app.js?v=323"></script>
   </body>
 </html>
