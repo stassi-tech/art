@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v94';
+const APP_VERSION = 'v95';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4915,7 +4915,27 @@ function setupGalleryWalk() {
   dot.addEventListener('pointerup', stop);
   dot.addEventListener('pointercancel', stop);
 })();
+// v95 (retour Stéphane, capture à l'appui : « on retrouve la bande de parquet à croisillon qui coupe
+// les tableaux... il ne faut pas qu'elle réapparaisse là, il faut l'enlever ») : bug réel. #scale-floor
+// (le sol décoratif fixe de l'ANCIEN système de vue à l'échelle — position:fixed, bottom:0, height:16vh,
+// texture « sol à croisillons » selon l'ambiance, voir body[data-ambiance=...] #scale-floor plus haut)
+// n'a JAMAIS la classe "hidden" par défaut dans le HTML : c'est enterScaleView() qui le masque
+// explicitement (avec 8 autres éléments du même ancien système) chaque fois qu'on entre dans une vraie
+// visite — pas une histoire de z-index/superposition, un masquage explicite, à chaque fois. Le nouveau
+// #gallery-proto, lui, s'ouvre directement depuis le menu hamburger, SANS jamais passer par
+// enterScaleView() — ces vieux éléments restaient donc dans leur état par défaut (bien visibles),
+// d'où cette bande qui traverse l'écran. Reprend donc exactement la même liste que enterScaleView,
+// mais en mémorisant lesquels étaient DÉJÀ masqués avant (pour ne restaurer au retour que ceux que
+// CE prototype a lui-même masqués — si jamais gallery-proto s'ouvre alors qu'une vraie visite était
+// déjà en cours, dans son dos, on ne va pas la lui déféler en la rendant visible à la sortie).
+const GALLERY_PROTO_LEGACY_SCALE_IDS = ['scale-wall-line', 'scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'];
+let galleryProtoElsToRestore = [];
 function enterGalleryProto() {
+  galleryProtoElsToRestore = GALLERY_PROTO_LEGACY_SCALE_IDS.filter((id) => {
+    const el = $(id);
+    return el && !el.classList.contains('hidden');
+  });
+  GALLERY_PROTO_LEGACY_SCALE_IDS.forEach((id) => $(id)?.classList.add('hidden'));
   $('gallery-proto')?.classList.remove('hidden');
   gallerySegments = buildGalleryDemoSegments();
   requestAnimationFrame(() => {
@@ -4926,6 +4946,8 @@ function enterGalleryProto() {
 function exitGalleryProto() {
   stopGalleryWalking();
   $('gallery-proto')?.classList.add('hidden');
+  galleryProtoElsToRestore.forEach((id) => $(id)?.classList.remove('hidden'));
+  galleryProtoElsToRestore = [];
 }
 window.addEventListener('resize', () => {
   if (!$('gallery-proto')?.classList.contains('hidden')) {
