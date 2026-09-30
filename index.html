@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=245" />
+    <link rel="stylesheet" href="style.css?v=246" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -131,15 +131,22 @@
          dans app.js. Le menu hamburger temporaire a été retiré (son entrée n'a plus lieu d'être,
          cet écran étant désormais atteint normalement, comme avant #scale-checkpoint). -->
     <div id="gallery-proto" class="hidden">
-      <button type="button" id="gallery-proto-back" aria-label="Revenir à la vue normale" title="Revenir à la vue normale">◄ Retour</button>
       <!-- v101 (retour Stéphane : « les espèces de petits fermetures du musée, les petits panneaux
            là, ça fait moche, tu m'enlèves ça. On trouvera un moyen de sortir, par exemple, on tire
            le personnage vers l'arrière ou quelque chose de plus joli ») : le bouton "Fermeture du
-           musée" (v100, ajouté ici) est retiré — remplacé par un geste : tirer le sac à dos vers
-           l'arrière, au-delà du tout premier pilastre, ferme complètement le musée (voir le seuil
-           GALLERY_EXIT_DRAG_THRESHOLD dans attachGalleryFloorDotDrag, app.js). "Retour" (ci-dessus)
-           n'est PAS concerné par cette demande — Stéphane ne l'a pas nommé — et reste donc en place,
-           pour la sortie "douce" (retour à l'image simple, sans fermer tout le musée). -->
+           musée" (v100) est retiré — remplacé par un geste : tirer le sac à dos vers l'arrière,
+           au-delà du tout premier pilastre, ferme complètement le musée (voir le seuil
+           GALLERY_EXIT_DRAG_THRESHOLD dans attachGalleryFloorDotDrag, app.js).
+           v105 (retour Stéphane : « je ne comprends pas le fonctionnement de ce petit panneau
+           retour... ça agrandit certains tableaux, ça remet la légende, et quand on veut ressortir,
+           en fait ça fait sortir de la salle. Je trouve que ça ne sert à rien, il faut l'enlever.
+           Pour sortir de la salle, simplement, on fait sortir le personnage en le tirant par le sac
+           à dos. ») : le bouton "◄ Retour" (#gallery-proto-back, gardé en v101 pour la sortie
+           « douce » vers l'image normale du couloir, sans fermer tout le musée) est à son tour
+           entièrement retiré. Il ne reste donc plus qu'UNE seule façon de sortir de la salle : le
+           geste du sac à dos ci-dessus (exitScaleViewCompletely, fermeture complète) — exitScaleView()
+           elle-même n'est pas supprimée (encore utilisée par #lightbox-scale-back-button, l'ancien
+           couloir), seul ce bouton-ci disparaît. -->
       <!-- v96 (bug réel signalé par Stéphane, capture à l'appui : « la bande est toujours là... il n'y
            a plus les tableaux ») : #gallery-proto-floor vivait ICI, comme enfant de #gallery-proto-room
            — or #gallery-proto-room ne fait que 62% de la hauteur ET applique overflow:hidden. Son
@@ -179,13 +186,17 @@
              de lui — utile pour les petites œuvres (médaillons...) où on ne voit qu'un petit point
              sur le mur ») : petites lunettes posées à hauteur des yeux (voir positionnement en JS,
              setupGalleryWalk), cliquables, jamais masquées — voir openGalleryLoupe/closeGalleryLoupe
-             et #gallery-proto-loupe (l'incrustation elle-même) dans ce même fichier, plus bas. -->
-        <svg id="gallery-proto-glasses" viewBox="0 0 60 26" aria-hidden="true">
-          <circle cx="16" cy="13" r="11" fill="none" stroke="#2a2620" stroke-width="4"/>
-          <circle cx="44" cy="13" r="11" fill="none" stroke="#2a2620" stroke-width="4"/>
-          <path d="M27 13 h6" stroke="#2a2620" stroke-width="4" stroke-linecap="round"/>
-          <path d="M5 9 q-5 0 -5 6" fill="none" stroke="#2a2620" stroke-width="3" stroke-linecap="round"/>
-          <path d="M55 9 q5 0 5 6" fill="none" stroke="#2a2620" stroke-width="3" stroke-linecap="round"/>
+             et #gallery-proto-loupe (l'incrustation elle-même) dans ce même fichier, plus bas.
+             v105 (retour Stéphane : « il ne faut pas qu'elles soient dirigées vers nous, on a
+             l'impression qu'il nous regarde alors qu'il regarde les tableaux — il faut les voir de
+             profil ») : deux cercles frontaux (v103, lisibles comme deux yeux fixant le joueur)
+             remplacés par un vrai dessin DE PROFIL — un seul verre ovale (le côté tourné vers le mur),
+             une petite butée de nez à l'avant, et une longue branche qui repart vers l'arrière-crâne —
+             plus aucune impression de regard frontal vers le joueur. -->
+        <svg id="gallery-proto-glasses" viewBox="0 0 54 22" aria-hidden="true">
+          <ellipse cx="16" cy="11" rx="11" ry="9.5" fill="none" stroke="#2a2620" stroke-width="4"/>
+          <path d="M5 12 q-4 0 -5 4" fill="none" stroke="#2a2620" stroke-width="3" stroke-linecap="round"/>
+          <path d="M27 9 q15 -3 22 2" fill="none" stroke="#2a2620" stroke-width="3" stroke-linecap="round"/>
         </svg>
         <!-- v100 (retour Stéphane : « ... avec les éléments de décor, le cordon, etc. ») : cordon rouge
              à 8 potelets dorés repris À L'IDENTIQUE de #scale-rope-barrier (ancien couloir, plus bas
@@ -213,13 +224,18 @@
       </div>
       <!-- v103 : l'incrustation ronde elle-même — posée en frère de #gallery-proto-row plutôt qu'à
            l'intérieur (qui est en overflow:hidden et pointer-events:none, voir style.css), pour
-           qu'elle puisse s'afficher en entier, par-dessus tout, et rester cliquable pour se
-           refermer. Vide au départ ; #gallery-proto-loupe-img reçoit son src au moment de l'ouvrir
-           (voir openGalleryLoupe dans app.js), toujours l'œuvre la plus proche du personnage — jamais
-           une œuvre choisie au hasard. -->
-      <div id="gallery-proto-loupe" class="hidden" aria-label="Vue rapprochée de l'œuvre la plus proche">
-        <img id="gallery-proto-loupe-img" alt="" />
-      </div>
+           qu'elle puisse s'afficher en entier, par-dessus tout, et rester cliquable pour se refermer.
+           Vide au départ.
+           v105 (retour Stéphane, capture à l'appui : la loupe automatique agrandissait la MAUVAISE
+           œuvre — la plus proche du personnage plutôt que celle en face de son regard —, puis
+           précision orale : « la loupe doit suivre le personnage ; quand il se déplace, elle nous
+           agrandit les images devant lesquelles il est ») : abandon de l'ancien <img> unique
+           (une œuvre figée choisie par findNearestGalleryWork) au profit d'un CLONE en direct du mur
+           courant (#gallery-proto-track), mis à l'échelle et repositionné à chaque déplacement du
+           personnage — voir openGalleryLoupe/positionGalleryLoupeContent dans app.js. Son contenu
+           (.gallery-proto-loupe-content) est donc injecté/retiré dynamiquement en JS, jamais posé en
+           dur ici. -->
+      <div id="gallery-proto-loupe" class="hidden" aria-label="Vue rapprochée des œuvres devant le personnage"></div>
     </div>
     <div class="app-shell">
 
@@ -1968,6 +1984,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=330"></script>
+    <script src="app.js?v=331"></script>
   </body>
 </html>

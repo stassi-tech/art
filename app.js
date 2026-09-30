@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v104';
+const APP_VERSION = 'v105';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4454,11 +4454,6 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx) {
     const img = document.createElement('img');
     img.className = 'scale-checkpoint-work';
     img.alt = '';
-    // v103 (retour Stéphane : « des lunettes... on verrait ce qu'il voit ») : référence directe vers
-    // l'œuvre, retrouvée par findNearestGalleryWork() sans jamais avoir à re-parser le DOM ou
-    // re-chercher dans state.scaleViewCandidates — une simple propriété posée sur l'élément lui-même,
-    // ramassée avec lui si jamais il est un jour recréé (track.innerHTML = '' dans buildGalleryTrack).
-    img._galleryWork = work;
     // v101 (retour Stéphane, exposition Monet réelle : « il faut ressortir de l'exposition, la
     // recharger, et petit à petit l'exposition charge les tableaux... alors que sur la liste, ils
     // viennent immédiatement ») : cette fonction posait TOUTES les <img> de TOUS les emplacements
@@ -4979,6 +4974,12 @@ function updateGalleryWalkVisual() {
   const pillarTx = -galleryProgress * galleryPanTravelPx;
   if (track) track.style.transform = `translateX(${pillarTx}px)`;
   updateGalleryProgressIndicator();
+  // v105 (retour Stéphane : « la loupe doit suivre le personnage ; quand il se déplace, elle nous
+  // agrandit les images devant lesquelles il est ») : si la loupe est ouverte, elle se recalcule à
+  // chaque déplacement — qu'il vienne du glissement du sac à dos (attachGalleryFloorDotDrag, qui
+  // appelle déjà updateGalleryWalkVisual à chaque pointermove) ou de la marche automatique
+  // (startGalleryWalking) — jamais besoin d'un écouteur séparé pour chacune de ces sources.
+  updateGalleryLoupePosition();
 }
 function startGalleryWalking(direction) {
   stopGalleryWalking();
@@ -5046,38 +5047,83 @@ function setupGalleryWalk() {
 // qu'il voit en face de lui, comme une loupe grossissante » — puis précision : « pas obligé que ça
 // occupe tout l'écran, une incrustation dans le plan objectif, pour revenir en arrière il suffirait
 // de recliquer sur le plan objectif ») : répond au problème concret des petites œuvres (médaillons,
-// etc.) qu'on ne peut pas cliquer avec précision tant elles sont petites à l'écran — au lieu de
-// cliquer l'œuvre elle-même, on clique les lunettes, et c'est le programme qui détermine l'œuvre la
-// plus proche du personnage, jamais l'utilisateur qui doit viser un point minuscule.
-function findNearestGalleryWork() {
+// etc.) qu'on ne peut pas cliquer avec précision tant elles sont petites à l'écran.
+// v105 (retour Stéphane, capture à l'appui : la loupe v103 agrandissait la MAUVAISE œuvre — la plus
+// proche du personnage plutôt que celle en face de son regard, et de toute façon figée au moment du
+// clic — puis clarification orale : « une loupe qu'on prend et qu'on promène sur le mur... » puis,
+// message suivant, précision décisive : « il faut que le mouvement de la loupe corresponde au
+// mouvement du personnage — si on appuie sur les lunettes, quand il se déplace, la loupe le suit et
+// nous agrandit les images devant lesquelles il est » ) : abandon complet de findNearestGalleryWork
+// (une œuvre choisie une fois pour toutes) au profit d'un CLONE EN DIRECT du mur courant
+// (#gallery-proto-track), mis à l'échelle GALLERY_LOUPE_ZOOM et recentré sur la position ACTUELLE du
+// personnage — recalculé à chaque déplacement (voir l'appel dans updateGalleryWalkVisual), qu'il
+// vienne du glissement du sac à dos ou de la marche automatique. La loupe suit donc le personnage
+// exactement comme les lunettes ou le sac à dos suivent déjà son déplacement (même tx).
+const GALLERY_LOUPE_ZOOM = 2.6;
+// Point de référence = ce que le personnage a « en face de lui » : le centre horizontal de la
+// silhouette (même refX qu'utilisait l'ancien findNearestGalleryWork), à hauteur des yeux (même
+// niveau que les lunettes, silRect.height * 0.07 — voir setupGalleryWalk) plutôt qu'au milieu du
+// mur, pour rester cohérent avec « ce qu'il voit ».
+function galleryLoupeReferencePoint() {
   const sil = $('gallery-proto-silhouette');
   if (!sil) return null;
   const silRect = sil.getBoundingClientRect();
   if (!silRect.width) return null;
-  const refX = silRect.left + silRect.width / 2;
-  let best = null;
-  let bestDist = Infinity;
-  document.querySelectorAll('#gallery-proto-track .scale-checkpoint-work').forEach((img) => {
-    const r = img.getBoundingClientRect();
-    if (!r.width) return;
-    const dist = Math.abs(r.left + r.width / 2 - refX);
-    if (dist < bestDist) { bestDist = dist; best = img; }
-  });
-  return best;
+  return {
+    x: silRect.left + silRect.width / 2,
+    y: silRect.top + silRect.height * 0.07,
+  };
+}
+// Repositionne (et redimensionne) le clone à l'intérieur de la loupe pour que le point de référence
+// (clientX, clientY) se retrouve exactement au centre du cercle — voir le commentaire complet plus
+// haut sur le calcul (transform-origin:0 0, left/top = R - coord * ZOOM).
+function positionGalleryLoupeContent(clientX, clientY) {
+  const loupe = $('gallery-proto-loupe');
+  const room = $('gallery-proto-room');
+  const content = loupe?.querySelector('.gallery-proto-loupe-content');
+  if (!loupe || !room || !content) return;
+  const roomRect = room.getBoundingClientRect();
+  const loupeRect = loupe.getBoundingClientRect();
+  if (!roomRect.width || !loupeRect.width) return;
+  const R = loupeRect.width / 2;
+  content.style.left = `${R - clientX * GALLERY_LOUPE_ZOOM}px`;
+  content.style.top = `${R - clientY * GALLERY_LOUPE_ZOOM}px`;
+  content.style.transform = `scale(${GALLERY_LOUPE_ZOOM})`;
+}
+// Reconstruit et repositionne le clone — appelée à l'ouverture ET à chaque déplacement pendant que la
+// loupe reste ouverte (voir updateGalleryWalkVisual). Si la loupe est fermée, ne fait rien (évite un
+// clonage/calcul inutile à chaque petit pas du personnage quand la loupe n'est pas utilisée).
+function updateGalleryLoupePosition() {
+  const loupe = $('gallery-proto-loupe');
+  const track = $('gallery-proto-track');
+  const room = $('gallery-proto-room');
+  if (!loupe || !track || !room || loupe.classList.contains('hidden')) return;
+  const ref = galleryLoupeReferencePoint();
+  if (!ref) return;
+  let content = loupe.querySelector('.gallery-proto-loupe-content');
+  if (!content) {
+    content = track.cloneNode(true);
+    content.removeAttribute('id');
+    content.className = 'gallery-proto-loupe-content';
+    const roomRect = room.getBoundingClientRect();
+    content.style.width = `${track.scrollWidth || roomRect.width}px`;
+    content.style.height = `${roomRect.height}px`;
+    loupe.innerHTML = '';
+    loupe.appendChild(content);
+  }
+  positionGalleryLoupeContent(ref.x, ref.y);
 }
 function openGalleryLoupe() {
   const loupe = $('gallery-proto-loupe');
-  const img = $('gallery-proto-loupe-img');
-  const nearest = findNearestGalleryWork();
-  if (!loupe || !img || !nearest || !nearest._galleryWork) return;
-  // Toujours redemandée en grand (700px), jamais réutilisée à la petite taille d'affichage réel sur
-  // le mur (Math.max(widthPx, 40), voir buildCheckpointCorridorWorks) — sans quoi l'agrandissement
-  // ne ferait qu'étirer une image déjà minuscule, floue.
-  img.src = imageSourceSized(nearest._galleryWork.image, 700);
+  if (!loupe) return;
   loupe.classList.remove('hidden');
+  updateGalleryLoupePosition();
 }
 function closeGalleryLoupe() {
-  $('gallery-proto-loupe')?.classList.add('hidden');
+  const loupe = $('gallery-proto-loupe');
+  if (!loupe) return;
+  loupe.classList.add('hidden');
+  loupe.innerHTML = '';
 }
 $('gallery-proto-glasses')?.addEventListener('click', (event) => {
   event.stopPropagation();
@@ -5197,15 +5243,19 @@ window.addEventListener('resize', () => {
   }
 });
 // v100 : la sortie n'est plus une simple fermeture d'écran isolé (exitGalleryProto, retirée) — cette
-// vue est désormais la vraie vue à l'échelle, donc son bouton Retour déclenche exactement la même
-// sortie que l'ancien couloir (#lightbox-scale-back-button) : exitScaleView() (voir plus bas dans ce
-// fichier), qui masque maintenant #gallery-proto en plus de ses éléments habituels.
-$('gallery-proto-back')?.addEventListener('click', () => exitScaleView());
+// vue est désormais la vraie vue à l'échelle ; exitScaleView() (voir plus bas dans ce fichier) masque
+// #gallery-proto en plus de ses éléments habituels, et reste utilisée par l'ancien couloir
+// (#lightbox-scale-back-button) et par exitScaleViewCompletely() ci-dessous.
 // v101 (retour Stéphane : « les petits panneaux [Fermeture du musée], ça fait moche, tu m'enlèves
 // ça. On trouvera un moyen de sortir, par exemple, on tire le personnage vers l'arrière ou quelque
 // chose de plus joli ») : le bouton "Fermeture du musée" (v100) est retiré (voir index.html) — sa
 // sortie complète est désormais un GESTE, voir GALLERY_EXIT_DRAG_THRESHOLD dans
 // attachGalleryFloorDotDrag plus haut.
+// v105 (retour Stéphane : « ce petit panneau retour, il ne sert à rien du tout, il faut l'enlever —
+// pour sortir de la salle, on tire le personnage par le sac à dos ») : le bouton "◄ Retour"
+// (#gallery-proto-back, sortie « douce » gardée depuis v101) est à son tour retiré d'index.html — son
+// écouteur ci-dessus (exitScaleView() au clic) disparaît avec lui. Une seule sortie reste possible :
+// le geste du sac à dos, juste au-dessus.
 // v57 : plus de bouton « Entrée » ni de bouton « Ticket » (façade et machine à tickets toutes deux
 // retirées) — enterScaleView() appelle directement enterCheckpointCorridor(), et l'avancée
 // (armCheckpointApproach) s'arme désormais automatiquement au repos plutôt qu'au clic sur un

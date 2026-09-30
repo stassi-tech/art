@@ -2035,15 +2035,13 @@ body.stephane-test-decor .scale-wall-pillar {
    de l'écran et intercepte les clics — un bouton posé à top:16px se retrouverait sous elle,
    cliquable en apparence mais jamais réellement atteint (repéré ici via Playwright, même symptôme
    que documenté pour cet ancien repère). */
-#gallery-proto-back {
-  position:absolute; top:56px; left:16px; z-index:10; padding:6px 10px; border-radius:4px;
-  border:2px solid rgba(255,255,255,.5); background:rgba(255,255,255,.9); color:#2b2620;
-  font-size:.72rem; font-weight:700; font-family:Arial,sans-serif; cursor:pointer;
-}
+/* v105 (retour Stéphane : « ce petit panneau retour, il ne sert à rien du tout, il faut l'enlever —
+   pour sortir de la salle, on tire le personnage par le sac à dos ») : #gallery-proto-back (le
+   bouton « ◄ Retour », règles ci-dessus jusqu'en v104) est retiré d'index.html — plus qu'une seule
+   sortie possible désormais, le geste du sac à dos (voir GALLERY_EXIT_DRAG_THRESHOLD, app.js). */
 /* v100 : #gallery-proto-label (« Prototype — galerie configurable (démo à 3 emplacements) »)
    retirée avec le menu hamburger temporaire — plus de raison d'annoncer un « prototype » sur ce qui
-   est maintenant la vraie vue à l'échelle. #gallery-close-museum reprend sa place, juste sous
-   #gallery-proto-back (voir index.html, style posé en ligne comme l'était #scale-close-museum). */
+   est maintenant la vraie vue à l'échelle. */
 /* Fenêtre visible : mur en haut, sol en bas — mais PAS la même proportion que #scale-checkpoint-room
    (62/38, pensé pour une salle en profondeur). v97 (retour Stéphane, mesuré sur son Photoshop : « le
    parquet occupe 27% de la hauteur de l'image... 38%, ça redonne une profondeur qui ne va pas ») :
@@ -2166,9 +2164,15 @@ body.stephane-test-decor .scale-wall-pillar {
   border:9px solid #b5902a; box-shadow:0 0 0 3px #7a0f18, 0 12px 34px rgba(0,0,0,.55);
 }
 #gallery-proto-loupe.hidden { display:none; }
-#gallery-proto-loupe img {
-  position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);
-  max-width:none; max-height:none; height:112%; width:auto;
+/* v105 : le contenu n'est plus un unique <img> centré (une œuvre figée) mais un CLONE en direct de
+   #gallery-proto-track (mur + œuvres + pilastres tels qu'affichés à l'instant), injecté/retiré par
+   openGalleryLoupe/closeGalleryLoupe (app.js) et repositionné en continu par
+   positionGalleryLoupeContent à chaque déplacement du personnage (updateGalleryWalkVisual). left/top
+   sont recalculés en JS à chaque appel ; transform-origin:0 0 pour que le calcul (qui suppose une
+   mise à l'échelle ancrée au coin haut-gauche) reste valable. pointer-events:none : le clic doit
+   atteindre #gallery-proto-loupe lui-même (qui referme la loupe), jamais un élément cloné en dessous. */
+.gallery-proto-loupe-content {
+  position:absolute; top:0; left:0; transform-origin:0 0; pointer-events:none;
 }
 /* v104 (retour Stéphane : « un écran de contrôle par salle... au pied du pilastre, sur la gauche, en
    bas du mur — ça ne gênera rien, ni les éléments architecturaux ni les tableaux, parce que personne
