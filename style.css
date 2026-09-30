@@ -2042,11 +2042,23 @@ body.stephane-test-decor .scale-wall-pillar {
    (62/38, pensé pour une salle en profondeur). v97 (retour Stéphane, mesuré sur son Photoshop : « le
    parquet occupe 27% de la hauteur de l'image... 38%, ça redonne une profondeur qui ne va pas ») :
    sans profondeur/perspective ici (galerie plate, voir le commentaire d'ensemble plus haut), le sol
-   n'a plus besoin d'être aussi haut — Stéphane vise 25-27% pour le sol, donc 74% pour le mur. */
-#gallery-proto-room { position:absolute; top:0; left:0; right:0; height:74%; overflow:hidden; }
+   n'a plus besoin d'être aussi haut.
+   v98 (retour Stéphane, classeur « proportions_galerie_memnart.xlsx » à l'appui — mesures exactes
+   sur son Photoshop) : proportion affinée à 73,53 / 26,47 (cellules D4/C4 de son classeur : mur
+   12,5 cm sur 17 cm d'image = 73,53%, parquet 4,5 cm sur 17 = 26,47%) — remplace le 74/26 approximatif
+   du v97, dans la même fourchette mais calé pile sur ses mesures.
+   v99 (retour Stéphane, oral : « vous disposez d'un mur de 10 mètres sur 5 mètres... il faut un tout
+   petit peu monter le mur pour arriver exactement à ces dimensions-là ») : la silhouette (donc
+   GALLERY_PERSON_HEIGHT_CM = 1,90 m) garde EXACTEMENT la même hauteur en vh qu'en v98 (29,41vh, voir
+   #gallery-proto-silhouette plus bas — « tu gardes exactement les mêmes proportions » du personnage) ;
+   c'est le mur qui est monté pour que le rapport mur/personnage donne bien 5 m / 1,90 m = 2,6316,
+   au lieu de 2,5 en v98 (73,53/29,41). Nouveau calcul : 29,41% * (500/190) = 77,40% pour le mur, donc
+   22,60% pour le sol (100 - 77,40) — le sol rétrécit un peu, simple conséquence de la remontée du mur,
+   jamais demandée séparément. */
+#gallery-proto-room { position:absolute; top:0; left:0; right:0; height:77.40%; overflow:hidden; }
 #gallery-proto-track { position:absolute; top:0; left:0; height:100%; transition:none; }
 /* .gallery-proto-wall (un « emplacement ») et .gallery-proto-pilaster (la marque plate entre deux
-   emplacements, ~1 m réel — voir GALLERY_PILASTER_WIDTH_CM dans app.js) : posés bord à bord sur le
+   emplacements, 1 m réel (v99) — voir GALLERY_PILASTER_WIDTH_CM dans app.js) : posés bord à bord sur le
    rail par buildGalleryTrack, chacun à sa largeur réelle (cm → px). Le mur porte sa couleur/ambiance
    PROPRE à l'emplacement (posée en style.backgroundColor par segment, voir buildGalleryTrack) —
    contrairement à #scale-checkpoint-wall, dont la couleur vient d'un seul body[data-ambiance=...]
@@ -2066,7 +2078,7 @@ body.stephane-test-decor .scale-wall-pillar {
 }
 .gallery-proto-wall-works { position:absolute; top:0; left:0; width:100%; height:100%; }
 .gallery-proto-work { position:absolute; cursor:pointer; }
-#gallery-proto-floor { position:absolute; top:74%; left:0; right:0; bottom:0; background:#3a352e; }
+#gallery-proto-floor { position:absolute; top:77.40%; left:0; right:0; bottom:0; background:#3a352e; }
 /* Cadran de progression généralisé — reprend le principe déjà validé de .scale-checkpoint-pillar-niche
    (retour de Stéphane, ancien système : « chaque pilier, il y avait une niche... le point rouge
    suit l'évolution du personnage »), mais avec un nombre de cases VARIABLE (une par emplacement,
@@ -2096,9 +2108,17 @@ body.stephane-test-decor .scale-wall-pillar {
 .gallery-proto-box.active { border-color:#e2453c; background:rgba(226,69,60,.22); color:#fff; }
 .gallery-proto-dot { position:absolute; bottom:0; left:0; width:8px; height:8px; border-radius:50%; background:#e2453c; box-shadow:0 0 5px rgba(0,0,0,.6); }
 /* Rangée du personnage : même geste que #scale-checkpoint-row (silhouette à l'échelle réelle,
-   point rouge de marche à ses pieds), posé en JS par setupGalleryWalk/attachGalleryFloorDotDrag. */
-#gallery-proto-row { position:absolute; left:24px; bottom:6vh; right:24px; height:26vh; overflow:hidden; pointer-events:none; }
-#gallery-proto-silhouette { position:absolute; left:0; bottom:0; height:22vh; color:#d8d0c0; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.35)); }
+   point rouge de marche à ses pieds), posé en JS par setupGalleryWalk/attachGalleryFloorDotDrag.
+   v98 (retour Stéphane, classeur à l'appui : « j'ai un peu agrandi le personnage... 1m90 » — cellule
+   E4 de son classeur : personnage 5 cm sur 17 cm d'image = 29,41% de la hauteur totale) : silhouette
+   portée de 22vh (choix arbitraire du v94) à 29,41vh, pile sa mesure. #gallery-proto-row doit rester
+   plus haute que la silhouette (overflow:hidden, sinon la tête serait rognée) — gardée avec la même
+   marge relative qu'avant (~18% de plus que la silhouette).
+   v99 (retour Stéphane, oral : « tu gardes exactement les mêmes proportions ») : 29,41vh INCHANGÉ —
+   c'est le mur qui a été monté (#gallery-proto-room ci-dessus) pour que 1,90 m (GALLERY_PERSON_HEIGHT_CM,
+   valeur ronde désormais) donne un mur à exactement 5 m, jamais la silhouette elle-même. */
+#gallery-proto-row { position:absolute; left:24px; bottom:6vh; right:24px; height:34.7vh; overflow:hidden; pointer-events:none; }
+#gallery-proto-silhouette { position:absolute; left:0; bottom:0; height:29.41vh; color:#d8d0c0; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.35)); }
 #gallery-proto-floor-dot {
   position:absolute; width:28px; height:28px; border-radius:50%; background:#e2453c; cursor:grab;
   box-shadow:0 0 0 4px rgba(226,69,60,.28); pointer-events:auto;

@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v97';
+const APP_VERSION = 'v99';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4677,8 +4677,25 @@ window.addEventListener('resize', () => {
 // directement de la distance parcourue (voir updateGalleryProgressIndicator), sans avoir besoin
 // d'hystérésis comme l'ancien CHECKPOINT_PILLAR_START/END (nécessaire là-bas uniquement parce que le
 // pilier central était partagé entre les 2 salles).
-const GALLERY_SEGMENT_LENGTH_CM = 1000; // 10 m entre les 2 pilastres d'un même emplacement
-const GALLERY_PILASTER_WIDTH_CM = 100; // 1 m — « facile à calculer après au niveau des proportions »
+const GALLERY_SEGMENT_LENGTH_CM = 1000; // 10 m entre les 2 pilastres d'un même emplacement (confirmé par son classeur : C8 = 10)
+// v99 (retour Stéphane, oral : « vous avez des pilastres de 1 mètre de largeur ») : revient à 1 m
+// pile — le 90 cm du v98 venait d'une mesure fine sur son Photoshop, mais Stéphane veut désormais un
+// chiffre ROND et simple à annoncer aux joueurs (« il faut pouvoir dire aux joueurs... »), donc 1 m,
+// pas 0,9 m. Les deux valeurs restent proches (juste un léger élargissement des pilastres à l'écran).
+const GALLERY_PILASTER_WIDTH_CM = 100;
+// v99 (retour Stéphane, oral : « votre personnage fait 1 mètre 90 ») : valeur RONDE désormais choisie
+// délibérément, remplace le 192,31 cm du v98 (qui venait d'une mesure fine sur son Photoshop). Cette
+// fois Stéphane a un chiffre précis à annoncer aux joueurs et veut que ce soit exactement 1,90 m, pas
+// une valeur mesurée au pixel près. Reste distincte de CHECKPOINT_PERSON_HEIGHT_CM (1,70 m, couloir
+// existant, jamais touchée ici) — deux personnages, deux échelles, deux écrans.
+const GALLERY_PERSON_HEIGHT_CM = 190;
+// v99 (retour Stéphane, oral : « vous disposez d'un mur de 10 mètres sur 5 mètres ») : hauteur RÉELLE
+// du mur que ce nouvel écran doit respecter — pas directement utilisée dans le calcul de pxPerCm
+// (dérivé de GALLERY_PERSON_HEIGHT_CM, comme avant), mais le rapport #gallery-proto-room / silhouette
+// en vh dans style.css a été recalculé pour que ce chiffre tombe pile (voir le commentaire CSS sur
+// #gallery-proto-room) — posée ici en constante nommée pour que ce soit la donnée qu'on annonce aux
+// joueurs, jamais un nombre magique caché dans le CSS.
+const GALLERY_WALL_HEIGHT_CM = 500;
 // Distance supposée cordon → mur (3 m, « le personnage serait à peu près à trois mètres du mur »).
 // Contrairement à CHECKPOINT_ROOM_DEPTH_CM (couloir existant), cette valeur ne change PAS l'échelle
 // des œuvres elles-mêmes (déjà toujours correcte, voir galleryPxPerCm ci-dessous, dérivé uniquement
@@ -4779,7 +4796,11 @@ function buildGalleryTrack() {
   const roomRect = room.getBoundingClientRect();
   if (!roomRect.width || !roomRect.height) return 0;
   const silRect = sil.getBoundingClientRect();
-  const pxPerCm = silRect.height ? silRect.height / CHECKPOINT_PERSON_HEIGHT_CM : roomRect.width / (GALLERY_SEGMENT_LENGTH_CM * 3);
+  // v99 : GALLERY_PERSON_HEIGHT_CM (1,90 m pile, propre à cet écran), plus jamais
+  // CHECKPOINT_PERSON_HEIGHT_CM (1,70 m, couloir existant) — voir le commentaire sur cette constante
+  // plus haut. Le ratio #gallery-proto-room/silhouette en vh (style.css) garantit que le mur mesure
+  // alors exactement GALLERY_WALL_HEIGHT_CM (5 m) une fois cette échelle appliquée.
+  const pxPerCm = silRect.height ? silRect.height / GALLERY_PERSON_HEIGHT_CM : roomRect.width / (GALLERY_SEGMENT_LENGTH_CM * 3);
   galleryPxPerCm = pxPerCm;
   const windowH = roomRect.height;
   track.innerHTML = '';
