@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v106';
+const APP_VERSION = 'v107';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -5085,28 +5085,50 @@ function galleryLoupeReferencePoint() {
     const dist = Math.abs(r.left + r.width / 2 - silX);
     if (dist < bestDist) { bestDist = dist; best = r; }
   });
-  if (best) return { x: best.left + best.width / 2, y: best.top + best.height / 2 };
+  // v106bis : X suit silX en continu (jamais figé sur le centre de l'œuvre) — important pour un très
+  // grand format (« Un enterrement à Ornans », 668 cm de large réels) où le personnage peut passer
+  // plusieurs secondes à marcher devant SANS que la loupe reste bloquée sur un seul point fixe ; pour
+  // un format courant (plus étroit que le personnage n'a de marge pour s'en écarter), la différence
+  // avec l'ancien centre fixe est de toute façon négligeable. Y, en revanche, reste le centre vertical
+  // de l'œuvre (silX ne dit rien sur la hauteur) — c'est cette partie-là qui corrigeait le bug d'origine.
+  if (best) return { x: silX, y: best.top + best.height / 2 };
   return { x: silX, y: silRect.top + silRect.height * 0.07 };
 }
-// Repositionne (et redimensionne) le clone à l'intérieur de la loupe pour que le point de référence
-// (clientX, clientY) se retrouve exactement au centre du cercle — voir le commentaire complet plus
-// haut sur le calcul (transform-origin:0 0, left/top = R - coord * ZOOM).
+// Repositionne (et redimensionne) l'ENVELOPPE (.gallery-proto-loupe-content) à l'intérieur de la
+// loupe pour que le point de référence (clientX, clientY) se retrouve exactement au centre du cercle
+// (transform-origin:0 0, left/top = R - coord * ZOOM). L'enveloppe ne porte QUE l'agrandissement
+// (scale) — jamais le panoramique du mur (translateX(pillarTx)), qui reste porté par le clone
+// lui-même, à l'intérieur — voir updateGalleryLoupePosition ci-dessous pour pourquoi les deux sont
+// posés sur deux éléments séparés plutôt que combinés sur un seul.
 function positionGalleryLoupeContent(clientX, clientY) {
   const loupe = $('gallery-proto-loupe');
-  const room = $('gallery-proto-room');
-  const content = loupe?.querySelector('.gallery-proto-loupe-content');
-  if (!loupe || !room || !content) return;
-  const roomRect = room.getBoundingClientRect();
+  const wrapper = loupe?.querySelector('.gallery-proto-loupe-content');
+  if (!loupe || !wrapper) return;
   const loupeRect = loupe.getBoundingClientRect();
-  if (!roomRect.width || !loupeRect.width) return;
+  if (!loupeRect.width) return;
   const R = loupeRect.width / 2;
-  content.style.left = `${R - clientX * GALLERY_LOUPE_ZOOM}px`;
-  content.style.top = `${R - clientY * GALLERY_LOUPE_ZOOM}px`;
-  content.style.transform = `scale(${GALLERY_LOUPE_ZOOM})`;
+  wrapper.style.left = `${R - clientX * GALLERY_LOUPE_ZOOM}px`;
+  wrapper.style.top = `${R - clientY * GALLERY_LOUPE_ZOOM}px`;
+  wrapper.style.transform = `scale(${GALLERY_LOUPE_ZOOM})`;
 }
-// Reconstruit et repositionne le clone — appelée à l'ouverture ET à chaque déplacement pendant que la
-// loupe reste ouverte (voir updateGalleryWalkVisual). Si la loupe est fermée, ne fait rien (évite un
-// clonage/calcul inutile à chaque petit pas du personnage quand la loupe n'est pas utilisée).
+// Reconstruit (une seule fois, à l'ouverture) et repositionne (à chaque déplacement) le contenu de la
+// loupe — appelée à l'ouverture ET à chaque déplacement pendant qu'elle reste ouverte (voir l'appel
+// dans updateGalleryWalkVisual). Si la loupe est fermée, ne fait rien (évite un clonage/calcul inutile
+// à chaque petit pas du personnage quand la loupe n'est pas utilisée).
+// v106bis (retour Stéphane, capture à l'appui : « un décalage d'au moins 3-4 mètres entre ce qu'on
+// voit dans la loupe et la position du personnage ») : BUG RÉEL trouvé par diagnostic Playwright — le
+// clone de #gallery-proto-track garde, au moment où il est créé, le translateX(pillarTx) du mur À CET
+// INSTANT (copié tel quel par cloneNode) ; or positionGalleryLoupeContent posait ensuite
+// `transform: scale(ZOOM)` en REMPLAÇANT entièrement cette valeur (et non en la complétant), ce qui
+// annulait le panoramique au tout premier repositionnement — et de toute façon, même sans ce
+// remplacement, ce translateX serait resté figé à sa valeur d'ouverture pendant que le personnage
+// continue de marcher (le panoramique change en continu, voir pillarTx dans updateGalleryWalkVisual).
+// Double correction : (1) le panoramique et l'agrandissement vivent maintenant sur deux éléments
+// séparés — le CLONE (à l'intérieur) garde SEUL son propre translateX(pillarTx), l'ENVELOPPE (autour)
+// ne porte QUE le scale — donc plus aucun remplacement qui les fait se marcher dessus ; (2) le
+// translateX du clone est resynchronisé sur celui, réel et à jour, de #gallery-proto-track à CHAQUE
+// appel (pas seulement à la création), pour ne plus jamais prendre de retard pendant que la loupe
+// reste ouverte et que le personnage continue d'avancer.
 function updateGalleryLoupePosition() {
   const loupe = $('gallery-proto-loupe');
   const track = $('gallery-proto-track');
@@ -5114,17 +5136,28 @@ function updateGalleryLoupePosition() {
   if (!loupe || !track || !room || loupe.classList.contains('hidden')) return;
   const ref = galleryLoupeReferencePoint();
   if (!ref) return;
-  let content = loupe.querySelector('.gallery-proto-loupe-content');
-  if (!content) {
-    content = track.cloneNode(true);
-    content.removeAttribute('id');
-    content.className = 'gallery-proto-loupe-content';
+  let wrapper = loupe.querySelector('.gallery-proto-loupe-content');
+  let clone;
+  if (!wrapper) {
+    wrapper = document.createElement('div');
+    wrapper.className = 'gallery-proto-loupe-content';
+    clone = track.cloneNode(true);
+    // L'id est retiré (un id doit rester unique dans la page) — donc la règle CSS #gallery-proto-track
+    // (position/top/left/height, voir style.css) ne s'applique plus au clone : reposée ici en dur.
+    clone.removeAttribute('id');
+    clone.style.position = 'absolute';
+    clone.style.top = '0';
+    clone.style.left = '0';
     const roomRect = room.getBoundingClientRect();
-    content.style.width = `${track.scrollWidth || roomRect.width}px`;
-    content.style.height = `${roomRect.height}px`;
+    clone.style.width = `${track.scrollWidth || roomRect.width}px`;
+    clone.style.height = `${roomRect.height}px`;
+    wrapper.appendChild(clone);
     loupe.innerHTML = '';
-    loupe.appendChild(content);
+    loupe.appendChild(wrapper);
+  } else {
+    clone = wrapper.firstElementChild;
   }
+  if (clone) clone.style.transform = track.style.transform;
   positionGalleryLoupeContent(ref.x, ref.y);
 }
 function openGalleryLoupe() {
