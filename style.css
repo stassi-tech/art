@@ -2310,3 +2310,95 @@ body.stephane-test-decor .scale-wall-pillar {
   border:1px solid rgba(255,255,255,.15); box-shadow:0 2px 8px rgba(0,0,0,.4);
 }
 #gallery-proto-loupe-solo-cartel.hidden { display:none; }
+
+/* v112 (prototype) — Atelier de placement manuel des tableaux (voir #placement-proto, index.html,
+   et son long commentaire là-bas pour le contexte complet des retours de Stéphane). Écran plein
+   écran séparé, même famille visuelle que #gallery-proto mais SANS rapport fonctionnel : ceci est un
+   outil de configuration (on y place des œuvres sur des feuilles), pas une vue jouée. */
+#placement-proto {
+  position:fixed; inset:0; z-index:300; background:#1c1d1f; display:flex; flex-direction:column;
+}
+#placement-proto.hidden { display:none; }
+#placement-proto-topbar {
+  display:flex; align-items:center; gap:14px; padding:10px 18px; background:#111214; color:#eee;
+  font-family:Georgia,'Times New Roman',serif; flex:0 0 auto; border-bottom:1px solid #333;
+}
+#placement-proto-topbar button {
+  background:#2b2c2e; color:#f2f2f2; border:1px solid #454647; border-radius:4px; padding:6px 12px;
+  font-family:inherit; font-size:.85rem; cursor:pointer;
+}
+#placement-proto-topbar button:hover { background:#3a3b3d; }
+#placement-proto-page-label { font-size:.95rem; }
+#placement-proto-add-room { margin-left:auto; }
+
+#placement-proto-body { flex:1; display:flex; overflow:hidden; }
+#placement-proto-sheets {
+  flex:1; display:grid; grid-template-columns:repeat(2, 600px); grid-template-rows:repeat(2, 300px);
+  gap:46px 60px; padding:40px; overflow:auto; align-content:center; justify-content:center;
+}
+.placement-proto-sheet {
+  position:relative; background:#f4f1ea; border:2px solid #8a7f6a; border-radius:4px;
+  box-shadow:0 4px 14px rgba(0,0,0,.45); width:600px; height:300px;
+}
+.placement-proto-sheet-label {
+  position:absolute; top:-24px; left:2px; color:#cfcfcf; font-family:Georgia,'Times New Roman',serif;
+  font-size:.8rem;
+}
+/* Repère visuel discret du sol du mur (bas de la feuille) — purement indicatif, pour rappeler que la
+   feuille représente un vrai mur de GALLERY_WALL_HEIGHT_CM (5 m) de haut. */
+.placement-proto-sheet::after {
+  content:''; position:absolute; left:0; right:0; bottom:0; height:2px; background:#8a7f6a;
+}
+
+/* Une œuvre déjà placée sur une feuille : dessinée à sa VRAIE taille réelle (largeur/hauteur en px
+   posées en ligne par placementRenderSheets, app.js, à partir de placementPxPerCm) — jamais
+   redimensionnable (pas de poignées), seulement déplaçable (retour de Stéphane : « pas possibilité
+   d'agrandir la zone d'insertion parce qu'il faut que la taille soit réelle, ça je suis d'accord avec
+   toi — simplement possibilité de déplacer »). */
+.placement-proto-box {
+  position:absolute; overflow:hidden; border:1px solid #55483a; border-radius:2px; cursor:grab;
+  box-shadow:0 2px 6px rgba(0,0,0,.35); background:#222; touch-action:none;
+}
+.placement-proto-box img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+.placement-proto-box.placement-proto-dragging { opacity:.85; cursor:grabbing; z-index:5; }
+/* Signal purement informatif quand deux zones se rapprochent trop / se chevauchent — retour de
+   Stéphane : « on n'interdit rien... après tout c'est le choix du joueur [...] peut-être qu'il y a une
+   espèce de bip qui sonne [...] une espèce de petit éclair. Mais après tout, laissons libre. » : ne
+   bloque jamais le déplacement, ne fait qu'attirer l'œil (+ un bip sonore, voir placementProtoBeep). */
+.placement-proto-box.placement-proto-too-close { animation:placementProtoFlash .5s ease-in-out 2; }
+@keyframes placementProtoFlash {
+  0%, 100% { box-shadow:0 2px 6px rgba(0,0,0,.35); }
+  50% { box-shadow:0 0 0 4px rgba(255,205,0,.85); }
+}
+.placement-proto-warning-badge {
+  position:absolute; top:-10px; right:-8px; font-size:15px; pointer-events:none; filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));
+}
+
+#placement-proto-sidebar {
+  flex:0 0 210px; background:#141516; border-left:1px solid #333; display:flex; flex-direction:column;
+  padding:14px 12px;
+}
+#placement-proto-sidebar-title {
+  color:#ccc; font-family:Georgia,'Times New Roman',serif; font-size:.85rem; margin:0 0 10px;
+}
+/* Colonne « déroulante » (retour de Stéphane : « une espèce de petite colonne pour faire défiler les
+   tableaux [...] la colonne pourrait dépasser à la limite l'écran, ça pourrait être un menu
+   déroulant ») : scroll interne dès que la liste dépasse la hauteur disponible, plutôt que de tout
+   comprimer ou déborder de l'écran. */
+#placement-proto-list { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+.placement-proto-card {
+  display:flex; align-items:center; gap:8px; background:#232426; border:1px solid #3a3b3d;
+  border-radius:4px; padding:6px; cursor:grab; touch-action:none;
+}
+.placement-proto-card:hover { border-color:#565758; }
+.placement-proto-card img { width:38px; height:38px; object-fit:cover; border-radius:2px; flex:0 0 auto; }
+.placement-proto-card-label { color:#ddd; font-size:.72rem; line-height:1.25; }
+.placement-proto-card.placement-proto-dragging { opacity:.35; }
+
+/* Clone flottant qui suit le pointeur pendant un glisser — même principe que .chrono-drag-ghost
+   (existant, autre jeu) : un clone visuel séparé plutôt que déplacer l'élément réel sous le pointeur,
+   pour ne jamais perturber le flux (list/grid) de l'élément d'origine pendant le geste. */
+.placement-proto-drag-ghost {
+  position:fixed; pointer-events:none; z-index:999; opacity:.9; border-radius:3px;
+  box-shadow:0 4px 14px rgba(0,0,0,.5);
+}

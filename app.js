@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v111';
+const APP_VERSION = 'v112';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -11055,3 +11055,355 @@ async function updateHomeStatsCounter() {
   }
 }
 setTimeout(updateHomeStatsCounter, 400);
+
+// ============================================================================================
+// v112 (PROTOTYPE, discussion en cours avec Stéphane — voir #placement-proto, index.html, pour le
+// contexte complet) : atelier de placement manuel des tableaux, façon traitement de texte.
+//
+// Origine (Stéphane) : « je reviens en fait au traitement de texte, par exemple Word, comment ça
+// fonctionne, l'insertion de zones de texte... est-ce qu'on ne peut pas refaire un système comme ça
+// sur des feuilles à plat ? [...] les feuilles à plat génèrent en fait l'exposition. »
+//
+// Principe retenu après plusieurs allers-retours :
+//  - 1 feuille = 1 vrai mur de GALLERY_SEGMENT_LENGTH_CM (10 m) x GALLERY_WALL_HEIGHT_CM (5 m),
+//    dessiné à l'échelle réelle (placementPxPerCm).
+//  - 4 feuilles visibles à l'écran à la fois (« je serais d'avis de placer sur l'écran quatre
+//    feuilles, il correspondrait à quatre salles ») ; au-delà, pagination (« s'il veut faire huit
+//    salles, il fera deux fois quatre ») via #placement-proto-prev-page / -next-page, et
+//    #placement-proto-add-room pour ajouter des salles une par une plutôt que d'en pré-deviner le
+//    nombre total à l'avance.
+//  - Colonne de droite : œuvres pas encore placées, en miniatures de taille FIXE (pas à l'échelle
+//    réelle — « ça c'est une question de place, j'en sais pas ») ; liste déroulante/scrollable qui
+//    se réagence au fur et à mesure qu'on en retire (« une fois qu'ils disparaissent, ils se
+//    réagencent [...] ça pourrait être un menu déroulant »).
+//  - Une fois posée sur une feuille, une œuvre apparaît à sa VRAIE taille réelle (mêmes cm que dans
+//    la vraie salle, via checkpointSanitizedSizeCm) et reste déplaçable mais JAMAIS redimensionnable
+//    (« pas possibilité d'agrandir la zone d'insertion parce qu'il faut que la taille soit réelle, ça
+//    je suis d'accord avec toi — simplement possibilité de déplacer »).
+//  - Le chevauchement ou le rapprochement excessif n'est jamais empêché (« on n'interdit rien, même
+//    un rapprochement hasardeux, après tout c'est le choix du joueur [...] mais après tout, laissons
+//    libre ») : seulement signalé, à titre indicatif, par un petit éclair ⚡ sur les zones concernées
+//    + un bref bip sonore (placementProtoBeep), jamais bloquant.
+//
+// Né comme prototype ISOLÉ, ouvert depuis un lien temporaire de la page d'accueil
+// (#open-placement-proto-temp) — exactement comme #gallery-proto à l'époque (v94, menu hamburger
+// temporaire) avant de devenir la vraie salle (v100). Le branchement réel (remplacer/compléter la
+// répartition automatique de packGallerySegments pour une salle donnée) est volontairement différé
+// jusqu'à ce que Stéphane ait pu essayer la manipulation elle-même.
+// ============================================================================================
+const PLACEMENT_SHEETS_PER_PAGE = 4;
+// 600px pour 1000cm (voir .placement-proto-sheet, style.css) : garder ce nombre synchronisé avec la
+// largeur en px posée dans la feuille de style si jamais elle change.
+const placementPxPerCm = 600 / GALLERY_SEGMENT_LENGTH_CM;
+// Retour de Stéphane : « si les zones se rapprochent trop » — seuil arbitraire (10cm), purement
+// indicatif, à ajuster librement si Stéphane le juge trop sensible ou pas assez une fois essayé.
+const PLACEMENT_TOO_CLOSE_MARGIN_CM = 10;
+
+let placementUidCounter = 0;
+let placementUnplaced = []; // { uid, work } — œuvres pas encore posées sur une feuille
+let placementBoxes = []; // { uid, work, sheetIndex, xCm, yCm, wCm, hCm, tooClose }
+let placementTotalSheets = PLACEMENT_SHEETS_PER_PAGE;
+let placementCurrentPage = 0;
+let placementAudioCtx = null;
+
+function placementDemoWorks() {
+  return [
+    galleryProtoPlaceholderWork('4a4a4a', 'Gustave Courbet', 'Un enterrement à Ornans (démo)', 315, 668),
+    galleryProtoPlaceholderWork('7f8c8d', 'Démo', 'Petite œuvre 1', 80, 60),
+    galleryProtoPlaceholderWork('8c4a4a', 'Démo', 'Petite œuvre 2', 100, 140),
+    galleryProtoPlaceholderWork('4a8c5a', 'Démo', 'Petite œuvre 3', 60, 90),
+    galleryProtoPlaceholderWork('8c7a4a', 'Démo', 'Moyenne œuvre 1', 180, 220),
+    galleryProtoPlaceholderWork('5a4a8c', 'Démo', 'Moyenne œuvre 2', 150, 120),
+    galleryProtoPlaceholderWork('2f6f8c', 'Démo', 'Moyenne œuvre 3', 130, 95),
+    galleryProtoPlaceholderWork('8c2f5f', 'Démo', 'Petite œuvre 4', 70, 110),
+  ];
+}
+
+function enterPlacementProto(candidates) {
+  const works = (candidates && candidates.length) ? candidates.filter(Boolean) : placementDemoWorks();
+  placementUidCounter = 0;
+  placementUnplaced = works.map((work) => ({ uid: ++placementUidCounter, work }));
+  placementBoxes = [];
+  placementCurrentPage = 0;
+  placementTotalSheets = PLACEMENT_SHEETS_PER_PAGE;
+  document.querySelectorAll('.welcome-panel').forEach((p) => p.classList.add('hidden'));
+  $('placement-proto')?.classList.remove('hidden');
+  placementRenderAll();
+}
+
+function placementPageCount() {
+  return Math.max(1, Math.ceil(placementTotalSheets / PLACEMENT_SHEETS_PER_PAGE));
+}
+function placementSheetIndices() {
+  const start = placementCurrentPage * PLACEMENT_SHEETS_PER_PAGE;
+  const indices = [];
+  for (let i = start; i < Math.min(start + PLACEMENT_SHEETS_PER_PAGE, placementTotalSheets); i += 1) indices.push(i);
+  return indices;
+}
+function placementGoToPage(delta) {
+  const pages = placementPageCount();
+  placementCurrentPage = Math.min(pages - 1, Math.max(0, placementCurrentPage + delta));
+  placementRenderSheets();
+  placementUpdatePager();
+}
+function placementUpdatePager() {
+  const start = placementCurrentPage * PLACEMENT_SHEETS_PER_PAGE + 1;
+  const end = Math.min(placementTotalSheets, start + PLACEMENT_SHEETS_PER_PAGE - 1);
+  const label = $('placement-proto-page-label');
+  if (label) label.textContent = `Salle${end > start ? 's' : ''} ${start}${end > start ? ` à ${end}` : ''}`;
+  const prevBtn = $('placement-proto-prev-page');
+  const nextBtn = $('placement-proto-next-page');
+  if (prevBtn) prevBtn.disabled = placementCurrentPage <= 0;
+  if (nextBtn) nextBtn.disabled = placementCurrentPage >= placementPageCount() - 1;
+}
+
+function placementClampBox(box) {
+  const maxX = Math.max(0, GALLERY_SEGMENT_LENGTH_CM - box.wCm);
+  const maxY = Math.max(0, GALLERY_WALL_HEIGHT_CM - box.hCm);
+  return { ...box, xCm: Math.min(maxX, Math.max(0, box.xCm)), yCm: Math.min(maxY, Math.max(0, box.yCm)) };
+}
+
+function placementSheetAtPoint(clientX, clientY) {
+  const sheets = document.querySelectorAll('.placement-proto-sheet');
+  for (const sheetEl of sheets) {
+    const rect = sheetEl.getBoundingClientRect();
+    if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+      return {
+        sheetIndex: Number(sheetEl.dataset.sheetIndex),
+        xCm: (clientX - rect.left) / placementPxPerCm,
+        yCm: (clientY - rect.top) / placementPxPerCm,
+      };
+    }
+  }
+  return null;
+}
+
+function placementPositionGhost(ghost, clientX, clientY) {
+  ghost.style.left = `${clientX - 30}px`;
+  ghost.style.top = `${clientY - 30}px`;
+}
+
+function placementDropWorkOnSheet(entry, sheetIndex, xCm, yCm) {
+  const { hCm, lCm } = checkpointSanitizedSizeCm(entry.work);
+  const box = placementClampBox({
+    uid: entry.uid, work: entry.work, sheetIndex, xCm: xCm - lCm / 2, yCm: yCm - hCm / 2, wCm: lCm, hCm,
+  });
+  placementBoxes.push(box);
+  placementUnplaced = placementUnplaced.filter((e) => e.uid !== entry.uid);
+  placementRenderAll();
+  placementCheckAllWarnings();
+}
+
+// Retour de Stéphane : « on n'interdit rien, même un rapprochement hasardeux [...] mais après tout,
+// laissons libre » — donc jamais bloquant, purement indicatif (flash + bip).
+function placementBoxesOverlapOrTooClose(a, b) {
+  const gapX = Math.max(a.xCm, b.xCm) - Math.min(a.xCm + a.wCm, b.xCm + b.wCm);
+  const gapY = Math.max(a.yCm, b.yCm) - Math.min(a.yCm + a.hCm, b.yCm + b.hCm);
+  return gapX < PLACEMENT_TOO_CLOSE_MARGIN_CM && gapY < PLACEMENT_TOO_CLOSE_MARGIN_CM;
+}
+function placementCheckAllWarnings() {
+  const sheetIndices = new Set(placementBoxes.map((b) => b.sheetIndex));
+  let anyTooClose = false;
+  sheetIndices.forEach((sheetIndex) => {
+    const boxes = placementBoxes.filter((b) => b.sheetIndex === sheetIndex);
+    boxes.forEach((box) => {
+      box.tooClose = boxes.some((other) => other.uid !== box.uid && placementBoxesOverlapOrTooClose(box, other));
+      if (box.tooClose) anyTooClose = true;
+    });
+  });
+  placementRefreshWarnings();
+  if (anyTooClose) placementProtoBeep();
+}
+function placementRefreshWarnings() {
+  placementBoxes.forEach((box) => {
+    const el = document.querySelector(`.placement-proto-box[data-uid="${box.uid}"]`);
+    if (!el) return;
+    el.classList.toggle('placement-proto-too-close', !!box.tooClose);
+    el.querySelector('.placement-proto-warning-badge')?.classList.toggle('hidden', !box.tooClose);
+  });
+}
+// Signal sonore bref (retour de Stéphane : « une espèce de bip qui sonne ») — synthétisé via
+// Web Audio plutôt qu'un fichier audio dédié, pour rester cohérent avec le reste de l'application
+// (pas de build, tout est déjà des fichiers statiques). Échoue silencieusement si l'audio n'est pas
+// encore autorisé (ex. aucune interaction utilisateur précédente) : le signal visuel (l'éclair ⚡)
+// suffit alors seul, ce n'est jamais bloquant.
+function placementProtoBeep() {
+  try {
+    if (!placementAudioCtx) placementAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = placementAudioCtx.createOscillator();
+    const gain = placementAudioCtx.createGain();
+    osc.frequency.value = 880;
+    gain.gain.value = 0.06;
+    osc.connect(gain);
+    gain.connect(placementAudioCtx.destination);
+    osc.start();
+    osc.stop(placementAudioCtx.currentTime + 0.12);
+  } catch (error) { /* signal visuel seul, voir commentaire ci-dessus */ }
+}
+
+// Glisser une œuvre depuis la colonne de droite vers une feuille (crée une nouvelle zone, à
+// l'échelle réelle, au point de dépôt).
+function attachPlacementCardDrag(cardEl, entry) {
+  let ghost = null;
+  cardEl.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    cardEl.classList.add('placement-proto-dragging');
+    ghost = document.createElement('img');
+    ghost.src = imageSourceSized(entry.work.image, 70);
+    ghost.alt = '';
+    ghost.className = 'placement-proto-drag-ghost';
+    ghost.style.width = '60px';
+    ghost.style.height = '60px';
+    ghost.style.objectFit = 'cover';
+    document.body.appendChild(ghost);
+    placementPositionGhost(ghost, event.clientX, event.clientY);
+    cardEl.setPointerCapture?.(event.pointerId);
+  });
+  cardEl.addEventListener('pointermove', (event) => {
+    if (!ghost) return;
+    placementPositionGhost(ghost, event.clientX, event.clientY);
+  });
+  const finish = (event) => {
+    if (!ghost) return;
+    cardEl.classList.remove('placement-proto-dragging');
+    ghost.remove();
+    ghost = null;
+    const target = placementSheetAtPoint(event.clientX, event.clientY);
+    if (target) placementDropWorkOnSheet(entry, target.sheetIndex, target.xCm, target.yCm);
+  };
+  cardEl.addEventListener('pointerup', finish);
+  cardEl.addEventListener('pointercancel', finish);
+}
+
+// Déplacer une œuvre déjà posée (jamais la redimensionner) — et la « ressortir » vers la colonne de
+// droite si elle est relâchée hors de toute feuille.
+function attachPlacementBoxDrag(boxEl, box) {
+  let dragging = false, startClientX = 0, startClientY = 0, startXCm = 0, startYCm = 0;
+  boxEl.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    dragging = true;
+    startClientX = event.clientX;
+    startClientY = event.clientY;
+    startXCm = box.xCm;
+    startYCm = box.yCm;
+    boxEl.classList.add('placement-proto-dragging');
+    boxEl.setPointerCapture?.(event.pointerId);
+  });
+  boxEl.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const dxCm = (event.clientX - startClientX) / placementPxPerCm;
+    const dyCm = (event.clientY - startClientY) / placementPxPerCm;
+    const target = placementSheetAtPoint(event.clientX, event.clientY);
+    if (!target) return;
+    const updated = placementClampBox({ ...box, sheetIndex: target.sheetIndex, xCm: startXCm + dxCm, yCm: startYCm + dyCm });
+    box.sheetIndex = updated.sheetIndex;
+    box.xCm = updated.xCm;
+    box.yCm = updated.yCm;
+    boxEl.style.left = `${box.xCm * placementPxPerCm}px`;
+    boxEl.style.top = `${box.yCm * placementPxPerCm}px`;
+    // La zone peut passer d'une feuille à l'autre en cours de glisser (même principe qu'une zone de
+    // texte Word qu'on ferait glisser d'une page à l'autre) : on la reparente réellement dans le DOM
+    // vers sa nouvelle feuille, sinon ses coordonnées absolues resteraient fausses.
+    const hostSheet = document.querySelector(`.placement-proto-sheet[data-sheet-index="${target.sheetIndex}"]`);
+    if (hostSheet && boxEl.parentElement !== hostSheet) hostSheet.appendChild(boxEl);
+  });
+  const finish = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    boxEl.classList.remove('placement-proto-dragging');
+    if (!placementSheetAtPoint(event.clientX, event.clientY)) {
+      placementBoxes = placementBoxes.filter((b) => b.uid !== box.uid);
+      placementUnplaced.push({ uid: box.uid, work: box.work });
+      placementRenderAll();
+      return;
+    }
+    placementCheckAllWarnings();
+  };
+  boxEl.addEventListener('pointerup', finish);
+  boxEl.addEventListener('pointercancel', finish);
+}
+
+function placementBuildBoxEl(box) {
+  const el = document.createElement('div');
+  el.className = 'placement-proto-box';
+  el.dataset.uid = String(box.uid);
+  el.style.left = `${box.xCm * placementPxPerCm}px`;
+  el.style.top = `${box.yCm * placementPxPerCm}px`;
+  el.style.width = `${box.wCm * placementPxPerCm}px`;
+  el.style.height = `${box.hCm * placementPxPerCm}px`;
+  const img = document.createElement('img');
+  img.src = imageSourceSized(box.work.image, box.wCm * placementPxPerCm);
+  img.alt = '';
+  el.appendChild(img);
+  const badge = document.createElement('span');
+  badge.className = 'placement-proto-warning-badge hidden';
+  badge.textContent = '⚡';
+  el.appendChild(badge);
+  attachPlacementBoxDrag(el, box);
+  return el;
+}
+
+function placementRenderSheets() {
+  const host = $('placement-proto-sheets');
+  if (!host) return;
+  host.innerHTML = '';
+  placementSheetIndices().forEach((sheetIndex) => {
+    const sheetEl = document.createElement('div');
+    sheetEl.className = 'placement-proto-sheet';
+    sheetEl.dataset.sheetIndex = String(sheetIndex);
+    const label = document.createElement('span');
+    label.className = 'placement-proto-sheet-label';
+    label.textContent = `Salle ${sheetIndex + 1}`;
+    sheetEl.appendChild(label);
+    placementBoxes.filter((b) => b.sheetIndex === sheetIndex).forEach((box) => {
+      sheetEl.appendChild(placementBuildBoxEl(box));
+    });
+    host.appendChild(sheetEl);
+  });
+  placementRefreshWarnings();
+}
+
+function placementRenderList() {
+  const host = $('placement-proto-list');
+  if (!host) return;
+  host.innerHTML = '';
+  placementUnplaced.forEach((entry) => {
+    const card = document.createElement('div');
+    card.className = 'placement-proto-card';
+    card.dataset.uid = String(entry.uid);
+    const img = document.createElement('img');
+    img.src = imageSourceSized(entry.work.image, 76);
+    img.alt = '';
+    card.appendChild(img);
+    const label = document.createElement('span');
+    label.className = 'placement-proto-card-label';
+    label.textContent = `${entry.work.artist || ''} — ${entry.work.title || ''}`;
+    card.appendChild(label);
+    attachPlacementCardDrag(card, entry);
+    host.appendChild(card);
+  });
+}
+
+function placementRenderAll() {
+  placementRenderSheets();
+  placementRenderList();
+  placementUpdatePager();
+}
+
+$('placement-proto-close')?.addEventListener('click', () => {
+  $('placement-proto')?.classList.add('hidden');
+  $('welcome-panel')?.classList.remove('hidden');
+});
+$('placement-proto-prev-page')?.addEventListener('click', () => placementGoToPage(-1));
+$('placement-proto-next-page')?.addEventListener('click', () => placementGoToPage(1));
+$('placement-proto-add-room')?.addEventListener('click', () => {
+  placementTotalSheets += 1;
+  placementCurrentPage = placementPageCount() - 1;
+  placementRenderSheets();
+  placementUpdatePager();
+});
+// Lien temporaire (page d'accueil) — voir le grand commentaire au-dessus et celui d'index.html sur
+// #placement-proto : à retirer une fois l'atelier câblé dans le vrai parcours.
+$('open-placement-proto-temp')?.addEventListener('click', () => {
+  enterPlacementProto(state.currentOtherWorks);
+});

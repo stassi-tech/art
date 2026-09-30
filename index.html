@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=252" />
+    <link rel="stylesheet" href="style.css?v=253" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -251,6 +251,46 @@
         <p id="gallery-proto-loupe-solo-cartel" class="hidden"></p>
       </div>
     </div>
+    <!-- v112 (prototype — discussion avec Stéphane sur le « cadre magnétique » façon traitement de
+         texte : « je reviens en fait au traitement de texte, par exemple Word... insertion de zones
+         de texte... est-ce qu'on ne peut pas refaire un système comme ça sur des feuilles à plat ? »).
+         Atelier de placement manuel des tableaux, NÉ COMME PROTOTYPE ISOLÉ (voir le bouton temporaire
+         #open-placement-proto-temp, page d'accueil) — même démarche qu'à l'époque pour #gallery-proto
+         (v94), qui a fini par devenir la vraie salle d'exposition. Tant que Stéphane n'a pas essayé
+         la manipulation elle-même (glisser une œuvre depuis la colonne, la déplacer sur une feuille,
+         la ressortir), il est prématuré de décider où cet atelier s'intègre dans le vrai parcours
+         (avant la salle ? à la place de la répartition automatique de packGallerySegments/
+         buildCheckpointCorridorWorks ? en option ?) — ce câblage réel viendra une fois l'atelier
+         validé.
+         Principe retenu (retours successifs de Stéphane) : chaque « feuille » correspond à un vrai
+         mur de GALLERY_SEGMENT_LENGTH_CM (10 m) sur GALLERY_WALL_HEIGHT_CM (5 m), dessiné à l'échelle
+         (voir placementPxPerCm, app.js) — 4 feuilles visibles à l'écran à la fois (« je serais d'avis
+         de placer sur l'écran quatre feuilles, il correspondrait à quatre salles » ; au-delà, « il
+         fera deux fois quatre » — pagination ◄ ► ci-dessous). Les œuvres non encore placées vivent
+         dans une colonne déroulante à droite (miniatures de taille fixe, pas nécessairement à
+         l'échelle réelle — « ça c'est une question de place ») ; on les glisse sur une feuille, où
+         elles apparaissent alors à leur VRAIE taille réelle, déplaçables mais jamais redimensionnables
+         (« pas possibilité d'agrandir la zone d'insertion parce qu'il faut que la taille soit réelle,
+         ça je suis d'accord avec toi »). Le chevauchement n'est jamais empêché (« on n'interdit rien,
+         même un rapprochement hasardeux, après tout c'est le choix du joueur ») : un rapprochement
+         trop important déclenche juste un signal purement informatif (petit éclair ⚡ + bip sonore,
+         voir placementProtoBeep) — « laissons libre ». -->
+    <div id="placement-proto" class="hidden">
+      <div id="placement-proto-topbar">
+        <button type="button" id="placement-proto-close" title="Fermer l'atelier de placement">✕ Fermer</button>
+        <span id="placement-proto-page-label">Salles 1 à 4</span>
+        <button type="button" id="placement-proto-prev-page" title="Salles précédentes">◄</button>
+        <button type="button" id="placement-proto-next-page" title="Salles suivantes">►</button>
+        <button type="button" id="placement-proto-add-room">+ Ajouter une salle</button>
+      </div>
+      <div id="placement-proto-body">
+        <div id="placement-proto-sheets"></div>
+        <aside id="placement-proto-sidebar">
+          <p id="placement-proto-sidebar-title">Œuvres à placer</p>
+          <div id="placement-proto-list"></div>
+        </aside>
+      </div>
+    </div>
     <div class="app-shell">
 
       <main class="main-content">
@@ -289,6 +329,16 @@
               </span>
             </div>
           </div>
+
+          <!-- v112 (prototype TEMPORAIRE, à retirer dès que l'atelier de placement sera câblé dans le
+               vrai parcours — voir #placement-proto ci-dessus) : même principe que le menu hamburger
+               temporaire qui donnait accès à #gallery-proto avant qu'il devienne la vraie salle
+               (v94→v100, voir son commentaire dans ce fichier). Ce lien discret permet à Stéphane
+               d'essayer la manipulation (glisser-déposer, feuilles à l'échelle réelle) sans attendre
+               que soit décidé où l'atelier se branche dans le parcours réel. -->
+          <p class="copyright-notice" style="margin-top:6px;">
+            <button type="button" class="link-label" id="open-placement-proto-temp">🧪 Prototype : atelier de placement des tableaux</button>
+          </p>
 
           <p class="copyright-notice">© 2026 MNEMART, Tours, France — <button type="button" class="link-label copyright-more-link" id="open-mentions-legales">mentions légales</button></p>
         </section>
@@ -2003,6 +2053,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=338"></script>
+    <script src="app.js?v=339"></script>
   </body>
 </html>
