@@ -1007,15 +1007,22 @@ body[data-ambiance="gothique"] .image-lightbox:has(#lightbox-scale-view:not(.hid
    (#scale-checkpoint, juste plus bas) au clic sur une œuvre, voir enterScaleView dans app.js. Les
    règles de couleur de mur par ambiance ci-dessous, qui ciblaient aussi #scale-facade, ne ciblent
    plus que les murs qui existent réellement encore (#scale-checkpoint-wall et les piliers). */
-body[data-ambiance="pitti"] #scale-checkpoint-wall, body[data-ambiance="pitti"] .scale-checkpoint-wall-window, body[data-ambiance="pitti"] .scale-checkpoint-side-pillar { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
-body[data-ambiance="bauhaus"] #scale-checkpoint-wall, body[data-ambiance="bauhaus"] .scale-checkpoint-wall-window, body[data-ambiance="bauhaus"] .scale-checkpoint-side-pillar { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
-body[data-ambiance="space"] #scale-checkpoint-wall, body[data-ambiance="space"] .scale-checkpoint-wall-window, body[data-ambiance="space"] .scale-checkpoint-side-pillar { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
-body[data-ambiance="versailles"] #scale-checkpoint-wall, body[data-ambiance="versailles"] .scale-checkpoint-wall-window, body[data-ambiance="versailles"] .scale-checkpoint-side-pillar { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
-body[data-ambiance="wedgwood"] #scale-checkpoint-wall, body[data-ambiance="wedgwood"] .scale-checkpoint-wall-window, body[data-ambiance="wedgwood"] .scale-checkpoint-side-pillar { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
-body[data-ambiance="ermitage"] #scale-checkpoint-wall, body[data-ambiance="ermitage"] .scale-checkpoint-wall-window, body[data-ambiance="ermitage"] .scale-checkpoint-side-pillar { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
-body[data-ambiance="renaissance"] #scale-checkpoint-wall, body[data-ambiance="renaissance"] .scale-checkpoint-wall-window, body[data-ambiance="renaissance"] .scale-checkpoint-side-pillar { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
-body[data-ambiance="gothique"] #scale-checkpoint-wall, body[data-ambiance="gothique"] .scale-checkpoint-wall-window, body[data-ambiance="gothique"] .scale-checkpoint-side-pillar { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
-body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .scale-checkpoint-wall-window, body:not([data-ambiance]) .scale-checkpoint-side-pillar { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
+/* v100 (retour Stéphane : « ... avec les éléments de décor, le cordon, etc. ») : .gallery-proto-wall
+   (les murs de la VRAIE galerie à pilastres, voir buildGalleryTrack dans app.js) ajoutée à chacune
+   de ces 9 règles — mêmes textures/couleurs d'ambiance réelles que l'ancien mur unique, jamais de
+   couleur à part pour ce nouvel écran (question d'une ambiance PROPRE à chaque emplacement encore
+   ouverte, jamais tranchée par Stéphane — en attendant, un seul décor cohérent pour tous). Sans effet
+   sur la démo (buildGalleryDemoSegments), dont les murs reçoivent une couleur en ligne (colorHex, voir
+   buildGalleryTrack) qui l'emporte toujours sur ces règles CSS. */
+body[data-ambiance="pitti"] #scale-checkpoint-wall, body[data-ambiance="pitti"] .scale-checkpoint-wall-window, body[data-ambiance="pitti"] .scale-checkpoint-side-pillar, body[data-ambiance="pitti"] .gallery-proto-wall { background-color:#0c3c2f; background-image:url('assets/salle-pitti-mur.jpg'); }
+body[data-ambiance="bauhaus"] #scale-checkpoint-wall, body[data-ambiance="bauhaus"] .scale-checkpoint-wall-window, body[data-ambiance="bauhaus"] .scale-checkpoint-side-pillar, body[data-ambiance="bauhaus"] .gallery-proto-wall { background-color:#3d3d3f; background-image:url('assets/salle-bauhaus-mur.jpg'); }
+body[data-ambiance="space"] #scale-checkpoint-wall, body[data-ambiance="space"] .scale-checkpoint-wall-window, body[data-ambiance="space"] .scale-checkpoint-side-pillar, body[data-ambiance="space"] .gallery-proto-wall { background-color:#e07a2e; background-image:url('assets/salle-space-mur.jpg'); }
+body[data-ambiance="versailles"] #scale-checkpoint-wall, body[data-ambiance="versailles"] .scale-checkpoint-wall-window, body[data-ambiance="versailles"] .scale-checkpoint-side-pillar, body[data-ambiance="versailles"] .gallery-proto-wall { background-color:#5c1015; background-image:url('assets/salle-versailles-mur.jpg'); }
+body[data-ambiance="wedgwood"] #scale-checkpoint-wall, body[data-ambiance="wedgwood"] .scale-checkpoint-wall-window, body[data-ambiance="wedgwood"] .scale-checkpoint-side-pillar, body[data-ambiance="wedgwood"] .gallery-proto-wall { background-color:#a8c0d4; background-image:url('assets/salle-wedgwood-mur.jpg'); }
+body[data-ambiance="ermitage"] #scale-checkpoint-wall, body[data-ambiance="ermitage"] .scale-checkpoint-wall-window, body[data-ambiance="ermitage"] .scale-checkpoint-side-pillar, body[data-ambiance="ermitage"] .gallery-proto-wall { background-color:#0a2745; background-image:url('assets/salle-ermitage-mur.jpg'); }
+body[data-ambiance="renaissance"] #scale-checkpoint-wall, body[data-ambiance="renaissance"] .scale-checkpoint-wall-window, body[data-ambiance="renaissance"] .scale-checkpoint-side-pillar, body[data-ambiance="renaissance"] .gallery-proto-wall { background-color:#7a3820; background-image:url('assets/salle-renaissance-mur.jpg'); }
+body[data-ambiance="gothique"] #scale-checkpoint-wall, body[data-ambiance="gothique"] .scale-checkpoint-wall-window, body[data-ambiance="gothique"] .scale-checkpoint-side-pillar, body[data-ambiance="gothique"] .gallery-proto-wall { background-color:#101d70; background-image:url('assets/salle-gothique-mur.jpg'); }
+body:not([data-ambiance]) #scale-checkpoint-wall, body:not([data-ambiance]) .scale-checkpoint-wall-window, body:not([data-ambiance]) .scale-checkpoint-side-pillar, body:not([data-ambiance]) .gallery-proto-wall { background-color:#c9b896; background-image:url('assets/salle-renoir-mur.jpg'); }
 
 /* Étape 2 : le contrôle des billets, entre la façade et le plan rapproché — on découvre le mur du
    fond depuis l'entrée, en retrait (impression d'une distance de 15 m, la même longueur que tous
@@ -2033,11 +2040,10 @@ body.stephane-test-decor .scale-wall-pillar {
   border:2px solid rgba(255,255,255,.5); background:rgba(255,255,255,.9); color:#2b2620;
   font-size:.72rem; font-weight:700; font-family:Arial,sans-serif; cursor:pointer;
 }
-#gallery-proto-label {
-  position:absolute; top:56px; left:50%; transform:translateX(-50%); z-index:10; margin:0;
-  background:rgba(0,0,0,.55); color:#fff; font-size:.72rem; font-weight:700; padding:5px 12px;
-  border-radius:12px; letter-spacing:.02em; pointer-events:none;
-}
+/* v100 : #gallery-proto-label (« Prototype — galerie configurable (démo à 3 emplacements) »)
+   retirée avec le menu hamburger temporaire — plus de raison d'annoncer un « prototype » sur ce qui
+   est maintenant la vraie vue à l'échelle. #gallery-close-museum reprend sa place, juste sous
+   #gallery-proto-back (voir index.html, style posé en ligne comme l'était #scale-close-museum). */
 /* Fenêtre visible : mur en haut, sol en bas — mais PAS la même proportion que #scale-checkpoint-room
    (62/38, pensé pour une salle en profondeur). v97 (retour Stéphane, mesuré sur son Photoshop : « le
    parquet occupe 27% de la hauteur de l'image... 38%, ça redonne une profondeur qui ne va pas ») :
@@ -2119,6 +2125,14 @@ body.stephane-test-decor .scale-wall-pillar {
    valeur ronde désormais) donne un mur à exactement 5 m, jamais la silhouette elle-même. */
 #gallery-proto-row { position:absolute; left:24px; bottom:6vh; right:24px; height:34.7vh; overflow:hidden; pointer-events:none; }
 #gallery-proto-silhouette { position:absolute; left:0; bottom:0; height:29.41vh; color:#d8d0c0; opacity:.85; filter:drop-shadow(0 3px 5px rgba(0,0,0,.35)); }
+/* v100 (retour Stéphane : « ... avec les éléments de décor, le cordon, etc. ») : cordon repris de
+   #scale-rope-barrier (ancien couloir, ratio hauteur cordon/personnage déjà validé par Stéphane là-bas :
+   11vh / 22vh = exactement moitié de la hauteur du personnage) — appliqué ici au NOUVEAU personnage
+   (29,41vh, voir plus haut) : 29,41 * 0,5 = 14,71vh. left/width posés en JS (positionGalleryRopeBarrier
+   dans app.js), #gallery-proto-row n'étant pas une rangée flex comme #scale-checkpoint-row — bottom:0
+   pour rester au même niveau que les pieds de la silhouette, jamais transformé pendant la marche
+   (même principe que l'ancien cordon, toujours statique, voir positionGalleryRopeBarrier). */
+#gallery-rope-barrier { position:absolute; bottom:0; height:14.71vh; }
 #gallery-proto-floor-dot {
   position:absolute; width:28px; height:28px; border-radius:50%; background:#e2453c; cursor:grab;
   box-shadow:0 0 0 4px rgba(226,69,60,.28); pointer-events:auto;

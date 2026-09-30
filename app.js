@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v99';
+const APP_VERSION = 'v100';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -3274,14 +3274,20 @@ function enterScaleView() {
   ['scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'].forEach((id) => $(id).classList.add('hidden'));
   state.scaleViewCandidates = candidates;
   // Calculé dès l'entrée pour connaître les œuvres du mur du fond à montrer dans le couloir (voir
-  // enterCheckpointCorridor). state.allRooms garde TOUTES les salles (une deuxième salle n'est créée
-  // que s'il y a assez d'œuvres, voir splitIntoRooms) ; state.roomWalls reste, comme avant, les 4
-  // murs de la salle actuellement visitée — la plupart du code existant (goToWall, enterCloserPlan...)
-  // n'a donc pas besoin de savoir qu'il peut exister plusieurs salles.
+  // enterCheckpointCorridor, désormais morte, voir plus bas). state.allRooms garde TOUTES les salles
+  // (une deuxième salle n'est créée que s'il y a assez d'œuvres, voir splitIntoRooms) ; state.roomWalls
+  // reste, comme avant, les 4 murs de la salle actuellement visitée — conservés tels quels (aucun
+  // autre code n'en a plus besoin depuis le v100, mais les laisser à jour ne coûte rien et évite de
+  // casser un éventuel repli).
   state.allRooms = temporaryTestRoomSplit(candidates) || splitIntoRooms(candidates);
   state.currentRoomIndex = 0;
   state.roomWalls = state.allRooms[0];
-  enterCheckpointCorridor();
+  // v100 (retour Stéphane : « tu peux peut-être l'implémenter directement dans la salle réelle ») :
+  // remplace enterCheckpointCorridor() (l'ancien couloir à mur unique, sans pilastres — gardée
+  // intacte dans ce fichier mais plus jamais appelée depuis une vraie visite) par la vraie galerie à
+  // pilastres, avec les VRAIES œuvres de l'exposition (candidates), réparties en emplacements de 10 m
+  // par packGallerySegments — voir son commentaire complet, et celui d'enterGalleryProto plus bas.
+  enterGalleryProto(candidates);
 }
 // Petit plan des 2 salles, un simple TÉMOIN passif — confirmé par Stéphane : « le point rouge du
 // petit plan ne déclenche rien, c'est un témoin du déplacement qu'on déclenche par un gros point
@@ -4712,6 +4718,38 @@ let gallerySegments = []; // rempli par enterGalleryProto — [{ colorHex, works
 let galleryTotalLengthCm = 0; // longueur réelle totale (tous pilastres + tous murs confondus)
 let galleryWalkAnimationId = null;
 let galleryWalkDirection = 0;
+// v100 (retour Stéphane, oral : « tu peux peut-être l'implémenter directement dans la salle réelle,
+// voir ce que ça donne avec les éléments de décor, le cordon, etc. ») : répartit les VRAIES œuvres de
+// l'exposition en cours (state.scaleViewCandidates, transmises par enterScaleView) dans des
+// emplacements de 10 m, dans leur ordre d'origine (jamais retriées — même principe que l'ancien mur
+// unique du v91, buildCheckpointTrack, qui les affichait déjà toutes dans l'ordre reçu). Repli
+// glouton simple : une œuvre rejoint l'emplacement courant si elle y tient encore (largeur réelle +
+// CHECKPOINT_GAP_CM de marge, déjà éprouvé sur l'ancien mur unique), sinon un nouvel emplacement (et
+// donc une nouvelle paire de pilastres) démarre. checkpointSanitizedSizeCm gère déjà les données
+// manquantes/aberrantes (voir son commentaire), donc aucun garde-fou supplémentaire à écrire ici.
+// Contrairement à buildGalleryDemoSegments (juste au-dessous, gardée pour les tests unitaires et un
+// éventuel repli), aucune couleur n'est posée par segment : sans colorHex, buildGalleryTrack laisse
+// la vraie texture d'ambiance (body[data-ambiance=...] .gallery-proto-wall, voir style.css) s'appliquer
+// normalement — la MÊME sur tous les emplacements, comme sur l'ancien mur unique (la question d'une
+// ambiance DIFFÉRENTE par emplacement reste ouverte, jamais tranchée par Stéphane).
+function packGallerySegments(candidates) {
+  const segments = [];
+  let current = [];
+  let usedCm = 0;
+  (candidates || []).forEach((work) => {
+    const { lCm } = checkpointSanitizedSizeCm(work);
+    const neededCm = lCm + CHECKPOINT_GAP_CM;
+    if (current.length && usedCm + neededCm > GALLERY_SEGMENT_LENGTH_CM) {
+      segments.push({ works: current });
+      current = [];
+      usedCm = 0;
+    }
+    current.push(work);
+    usedCm += neededCm;
+  });
+  if (current.length) segments.push({ works: current });
+  return segments;
+}
 // Démo à 3 emplacements : reprend les œuvres réellement en cours (state.scaleViewCandidates) si une
 // exposition est active, sinon un jeu d'œuvres factices — dont "Un enterrement à Ornans" à la taille
 // que Stéphane lui a lui-même donnée (« à peu près sept mètres de long » → 315 x 668 cm, ses vraies
@@ -4818,7 +4856,12 @@ function buildGalleryTrack() {
 
     const wallEl = document.createElement('div');
     wallEl.className = 'gallery-proto-wall';
-    wallEl.style.backgroundColor = `#${segment.colorHex}`;
+    // v100 : sans colorHex (cas réel, voir packGallerySegments), on NE pose PAS de couleur en dur —
+    // la vraie texture d'ambiance (body[data-ambiance=...] .gallery-proto-wall, style.css) s'applique
+    // alors normalement, comme sur l'ancien mur unique #scale-checkpoint-wall. colorHex ne reste utile
+    // que pour la démo (buildGalleryDemoSegments), où chaque emplacement factice garde sa couleur
+    // propre pour bien distinguer les 3 emplacements à l'œil sans dépendre d'une vraie ambiance.
+    if (segment.colorHex) wallEl.style.backgroundColor = `#${segment.colorHex}`;
     const worksEl = document.createElement('div');
     // v94 : porte AUSSI la classe scale-checkpoint-wall-works, purement comme repère JS pour
     // buildCheckpointCorridorWorks (qui la cherche par ce nom exact) — aucune règle CSS ne cible ce
@@ -4923,6 +4966,28 @@ function setupGalleryWalk() {
   galleryWalkRangePx = Math.max(160, window.innerWidth - silRect.right - 40);
   updateGalleryWalkVisual();
 }
+// v100 (retour Stéphane : « ... avec les éléments de décor, le cordon, etc. ») : reprend le cordon
+// réel (#scale-rope-barrier, même tracé SVG, mêmes potelets dorés — voir index.html) sur cet écran,
+// sous le nom #gallery-rope-barrier. Sur l'ancien couloir, ce cordon vit dans une rangée flex
+// (#scale-checkpoint-row : silhouette puis cordon, flex:1 1 auto pour étirer le cordon jusqu'au bord
+// droit) — #gallery-proto-row n'est PAS une rangée flex (tout y est positionné en absolu, voir
+// setupGalleryWalk ci-dessus pour le point rouge), donc ce même geste est reproduit ici en JS plutôt
+// qu'en CSS : le cordon commence juste après le bord droit de la silhouette (+ une petite marge) et
+// s'étire jusqu'au bord droit de la rangée. Jamais concerné par le petit déplacement de marche
+// (translateX) appliqué à la silhouette/au point rouge — exactement comme sur l'ancien couloir, où
+// seule la silhouette avance un peu, jamais le cordon (voir updateCheckpointWalkVisual).
+function positionGalleryRopeBarrier() {
+  const rope = $('gallery-rope-barrier');
+  const sil = $('gallery-proto-silhouette');
+  const row = $('gallery-proto-row');
+  if (!rope || !sil || !row) return;
+  const rowRect = row.getBoundingClientRect();
+  const silRect = sil.getBoundingClientRect();
+  if (!rowRect.width || !silRect.width) return;
+  const gapPx = 24;
+  rope.style.left = `${silRect.right - rowRect.left + gapPx}px`;
+  rope.style.width = `${Math.max(0, rowRect.width - (silRect.right - rowRect.left) - gapPx)}px`;
+}
 (function attachGalleryFloorDotDrag() {
   const dot = $('gallery-proto-floor-dot');
   if (!dot) return;
@@ -4948,47 +5013,38 @@ function setupGalleryWalk() {
   dot.addEventListener('pointercancel', stop);
 })();
 // v95 (retour Stéphane, capture à l'appui : « on retrouve la bande de parquet à croisillon qui coupe
-// les tableaux... il ne faut pas qu'elle réapparaisse là, il faut l'enlever ») : bug réel. #scale-floor
-// (le sol décoratif fixe de l'ANCIEN système de vue à l'échelle — position:fixed, bottom:0, height:16vh,
-// texture « sol à croisillons » selon l'ambiance, voir body[data-ambiance=...] #scale-floor plus haut)
-// n'a JAMAIS la classe "hidden" par défaut dans le HTML : c'est enterScaleView() qui le masque
-// explicitement (avec 8 autres éléments du même ancien système) chaque fois qu'on entre dans une vraie
-// visite — pas une histoire de z-index/superposition, un masquage explicite, à chaque fois. Le nouveau
-// #gallery-proto, lui, s'ouvre directement depuis le menu hamburger, SANS jamais passer par
-// enterScaleView() — ces vieux éléments restaient donc dans leur état par défaut (bien visibles),
-// d'où cette bande qui traverse l'écran. Reprend donc exactement la même liste que enterScaleView,
-// mais en mémorisant lesquels étaient DÉJÀ masqués avant (pour ne restaurer au retour que ceux que
-// CE prototype a lui-même masqués — si jamais gallery-proto s'ouvre alors qu'une vraie visite était
-// déjà en cours, dans son dos, on ne va pas la lui déféler en la rendant visible à la sortie).
-const GALLERY_PROTO_LEGACY_SCALE_IDS = ['scale-wall-line', 'scale-floor', 'scale-floor-dot', 'scale-silhouette', 'scale-silhouette-label', 'scale-wall', 'lightbox-scale-caption', 'scale-minimap', 'scale-emergency-exit', 'scale-distance-marker'];
-let galleryProtoElsToRestore = [];
-function enterGalleryProto() {
-  galleryProtoElsToRestore = GALLERY_PROTO_LEGACY_SCALE_IDS.filter((id) => {
-    const el = $(id);
-    return el && !el.classList.contains('hidden');
-  });
-  GALLERY_PROTO_LEGACY_SCALE_IDS.forEach((id) => $(id)?.classList.add('hidden'));
+// les tableaux... il ne faut pas qu'elle réapparaisse là, il faut l'enlever ») : bug réel, corrigé à
+// l'époque en masquant explicitement les vieux éléments de l'ancien système de vue à l'échelle dès
+// l'entrée dans ce qui était alors un prototype séparé, ouvert depuis le menu hamburger SANS jamais
+// passer par enterScaleView().
+// v100 (retour Stéphane : « tu peux peut-être l'implémenter directement dans la salle réelle ») :
+// ce prototype devient la VRAIE vue à l'échelle, appelée depuis enterScaleView() lui-même — qui
+// masque déjà, dès son tout début, exactement ces mêmes vieux éléments (voir son commentaire :
+// « scale-wall-line », puis la liste 'scale-floor'/'scale-floor-dot'/etc.) avant même d'arriver ici.
+// Le masquage/restauration séparé ci-dessus (GALLERY_PROTO_LEGACY_SCALE_IDS) devenait donc pure
+// redondance une fois le menu hamburger retiré (voir plus bas) — supprimé.
+function enterGalleryProto(candidates) {
+  gallerySegments = (candidates && candidates.length) ? packGallerySegments(candidates) : buildGalleryDemoSegments();
   $('gallery-proto')?.classList.remove('hidden');
-  gallerySegments = buildGalleryDemoSegments();
   requestAnimationFrame(() => {
     galleryPanTravelPx = buildGalleryTrack();
     setupGalleryWalk();
+    positionGalleryRopeBarrier();
   });
-}
-function exitGalleryProto() {
-  stopGalleryWalking();
-  $('gallery-proto')?.classList.add('hidden');
-  galleryProtoElsToRestore.forEach((id) => $(id)?.classList.remove('hidden'));
-  galleryProtoElsToRestore = [];
 }
 window.addEventListener('resize', () => {
   if (!$('gallery-proto')?.classList.contains('hidden')) {
     galleryPanTravelPx = buildGalleryTrack();
     updateGalleryWalkVisual();
+    positionGalleryRopeBarrier();
   }
 });
-$('gallery-proto-back')?.addEventListener('click', () => exitGalleryProto());
-$('menu-item-gallery-proto')?.addEventListener('click', () => { closeHamburgerMenu(); enterGalleryProto(); });
+// v100 : la sortie n'est plus une simple fermeture d'écran isolé (exitGalleryProto, retirée) — cette
+// vue est désormais la vraie vue à l'échelle, donc son bouton Retour déclenche exactement la même
+// sortie que l'ancien couloir (#lightbox-scale-back-button) : exitScaleView() (voir plus bas dans ce
+// fichier), qui masque maintenant #gallery-proto en plus de ses éléments habituels.
+$('gallery-proto-back')?.addEventListener('click', () => exitScaleView());
+$('gallery-close-museum')?.addEventListener('click', () => { exitScaleViewCompletely(); showPanel('training-hub'); });
 // v57 : plus de bouton « Entrée » ni de bouton « Ticket » (façade et machine à tickets toutes deux
 // retirées) — enterScaleView() appelle directement enterCheckpointCorridor(), et l'avancée
 // (armCheckpointApproach) s'arme désormais automatiquement au repos plutôt qu'au clic sur un
@@ -5826,6 +5882,11 @@ makeSilhouetteDraggable($('scale-silhouette'), {
   },
 });
 function exitScaleView() {
+  // v100 : cette vue vit maintenant dans #gallery-proto (voir enterScaleView) — masqué ici en plus
+  // des éléments habituels, et sa marche arrêtée (sinon l'animation continuerait en arrière-plan,
+  // invisible mais toujours active, voir stopGalleryWalking).
+  stopGalleryWalking();
+  $('gallery-proto')?.classList.add('hidden');
   $('lightbox-scale-view').classList.add('hidden');
   $('lightbox-scale-back-button').classList.add('hidden');
   $('scale-focus-view').classList.add('hidden');

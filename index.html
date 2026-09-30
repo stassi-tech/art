@@ -64,35 +64,40 @@
         <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-ambiance">🎨 Changer l'ambiance</button>
         <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-exhibition">🖼️ Salle d'exposition</button>
         <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-account">👤 Mon compte</button>
-        <!-- v94 (retour de Stéphane, 2 messages : « on va supprimer la profondeur... une galerie
-             rythmée par des pilastres... chaque espace peut avoir sa couleur, ses tableaux » puis
-             « le sol sur lequel marche le personnage, les murs entre les pilastres, et éventuellement
-             les pilastres eux-mêmes... le joueur sélectionne un certain nombre d'emplacements ») :
-             entrée TEMPORAIRE, le temps que Stéphane valide le principe, vers le prototype technique
-             de la nouvelle galerie configurable (voir enterGalleryProto dans app.js) — pas encore le
-             vrai configurateur (nombre d'emplacements, ambiances, réarrangement des œuvres), juste la
-             mécanique de marche/pilastres/cadrans généralisée, avec une démo à 3 emplacements. À
-             retirer du menu une fois le principe validé et le vrai configurateur construit par-dessus. -->
-        <button type="button" class="hamburger-item" id="menu-item-gallery-proto">🏛️ Prototype galerie (démo)</button>
+        <!-- v94-v99 : entrée TEMPORAIRE vers le prototype technique de la nouvelle galerie configurable
+             (retour de Stéphane : « on va supprimer la profondeur... une galerie rythmée par des
+             pilastres »), retirée en v100 une fois le principe validé — cet écran (#gallery-proto) est
+             désormais la vraie vue à l'échelle, atteinte normalement via une exposition (voir
+             enterScaleView dans app.js), plus besoin d'un accès dédié depuis ce menu. -->
         <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Comment fonctionne l'application</button>
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 Liste des artistes et des œuvres</button>
         <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
       </div>
     </div>
-    <!-- v94 : prototype technique de la nouvelle galerie configurable, écran ENTIÈREMENT NOUVEAU et
-         AUTONOME (pas une modification du couloir #scale-checkpoint existant, déjà testé/livré) —
-         posé ici, en dehors de #lightbox-scale-view/.app-shell, pour pouvoir s'ouvrir depuis
-         n'importe où (menu hamburger, voir menu-item-gallery-proto plus haut) sans dépendre d'une
-         exposition en cours. Reprend le principe déjà validé du couloir à mur unique (personnage à
-         l'échelle réelle, marche latérale qui fait défiler le décor, cadran de progression sur les
-         pilastres) mais SANS profondeur/perspective (retour de Stéphane : « on va supprimer la
-         profondeur... c'est comme la galerie du Louvre ») et avec plusieurs murs/emplacements
-         séparés par des pilastres plats plutôt qu'un seul mur continu — voir enterGalleryProto/
-         buildGalleryTrack dans app.js pour la construction, entièrement en JS (le nombre
-         d'emplacements étant appelé à varier une fois le vrai configurateur construit). -->
+    <!-- v94 : né comme prototype technique de la nouvelle galerie configurable, écran ENTIÈREMENT
+         NOUVEAU (pas une modification du couloir #scale-checkpoint existant) — posé ici, en dehors de
+         #lightbox-scale-view/.app-shell (fixed, inset:0, z-index:150, voir style.css : couvre tout
+         l'écran, topbar comprise sauf #global-topbar au-dessus). Reprend le principe déjà validé du
+         couloir à mur unique (personnage à l'échelle réelle, marche latérale qui fait défiler le
+         décor) mais SANS profondeur/perspective (retour de Stéphane : « on va supprimer la
+         profondeur... c'est comme la galerie du Louvre ») et avec plusieurs murs/emplacements séparés
+         par des pilastres plats plutôt qu'un seul mur continu.
+         v100 (retour Stéphane : « tu peux peut-être l'implémenter directement dans la salle réelle ») :
+         devenu la VRAIE vue à l'échelle d'une exposition, appelée depuis enterScaleView() avec les
+         vraies œuvres (voir enterGalleryProto/packGallerySegments/buildGalleryTrack dans app.js) —
+         l'ancien couloir #scale-checkpoint reste dans ce fichier (intact, toujours testé) mais n'est
+         plus jamais atteint depuis une vraie visite. -->
+    <!-- v100 (retour Stéphane : « tu peux peut-être l'implémenter directement dans la salle réelle ») :
+         cet écran, né comme prototype isolé (v94, ouvert depuis un menu hamburger temporaire), est
+         devenu la VRAIE vue à l'échelle d'une exposition — voir enterScaleView()/enterGalleryProto()
+         dans app.js. Le menu hamburger temporaire a été retiré (son entrée n'a plus lieu d'être,
+         cet écran étant désormais atteint normalement, comme avant #scale-checkpoint). -->
     <div id="gallery-proto" class="hidden">
-      <button type="button" id="gallery-proto-back" aria-label="Fermer le prototype" title="Fermer le prototype">◄ Retour</button>
-      <p id="gallery-proto-label">Prototype — galerie configurable (démo à 3 emplacements)</p>
+      <button type="button" id="gallery-proto-back" aria-label="Revenir à la vue normale" title="Revenir à la vue normale">◄ Retour</button>
+      <!-- Fermeture complète du musée (retour aux exercices) — même bouton/geste que l'ancien
+           #scale-close-museum du couloir existant (voir index.html plus bas), reproduit ici à
+           l'identique (position, style) pour cet écran. -->
+      <button type="button" id="gallery-close-museum" aria-label="Fermeture du musée, retour aux exercices" style="position:absolute;top:96px;left:16px;padding:8px 12px;border-radius:4px;border:2px solid #fff;background:#5a3a1a;color:#fff;font-size:.75rem;font-weight:700;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.4);">🔔 Fermeture du musée</button>
       <!-- v96 (bug réel signalé par Stéphane, capture à l'appui : « la bande est toujours là... il n'y
            a plus les tableaux ») : #gallery-proto-floor vivait ICI, comme enfant de #gallery-proto-room
            — or #gallery-proto-room ne fait que 62% de la hauteur ET applique overflow:hidden. Son
@@ -113,6 +118,29 @@
           <path d="M50 8 a14 14 0 1 0 0.01 0 Z M32 34 q18 -10 36 0 l6 70 q-8 8 -20 6 l-2 60 l4 150 q-2 6 -12 6 q-6 0 -8 -6 l-2 -140 l-2 140 q-2 6 -8 6 q-10 0 -12 -6 l4 -150 l-2 -60 q-12 2 -20 -6 Z" fill="currentColor"/>
         </svg>
         <div id="gallery-proto-floor-dot" class="hidden" aria-hidden="true"></div>
+        <!-- v100 (retour Stéphane : « ... avec les éléments de décor, le cordon, etc. ») : cordon rouge
+             à 8 potelets dorés repris À L'IDENTIQUE de #scale-rope-barrier (ancien couloir, plus bas
+             dans ce fichier) — même tracé SVG, mêmes couleurs — sous un id propre à cet écran
+             (#gallery-rope-barrier) puisqu'un id doit rester unique dans la page, et son dégradé
+             (gallery-rope-post-gradient) de même. Positionné en JS (voir positionGalleryRopeBarrier
+             dans app.js), #gallery-proto-row n'étant pas une rangée flex comme #scale-checkpoint-row. -->
+        <svg id="gallery-rope-barrier" viewBox="0 0 800 90" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M20 30 Q 75 62 130 30 Q 185 62 240 30 Q 295 62 350 30 Q 405 62 460 30 Q 515 62 570 30 Q 625 62 680 30 Q 735 62 780 30" fill="none" stroke="#7a0f18" stroke-width="7" stroke-linecap="round"/>
+          <path d="M20 30 Q 75 60 130 30 Q 185 60 240 30 Q 295 60 350 30 Q 405 60 460 30 Q 515 60 570 30 Q 625 60 680 30 Q 735 60 780 30" fill="none" stroke="#c81f2c" stroke-width="4" stroke-linecap="round"/>
+          <g fill="url(#gallery-rope-post-gradient)">
+            <circle cx="20" cy="18" r="9"/><circle cx="130" cy="18" r="9"/><circle cx="240" cy="18" r="9"/><circle cx="350" cy="18" r="9"/>
+            <circle cx="460" cy="18" r="9"/><circle cx="570" cy="18" r="9"/><circle cx="680" cy="18" r="9"/><circle cx="780" cy="18" r="9"/>
+          </g>
+          <g stroke="#8a6a1a" stroke-width="5">
+            <line x1="20" y1="18" x2="20" y2="80"/><line x1="130" y1="18" x2="130" y2="80"/><line x1="240" y1="18" x2="240" y2="80"/><line x1="350" y1="18" x2="350" y2="80"/>
+            <line x1="460" y1="18" x2="460" y2="80"/><line x1="570" y1="18" x2="570" y2="80"/><line x1="680" y1="18" x2="680" y2="80"/><line x1="780" y1="18" x2="780" y2="80"/>
+          </g>
+          <defs>
+            <radialGradient id="gallery-rope-post-gradient" cx="35%" cy="30%">
+              <stop offset="0%" stop-color="#f0d878"/><stop offset="100%" stop-color="#b5902a"/>
+            </radialGradient>
+          </defs>
+        </svg>
       </div>
     </div>
     <div class="app-shell">
