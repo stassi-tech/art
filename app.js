@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v114';
+const APP_VERSION = 'v115';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -2101,9 +2101,11 @@ function normaliseRows(rows) {
     const lieuPrecisKey = findColumn(row, ['lieu precis', 'lieu precis de conservation']);
     const sousLieuKey = findColumn(row, ['sous lieu', 'sous lieu de conservation']);
     let location, ville = '';
+    let lieuPrecisValue = ''; // v115 : nom du musée/lieu SANS le sous-lieu (salle, chapelle…), pour l'entrée « par musée » de la LISTE
     if (villeKey || lieuPrecisKey) {
       ville = villeKey ? String(row[villeKey] || '').trim() : '';
       const lieuPrecis = lieuPrecisKey ? String(row[lieuPrecisKey] || '').trim() : '';
+      lieuPrecisValue = lieuPrecis;
       const sousLieu = sousLieuKey ? String(row[sousLieuKey] || '').trim() : '';
       // Si la ville apparaît déjà telle quelle dans le lieu précis ou le sous-lieu (ex. « Église
       // Saint-Antoine de Loches » pour la ville « Loches »), inutile de la répéter à la fin.
@@ -2214,7 +2216,7 @@ function normaliseRows(rows) {
     if (isGhostHeaderRow) return null;
     return {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
-      date: String(row[dateKey] || '').trim(), location, ville, title, cycle, titleOriginal,
+      date: String(row[dateKey] || '').trim(), location, ville, lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
       artistImage, artistImageCaption, locationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio,
       row: rowIndex + 2
@@ -2954,6 +2956,8 @@ function renderCorrection(answer, question) {
   if (spokenParts.length) quizSpeak(spokenParts.join(' '));
 }
 let currentArtistWorksIndex = -1;
+// v115 : d'où vient la fiche affichée dans other-works-panel — 'artist' (fiche d'un artiste) ou 'museum' (fiche d'un musée, voir openMuseumWorksPage).
+let otherWorksSource = 'artist';
 // v65 (retour de Stéphane, document du 29 sept : « quand on est dans la liste, la flèche de
 // retour doit ramener à la page d'accueil de la liste et pas au menu général ») : la modale
 // modal-artist-list s'ouvre par-dessus n'importe quel panneau (menu-item-artistes, accessible
@@ -5553,6 +5557,11 @@ function positionGalleryRopeBarrier() {
 // Le masquage/restauration séparé ci-dessus (GALLERY_PROTO_LEGACY_SCALE_IDS) devenait donc pure
 // redondance une fois le menu hamburger retiré (voir plus bas) — supprimé.
 function enterGalleryProto(candidates) {
+  // v115 : les œuvres d'une exposition sont des objets PARTAGÉS avec le cache des fichiers (fetchQuizRows
+  // en renvoie une copie superficielle) — les positions manuelles d'une exposition fabriquée plus tôt
+  // (_manualXCm/_manualYCm) y restaient donc accrochées et faisaient passer à tort une répartition
+  // AUTOMATIQUE en « mode manuel » (œuvres aux anciennes positions, mélangées). On les efface ici.
+  (candidates || []).forEach((w) => { if (w) { delete w._manualXCm; delete w._manualYCm; } });
   const segments = (candidates && candidates.length) ? packGallerySegments(candidates) : buildGalleryDemoSegments();
   enterGalleryProtoWithSegments(segments);
 }
@@ -6529,8 +6538,9 @@ function hideBottomGallery() {
   if (bar) { bar.classList.add('hidden'); bar.innerHTML = ''; }
 }
 async function openArtistWorksPage(idx) {
-  const row = artistListSortedRows[idx];
+  const row = artistNavRows[idx];
   if (!row) return;
+  otherWorksSource = 'artist';
   // Ne mémoriser le panneau de départ qu'à la PREMIÈRE entrée dans une fiche artiste — les clics
   // précédent/suivant (other-works-back-button/-next-button) rappellent aussi cette fonction alors
   // qu'on est déjà sur 'other-works', ce qui écraserait sinon le bon panneau de départ.
@@ -6613,7 +6623,7 @@ function renderOtherWorksPanel() {
     return `<button type="button" class="other-work-card-big${hCm ? ' scaled' : ''}" data-index="${index}"${scaleStyle}>
       <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
            onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
-      <span class="other-work-caption"><strong>${titleValue}</strong><br>${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}</span>
+      <span class="other-work-caption"><strong>${titleValue}</strong><br>${otherWorksSource === 'museum' ? `${escapeHtml(otherQuestion.artist)}<br>${escapeHtml(otherQuestion.date)}` : `${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}`}</span>
     </button>`;
   }).join('');
   // Clic sur une vignette : ouvre l'image en grand dans la visionneuse, avec juste un bouton
@@ -6840,13 +6850,14 @@ function artFormIcons(rawValue) {
   if (v.includes('sculpture')) parts.push('<span title="Sculpture" aria-label="Sculpture">🗿</span>');
   return parts.join(' ') || escapeHtml(rawValue || '');
 }
-function renderArtistListTable() {
-  const container = $('artist-list-table');
+// Tri commun de la liste (colonne + sens courants) — extrait en v115 pour pouvoir aussi trier la liste
+// COMPLÈTE (sans recherche ni filtre) dont se servent les flèches de la fiche artiste.
+function sortArtistRows(rows) {
   const { col, dir } = artistListSort;
   // Trie par surnom quand il existe (ex. « Le Greco » trie à G, « Bada Shanren » à B) — sinon,
   // par nom de famille. Dans les deux cas, les particules en tête (le, da, van...) sont ignorées.
   const sortKeyForRow = (row) => particleStrippedSortKey(row['Surnom'] || row['Patronyme']);
-  const sorted = filteredArtistListRows().sort((a, b) => {
+  return rows.slice().sort((a, b) => {
     if (col === 'Patronyme') {
       const byNom = dir * sortKeyForRow(a).localeCompare(sortKeyForRow(b), 'fr');
       if (byNom !== 0) return byNom;
@@ -6854,6 +6865,19 @@ function renderArtistListTable() {
     }
     return dir * String(a[col] || '').localeCompare(String(b[col] || ''), 'fr');
   });
+}
+// Liste que parcourent les flèches ◄ ► de la fiche artiste. v115 (document du 29 sept, LISTE : « quand
+// on sélectionne un artiste par le nom, les flèches pour faire défiler les autres artistes sont
+// inactives ») : quand une recherche a réduit la liste à un ou quelques artistes, les flèches ne
+// pouvaient aller nulle part (elles ne parcouraient que ces quelques résultats). Si une recherche est
+// active, les flèches parcourent désormais la liste COMPLÈTE dans l'ordre courant, à partir de l'artiste ouvert.
+let artistNavRows = [];
+function renderArtistListTable() {
+  const container = $('artist-list-table');
+  const { col, dir } = artistListSort;
+  // Trie par surnom quand il existe (ex. « Le Greco » trie à G, « Bada Shanren » à B) — sinon,
+  // par nom de famille. Dans les deux cas, les particules en tête (le, da, van...) sont ignorées.
+  const sorted = sortArtistRows(filteredArtistListRows());
   artistListSortedRows = sorted;
   const html = ['<table class="artist-table"><thead><tr>'];
   ARTIST_LIST_COLS.forEach((c) => {
@@ -6874,7 +6898,11 @@ function renderArtistListTable() {
     });
   });
   container.querySelectorAll('.artist-name-link').forEach((btn) => {
-    btn.addEventListener('click', () => openArtistWorksPage(Number(btn.dataset.idx)));
+    btn.addEventListener('click', () => {
+      const row = artistListSortedRows[Number(btn.dataset.idx)];
+      artistNavRows = artistListSearchTerm.trim() ? sortArtistRows(artistListRows) : artistListSortedRows;
+      openArtistWorksPage(artistNavRows.indexOf(row));
+    });
   });
   const status = $('artist-list-status');
   const hasMenuFilter = artistListMode === 'filtered' && (artistListFilters.nationalite || artistListFilters.art || artistListFilters.siecle);
@@ -6883,15 +6911,127 @@ function renderArtistListTable() {
     ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant${sorted.length > 1 ? 's' : ''} (sur ${artistListRows.length} au total).`
     : `${artistListRows.length} artistes référencés dans les quiz. Cliquez sur un nom pour voir ses œuvres.`;
 }
-function setArtistListMode(mode) {
+// v115 (retour Stéphane : « ce qui serait bien dans la liste, c'est aussi de prévoir une entrée par
+// musée — la liste de toutes les œuvres présentes dans le musée s'afficherait ») : 3e mode de la LISTE.
+// Il faut pour cela connaître TOUTES les œuvres (pas seulement celles d'un artiste) : on lit donc les
+// 14 fichiers peinture/sculpture × siècle (déjà mis en cache par le reste de l'appli, donc
+// généralement instantané) et on regroupe les œuvres par musée = « Lieu précis » du fichier (sans le
+// sous-lieu : la salle ou la chapelle ne doit pas créer un musée à part). Un ancien fichier sans
+// colonne « Lieu précis » retombe sur son lieu complet.
+let museumIndexRows = null; // [{ key, name, ville, works }] — remis à null par « Actualiser »
+let museumListSortedRows = [];
+let museumNavRows = [];
+function museumNameOfWork(w) { return String(w.lieuPrecis || w.location || '').trim(); }
+async function buildMuseumIndex() {
+  if (museumIndexRows) return museumIndexRows;
+  const arts = ['peinture', 'sculpture'];
+  const centuries = ['14e', '15e', '16e', '17e', '18e', '19e', '20e'];
+  const batches = await Promise.all(arts.flatMap((art) => centuries.map((century) =>
+    fetchQuizRows(art, century).then((rows) => rows.map((r) => ({ ...r, artCategory: art }))).catch(() => []))));
+  const map = new Map();
+  batches.flat().forEach((work) => {
+    const name = museumNameOfWork(work);
+    if (!name) return;
+    const key = keyName(name);
+    if (!map.has(key)) map.set(key, { key, name, ville: work.ville || '', works: [] });
+    const museum = map.get(key);
+    if (!museum.ville && work.ville) museum.ville = work.ville;
+    museum.works.push(work);
+  });
+  museumIndexRows = [...map.values()];
+  return museumIndexRows;
+}
+function filteredMuseumRows() {
+  const term = keyName(artistListSearchTerm.trim());
+  const all = (museumIndexRows || []).slice().sort((a, b) => a.key.localeCompare(b.key, 'fr'));
+  return { all, shown: term ? all.filter((m) => m.key.includes(term) || keyName(m.ville).includes(term)) : all };
+}
+function renderMuseumListTable() {
+  const container = $('artist-list-table');
+  const { all, shown } = filteredMuseumRows();
+  museumListSortedRows = shown;
+  const html = ['<table class="artist-table"><thead><tr><th>Musée / lieu</th><th>Ville</th><th>Œuvres</th></tr></thead><tbody>'];
+  shown.forEach((m, idx) => {
+    html.push(`<tr><td><button type="button" class="artist-name-link" data-idx="${idx}"><strong>${escapeHtml(m.name)}</strong></button></td><td>${escapeHtml(m.ville)}</td><td>${m.works.length}</td></tr>`);
+  });
+  html.push('</tbody></table>');
+  container.innerHTML = html.join('');
+  container.querySelectorAll('.artist-name-link').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const museum = museumListSortedRows[Number(btn.dataset.idx)];
+      // Même principe que pour les artistes : si une recherche a réduit la liste, les flèches de la
+      // fiche parcourent la liste complète plutôt que quelques résultats seulement.
+      museumNavRows = artistListSearchTerm.trim() ? all : museumListSortedRows;
+      openMuseumWorksPage(museumNavRows.indexOf(museum));
+    });
+  });
+  const hasSearch = artistListSearchTerm.trim().length > 0;
+  $('artist-list-status').textContent = hasSearch
+    ? `${shown.length} musée${shown.length > 1 ? 's' : ''} correspondant${shown.length > 1 ? 's' : ''} (sur ${all.length} au total).`
+    : `${all.length} musées et lieux référencés. Cliquez sur un nom pour voir toutes ses œuvres.`;
+}
+function openMuseumWorksPage(idx) {
+  const museum = museumNavRows[idx];
+  if (!museum) return;
+  otherWorksSource = 'museum';
+  if (currentPanelName !== 'other-works') panelBeforeArtistList = currentPanelName;
+  currentArtistWorksIndex = idx;
+  closeModal('modal-artist-list');
+  showPanel('other-works');
+  $('other-works-artist-name').textContent = museum.name;
+  $('other-works-artist-flag').innerHTML = '';
+  $('other-works-artist-dates').textContent = `${museum.ville ? `${museum.ville} — ` : ''}${museum.works.length} œuvre${museum.works.length > 1 ? 's' : ''}`;
+  const works = museum.works.slice().sort((a, b) => {
+    const yearA = yearsOf(a.date)[0]; const yearB = yearsOf(b.date)[0];
+    if (yearA == null && yearB == null) return 0;
+    if (yearA == null) return 1;
+    if (yearB == null) return -1;
+    return yearA - yearB;
+  });
+  state.currentOtherWorks = works;
+  renderOtherWorksPanel();
+}
+function renderCurrentListMode() {
+  if (artistListMode === 'museum') { if (museumIndexRows) renderMuseumListTable(); }
+  else renderArtistListTable();
+}
+async function setArtistListMode(mode) {
   artistListMode = mode;
   $('artist-list-mode-full')?.classList.toggle('active-mode', mode === 'full');
   $('artist-list-mode-filtered')?.classList.toggle('active-mode', mode === 'filtered');
+  $('artist-list-mode-museum')?.classList.toggle('active-mode', mode === 'museum');
   $('artist-list-filters')?.classList.toggle('hidden', mode !== 'filtered');
+  const search = $('artist-list-search');
+  if (search) search.placeholder = mode === 'museum' ? 'Rechercher un musée ou une ville…' : 'Rechercher un artiste ou une œuvre…';
+  if (mode === 'museum') {
+    $('artist-list-status').textContent = 'Chargement des musées…';
+    $('artist-list-table').innerHTML = '';
+    await buildMuseumIndex();
+    if (artistListMode === 'museum') renderMuseumListTable(); // l'utilisateur a pu changer de mode pendant le chargement
+    return;
+  }
   renderArtistListTable();
 }
 $('artist-list-mode-full')?.addEventListener('click', () => setArtistListMode('full'));
 $('artist-list-mode-filtered')?.addEventListener('click', () => setArtistListMode('filtered'));
+$('artist-list-mode-museum')?.addEventListener('click', () => setArtistListMode('museum'));
+// v115 (document du 29 sept, LISTE : « comment actualiser la liste ? pour l'instant les nouvelles
+// œuvres entrées n'apparaissent pas ») : la liste garde en mémoire les fichiers déjà lus pendant la
+// visite (c'est ce qui la rend rapide) — elle ne voyait donc jamais un fichier Excel modifié tant
+// que la page n'était pas rechargée à la main. Ce bouton vide cette mémoire et relit tout.
+$('artist-list-refresh')?.addEventListener('click', async () => {
+  const status = $('artist-list-status');
+  status.textContent = 'Actualisation…';
+  quizRowsCache.clear(); quizRowsResolvedCache.clear();
+  titleSearchIndex = null; titleSearchIndexCacheSize = -1;
+  museumIndexRows = null;
+  artistListLoaded = false;
+  DATA_CACHE_BUST = Date.now();
+  const ok = await loadArtistListIfNeeded();
+  if (!ok) { status.textContent = "L'actualisation a échoué (connexion internet ?)."; return; }
+  populateArtistListFilters();
+  await setArtistListMode(artistListMode);
+});
 function populateArtistListFilters() {
   const nationalites = [...new Set(artistListRows.map((r) => r['Nationalité']).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
   const arts = [...new Set(artistListRows.flatMap((r) => String(r['Art(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean)))].sort();
@@ -6919,7 +7059,7 @@ let artistListSearchDebounceTimer = null;
 $('artist-list-search')?.addEventListener('input', (e) => {
   const value = e.target.value;
   clearTimeout(artistListSearchDebounceTimer);
-  artistListSearchDebounceTimer = setTimeout(() => { artistListSearchTerm = value; renderArtistListTable(); }, 200);
+  artistListSearchDebounceTimer = setTimeout(() => { artistListSearchTerm = value; renderCurrentListMode(); }, 200);
 });
 async function loadArtistListIfNeeded() {
   if (artistListLoaded) return true;
@@ -7062,9 +7202,15 @@ $('global-exhibition-button')?.addEventListener('click', (event) => {
   let lastArtistsCheck = [];
   try { lastArtistsCheck = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
   const hasCurrentExhibition = (state.scaleViewCandidates && state.scaleViewCandidates.length > 0) || lastArtistsCheck.length > 0;
-  $('exhibition-resume-choice').classList.toggle('hidden', !hasCurrentExhibition);
-  $('exhibition-picker-form').classList.toggle('hidden', hasCurrentExhibition);
-  if (hasCurrentExhibition) return;
+  // v115 : une exposition enregistrée suffit aussi à proposer le choix (bouton « Recharger une
+  // exposition enregistrée »), même quand aucune n'est en cours dans cette session.
+  const hasSavedExhibition = Object.keys(placementReadSavedLayouts()).length > 0 || !!localStorage.getItem(PLACEMENT_LAST_GENERATED_KEY);
+  $('exhibition-resume-choice').classList.toggle('hidden', !hasCurrentExhibition && !hasSavedExhibition);
+  ['exhibition-resume-button', 'exhibition-build-button'].forEach((id) => $(id)?.classList.toggle('hidden', !hasCurrentExhibition));
+  $('exhibition-load-saved-button')?.classList.toggle('hidden', !hasSavedExhibition);
+  // « Changer l\'exposition » reste toujours offert : c\'est lui qui ramène au formulaire de saisie des artistes.
+  $('exhibition-picker-form').classList.toggle('hidden', hasCurrentExhibition || hasSavedExhibition);
+  if (hasCurrentExhibition || hasSavedExhibition) return;
   // Les noms de la dernière exposition sont proposés par défaut (uniquement si les champs sont
   // encore vides) — évite de les retaper à chaque fois qu'on veut revoir la même sélection.
   const firstField = picker.querySelector('.exhibition-artist-field');
@@ -7119,6 +7265,7 @@ async function loadExhibitionWorksOnly(names, feedback) {
   return allWorks;
 }
 async function loadAndEnterExhibition(names, feedback) {
+  builtExhibition = null; // nouvelle sélection explicite : l'ancienne exposition fabriquée ne doit plus ressortir
   const allWorks = await loadExhibitionWorksOnly(names, feedback);
   if (!allWorks) return false;
   state.currentOtherWorks = allWorks;
@@ -7135,6 +7282,12 @@ $('exhibition-resume-button')?.addEventListener('click', async () => {
   $('exhibition-picker').classList.add('hidden');
   // Si les œuvres sont déjà en mémoire (le joueur est déjà entré cette session), on rouvre
   // directement — sinon (exposition mémorisée d'une session précédente), il faut les recharger.
+  // v115 : si une exposition a été FABRIQUÉE cette session (atelier de placement) pour ces mêmes
+  // artistes, on la rouvre telle quelle plutôt que de refaire la répartition automatique.
+  if (builtExhibition && builtExhibition.artistsSig === (localStorage.getItem('lastExhibitionArtists') || '[]')) {
+    placementShowBuiltExhibition(builtExhibition.segments, builtExhibition.works);
+    return;
+  }
   if (state.currentOtherWorks && state.currentOtherWorks.length) {
     $('image-lightbox').classList.remove('hidden');
     enterScaleView();
@@ -7143,6 +7296,13 @@ $('exhibition-resume-button')?.addEventListener('click', async () => {
   let lastArtists = [];
   try { lastArtists = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
   if (lastArtists.length) await loadAndEnterExhibition(lastArtists, null);
+});
+// v115 (retour Stéphane : « on n'a pas le bouton pour dire "recharger l'exposition enregistrée" ») :
+// ouvre directement la liste des expositions enregistrées (celles nommées + la dernière générée),
+// sans repasser par la question « combien de salles ».
+$('exhibition-load-saved-button')?.addEventListener('click', () => {
+  $('exhibition-picker').classList.add('hidden');
+  enterPlacementProto(state.currentOtherWorks, { savedOnly: true });
 });
 $('exhibition-change-button')?.addEventListener('click', () => {
   $('exhibition-resume-choice').classList.add('hidden');
@@ -7185,6 +7345,7 @@ $('exhibition-launch-button')?.addEventListener('click', async () => {
   // v82 (vérification vouvoiement, retour Stéphane 29/09)
   if (!names.length) { feedback.textContent = 'Indiquez au moins un nom d’artiste.'; return; }
   localStorage.setItem('lastExhibitionArtists', JSON.stringify(names));
+  builtExhibition = null; // nouvelle exposition choisie (voir placementGenerateExhibition)
   updateExhibitionButtonLabel();
   feedback.style.color = 'var(--muted)';
   feedback.textContent = 'Recherche en cours…';
@@ -9099,11 +9260,13 @@ applyHandedness(localStorage.getItem('handedness') === 'lefty');
 // Bandeau du haut déplaçable : glisser la poignée ⠿, position mémorisée sur l'appareil.
 $('other-works-back-button')?.addEventListener('click', () => {
   const prevIdx = currentArtistWorksIndex - 1;
-  if (prevIdx >= 0) openArtistWorksPage(prevIdx);
+  if (prevIdx < 0) return;
+  if (otherWorksSource === 'museum') openMuseumWorksPage(prevIdx); else openArtistWorksPage(prevIdx);
 });
 $('other-works-next-button')?.addEventListener('click', () => {
   const nextIdx = currentArtistWorksIndex + 1;
-  if (nextIdx < artistListSortedRows.length) openArtistWorksPage(nextIdx);
+  if (otherWorksSource === 'museum') { if (nextIdx < museumNavRows.length) openMuseumWorksPage(nextIdx); }
+  else if (nextIdx < artistNavRows.length) openArtistWorksPage(nextIdx);
 });
 
 // --- Sélecteur de quiz par art / siècle / rubriques / niveau ---
@@ -10849,7 +11012,7 @@ const LEVEL_QUESTION_COUNTS = { '1': 30, '2': 60, '3': 120 };
 // ancienne version du fichier même après correction sur GitHub, l'adresse ne changeant jamais.
 // Calculé une fois au chargement de la page : une visite fraîche récupère toujours la dernière
 // version, tout en gardant le cache en mémoire (quizRowsCache) efficace pendant cette session.
-const DATA_CACHE_BUST = Date.now();
+let DATA_CACHE_BUST = Date.now(); // 'let' depuis v115 : le bouton « Actualiser » de la LISTE le renouvelle pour forcer un nouveau téléchargement des fichiers
 // Cache des fichiers déjà téléchargés (clé = art+siècle, pas l'URL complète avec son paramètre
 // anti-cache — sinon chaque appel générerait sa propre clé et le cache ne servirait plus à rien),
 // avec déduplication des requêtes en vol : un fichier n'est jamais téléchargé deux fois, et si
@@ -11272,13 +11435,17 @@ function placementDeleteSavedLayout(name) {
 // mêmes boîtes (retrouvées par leur clé d'œuvre) — une œuvre de la préparation qui ne serait plus
 // retrouvée (fichier modifié depuis) reste simplement dans la liste des œuvres à placer plutôt que de
 // faire échouer tout le chargement.
-async function placementLoadSavedLayout(name) {
-  const all = placementReadSavedLayouts();
-  const layout = all[name];
+async function placementLoadLayoutObject(layout, visit) {
   if (!layout) return;
   const works = layout.artistNames?.length ? await loadExhibitionWorksOnly(layout.artistNames, null) : null;
   if (!works || !works.length) { window.alert("Impossible de recharger les œuvres de cette préparation (artiste(s) introuvable(s))."); return; }
   placementRestoreFromLayout(layout, works);
+  // v115 : « Visiter » = rouvrir la préparation ET entrer directement dans la salle (sans passer
+  // par l'atelier) ; les œuvres non placées sont simplement laissées de côté, sans question.
+  if (visit) placementGenerateExhibition({ skipConfirm: true });
+}
+async function placementLoadSavedLayout(name, visit) {
+  await placementLoadLayoutObject(placementReadSavedLayouts()[name], visit);
 }
 function placementRestoreFromLayout(layout, works) {
   placementUidCounter = 0;
@@ -11311,7 +11478,7 @@ function placementRestoreFromLayout(layout, works) {
 // #placement-proto-saved-section, index.html) — chaque ligne : nom + date + bouton Ouvrir/Supprimer.
 // Inclut aussi, séparément, la dernière préparation générée automatiquement (filet de sécurité), si
 // elle existe et qu'aucun enregistrement nommé n'a déjà été fait à la même seconde.
-function placementRenderSavedList() {
+function placementRenderSavedList(savedOnly) {
   const section = $('placement-proto-saved-section');
   const host = $('placement-proto-saved-list');
   if (!section || !host) return;
@@ -11326,15 +11493,17 @@ function placementRenderSavedList() {
     const label = document.createElement('span');
     label.textContent = '↺ Dernière préparation générée';
     row.appendChild(label);
+    const visitBtn = document.createElement('button');
+    visitBtn.type = 'button';
+    visitBtn.className = 'secondary-button';
+    visitBtn.textContent = 'Visiter';
+    visitBtn.addEventListener('click', () => placementLoadLayoutObject(lastGenerated, true));
+    row.appendChild(visitBtn);
     const openBtn = document.createElement('button');
     openBtn.type = 'button';
     openBtn.className = 'secondary-button';
-    openBtn.textContent = 'Reprendre';
-    openBtn.addEventListener('click', async () => {
-      const works = lastGenerated.artistNames?.length ? await loadExhibitionWorksOnly(lastGenerated.artistNames, null) : null;
-      if (!works || !works.length) { window.alert("Impossible de recharger les œuvres de cette préparation."); return; }
-      placementRestoreFromLayout(lastGenerated, works);
-    });
+    openBtn.textContent = 'Modifier';
+    openBtn.addEventListener('click', () => placementLoadLayoutObject(lastGenerated, false));
     row.appendChild(openBtn);
     host.appendChild(row);
   }
@@ -11344,11 +11513,17 @@ function placementRenderSavedList() {
     const label = document.createElement('span');
     label.textContent = name;
     row.appendChild(label);
+    const visitBtn = document.createElement('button');
+    visitBtn.type = 'button';
+    visitBtn.className = 'secondary-button';
+    visitBtn.textContent = 'Visiter';
+    visitBtn.addEventListener('click', () => placementLoadSavedLayout(name, true));
+    row.appendChild(visitBtn);
     const openBtn = document.createElement('button');
     openBtn.type = 'button';
     openBtn.className = 'secondary-button';
-    openBtn.textContent = 'Ouvrir';
-    openBtn.addEventListener('click', () => placementLoadSavedLayout(name));
+    openBtn.textContent = 'Modifier';
+    openBtn.addEventListener('click', () => placementLoadSavedLayout(name, false));
     row.appendChild(openBtn);
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -11361,7 +11536,10 @@ function placementRenderSavedList() {
     row.appendChild(deleteBtn);
     host.appendChild(row);
   });
-  section.classList.toggle('hidden', !lastGenerated && !names.length);
+  if (savedOnly && !lastGenerated && !names.length) {
+    host.innerHTML = '<p class="modal-hint">Aucune exposition enregistrée pour le moment.</p>';
+  }
+  section.classList.toggle('hidden', !savedOnly && !lastGenerated && !names.length);
 }
 
 function placementDemoWorks() {
@@ -11381,7 +11559,7 @@ function placementDemoWorks() {
 // feuilles directement — passe d'abord par #placement-proto-setup (voir placementConfirmRoomCount)
 // pour demander le nombre de salles, avec une suggestion de départ reprise de packGallerySegments
 // (la même estimation que l'ancienne répartition automatique), simplement modifiable par le joueur.
-function enterPlacementProto(candidates) {
+function enterPlacementProto(candidates, options) {
   const works = (candidates && candidates.length) ? candidates.filter(Boolean) : placementDemoWorks();
   placementUidCounter = 0;
   placementUnplaced = works.map((work) => ({ uid: ++placementUidCounter, work }));
@@ -11397,7 +11575,9 @@ function enterPlacementProto(candidates) {
   $('placement-proto')?.classList.add('placement-proto-setup-mode');
   // v114 (retour Stéphane : « il faut pouvoir la retrouver ») : propose, dès cette étape, de reprendre
   // une préparation déjà enregistrée — voir placementRenderSavedList.
-  placementRenderSavedList();
+  const savedOnly = !!options?.savedOnly;
+  $('placement-proto-setup')?.classList.toggle('placement-proto-saved-only', savedOnly);
+  placementRenderSavedList(savedOnly);
 }
 function placementConfirmRoomCount() {
   const input = $('placement-proto-room-count');
@@ -11770,8 +11950,8 @@ document.addEventListener('click', (event) => {
 // d'être recentrée. Le chevauchement éventuel n'est pas corrigé ici non plus : le joueur en a été
 // informé dans l'atelier (éclair + bip) mais jamais empêché d'aller plus loin — même logique côté
 // vraie salle.
-function placementGenerateExhibition() {
-  if (placementUnplaced.length > 0) {
+function placementGenerateExhibition(options) {
+  if (placementUnplaced.length > 0 && !options?.skipConfirm) {
     const continuer = window.confirm(`Il reste ${placementUnplaced.length} œuvre(s) non placée(s) — elles ne seront pas incluses dans l'exposition.\n\nContinuer quand même ?`);
     if (!continuer) return;
   }
@@ -11806,8 +11986,33 @@ function placementGenerateExhibition() {
   // l'archive ») : filet de sécurité automatique — TOUJOURS enregistré à la génération, même sans
   // enregistrement nommé explicite, pour qu'une préparation générée reste toujours récupérable.
   try { localStorage.setItem(PLACEMENT_LAST_GENERATED_KEY, JSON.stringify(placementSnapshotCurrentLayout())); } catch (e) { /* non bloquant */ }
+  // v115 (retour Stéphane : « quand on a monté une exposition, on sort, on veut la revoir...
+  // normalement elle devrait rester en mémoire. Or elle ne reste pas : tout revient sur une seule
+  // salle avec une couleur différente, les tableaux sont mélangés ») : « Revoir l'exposition » repassait
+  // par enterScaleView -> packGallerySegments (répartition AUTOMATIQUE), qui ignorait complètement
+  // la disposition fabriquée. On la garde donc en mémoire pour toute la session (pas dans le
+  // stockage durable : fermer l'application sans avoir enregistré la fait disparaître, comme il le
+  // souhaite) ; elle est associée aux artistes de l'exposition pour ne jamais être ressortie après
+  // un « Changer l'exposition » (voir l'écouteur de exhibition-resume-button).
+  builtExhibition = { segments, works: allPlacedWorks, artistsSig: localStorage.getItem('lastExhibitionArtists') || '[]' };
+  placementShowBuiltExhibition(segments, allPlacedWorks);
+}
+// Mémoire de session de la dernière exposition FABRIQUÉE (voir placementGenerateExhibition).
+let builtExhibition = null;
+// Entre dans la vraie salle avec des emplacements déjà décidés — utilisé à la génération ET pour
+// « Revoir l'exposition » après être sorti.
+function placementShowBuiltExhibition(segments, works) {
+  if (works && works.length) {
+    state.currentOtherWorks = works;
+    state.scaleViewCandidates = works;
+    currentLightboxWork = works[0];
+  }
   $('placement-proto')?.classList.add('hidden');
   $('image-lightbox')?.classList.remove('hidden');
+  // Mêmes préparatifs d'affichage que enterScaleView (on n'y passe pas : il referait la répartition automatique).
+  $('lightbox-scale-view')?.classList.remove('hidden');
+  $('lightbox-scale-toggle-topbar')?.classList.add('hidden');
+  $('lightbox-scale-back-button')?.classList.remove('hidden');
   enterGalleryProtoWithSegments(segments);
 }
 
@@ -11820,7 +12025,7 @@ $('placement-proto-setup-confirm')?.addEventListener('click', placementConfirmRo
 $('placement-proto-room-count')?.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') placementConfirmRoomCount();
 });
-$('placement-proto-generate')?.addEventListener('click', placementGenerateExhibition);
+$('placement-proto-generate')?.addEventListener('click', () => placementGenerateExhibition());
 // v114 (retour Stéphane : « il faut pouvoir l'enregistrer ») : boutons du petit dialogue
 // d'enregistrement nommé — jamais de window.prompt() dans cette application (voir convention
 // maison), donc une petite carte dédiée comme #placement-proto-setup-card.

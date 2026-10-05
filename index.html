@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=255" />
+    <link rel="stylesheet" href="style.css?v=256" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -107,7 +107,8 @@
              d'artiste), mais au lieu de les répartir automatiquement (comme "Revoir"/"Changer"), ouvre
              l'atelier de placement manuel (#placement-proto) pour que le joueur les dispose lui-même,
              salle par salle. -->
-        <button type="button" class="secondary-button" id="exhibition-build-button" style="width:100%;">🧱 Fabriquer une exposition</button>
+        <button type="button" class="secondary-button" id="exhibition-build-button" style="width:100%;margin-bottom:8px;">🧱 Fabriquer une exposition</button>
+        <button type="button" class="secondary-button" id="exhibition-load-saved-button" style="width:100%;">📂 Recharger une exposition enregistrée</button>
       </div>
       <div id="exhibition-picker-form">
         <p style="font-family:Georgia,serif;font-size:1rem;margin:0 0 10px;">Quel(s) artiste(s) veux-tu exposer dans la salle aujourd'hui ?</p>
@@ -1396,6 +1397,8 @@
             <div class="artist-list-mode-row">
               <button type="button" class="secondary-button" id="artist-list-mode-full">Liste complète</button>
               <button type="button" class="secondary-button" id="artist-list-mode-filtered">Liste par choix des critères</button>
+              <button type="button" class="secondary-button" id="artist-list-mode-museum">Liste par musée</button>
+              <button type="button" class="secondary-button" id="artist-list-refresh" title="Relire les fichiers Excel (pour voir les œuvres ajoutées)">🔄 Actualiser</button>
             </div>
             <p class="modal-hint" id="artist-list-status">Chargement…</p>
             <input type="text" id="artist-list-search" class="artist-list-search-input" placeholder="Rechercher un artiste ou une œuvre…" autocomplete="off" />
@@ -2091,6 +2094,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=341"></script>
+    <script src="app.js?v=342"></script>
   </body>
 </html>

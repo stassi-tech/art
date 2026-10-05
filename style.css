@@ -2518,3 +2518,10 @@ body.stephane-test-decor .scale-wall-pillar {
 }
 #placement-proto-save-buttons { display:flex; gap:10px; }
 #placement-proto-save-buttons button { flex:1; }
+
+/* v115 — « Recharger une exposition enregistrée » : on n'affiche que la liste des expositions
+   enregistrées (pas la question « combien de salles »). */
+#placement-proto-setup.placement-proto-saved-only #placement-proto-setup-title,
+#placement-proto-setup.placement-proto-saved-only #placement-proto-room-count,
+#placement-proto-setup.placement-proto-saved-only #placement-proto-setup-confirm { display:none; }
+#placement-proto-setup.placement-proto-saved-only #placement-proto-saved-section { margin-top:0; padding-top:0; border-top:none; }
