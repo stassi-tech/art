@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v113';
+const APP_VERSION = 'v114';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -4549,10 +4549,21 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
       img.dataset.fallbackTried = '1';
       img.src = `https://images.weserv.nl/?url=${encodeURIComponent(sizedSrc)}&w=300`;
     }, { once: true });
-    const imgTopPx = winHeightPx / 2 - heightPx / 2;
+    // v114 (bug réel signalé par Stéphane : « il y a eu un chevauchement de deux tableaux qui
+    // pourtant ne se chevauchaient pas sur la feuille ») : en mode manuel, la hauteur était TOUJOURS
+    // recentrée ici (imgTopPx fixe, qui ignorait complètement work._manualYCm) alors que l'atelier de
+    // placement, lui, affiche et contrôle le chevauchement sur les DEUX axes (x ET y, voir
+    // placementBoxesOverlapOrTooClose) — deux tableaux décalés verticalement dans l'atelier pour ne
+    // pas se chevaucher se retrouvaient donc systématiquement ramenés à la MÊME hauteur ici, recréant
+    // artificiellement le chevauchement que le joueur avait justement évité. On respecte désormais la
+    // position verticale EXACTE choisie, exactement comme la position horizontale (cursor) déjà
+    // corrigée en v113 — jamais recentrée en mode manuel.
+    const imgTopPx = manualMode
+      ? Math.max(0, Math.min(winHeightPx - heightPx, work._manualYCm * pxPerCm))
+      : winHeightPx / 2 - heightPx / 2;
     img.style.left = `${cursor}px`;
-    // Centré verticalement dans la hauteur visible de la fenêtre, comme avant (v87→v90) — inchangé,
-    // déjà éprouvé.
+    // Centré verticalement dans la hauteur visible de la fenêtre pour une répartition automatique
+    // (comme avant, v87→v90) ; position EXACTE du joueur en mode manuel (voir ci-dessus, v114).
     img.style.top = `${imgTopPx}px`;
     img.style.width = `${widthPx}px`;
     img.style.height = `${heightPx}px`;
@@ -5032,7 +5043,12 @@ function buildGalleryTrack() {
     if (segment.ambiance && GALLERY_AMBIANCE_WALL_STYLE[segment.ambiance]) {
       wallEl.style.backgroundColor = `#${GALLERY_AMBIANCE_WALL_STYLE[segment.ambiance].colorHex}`;
       wallEl.style.backgroundImage = `url('${GALLERY_AMBIANCE_WALL_STYLE[segment.ambiance].image}')`;
-    } else if (segment.colorHex) wallEl.style.backgroundColor = `#${segment.colorHex}`;
+    } else if (segment.colorHex) {
+      wallEl.style.backgroundColor = `#${segment.colorHex}`;
+      // v114 : une nuance précise choisie à la main (atelier de placement) doit se voir TELLE QUELLE,
+      // sans que la texture par défaut du mur (CSS) ne la recouvre — donc fond plat, image retirée.
+      if (segment.customColor) wallEl.style.backgroundImage = 'none';
+    }
     const worksEl = document.createElement('div');
     // v94 : porte AUSSI la classe scale-checkpoint-wall-works, purement comme repère JS pour
     // buildCheckpointCorridorWorks (qui la cherche par ce nom exact) — aucune règle CSS ne cible ce
@@ -11197,6 +11213,156 @@ let placementCurrentPage = 0;
 let placementAudioCtx = null;
 // v113 (retour Stéphane : « il faut déjà pouvoir décider de la couleur de la salle ») : { [sheetIndex]: ambianceKey }
 let placementSheetAmbiance = {};
+// v114 (retour Stéphane : « une espèce de petite palette où on puisse sélectionner une nuance très
+// précise ») : { [sheetIndex]: '#rrggbb' } — mutuellement exclusif avec placementSheetAmbiance (voir
+// placementOpenAmbiancePicker) : une salle a SOIT une des 8 ambiances nommées, SOIT une nuance
+// précise choisie à la main, jamais les deux à la fois.
+let placementSheetCustomColor = {};
+// Clé PERSISTANTE identifiant une œuvre dans les parties enregistrées (voir placementSaveCurrentLayout) —
+// les œuvres elles-mêmes ne sont jamais stockées (toujours re-téléchargées depuis le fichier Excel de
+// l'artiste), donc il faut un repère stable pour retrouver quelle boîte correspondait à quelle œuvre
+// une fois les mêmes artistes rechargés. Artiste + titre + date suffit dans la pratique.
+function placementWorkKey(work) {
+  return `${work?.artist || ''}||${work?.title || ''}||${work?.date || ''}`;
+}
+// v114 (retour Stéphane : « il faut pouvoir l'enregistrer et ensuite il faut pouvoir la retrouver
+// pour pouvoir éventuellement la modifier » — et, juste avant : « je ne pouvais pas revenir sur ma
+// préparation... soit il faut qu'une flèche ramène, soit il faut qu'on conserve l'archive ») : un
+// « espace d'enregistrement » simple, dans le stockage local du navigateur (même principe que
+// lastExhibitionArtists déjà existant) — un objet { nom: préparation } sous PLACEMENT_SAVED_KEY, et
+// une place à PART pour la toute dernière préparation générée (PLACEMENT_LAST_GENERATED_KEY),
+// remplie automatiquement à chaque clic sur « Générer l'exposition » MÊME SANS enregistrement
+// explicite — pour que ce que Stéphane a vécu cette fois (généré, repéré un problème, plus aucun
+// moyen de revenir dessus) ne puisse plus se reproduire, enregistrement explicite ou pas.
+const PLACEMENT_SAVED_KEY = 'placementSavedLayouts';
+const PLACEMENT_LAST_GENERATED_KEY = 'placementLastGenerated';
+function placementReadSavedLayouts() {
+  try { return JSON.parse(localStorage.getItem(PLACEMENT_SAVED_KEY) || '{}'); } catch (e) { return {}; }
+}
+function placementWriteSavedLayouts(all) {
+  try { localStorage.setItem(PLACEMENT_SAVED_KEY, JSON.stringify(all)); } catch (e) { /* stockage plein/indisponible — l'atelier reste utilisable, seule la sauvegarde échoue */ }
+}
+// Construit l'objet sérialisable représentant l'état ACTUEL de l'atelier (salles, ambiances,
+// couleurs précises, boîtes posées avec leur clé d'œuvre) — utilisé à la fois par l'enregistrement
+// nommé et par le filet de sécurité automatique à la génération.
+function placementSnapshotCurrentLayout() {
+  let artistNames = [];
+  try { artistNames = JSON.parse(localStorage.getItem('lastExhibitionArtists') || '[]'); } catch (e) {}
+  return {
+    savedAt: new Date().toISOString(),
+    artistNames,
+    totalSheets: placementTotalSheets,
+    ambiance: { ...placementSheetAmbiance },
+    customColor: { ...placementSheetCustomColor },
+    boxes: placementBoxes.map((b) => ({ workKey: placementWorkKey(b.work), sheetIndex: b.sheetIndex, xCm: b.xCm, yCm: b.yCm, wCm: b.wCm, hCm: b.hCm })),
+  };
+}
+function placementSaveCurrentLayout(name) {
+  const all = placementReadSavedLayouts();
+  all[name] = placementSnapshotCurrentLayout();
+  placementWriteSavedLayouts(all);
+}
+function placementDeleteSavedLayout(name) {
+  const all = placementReadSavedLayouts();
+  delete all[name];
+  placementWriteSavedLayouts(all);
+  placementRenderSavedList();
+}
+// Recharge les œuvres des artistes de la préparation enregistrée, puis reconstruit exactement les
+// mêmes boîtes (retrouvées par leur clé d'œuvre) — une œuvre de la préparation qui ne serait plus
+// retrouvée (fichier modifié depuis) reste simplement dans la liste des œuvres à placer plutôt que de
+// faire échouer tout le chargement.
+async function placementLoadSavedLayout(name) {
+  const all = placementReadSavedLayouts();
+  const layout = all[name];
+  if (!layout) return;
+  const works = layout.artistNames?.length ? await loadExhibitionWorksOnly(layout.artistNames, null) : null;
+  if (!works || !works.length) { window.alert("Impossible de recharger les œuvres de cette préparation (artiste(s) introuvable(s))."); return; }
+  placementRestoreFromLayout(layout, works);
+}
+function placementRestoreFromLayout(layout, works) {
+  placementUidCounter = 0;
+  placementUnplaced = [];
+  placementBoxes = [];
+  placementSheetAmbiance = { ...(layout.ambiance || {}) };
+  placementSheetCustomColor = { ...(layout.customColor || {}) };
+  placementTotalSheets = layout.totalSheets || PLACEMENT_SHEETS_PER_PAGE;
+  placementCurrentPage = 0;
+  const byKey = new Map();
+  works.forEach((work) => {
+    const key = placementWorkKey(work);
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(work);
+  });
+  (layout.boxes || []).forEach((savedBox) => {
+    const bucket = byKey.get(savedBox.workKey);
+    const work = bucket?.shift();
+    if (!work) return; // œuvre non retrouvée (voir commentaire de placementLoadSavedLayout) — ignorée ici, jamais bloquante
+    placementBoxes.push({ uid: ++placementUidCounter, work, sheetIndex: savedBox.sheetIndex, xCm: savedBox.xCm, yCm: savedBox.yCm, wCm: savedBox.wCm, hCm: savedBox.hCm });
+  });
+  const placedKeys = new Set(placementBoxes.map((b) => b.work));
+  works.forEach((work) => { if (!placedKeys.has(work)) placementUnplaced.push({ uid: ++placementUidCounter, work }); });
+  document.querySelectorAll('.welcome-panel').forEach((p) => p.classList.add('hidden'));
+  $('placement-proto')?.classList.remove('hidden');
+  $('placement-proto')?.classList.remove('placement-proto-setup-mode');
+  placementRenderAll();
+}
+// Liste des préparations enregistrées, affichée à l'étape « combien de salles » (voir
+// #placement-proto-saved-section, index.html) — chaque ligne : nom + date + bouton Ouvrir/Supprimer.
+// Inclut aussi, séparément, la dernière préparation générée automatiquement (filet de sécurité), si
+// elle existe et qu'aucun enregistrement nommé n'a déjà été fait à la même seconde.
+function placementRenderSavedList() {
+  const section = $('placement-proto-saved-section');
+  const host = $('placement-proto-saved-list');
+  if (!section || !host) return;
+  const all = placementReadSavedLayouts();
+  let lastGenerated = null;
+  try { lastGenerated = JSON.parse(localStorage.getItem(PLACEMENT_LAST_GENERATED_KEY) || 'null'); } catch (e) {}
+  const names = Object.keys(all);
+  host.innerHTML = '';
+  if (lastGenerated) {
+    const row = document.createElement('div');
+    row.className = 'placement-proto-saved-row';
+    const label = document.createElement('span');
+    label.textContent = '↺ Dernière préparation générée';
+    row.appendChild(label);
+    const openBtn = document.createElement('button');
+    openBtn.type = 'button';
+    openBtn.className = 'secondary-button';
+    openBtn.textContent = 'Reprendre';
+    openBtn.addEventListener('click', async () => {
+      const works = lastGenerated.artistNames?.length ? await loadExhibitionWorksOnly(lastGenerated.artistNames, null) : null;
+      if (!works || !works.length) { window.alert("Impossible de recharger les œuvres de cette préparation."); return; }
+      placementRestoreFromLayout(lastGenerated, works);
+    });
+    row.appendChild(openBtn);
+    host.appendChild(row);
+  }
+  names.forEach((name) => {
+    const row = document.createElement('div');
+    row.className = 'placement-proto-saved-row';
+    const label = document.createElement('span');
+    label.textContent = name;
+    row.appendChild(label);
+    const openBtn = document.createElement('button');
+    openBtn.type = 'button';
+    openBtn.className = 'secondary-button';
+    openBtn.textContent = 'Ouvrir';
+    openBtn.addEventListener('click', () => placementLoadSavedLayout(name));
+    row.appendChild(openBtn);
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'secondary-button';
+    deleteBtn.textContent = '✕';
+    deleteBtn.title = 'Supprimer cette préparation';
+    deleteBtn.addEventListener('click', () => {
+      if (window.confirm(`Supprimer définitivement « ${name} » ?`)) placementDeleteSavedLayout(name);
+    });
+    row.appendChild(deleteBtn);
+    host.appendChild(row);
+  });
+  section.classList.toggle('hidden', !lastGenerated && !names.length);
+}
 
 function placementDemoWorks() {
   return [
@@ -11221,6 +11387,7 @@ function enterPlacementProto(candidates) {
   placementUnplaced = works.map((work) => ({ uid: ++placementUidCounter, work }));
   placementBoxes = [];
   placementSheetAmbiance = {};
+  placementSheetCustomColor = {};
   placementCurrentPage = 0;
   const suggestedRooms = Math.max(1, Math.min(24, packGallerySegments(works).length || PLACEMENT_SHEETS_PER_PAGE));
   const roomCountInput = $('placement-proto-room-count');
@@ -11228,6 +11395,9 @@ function enterPlacementProto(candidates) {
   document.querySelectorAll('.welcome-panel').forEach((p) => p.classList.add('hidden'));
   $('placement-proto')?.classList.remove('hidden');
   $('placement-proto')?.classList.add('placement-proto-setup-mode');
+  // v114 (retour Stéphane : « il faut pouvoir la retrouver ») : propose, dès cette étape, de reprendre
+  // une préparation déjà enregistrée — voir placementRenderSavedList.
+  placementRenderSavedList();
 }
 function placementConfirmRoomCount() {
   const input = $('placement-proto-room-count');
@@ -11466,12 +11636,16 @@ function placementRenderSheets() {
     // v113 (retour Stéphane : « il faut déjà pouvoir décider de la couleur de la salle ») : petit
     // rond de couleur par salle, reprenant TELLES QUELLES les 8 ambiances déjà existantes (voir
     // GALLERY_AMBIANCE_WALL_STYLE/AMBIANCE_NAMES) — ouvre un petit choix au clic (placementOpenAmbiancePicker).
+    // v114 (retour Stéphane : « une nuance très précise ») : une salle peut aussi porter une couleur
+    // précise choisie à la main (placementSheetCustomColor), mutuellement exclusive avec l'ambiance
+    // nommée — le rond reflète laquelle des deux est active.
     const ambianceKey = placementSheetAmbiance[sheetIndex];
+    const customColor = placementSheetCustomColor[sheetIndex];
     const ambianceBtn = document.createElement('button');
     ambianceBtn.type = 'button';
     ambianceBtn.className = 'placement-proto-sheet-ambiance-btn';
-    ambianceBtn.style.background = ambianceKey ? `#${GALLERY_AMBIANCE_WALL_STYLE[ambianceKey].colorHex}` : 'transparent';
-    ambianceBtn.title = ambianceKey ? `Couleur de la salle : ${AMBIANCE_NAMES[ambianceKey] || ambianceKey}` : 'Choisir une couleur pour cette salle';
+    ambianceBtn.style.background = customColor || (ambianceKey ? `#${GALLERY_AMBIANCE_WALL_STYLE[ambianceKey].colorHex}` : 'transparent');
+    ambianceBtn.title = customColor ? `Couleur de la salle : ${customColor}` : (ambianceKey ? `Couleur de la salle : ${AMBIANCE_NAMES[ambianceKey] || ambianceKey}` : 'Choisir une couleur pour cette salle');
     ambianceBtn.setAttribute('aria-label', 'Choisir la couleur de cette salle');
     ambianceBtn.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -11538,8 +11712,11 @@ function placementOpenAmbiancePicker(sheetIndex, anchorBtn) {
     opt.appendChild(text);
     opt.addEventListener('click', (event) => {
       event.stopPropagation();
+      // v114 : une ambiance nommée et une nuance précise sont mutuellement exclusives (voir
+      // placementSheetCustomColor) — choisir l'une efface toujours l'autre.
       if (key) placementSheetAmbiance[sheetIndex] = key;
       else delete placementSheetAmbiance[sheetIndex];
+      delete placementSheetCustomColor[sheetIndex];
       placementCloseAmbiancePopover();
       placementRenderSheets();
     });
@@ -11549,6 +11726,32 @@ function placementOpenAmbiancePicker(sheetIndex, anchorBtn) {
   Object.keys(GALLERY_AMBIANCE_WALL_STYLE).forEach((key) => {
     buildOption(key, AMBIANCE_NAMES[key] || key, GALLERY_AMBIANCE_WALL_STYLE[key].colorHex);
   });
+  // v114 (retour Stéphane : « une espèce de petite palette où on puisse sélectionner une nuance très
+  // précise ») : au-delà des 8 ambiances toutes faites, une vraie palette de couleur (sélecteur natif
+  // du navigateur, fiable et sans code de rendu à réinventer) pour choisir n'importe quelle nuance
+  // exacte — efface alors l'ambiance nommée le cas échéant (mutuellement exclusif, voir plus haut).
+  // Note : volontairement PAS de classe placement-proto-ambiance-option ici — cette ligne n'est pas
+  // une option de la liste (elle ne se sélectionne pas d'un clic direct) et un test existant
+  // (test_v113_exhibition_build_and_exit.js) compte précisément 9 .placement-proto-ambiance-option
+  // (8 ambiances + Aucune) ; lui ajouter cette classe aurait cassé ce compte sans changement de
+  // comportement réel.
+  const customRow = document.createElement('div');
+  customRow.className = 'placement-proto-ambiance-custom-row';
+  const customLabel = document.createElement('span');
+  customLabel.textContent = 'Nuance précise :';
+  customRow.appendChild(customLabel);
+  const colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.value = placementSheetCustomColor[sheetIndex] || '#808080';
+  colorInput.addEventListener('input', (event) => {
+    event.stopPropagation();
+    placementSheetCustomColor[sheetIndex] = colorInput.value;
+    delete placementSheetAmbiance[sheetIndex];
+    placementRenderSheets();
+  });
+  colorInput.addEventListener('click', (event) => event.stopPropagation());
+  customRow.appendChild(colorInput);
+  popover.appendChild(customRow);
   document.body.appendChild(popover);
   const rect = anchorBtn.getBoundingClientRect();
   popover.style.left = `${Math.min(rect.left, window.innerWidth - 220)}px`;
@@ -11575,8 +11778,23 @@ function placementGenerateExhibition() {
   const segments = [];
   for (let sheetIndex = 0; sheetIndex < placementTotalSheets; sheetIndex += 1) {
     const boxes = placementBoxes.filter((b) => b.sheetIndex === sheetIndex).sort((a, b) => a.xCm - b.xCm);
-    const works = boxes.map((box) => { box.work._manualXCm = box.xCm; return box.work; });
-    segments.push({ ambiance: placementSheetAmbiance[sheetIndex] || undefined, works });
+    const works = boxes.map((box) => {
+      box.work._manualXCm = box.xCm;
+      // v114 (bug réel signalé par Stéphane, voir buildCheckpointCorridorWorks) : on transmet
+      // désormais AUSSI la position verticale exacte choisie dans l'atelier — sans ce réglage, le
+      // correctif de buildCheckpointCorridorWorks n'a rien à lire et reste sans effet.
+      box.work._manualYCm = box.yCm;
+      return box.work;
+    });
+    const customColor = placementSheetCustomColor[sheetIndex];
+    segments.push({
+      ambiance: placementSheetAmbiance[sheetIndex] || undefined,
+      // v114 : une nuance précise choisie à la main (sans ambiance nommée) est transmise en
+      // colorHex — buildGalleryTrack sait déjà appliquer ce champ (voir plus haut, else if (segment.colorHex)).
+      colorHex: !placementSheetAmbiance[sheetIndex] && customColor ? customColor.replace('#', '') : undefined,
+      customColor: !placementSheetAmbiance[sheetIndex] && !!customColor,
+      works,
+    });
   }
   const allPlacedWorks = segments.flatMap((s) => s.works);
   if (allPlacedWorks.length) {
@@ -11584,6 +11802,10 @@ function placementGenerateExhibition() {
     state.scaleViewCandidates = allPlacedWorks;
     currentLightboxWork = allPlacedWorks[0];
   }
+  // v114 (retour Stéphane : « je ne pouvais pas revenir sur ma préparation... il faut qu'on conserve
+  // l'archive ») : filet de sécurité automatique — TOUJOURS enregistré à la génération, même sans
+  // enregistrement nommé explicite, pour qu'une préparation générée reste toujours récupérable.
+  try { localStorage.setItem(PLACEMENT_LAST_GENERATED_KEY, JSON.stringify(placementSnapshotCurrentLayout())); } catch (e) { /* non bloquant */ }
   $('placement-proto')?.classList.add('hidden');
   $('image-lightbox')?.classList.remove('hidden');
   enterGalleryProtoWithSegments(segments);
@@ -11599,6 +11821,27 @@ $('placement-proto-room-count')?.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') placementConfirmRoomCount();
 });
 $('placement-proto-generate')?.addEventListener('click', placementGenerateExhibition);
+// v114 (retour Stéphane : « il faut pouvoir l'enregistrer ») : boutons du petit dialogue
+// d'enregistrement nommé — jamais de window.prompt() dans cette application (voir convention
+// maison), donc une petite carte dédiée comme #placement-proto-setup-card.
+$('placement-proto-save')?.addEventListener('click', () => {
+  const input = $('placement-proto-save-name');
+  if (input) input.value = '';
+  $('placement-proto-save-dialog')?.classList.remove('hidden');
+  input?.focus();
+});
+$('placement-proto-save-cancel')?.addEventListener('click', () => {
+  $('placement-proto-save-dialog')?.classList.add('hidden');
+});
+$('placement-proto-save-confirm')?.addEventListener('click', () => {
+  const name = $('placement-proto-save-name')?.value.trim();
+  if (!name) return;
+  placementSaveCurrentLayout(name);
+  $('placement-proto-save-dialog')?.classList.add('hidden');
+});
+$('placement-proto-save-name')?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') $('placement-proto-save-confirm')?.click();
+});
 $('placement-proto-prev-page')?.addEventListener('click', () => placementGoToPage(-1));
 $('placement-proto-next-page')?.addEventListener('click', () => placementGoToPage(1));
 $('placement-proto-add-room')?.addEventListener('click', () => {

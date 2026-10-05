@@ -2458,3 +2458,63 @@ body.stephane-test-decor .scale-wall-pillar {
   width:16px; height:16px; border-radius:50%; border:1px solid rgba(255,255,255,.35); flex:0 0 auto;
 }
 .placement-proto-ambiance-swatch-none { border-style:dashed; background:transparent; }
+
+/* v114 (retours de Stéphane après la v113) — voir le grand commentaire sur #placement-proto,
+   index.html, pour le contexte complet des 3 nouveautés ci-dessous. */
+
+/* Ligne « Nuance précise » ajoutée en bas du popover d'ambiance — sélecteur de couleur natif du
+   navigateur plutôt qu'un code de palette réinventé. Volontairement pas de classe
+   placement-proto-ambiance-option (voir commentaire dans placementOpenAmbiancePicker, app.js). */
+.placement-proto-ambiance-custom-row {
+  display:flex; align-items:center; gap:8px; width:100%; color:#eee; font-family:Arial,sans-serif;
+  font-size:.82rem; padding:8px 8px 4px; border-top:1px solid #454647; margin-top:4px;
+  box-sizing:border-box;
+}
+.placement-proto-ambiance-custom-row input[type="color"] {
+  width:32px; height:22px; padding:0; border:1px solid #565758; border-radius:4px; cursor:pointer; background:none;
+}
+
+/* Liste des préparations enregistrées, à l'étape « combien de salles » (retour Stéphane : « il faut
+   pouvoir la retrouver ») — même carte que #placement-proto-setup-card, juste en dessous du bouton
+   Continuer. */
+#placement-proto-saved-section {
+  margin-top:20px; padding-top:16px; border-top:1px solid #d8d2c2; text-align:left;
+}
+#placement-proto-saved-title {
+  font-family:Georgia,'Times New Roman',serif; font-size:.88rem; color:#4a4a4a; margin:0 0 10px; text-align:center;
+}
+#placement-proto-saved-list { display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto; }
+.placement-proto-saved-row {
+  display:flex; align-items:center; gap:8px; background:#e9e4d6; border:1px solid #cfc7ae; border-radius:4px;
+  padding:6px 10px;
+}
+.placement-proto-saved-row span { flex:1; font-size:.82rem; color:#2a2a2a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.placement-proto-saved-row button {
+  font-size:.75rem; padding:3px 8px; border:1px solid #8a7f6a; border-radius:4px; background:#f4f1ea;
+  color:#2a2a2a; cursor:pointer; flex:0 0 auto;
+}
+.placement-proto-saved-row button:hover { background:#fff; }
+
+/* Bouton « 💾 Enregistrer » du bandeau — même style neutre que les autres commandes du bandeau
+   (fermer, +Ajouter une salle), à la différence du bouton vert « Générer l'exposition ». */
+#placement-proto-save { margin-left:12px; }
+
+/* Petite fenêtre de nommage avant l'enregistrement — même habillage que #placement-proto-setup,
+   posée par-dessus tout le reste de l'atelier. */
+#placement-proto-save-dialog {
+  display:flex; position:absolute; inset:0; z-index:20; align-items:center; justify-content:center;
+  background:rgba(17,18,20,.92);
+}
+#placement-proto-save-card {
+  background:#f4f1ea; border-radius:8px; box-shadow:0 8px 28px rgba(0,0,0,.5); padding:28px 32px;
+  width:min(380px, 84vw); text-align:center;
+}
+#placement-proto-save-title {
+  font-family:Georgia,'Times New Roman',serif; font-size:1.05rem; color:#2a2a2a; margin:0 0 16px;
+}
+#placement-proto-save-name {
+  width:100%; font-size:1rem; padding:8px; border:1px solid #8a7f6a; border-radius:4px; font-family:inherit;
+  margin:0 0 18px; box-sizing:border-box;
+}
+#placement-proto-save-buttons { display:flex; gap:10px; }
+#placement-proto-save-buttons button { flex:1; }

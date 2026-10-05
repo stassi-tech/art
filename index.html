@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=254" />
+    <link rel="stylesheet" href="style.css?v=255" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -283,12 +283,33 @@
          même disposition sur les murs » — voir placementGenerateExhibition, app.js). -->
     <div id="placement-proto" class="hidden">
       <!-- v113 : première étape, demandée avant de montrer les feuilles elles-mêmes — reste masquée
-           (voir placementRenderAll/placementConfirmRoomCount, app.js) une fois confirmée. -->
+           (voir placementRenderAll/placementConfirmRoomCount, app.js) une fois confirmée.
+           v114 (retour Stéphane : « il faut pouvoir l'enregistrer et ensuite il faut pouvoir la
+           retrouver pour pouvoir éventuellement la modifier ») : cette même étape propose maintenant
+           aussi de reprendre une préparation déjà enregistrée (#placement-proto-saved-list, rempli
+           par placementRenderSavedList, app.js) plutôt que de repartir d'une feuille vide. -->
       <div id="placement-proto-setup">
         <div id="placement-proto-setup-card">
           <p id="placement-proto-setup-title">Combien de salles veux-tu pour cette exposition ?</p>
           <input type="number" id="placement-proto-room-count" min="1" max="24" value="4" />
           <button type="button" class="primary-button" id="placement-proto-setup-confirm">Continuer →</button>
+          <div id="placement-proto-saved-section" class="hidden">
+            <p id="placement-proto-saved-title">Ou reprendre une préparation enregistrée :</p>
+            <div id="placement-proto-saved-list"></div>
+          </div>
+        </div>
+      </div>
+      <!-- v114 (même retour Stéphane) : petite fenêtre pour nommer une préparation avant de
+           l'enregistrer — remplace un window.prompt() brut par une carte cohérente avec le reste de
+           l'atelier. -->
+      <div id="placement-proto-save-dialog" class="hidden">
+        <div id="placement-proto-save-card">
+          <p id="placement-proto-save-title">Nom de cette préparation</p>
+          <input type="text" id="placement-proto-save-name" placeholder="Ex. Rétrospective Monet" />
+          <div id="placement-proto-save-buttons">
+            <button type="button" class="secondary-button" id="placement-proto-save-cancel">Annuler</button>
+            <button type="button" class="primary-button" id="placement-proto-save-confirm">Enregistrer</button>
+          </div>
         </div>
       </div>
       <div id="placement-proto-topbar">
@@ -297,6 +318,7 @@
         <button type="button" id="placement-proto-prev-page" title="Salles précédentes">◄</button>
         <button type="button" id="placement-proto-next-page" title="Salles suivantes">►</button>
         <button type="button" id="placement-proto-add-room">+ Ajouter une salle</button>
+        <button type="button" id="placement-proto-save" title="Enregistrer cette préparation">💾 Enregistrer</button>
         <button type="button" id="placement-proto-generate">Générer l'exposition →</button>
       </div>
       <div id="placement-proto-body">
@@ -2069,6 +2091,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=340"></script>
+    <script src="app.js?v=341"></script>
   </body>
 </html>
