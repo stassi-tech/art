@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v116';
+const APP_VERSION = 'v117';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -3006,6 +3006,52 @@ let panelBeforeArtistList = null;
 // selon ses dimensions réelles (colonnes Hauteur/Longueur). Bascule accessible uniquement quand
 // ces dimensions sont connues pour l'œuvre affichée.
 let currentLightboxWork = null;
+// v117 (retour Stéphane : « le problème des proportions au niveau des statues... des statues de 5 mètres
+// au Vatican plus petites que des tableaux de 100 sur 80 ») : une photo de statue montre la statue ET
+// son décor (mur, salle, ciel) — mise à l'échelle comme un tableau (toute la photo = la hauteur de
+// l'Excel), la statue ressortait donc bien trop petite. Stéphane trace lui-même, avec l'outil
+// emprise-statues.html, un rectangle autour de la statue sur chaque photo ; ces rectangles sont lus
+// dans emprises-statues.json (à côté de index.html). Pour une œuvre qui en a un :
+//  - la HAUTEUR du fichier Excel est celle du RECTANGLE (donc de la statue, pas de la photo entière) ;
+//  - sa LARGEUR en découle (hauteur × rapport largeur/hauteur du rectangle) — plus besoin de colonne
+//    Longueur pour une statue ;
+//  - l'image n'est affichée que dans ce rectangle (CSS object-view-box, sans retoucher le fichier).
+// Les photos « incomplètes » (statue coupée par le bord) et les ensembles (fontaines, monuments) ne
+// figurent pas dans le fichier : elles gardent l'ancien calcul. Navigateur sans object-view-box (très
+// ancien) : on ignore les rectangles plutôt que de déformer l'image.
+const STATUE_EMPRISES = new Map();
+function imageFileKey(url) {
+  let name = String(url || '').split('?')[0].split('#')[0].replace(/\/+$/, '');
+  name = name.slice(name.lastIndexOf('/') + 1);
+  try { name = decodeURIComponent(name); } catch (e) { /* nom tel quel */ }
+  return name.replace(/^\d+px-/, '').toLowerCase().replace(/[\s_]+/g, '_');
+}
+async function loadStatueEmprises() {
+  try {
+    const response = await fetch(`emprises-statues.json?v=${Date.now()}`, { cache: 'no-cache' });
+    if (!response.ok) return;
+    const data = await response.json();
+    (data.statues || []).forEach((st) => {
+      if (st && st.key && !st.statue_incomplete && st.x1 > st.x0 && st.y1 > st.y0 && st.largeur_px > 0 && st.hauteur_px > 0) STATUE_EMPRISES.set(st.key, st);
+    });
+  } catch (e) { /* fichier absent ou illisible : l'appli garde son calcul habituel */ }
+}
+function statueEmprise(work) {
+  if (!work || !work.image || !STATUE_EMPRISES.size) return null;
+  if (work._emprise !== undefined) return work._emprise;
+  const supported = !!(window.CSS && CSS.supports && CSS.supports('object-view-box', 'inset(0)'));
+  work._emprise = supported ? (STATUE_EMPRISES.get(imageFileKey(work.image)) || null) : null;
+  return work._emprise;
+}
+function empriseWidthOverHeight(e) { return ((e.x1 - e.x0) * e.largeur_px) / ((e.y1 - e.y0) * e.hauteur_px); }
+// Applique (ou retire, pour une <img> réutilisée d'une œuvre à l'autre) le recadrage sur la statue.
+function applyEmpriseCrop(img, work) {
+  if (!img) return;
+  const e = statueEmprise(work);
+  if (!e) { img.style.removeProperty('object-view-box'); return; }
+  img.style.setProperty('object-view-box', `inset(${(e.y0 * 100).toFixed(2)}% ${((1 - e.x1) * 100).toFixed(2)}% ${((1 - e.y1) * 100).toFixed(2)}% ${(e.x0 * 100).toFixed(2)}%)`);
+}
+loadStatueEmprises();
 function parseCmValue(raw) {
   const m = String(raw || '').replace(',', '.').match(/[\d.]+/);
   return m ? parseFloat(m[0]) : null;
@@ -4025,6 +4071,8 @@ function checkpointSanitizedSizeCm(w) {
   if (!hCm || hCm <= 0 || !isFinite(hCm)) hCm = 60;
   else if (hCm > CHECKPOINT_MAX_WORK_CM) hCm = CHECKPOINT_MAX_WORK_CM;
   let lCm = parseCmValue(w.longueur) || hCm * 1.3;
+  const empr = statueEmprise(w); // v117 : largeur déduite du rectangle tracé autour de la statue
+  if (empr) lCm = Math.min(hCm * empriseWidthOverHeight(empr), CHECKPOINT_MAX_WORK_CM);
   if (!lCm || lCm <= 0 || !isFinite(lCm) || lCm > CHECKPOINT_MAX_WORK_CM) lCm = Math.min(lCm || hCm * 1.3, CHECKPOINT_MAX_WORK_CM) || CHECKPOINT_MAX_WORK_CM;
   return { hCm, lCm };
 }
@@ -4435,6 +4483,7 @@ function placeCheckpointWorks(container, works, centerXPx, pxPerCm, winHeightPx,
     img.className = 'scale-checkpoint-work';
     img.alt = '';
     img.src = imageSourceSized(work.image, Math.max(widthPx, 40));
+    applyEmpriseCrop(img, work); // v117
     img.style.left = `${cursorX}px`;
     // Centré verticalement dans la hauteur visible de la fenêtre plutôt qu'à une hauteur des yeux
     // fixe (repère déjà repéré avant : un vrai milieu reste centré quel que soit l'écran).
@@ -4570,6 +4619,7 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
     img.decoding = 'async';
     const sizedSrc = imageSourceSized(work.image, Math.max(widthPx, 40));
     img.src = sizedSrc;
+    applyEmpriseCrop(img, work); // v117 : recadrage sur la statue (rectangle tracé par Stéphane)
     // v101 (même retour Stéphane, œuvres manquantes malgré leur présence « dans la liste ») : la
     // liste (même fonction citée ci-dessus) sait déjà se rattraper sur un échec de chargement
     // Wikimedia (miniature pas encore générée à cette taille précise, 404/timeout passager) en
@@ -5641,6 +5691,8 @@ window.addEventListener('resize', () => {
 function estimateWorkWidthCm(w) {
   let hCm = parseCmValue(w?.hauteur);
   if (!hCm || hCm <= 0 || !isFinite(hCm)) hCm = 60;
+  const empr = statueEmprise(w); // v117 : voir statueEmprise
+  if (empr) return hCm * empriseWidthOverHeight(empr);
   return parseCmValue(w?.longueur) || hCm * 1.3;
 }
 // Répartition des œuvres sur les 3 murs par largeur totale estimée (pas juste par nombre) : les
@@ -5733,7 +5785,8 @@ function buildWallSegment(wall, candidates, startPx, pxPerCm, maxPx, eyeLevelFro
     // À défaut de largeur connue, une proportion de tableau courante (un peu plus large que
     // haut) plutôt qu'un carré parfait, qui créait de grosses marges pour les œuvres au format
     // paysage (ex. Les Alyscamps de Gauguin) une fois affichées à leurs vraies proportions.
-    const lCm = parseCmValue(w.longueur) || hCm * 1.3;
+    const wEmpr = statueEmprise(w); // v117
+    const lCm = wEmpr ? hCm * empriseWidthOverHeight(wEmpr) : (parseCmValue(w.longueur) || hCm * 1.3);
     let artH = hCm * pxPerCm;
     let artW = lCm * pxPerCm;
     let note = '';
@@ -5754,6 +5807,7 @@ function buildWallSegment(wall, candidates, startPx, pxPerCm, maxPx, eyeLevelFro
     item.style.left = `${cursorLeft}px`;
     item.style.bottom = isSculpture ? '0px' : `${Math.max(eyeLevelFromBottom - artH / 2, 0)}px`;
     item.innerHTML = `<img src="${escapeHtml(imageSourceSized(w.image, artW))}" alt="" />`;
+    applyEmpriseCrop(item.querySelector('img'), w); // v117
     item.addEventListener('click', () => {
       $('lightbox-scale-caption').textContent = `Hauteur réelle : ${hCm} cm${note}`;
       enterFocusView(w, hCm, note);
@@ -6029,7 +6083,8 @@ function enterFocusView(work, hCm, note, cartelWork) {
   // Sans donnée fiable, mieux vaut ne pas entrer dans cette vue plutôt que d'afficher n'importe
   // quoi : le clic n'a alors simplement aucun effet.
   if (!hCm || hCm <= 0 || !isFinite(hCm)) return;
-  const lCm = parseCmValue(work.longueur) || hCm * 1.3;
+  const focusEmpr = statueEmprise(work); // v117
+  const lCm = focusEmpr ? hCm * empriseWidthOverHeight(focusEmpr) : (parseCmValue(work.longueur) || hCm * 1.3);
   $('scale-focus-view').classList.remove('hidden');
   // v109 : #scale-focus-view est niché dans .app-shell (z-index:1 vu depuis <body>), alors que la
   // galerie-couloir actuelle (#gallery-proto) est un enfant direct de <body> en z-index:150 — un
@@ -6067,6 +6122,7 @@ function enterFocusView(work, hCm, note, cartelWork) {
   const silhH = 170 * pxPerCm;
   const img = $('scale-focus-img');
   img.src = imageSourceSized(work.image, artW);
+  applyEmpriseCrop(img, work); // v117 (efface le recadrage d'une œuvre précédente si celle-ci n'en a pas)
   img.style.width = `${artW}px`;
   img.style.height = `${artH}px`;
   img.style.left = `calc(50% - ${artW / 2 - 60}px)`;
@@ -11862,6 +11918,7 @@ function placementBuildBoxEl(box) {
   el.style.height = `${box.hCm * placementPxPerCm}px`;
   const img = document.createElement('img');
   img.src = imageSourceSized(box.work.image, box.wCm * placementPxPerCm);
+  applyEmpriseCrop(img, box.work); // v117
   img.alt = '';
   el.appendChild(img);
   const badge = document.createElement('span');
