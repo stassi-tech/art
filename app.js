@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v122';
+const APP_VERSION = 'v124';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -883,7 +883,7 @@ async function populateArtistSuggestions() {
   const status = $('pf-artist-list-status');
   if (!list) return;
   status.textContent = 'Chargement de la liste des artistes…';
-  const ok = await loadArtistListIfNeeded();
+  const ok = await loadArtistListComplete();
   if (!ok) {
     status.textContent = "La liste des artistes n'a pas pu être chargée (connexion internet ?).";
     list.innerHTML = '';
@@ -6693,6 +6693,7 @@ async function openArtistWorksPage(idx) {
   // bel et bien dans les fichiers. On accepte donc aussi une correspondance sur le surnom seul.
   const surnomKey = row['Surnom'] ? keyName(row['Surnom']) : '';
   const works = allRows
+    .filter((w) => w.title || w.image) // v124 : une ligne qui ne porte encore que le nom de l'artiste (ni titre ni image) n'est pas une œuvre à afficher
     .filter((w) => { const wKey = keyName(w.artist); return wKey === keyName(artistName) || (surnomKey && wKey === surnomKey); })
     .sort((a, b) => {
       const yearA = yearsOf(a.date)[0]; const yearB = yearsOf(b.date)[0];
@@ -7084,7 +7085,7 @@ function renderArtistListTable() {
   const hasSearch = artistListSearchTerm.trim().length > 0;
   status.textContent = (hasMenuFilter || hasSearch)
     ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant${sorted.length > 1 ? 's' : ''} (sur ${artistListRows.length} au total).${sorted.length === 0 && hasSearch ? ' Un artiste qui vient d’être ajouté aux fichiers d’œuvres n’apparaît ici que s’il figure aussi dans le fichier maître (onglet Sheet1) : vérifiez-le, puis appuyez sur « Actualiser ».' : ''}`
-    : `${artistListRows.length} artistes référencés dans les quiz. Cliquez sur un nom pour voir ses œuvres.`;
+    : `${artistListRows.length} artistes référencés dans les quiz. Cliquez sur un nom pour voir ses œuvres.${artistListAutoNames.length ? ` Ajouté${artistListAutoNames.length > 1 ? 's' : ''} automatiquement depuis les fichiers d’œuvres (nationalité, dates et bio à compléter dans le fichier maître) : ${artistListAutoNames.slice(0, 12).join(', ')}${artistListAutoNames.length > 12 ? `… (+${artistListAutoNames.length - 12})` : ''}.` : ''}`;
 }
 // v115 (retour Stéphane : « ce qui serait bien dans la liste, c'est aussi de prévoir une entrée par
 // musée — la liste de toutes les œuvres présentes dans le musée s'afficherait ») : 3e mode de la LISTE.
@@ -7200,9 +7201,9 @@ $('artist-list-refresh')?.addEventListener('click', async () => {
   quizRowsCache.clear(); quizRowsResolvedCache.clear();
   titleSearchIndex = null; titleSearchIndexCacheSize = -1;
   museumIndexRows = null;
-  artistListLoaded = false;
+  artistListLoaded = false; artistListAutoDone = false;
   DATA_CACHE_BUST = Date.now();
-  const ok = await loadArtistListIfNeeded();
+  const ok = await loadArtistListComplete();
   if (!ok) { status.textContent = "L'actualisation a échoué (connexion internet ?)."; return; }
   populateArtistListFilters();
   await setArtistListMode(artistListMode);
@@ -7307,6 +7308,75 @@ async function loadArtistListIfNeeded() {
   } catch (error) {
     return false;
   }
+}
+// v124 (Stéphane : « je ne voudrais plus m'occuper du fichier maître : quand j'introduis un nom ou une
+// œuvre dans un fichier Excel, il doit être répertorié automatiquement ») : le fichier maître ne sert
+// plus de seule source de la liste. À l'ouverture de la LISTE (et de tout écran qui propose des
+// artistes), on lit aussi les 14 fichiers peinture/sculpture × siècle (déjà mis en cache, donc
+// généralement instantané) et :
+//  - un artiste présent dans ces fichiers mais ABSENT du maître est ajouté à la liste (« _auto ») avec ce
+//    qu'on sait de lui : nom, art(s), siècle(s) — nationalité, dates, surnom, portrait et bio restent à
+//    renseigner dans le maître (rien ne peut les deviner), et la LISTE signale les artistes concernés ;
+//  - pour un artiste DÉJÀ au maître, les colonnes Art(s) et Siècle(s) sont complétées avec ce que
+//    montrent les fichiers (sans rien retirer) : sinon sa page ne cherchait ses œuvres que dans les
+//    siècles listés au maître, et ratait celles ajoutées dans un autre siècle.
+let artistListAutoDone = false;
+let artistListAutoNames = [];
+async function augmentArtistListFromQuizFiles() {
+  if (artistListAutoDone || !artistListLoaded) return;
+  artistListAutoDone = true;
+  artistListAutoNames = [];
+  const arts = ['peinture', 'sculpture'];
+  const centuries = ['14e', '15e', '16e', '17e', '18e', '19e', '20e'];
+  const found = new Map(); // clé de nom -> { prenom, patronyme, arts:Set, centuries:Set, alt:Set<clé alternative> }
+  await Promise.all(arts.flatMap((art) => centuries.map(async (century) => {
+    let rows;
+    try { rows = await fetchQuizRows(art, century); } catch (e) { return; } // fichier absent : ignoré
+    rows.forEach((r) => {
+      const fullName = [r.prenom, r.patronyme].filter(Boolean).join(' ').trim() || String(r.artist || '').trim();
+      const key = keyName(fullName);
+      if (!key) return;
+      let entry = found.get(key);
+      if (!entry) { entry = { prenom: r.prenom || '', patronyme: r.patronyme || (r.prenom ? '' : fullName), arts: new Set(), centuries: new Set(), alt: new Set() }; found.set(key, entry); }
+      entry.arts.add(art); entry.centuries.add(century);
+      if (r.artist) entry.alt.add(keyName(r.artist));
+    });
+  })));
+  const masterByKey = new Map();
+  artistListRows.forEach((row) => {
+    const { nameKey, surnomKey } = artistRowNameKeys(row);
+    if (nameKey) masterByKey.set(nameKey, row);
+    if (surnomKey && !masterByKey.has(surnomKey)) masterByKey.set(surnomKey, row);
+  });
+  const cap = (a) => a.charAt(0).toUpperCase() + a.slice(1);
+  const sortedCenturies = (set) => [...set].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  found.forEach((entry, key) => {
+    let master = masterByKey.get(key);
+    if (!master) { for (const alt of entry.alt) { if (masterByKey.has(alt)) { master = masterByKey.get(alt); break; } } }
+    if (master) {
+      const have = (col) => new Set(String(master[col] || '').split(',').map((v) => keyName(v)).filter(Boolean));
+      const haveArts = have('Art(s)'); const haveCenturies = have('Siècle(s)');
+      const missingArts = [...entry.arts].filter((a) => !haveArts.has(a));
+      const missingCenturies = [...entry.centuries].filter((c) => !haveCenturies.has(keyName(c)));
+      if (missingArts.length) master['Art(s)'] = [String(master['Art(s)'] || '').trim(), ...missingArts.map(cap)].filter(Boolean).join(', ');
+      if (missingCenturies.length) master['Siècle(s)'] = [String(master['Siècle(s)'] || '').trim(), ...sortedCenturies(missingCenturies)].filter(Boolean).join(', ');
+    } else {
+      artistListRows.push({
+        'Prénom': entry.prenom, 'Patronyme': entry.patronyme, 'Surnom': '', 'Nationalité': '',
+        'Art(s)': [...entry.arts].map(cap).join(', '), 'Siècle(s)': sortedCenturies(entry.centuries).join(', '),
+        _auto: true,
+      });
+      artistListAutoNames.push([entry.prenom, entry.patronyme].filter(Boolean).join(' '));
+    }
+  });
+}
+// Charge le fichier maître PUIS complète la liste avec les fichiers d'œuvres (voir ci-dessus). À utiliser
+// pour tout écran qui PROPOSE des artistes ; fetchQuizRows et normaliseRows restent sur
+// loadArtistListIfNeeded seul (ils sont appelés PAR la complétion : éviter toute boucle).
+async function loadArtistListComplete() {
+  const ok = await loadArtistListIfNeeded();
+  if (ok) { try { await augmentArtistListFromQuizFiles(); } catch (e) { /* la liste du maître reste utilisable */ } }
+  return ok;
 }
 // --- Salle d'exposition : entrée par nom d'artiste (un ou plusieurs), directement dans la vue à
 // l'échelle avec les œuvres combinées de tous les artistes demandés.
@@ -7428,7 +7498,7 @@ $('exhibition-add-artist-button')?.addEventListener('click', () => {
 // ouvrir l'atelier de placement (enterPlacementProto) avec ces mêmes œuvres.
 async function loadExhibitionWorksOnly(names, feedback) {
   if (feedback) { feedback.style.color = 'var(--muted)'; feedback.textContent = 'Recherche en cours…'; }
-  const ok = await loadArtistListIfNeeded();
+  const ok = await loadArtistListComplete();
   if (!ok) { if (feedback) { feedback.style.color = 'var(--wrong)'; feedback.textContent = "La liste des artistes n'est pas disponible pour le moment."; } return null; }
   const matchedRows = [];
   names.forEach((name) => { const row = findArtistRow(name); if (row) matchedRows.push(row); });
@@ -7524,7 +7594,7 @@ $('exhibition-launch-button')?.addEventListener('click', async () => {
   updateExhibitionButtonLabel();
   feedback.style.color = 'var(--muted)';
   feedback.textContent = 'Recherche en cours…';
-  const ok = await loadArtistListIfNeeded();
+  const ok = await loadArtistListComplete();
   if (!ok) { feedback.style.color = 'var(--wrong)'; feedback.textContent = "La liste des artistes n'est pas disponible pour le moment."; return; }
   const matchedRows = [];
   const notFound = [];
@@ -7590,9 +7660,9 @@ $('menu-item-artistes')?.addEventListener('click', async () => {
   artistListSearchTerm = '';
   if ($('artist-list-search')) $('artist-list-search').value = '';
   openModal('modal-artist-list');
-  if (artistListLoaded) return;
+  if (artistListLoaded && artistListAutoDone) return;
   const status = $('artist-list-status');
-  const ok = await loadArtistListIfNeeded();
+  const ok = await loadArtistListComplete();
   if (ok) {
     populateArtistListFilters();
     setArtistListMode('full');
@@ -8641,6 +8711,15 @@ const NATURE_DESIGNATIONS = [
   { match: 'bas relief', word: 'bas-relief', feminine: false },
   { match: 'ronde bosse', word: 'ronde-bosse', feminine: true },
   { match: 'tableau', word: 'tableau', feminine: false }, // v122 : « Tableau » saisi dans « Nature de l'objet » (peintures)
+  // v123 (Stéphane : « une catégorie polyptique, ce serait embêtant de dire "tableau" pour un triptyque ») :
+  // peintures en plusieurs panneaux — la voix dit « ce triptyque », « ce polyptique », « ce retable »
+  // plutôt que « ce tableau ». Ces natures restent AFFICHÉES devant le matériau (« Triptyque en huile
+  // sur bois »), contrairement à « Tableau » qui y ferait redite (voir normaliseRows).
+  { match: 'polyptyque', word: 'polyptyque', feminine: false },
+  { match: 'polyptique', word: 'polyptyque', feminine: false }, // graphie « polyptique » acceptée aussi
+  { match: 'triptyque', word: 'triptyque', feminine: false },
+  { match: 'diptyque', word: 'diptyque', feminine: false },
+  { match: 'retable', word: 'retable', feminine: false },
   { match: 'monument funeraire', word: 'monument funéraire', feminine: false },
   { match: 'medaillon', word: 'médaillon', feminine: false },
   { match: 'element', word: 'élément', feminine: false },
@@ -10092,7 +10171,7 @@ async function populateGuidedArtistList() {
   const patience = $('gc-artist-patience');
   patience.classList.remove('hidden');
   status.textContent = 'Chargement de la liste des artistes…';
-  const ok = await loadArtistListIfNeeded();
+  const ok = await loadArtistListComplete();
   if (!ok) { patience.classList.add('hidden'); status.textContent = "La liste des artistes n'a pas pu être chargée (connexion internet ?)."; list.innerHTML = ''; return; }
   let matchingRows = artistListRows.filter(artistMatchesCurrentField);
   const levels = readGlobalRubriqueDefaults().levels || [];
