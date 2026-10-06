@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v124';
+const APP_VERSION = 'v125';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -2162,7 +2162,10 @@ function normaliseRows(rows) {
     // et au classement déplaçable / non déplaçable, mais n'est PAS préfixée au matériau dans la rubrique
     // « Nature et matériau » — on y lit seulement « Huile sur toile ». Sans matériau, on garde la nature.
     const natureIsPaintingGenre = /^(tableau|peinture|fresque)s?$/.test(keyName(nature));
-    const materialsPhrase = nature && materials && !natureIsPaintingGenre ? `${nature} en ${materials.charAt(0).toLowerCase()}${materials.slice(1)}` : (natureIsPaintingGenre && materials ? materials : (nature || materials));
+    // v125 : même logique quand le matériau répète déjà le mot de la nature (« Enluminure » + « Enluminure sur
+    // vélin », « Aquarelle » + « Aquarelle et gouache ») : on garde le matériau seul, sans « X en X ».
+    const materialsRepeatNature = !!(nature && materials && keyName(materials).includes(keyName(nature)));
+    const materialsPhrase = nature && materials && !natureIsPaintingGenre && !materialsRepeatNature ? `${nature} en ${materials.charAt(0).toLowerCase()}${materials.slice(1)}` : ((natureIsPaintingGenre || materialsRepeatNature) && materials ? materials : (nature || materials));
 
     // --- Dimensions : nouvelle structure Hauteur/Longueur/Profondeur si présente, sinon ancienne
     // colonne unique « dimensions » (repliée dans hauteur/longueur via une expression régulière).
@@ -8715,6 +8718,12 @@ const NATURE_DESIGNATIONS = [
   // peintures en plusieurs panneaux — la voix dit « ce triptyque », « ce polyptique », « ce retable »
   // plutôt que « ce tableau ». Ces natures restent AFFICHÉES devant le matériau (« Triptyque en huile
   // sur bois »), contrairement à « Tableau » qui y ferait redite (voir normaliseRows).
+  // v125 : natures hors peinture sur support classique présentes dans les fichiers de peinture
+  { match: 'enluminure', word: 'enluminure', feminine: true },
+  { match: 'estampe', word: 'estampe', feminine: true },
+  { match: 'aquarelle', word: 'aquarelle', feminine: true },
+  { match: 'dessin', word: 'dessin', feminine: false },
+  { match: 'email', word: 'émail', feminine: false },
   { match: 'polyptyque', word: 'polyptyque', feminine: false },
   { match: 'polyptique', word: 'polyptyque', feminine: false }, // graphie « polyptique » acceptée aussi
   { match: 'triptyque', word: 'triptyque', feminine: false },
