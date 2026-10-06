@@ -984,7 +984,7 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
    écrasant sa proportion malgré une hauteur correctement calculée — repéré via un cas réel où
    l'affichage était juste sur mobile (colonnes plus souples) mais faux sur ordinateur (colonnes
    figées). On repasse alors à une disposition souple où chaque vignette garde sa largeur propre. */
-.other-works-panel-list:has(.other-work-card-big.scaled) { display:flex !important; flex-wrap:wrap; align-items:flex-end; justify-content:center; gap:20px; }
+.other-works-panel-list:has(.other-work-card-big.scaled, .other-works-group-title) { display:flex !important; flex-wrap:wrap; align-items:flex-end; justify-content:center; gap:20px; }
 .image-lightbox { position:fixed; inset:0; z-index:300; background:rgba(10,10,10,.96); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
 .image-lightbox .quiz-topbar { position:fixed; top:66px; right:12px; margin:0; z-index:9999; }
 .image-lightbox img { max-width:92vw; max-height:78vh; object-fit:contain; border-radius:4px; cursor:pointer; }
@@ -2173,6 +2173,7 @@ body.stephane-test-decor .scale-wall-pillar {
 #gallery-proto-floor-dot {
   position:absolute; width:34px; height:42px; cursor:grab; z-index:4;
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.5)); pointer-events:auto;
+  touch-action:none; /* v122 : sans ceci le navigateur mobile annule le glissement du doigt (voir app.js) */
 }
 #gallery-proto-floor-dot.hidden { display:none; }
 /* v103 (retour Stéphane : « des lunettes sur le visage du personnage... en cliquant, on verrait une
@@ -2539,3 +2540,18 @@ body.stephane-test-decor .scale-wall-pillar {
 .other-works-panel-list .other-works-group-title span { font-weight:400; font-size:.85rem; color:#7a6e5d; }
 .other-works-panel-list .other-works-group-title:first-child { margin-top:0; }
 .other-work-size { font-family:Arial,sans-serif; font-size:.8rem; color:#7a6e5d; }
+
+/* v121 : œuvres non déplaçables (monuments, mobilier liturgique, fresques) — jamais mises à l'échelle :
+   vignettes de taille uniforme, placées après le groupe des œuvres déplaçables. Règle placée en fin de
+   fichier pour l'emporter sur les plafonds par palier count-X (même spécificité, l'ordre tranche). */
+.other-works-panel-list .other-work-card-big.fixed img { height:auto; max-height:200px; max-width:280px; }
+
+/* v122 (retour Stéphane : « sur mobile, on n'arrive pas à déplacer le personnage ») : sur écran tactile,
+   (1) le sac à dos garde le geste du doigt (touch-action:none, plus haut) et sa zone de toucher est
+   agrandie de 16 px tout autour (padding compensé par une marge négative : l'image ne bouge pas) ;
+   (2) le corps du personnage devient aussi une poignée (même glissement), cible bien plus large. */
+#gallery-proto-silhouette { touch-action:none; }
+@media (pointer:coarse) {
+  #gallery-proto-floor-dot { padding:16px; margin:-16px; }
+  #gallery-proto-silhouette { pointer-events:auto; cursor:grab; }
+}

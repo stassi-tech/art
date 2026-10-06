@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v120';
+const APP_VERSION = 'v122';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -2156,7 +2156,13 @@ function normaliseRows(rows) {
     const nature = natureKey ? String(row[natureKey] || '').trim() : '';
     // Phrase combinée pour le texte et la voix : « Monument funéraire en marbre » plutôt que
     // « sculpture » ou le matériau seul — se rabat sur ce qui est disponible si l'un manque.
-    const materialsPhrase = nature && materials ? `${nature} en ${materials.charAt(0).toLowerCase()}${materials.slice(1)}` : (nature || materials);
+    // v122 (question de Stéphane : remplir aussi « Nature de l'objet » pour les peintures, avec « Tableau »
+    // ou « Fresque », sans que cela s'affiche comme une redite de « Huile sur toile ») : quand la nature
+    // est un simple genre de peinture (tableau, peinture, fresque), elle sert à la voix (« cette fresque »)
+    // et au classement déplaçable / non déplaçable, mais n'est PAS préfixée au matériau dans la rubrique
+    // « Nature et matériau » — on y lit seulement « Huile sur toile ». Sans matériau, on garde la nature.
+    const natureIsPaintingGenre = /^(tableau|peinture|fresque)s?$/.test(keyName(nature));
+    const materialsPhrase = nature && materials && !natureIsPaintingGenre ? `${nature} en ${materials.charAt(0).toLowerCase()}${materials.slice(1)}` : (natureIsPaintingGenre && materials ? materials : (nature || materials));
 
     // --- Dimensions : nouvelle structure Hauteur/Longueur/Profondeur si présente, sinon ancienne
     // colonne unique « dimensions » (repliée dans hauteur/longueur via une expression régulière).
@@ -2893,6 +2899,12 @@ function spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, 
 // pas écrits non plus ») : withSurnom=true ajoute le surnom français après le nom civil (« Domenikos
 // Theotokopoulos, dit Le Greco »), comme Vrai/Faux le fait déjà depuis la v22. Paramètre optionnel :
 // Intrus, qui appelle aussi cette fonction, garde son comportement actuel.
+// v122 (retour Stéphane : « Chronologie : la voix ne dit pas les surnoms, elle ne dit pas le Greco, par
+// exemple ») : nom civil puis surnom (« El Greco, dit Le Greco »), comme dans Imprégnation et
+// Reconstitution ; sans surnom, le nom seul.
+function spokenArtistWithSurnom(work) {
+  return work?.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : (work?.artist || '');
+}
 function spokenFullReference(work, extraFields = null, withSurnom = false) {
   const on = (key) => !extraFields || extraFields.includes(key);
   const dimsPhrase = on('dimensions') ? spokenDimensionsPhrase(work) : '';
@@ -3068,6 +3080,8 @@ function parseCmValue(raw) {
 //   (3x) pour garder un vrai sens de proportion sans sacrifier la lisibilité de la plus petite.
 function relativeImageSizes(works, maxPx = 360, minPx = 170, defaultPx = 260) {
   if (window.innerWidth < 700) return works.map(() => defaultPx); // mobile : pas d'échelle relative
+  // v122 : œuvres non déplaçables (monuments, fresques…) : jamais mises à l'échelle.
+  if (works.some((w) => w && !isMovableWork(w))) return works.map(() => defaultPx);
   const heights = works.map((w) => parseCmValue(w?.hauteur));
   const validHeights = heights.filter((h) => h && h > 0);
   // Moins de 2 hauteurs connues : rien à comparer, on garde toutes les cases à une taille
@@ -5579,6 +5593,13 @@ function positionGalleryRopeBarrier() {
 (function attachGalleryFloorDotDrag() {
   const dot = $('gallery-proto-floor-dot');
   if (!dot) return;
+  // v122 (retour Stéphane : « sur mobile, dans la salle d'exposition, on n'arrive pas à déplacer le
+  // personnage ; il faut vraiment insister ») : sans « touch-action:none », le navigateur mobile
+  // s'approprie le geste du doigt (défilement/zoom de page) au bout de quelques pixels et annule le
+  // glissement (« pointercancel ») — d'où un personnage qui ne bouge que par à-coups. Corrigé en CSS
+  // (touch-action:none sur le sac à dos et sur le personnage). En plus, le corps du personnage lui-même
+  // est maintenant une poignée valable (cible bien plus large que le petit sac à dos de 34 × 42 px).
+  const handles = [dot, $('gallery-proto-silhouette')].filter(Boolean);
   const DRAG_THRESHOLD = 8;
   // v101 (retour Stéphane : « on trouvera un moyen de sortir, par exemple on tire le personnage vers
   // l'arrière ou quelque chose de plus joli », en remplacement du bouton "Fermeture du musée" retiré,
@@ -5592,24 +5613,26 @@ function positionGalleryRopeBarrier() {
   const GALLERY_EXIT_DRAG_FLOOR = -0.3;
   const GALLERY_EXIT_DRAG_THRESHOLD = -0.15;
   let dragging = false, downX = 0, startProgress = 0;
-  dot.addEventListener('pointerdown', (event) => {
-    event.preventDefault();
-    dragging = true; downX = event.clientX; startProgress = galleryProgress;
-    dot.setPointerCapture?.(event.pointerId);
-    dot.style.cursor = 'grabbing';
-  });
-  dot.addEventListener('pointermove', (event) => {
-    if (!dragging) return;
-    const dx = event.clientX - downX;
-    if (Math.abs(dx) > DRAG_THRESHOLD) {
-      stopGalleryWalking();
-      galleryProgress = Math.min(1, Math.max(GALLERY_EXIT_DRAG_FLOOR, startProgress + dx / galleryWalkRangePx));
-      updateGalleryWalkVisual();
-    }
+  handles.forEach((handle) => {
+    handle.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      dragging = true; downX = event.clientX; startProgress = galleryProgress;
+      handle.setPointerCapture?.(event.pointerId);
+      handle.style.cursor = 'grabbing';
+    });
+    handle.addEventListener('pointermove', (event) => {
+      if (!dragging) return;
+      const dx = event.clientX - downX;
+      if (Math.abs(dx) > DRAG_THRESHOLD) {
+        stopGalleryWalking();
+        galleryProgress = Math.min(1, Math.max(GALLERY_EXIT_DRAG_FLOOR, startProgress + dx / galleryWalkRangePx));
+        updateGalleryWalkVisual();
+      }
+    });
   });
   const stop = () => {
     dragging = false;
-    dot.style.cursor = 'grab';
+    handles.forEach((h) => { h.style.cursor = 'grab'; });
     if (galleryProgress <= GALLERY_EXIT_DRAG_THRESHOLD) {
       exitScaleViewCompletely();
       showPanel('training-hub');
@@ -5620,8 +5643,10 @@ function positionGalleryRopeBarrier() {
       updateGalleryWalkVisual();
     }
   };
-  dot.addEventListener('pointerup', stop);
-  dot.addEventListener('pointercancel', stop);
+  handles.forEach((handle) => {
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
+  });
 })();
 // v95 (retour Stéphane, capture à l'appui : « on retrouve la bande de parquet à croisillon qui coupe
 // les tableaux... il ne faut pas qu'elle réapparaisse là, il faut l'enlever ») : bug réel, corrigé à
@@ -6681,9 +6706,27 @@ async function openArtistWorksPage(idx) {
   if (!works.length) { list.innerHTML = '<p class="modal-hint">Aucune œuvre trouvée pour cet artiste.</p>'; return; }
   renderOtherWorksPanel();
 }
-// Au-delà de cette hauteur (cm), une œuvre qui n'est pas un tableau est un « monument » : elle ne peut pas être accrochée ou
-// exposée à côté d'un tableau, donc elle est présentée dans un groupe à part, avec sa propre échelle.
-const MONUMENT_MIN_CM = 500;
+// v121 : une œuvre est « non déplaçable » quand sa nature (colonne « Nature de l'objet »), son
+// matériau/technique ou son titre indique qu'elle fait corps avec un lieu : monument (y compris
+// funéraire), mobilier liturgique (baldaquin, chaire…), élément architectural ou décoratif, fresque
+// (ou peinture murale), plafond, voûte, coupole. Tout le reste — tableaux, sculptures (ronde-bosse,
+// reliefs, bustes), objets liturgiques — est « déplaçable » et peut être mis à l'échelle. On se fonde
+// sur le TEXTE du fichier (nature + matériau, et titre pour plafond/voûte/coupole) plutôt que sur la
+// hauteur : une fresque de 2,80 m (La Création d'Adam) n'est pas déplaçable, un tableau de 6,77 m
+// (Noces de Cana) l'est.
+const NON_MOVABLE_NATURE_RE = /monument|mobilier liturgique|element (architectural|decoratif)|fresque|peinture murale|mur peint|plafond|voute|coupole/;
+const NON_MOVABLE_TITLE_RE = /fresque|plafond|voute|coupole/;
+function isMovableWork(work) {
+  const natureText = keyName(`${work?.nature || ''} ${work?.materials || ''}`);
+  if (NON_MOVABLE_NATURE_RE.test(natureText)) return false;
+  if (NON_MOVABLE_TITLE_RE.test(keyName(work?.title || ''))) return false;
+  return true;
+}
+// v122 (retour Stéphane : « dans les différents jeux, il ne faut pas mélanger la catégorie déplaçable et
+// la catégorie non déplaçable » — une page de choix porte soit sur des monuments (pas à l'échelle), soit
+// sur des œuvres déplaçables (à l'échelle), jamais les deux : comparer un tableau à un baldaquin n'aurait
+// aucun sens, et compliquerait l'échelle des images).
+function sameMovability(a, b) { return isMovableWork(a) === isMovableWork(b); }
 // Taille réelle lisible sous la légende : « 38 × 30 cm », « 2,43 × 1,35 m »… (hauteur × longueur ;
 // la hauteur seule si la longueur n'est pas connue). Écrite en toutes lettres pour qu'on ne dépende
 // pas uniquement de la taille de la vignette pour juger des proportions.
@@ -6711,31 +6754,35 @@ function renderOtherWorksPanel() {
   // grande œuvre connue de cet artiste — pour voir d'un coup d'œil les écarts de taille entre ses
   // œuvres, sans avoir besoin d'ouvrir la vue à l'échelle. Les œuvres sans hauteur connue gardent
   // la taille par défaut (impossible de les mettre à l'échelle).
-  // v118 : deux groupes, chacun avec sa propre échelle. Avant, une seule échelle valait pour toute
-  // la page, ramenée à la plus grande œuvre (ex. 35 m pour les Quatre-Fleuves du Bernin) avec un
-  // plancher à 15 % : tout ce qui faisait moins de ~5 m recevait exactement la même taille, donc
-  // l'Autoportrait (38 cm) paraissait aussi grand que David (2 m). Désormais :
-  //  - « taille d'exposition » (jusqu'à MONUMENT_MIN_CM de hauteur, et œuvres sans hauteur connue) :
-  //    tableaux, statues, bustes… peuvent cohabiter dans une même salle, donc une échelle commune,
-  //    calée sur la plus grande œuvre DE CE GROUPE, sans plancher artificiel ;
-  //  - « monuments » (au-delà, et seulement pour ce qui n'est PAS un tableau) : Baldaquin, Colonnade,
-  //    fontaines… ne peuvent pas voisiner avec un tableau ; ils ont leur propre échelle, sous un titre
-  //    séparé. Un tableau, même de 7 m (Noces de Cana), reste TOUJOURS avec les autres tableaux.
-  const groupOf = (w) => { const h = parseCmValue(w.hauteur); return h && h > MONUMENT_MIN_CM && w.artCategory !== 'peinture' ? 'monument' : 'expo'; };
+  // v121 (retour Stéphane : « œuvres déplaçables : tableaux, sculptures, objets liturgiques → à l'échelle ;
+  // œuvres non déplaçables : monuments, mobilier liturgique, fresques → pas à l'échelle ») : le critère
+  // n'est plus une hauteur (v118/v119) mais la NATURE de l'œuvre (voir isMovableWork). Avant v118, une
+  // seule échelle valait pour toute la page, avec un plancher à 15 % : l'Autoportrait (38 cm)
+  // paraissait aussi grand que David (2 m). Désormais :
+  //  - « déplaçables » : peuvent cohabiter dans une même exposition, donc échelle commune, calée sur la
+  //    plus grande œuvre DE CE GROUPE, sans plancher artificiel ;
+  //  - « non déplaçables » : Baldaquin, fontaines, fresques… ne peuvent pas être exposées à côté d'un
+  //    tableau ; elles ne sont PAS mises à l'échelle (vignettes de taille uniforme), sous un titre séparé.
+  const groupOf = (w) => (isMovableWork(w) ? 'expo' : 'monument');
   const maxOf = (group) => {
     const hs = otherWorks.filter((w) => groupOf(w) === group).map((w) => parseCmValue(w.hauteur)).filter(Boolean);
     return hs.length ? Math.max(...hs) : 0;
   };
-  const groupMax = { expo: maxOf('expo'), monument: maxOf('monument') };
+  const groupMax = { expo: maxOf('expo'), monument: 0 };
   const hasMonuments = otherWorks.some((w) => groupOf(w) === 'monument');
+  const hasExpo = otherWorks.some((w) => groupOf(w) === 'expo');
+  const twoGroups = hasMonuments && hasExpo;
   const cardHtml = (otherQuestion, index) => {
     const source = imageSourceSized(otherQuestion.image, 400);
     const titleValue = formatCorrectionValue('title', otherQuestion.title);
-    const hCm = parseCmValue(otherQuestion.hauteur);
+    const isFixedGroup = groupOf(otherQuestion) === 'monument';
+    // Non déplaçable : jamais mis à l'échelle. (« fixed » = taille uniforme, seulement quand les deux
+    // groupes sont présents ; un artiste qui n'a QUE des œuvres non déplaçables garde l'ancienne grille.)
+    const hCm = isFixedGroup ? null : parseCmValue(otherQuestion.hauteur);
     const gMax = groupMax[groupOf(otherQuestion)];
     const scaleStyle = hCm && gMax ? ` style="--scale-ratio:${Math.max(hCm / gMax, 0.04)};"` : '';
     const sizeText = otherWorkSizeLabel(otherQuestion);
-    return `<button type="button" class="other-work-card-big${hCm ? ' scaled' : ''}" data-index="${index}"${scaleStyle}>
+    return `<button type="button" class="other-work-card-big${hCm ? ' scaled' : ''}${isFixedGroup && twoGroups ? ' fixed' : ''}" data-index="${index}"${scaleStyle}>
       <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
            onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
       <span class="other-work-caption"><strong>${titleValue}</strong><br>${otherWorksSource === 'museum' ? `${escapeHtml(otherQuestion.artist)}<br>${escapeHtml(otherQuestion.date)}` : `${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}`}${sizeText ? `<br><span class="other-work-size">${escapeHtml(sizeText)}</span>` : ''}</span>
@@ -6744,12 +6791,10 @@ function renderOtherWorksPanel() {
   let html = '';
   const expoIdx = []; const monIdx = [];
   otherWorks.forEach((w, i) => (groupOf(w) === 'monument' ? monIdx : expoIdx).push(i));
-  if (hasMonuments && expoIdx.length) html += '<h3 class="other-works-group-title">Œuvres de taille d’exposition <span>— à l’échelle les unes des autres</span></h3>';
+  if (twoGroups) html += '<h3 class="other-works-group-title">Œuvres déplaçables <span>— tableaux, sculptures, objets liturgiques : à l’échelle les unes des autres</span></h3>';
   html += expoIdx.map((i) => cardHtml(otherWorks[i], i)).join('');
-  if (hasMonuments) {
-    html += `<h3 class="other-works-group-title">Monuments et ensembles <span>— à l’échelle entre eux, mais pas par rapport au groupe précédent</span></h3>`;
-    html += monIdx.map((i) => cardHtml(otherWorks[i], i)).join('');
-  }
+  if (twoGroups) html += '<h3 class="other-works-group-title">Œuvres non déplaçables <span>— monuments, mobilier liturgique, fresques : pas à l’échelle</span></h3>';
+  html += monIdx.map((i) => cardHtml(otherWorks[i], i)).join('');
   list.innerHTML = html;
   // Rectangles de statues (v117) : la vignette montre la statue seule, sans socle ni décor, à la
   // vraie proportion de son rectangle — cohérent avec la hauteur lue dans le fichier Excel.
@@ -7038,7 +7083,7 @@ function renderArtistListTable() {
   const hasMenuFilter = artistListMode === 'filtered' && (artistListFilters.nationalite || artistListFilters.art || artistListFilters.siecle);
   const hasSearch = artistListSearchTerm.trim().length > 0;
   status.textContent = (hasMenuFilter || hasSearch)
-    ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant${sorted.length > 1 ? 's' : ''} (sur ${artistListRows.length} au total).`
+    ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant${sorted.length > 1 ? 's' : ''} (sur ${artistListRows.length} au total).${sorted.length === 0 && hasSearch ? ' Un artiste qui vient d’être ajouté aux fichiers d’œuvres n’apparaît ici que s’il figure aussi dans le fichier maître (onglet Sheet1) : vérifiez-le, puis appuyez sur « Actualiser ».' : ''}`
     : `${artistListRows.length} artistes référencés dans les quiz. Cliquez sur un nom pour voir ses œuvres.`;
 }
 // v115 (retour Stéphane : « ce qui serait bien dans la liste, c'est aussi de prévoir une entrée par
@@ -8026,12 +8071,12 @@ $('chrono-validate-button')?.addEventListener('click', () => {
   const ordinals = ['la première', 'la deuxième', 'la troisième', 'la quatrième'];
   let spokenText;
   if (isCorrect) {
-    const list = correctOrder.map((w, i) => `${ordinals[i]}, ${w.artist}, ${w.title}, en ${chronoYearOf(w)}`).join('. ');
+    const list = correctOrder.map((w, i) => `${ordinals[i]}, ${spokenArtistWithSurnom(w)}, ${w.title}, en ${chronoYearOf(w)}`).join('. ');
     spokenText = `${spokenVerdictOpener(true)} Voici l'ordre chronologique. ${list}.`;
   } else {
     const correctIndices = rightFlags.map((ok, i) => (ok ? i : -1)).filter((i) => i !== -1);
     const wrongIndices = rightFlags.map((ok, i) => (!ok ? i : -1)).filter((i) => i !== -1);
-    const wrongList = wrongIndices.map((i) => `à ${ordinals[i]} position, ${correctOrder[i].artist}, ${correctOrder[i].title}, en ${chronoYearOf(correctOrder[i])}`).join('. ');
+    const wrongList = wrongIndices.map((i) => `à ${ordinals[i]} position, ${spokenArtistWithSurnom(correctOrder[i])}, ${correctOrder[i].title}, en ${chronoYearOf(correctOrder[i])}`).join('. ');
     if (!correctIndices.length) {
       spokenText = `${spokenVerdictOpener(false)} Voici l'ordre chronologique. ${wrongList}.`;
     } else {
@@ -8271,7 +8316,11 @@ $('fam-start-button')?.addEventListener('click', async () => {
     let attempts = 0;
     while (questions.length < count && attempts < count * 15) {
       attempts++;
-      const group = famFindGroup('artist', pool, distractorCount, familySize);
+      // v122 : la famille ET ses intrus viennent toujours de la même catégorie (déplaçable / non
+      // déplaçable), tirée au hasard au prorata de leur effectif.
+      const movablePool = pool.filter(isMovableWork); const fixedPool = pool.filter((w) => !isMovableWork(w));
+      const catPool = fixedPool.length && Math.random() < fixedPool.length / pool.length ? fixedPool : (movablePool.length ? movablePool : fixedPool);
+      const group = famFindGroup('artist', catPool, distractorCount, familySize);
       if (!group) continue;
       const distractors = group.outsiders.slice().sort(() => Math.random() - 0.5).slice(0, distractorCount);
       if (distractors.length < distractorCount) continue;
@@ -8591,6 +8640,7 @@ const NATURE_DESIGNATIONS = [
   { match: 'haut relief', word: 'haut-relief', feminine: false },
   { match: 'bas relief', word: 'bas-relief', feminine: false },
   { match: 'ronde bosse', word: 'ronde-bosse', feminine: true },
+  { match: 'tableau', word: 'tableau', feminine: false }, // v122 : « Tableau » saisi dans « Nature de l'objet » (peintures)
   { match: 'monument funeraire', word: 'monument funéraire', feminine: false },
   { match: 'medaillon', word: 'médaillon', feminine: false },
   { match: 'element', word: 'élément', feminine: false },
@@ -8607,6 +8657,13 @@ function artDesignation(work) {
       return `${article} ${found.word}`;
     }
   }
+  // v122 (retour Stéphane : « dans Reconstitution la voix dit encore tableau à la place de fresque ; dans
+  // mes fichiers Excel je ne mets pas "tableau" mais "huile sur toile" — il faut regarder la colonne
+  // suivante ») : pour une peinture, la colonne « Nature de l'objet » est le plus souvent VIDE ; la
+  // distinction se lit alors dans « Matériaux et technique » (« Fresque », « Fresque et stuc »,
+  // « Fresques de la Villa Barbaro »… ≠ « Huile sur toile »). On y cherche donc seulement les mots
+  // qui désignent une peinture murale ; tout autre matériau (huile, tempera, marbre…) ne change rien.
+  if (/fresque|peinture murale|mur peint/.test(keyName(work?.materials))) return 'cette fresque';
   // Repli sur l'ancien critère peinture/sculpture quand « Nature de l'objet » est vide ou pas
   // reconnue (ex. « Tempera sur bois », qui désigne en réalité un tableau).
   return work?.artType === 'sculpture' ? 'cette sculpture' : 'ce tableau';
@@ -8771,6 +8828,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
           const others = pool.filter((r) => r !== correct
             && vfFieldValue(r, key)
             && keyName(vfFieldValue(r, key)) !== correctValueKey
+            && sameMovability(r, correct) // v122 : pas de valeur « fausse » empruntée à l'autre catégorie
             && (key !== 'artist' || !vfSameArtist(r, correct))
             && (key !== 'materials' || !vfSameMaterials(r, correct)));
           if (others.length) {
@@ -8854,7 +8912,12 @@ function vfShowQuestion() {
     if (f.key === 'dimensions') return spokenDimensionsPhrase(q.displayedSource[f.key]) || q.displayed[f.key];
     return q.displayed[f.key];
   }).join(' — ');
-  vfSpeak(spokenText);
+  // v122 (retour Stéphane : « dans Vrai/Faux la voix doit dire la consigne sur la première page : là, ça
+  // démarre brutalement ») : même règle que Intrus/Reconstitution — la consigne écrite (#vf-instruction)
+  // est lue UNE SEULE fois, avant les rubriques de la 1ʳᵉ question, dans une seule phrase vocale (pas de
+  // risque qu'une annulation en cours de route enchaîne la suite par erreur).
+  const vfConsigne = vfIndex === 0 ? ($('vf-instruction')?.textContent || '').trim() : '';
+  vfSpeak(vfConsigne ? `${vfConsigne} … ${spokenText}` : spokenText);
 }
 
 // v73 (retour Stéphane, 29/09) : « Voir la correction complète » ne faisait RIEN en Vrai/Faux — au
@@ -9202,6 +9265,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
     }
     RECON_SESSION = pool.slice(0, count).map((correct) => {
       const distractors = pickIntrusDistractors(correct, pool);
+      if (distractors.length < 2 && pool.some((r) => !sameMovability(r, correct))) return null; // v122 : pas de mélange déplaçable / non déplaçable
       const choices = [correct, ...distractors];
       for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [choices[i], choices[j]] = [choices[j], choices[i]]; }
       // Position du détail rogné biaisée vers le centre de l'image, où l'œuvre est visible —
@@ -9211,7 +9275,8 @@ $('recon-start-button')?.addEventListener('click', async () => {
       const cropX = minPos + Math.floor(Math.random() * (maxPos - minPos + 1));
       const cropY = minPos + Math.floor(Math.random() * (maxPos - minPos + 1));
       return { correct, choices, cropX, cropY };
-    });
+    }).filter(Boolean);
+    if (!RECON_SESSION.length) { feedback.textContent = "Pas assez d'œuvres de même catégorie (déplaçables / non déplaçables) pour ce choix."; return; }
     reconIndex = 0; reconCorrectCount = 0;
     showPanel('reconstitution');
     $('recon-ready-screen').classList.remove('hidden');
@@ -10750,7 +10815,7 @@ function pickIntrusDistractors(correct, pool, requireDistinctArtist) {
   const correctWords = new Set(intrusTitleWords(correct.title));
   // On exclut d'emblée les œuvres sans titre exploitable (choix ambigu, illisible dans la liste)
   // et tout doublon de contenu (même couple auteur+titre, même si ce sont deux lignes distinctes).
-  let others = pool.filter((r) => r !== correct && r.title && r.title.trim() && contentKey(r) !== correctKey);
+  let others = pool.filter((r) => r !== correct && r.title && r.title.trim() && contentKey(r) !== correctKey && sameMovability(r, correct)); // v122 : jamais de mélange déplaçable / non déplaçable
   // Quand seul le nom de l'artiste sera affiché (pas de titre pour distinguer), il FAUT trois
   // artistes différents, sinon deux « Monet » pourraient se retrouver face à face.
   if (requireDistinctArtist) others = others.filter((r) => !usedArtists.has(famNormalize(r.artist)));
@@ -10828,6 +10893,8 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     if (!intrusExtraFields.length && !readGlobalRubriqueDefaults().rubriques?.length) {
       intrusExtraFields = ['date', 'materiaux', 'dimensions', 'location'];
     }
+    // v122 : une question dont l'œuvre n'a pas assez d'intrus DE LA MÊME CATÉGORIE (déplaçable / non
+    // déplaçable) est écartée plutôt que complétée avec une œuvre de l'autre catégorie.
     INTRUS_SESSION = pool.slice(0, count).map((correct) => {
       // En mode « Références intruses », on ne montre le plus souvent que le nom de l'artiste (le
       // cas le plus fréquent et le plus exigeant), et parfois artiste + titre pour varier. Sans
@@ -10835,10 +10902,12 @@ $('intrus-start-button')?.addEventListener('click', async () => {
       // identiques (ex. deux « Monet »).
       const titleMode = intrusMode === 'reference' ? Math.random() < 0.3 : true;
       const distractors = pickIntrusDistractors(correct, pool, intrusMode === 'reference' && !titleMode);
+      if (distractors.length < 2 && pool.some((r) => !sameMovability(r, correct))) return null;
       const choices = [correct, ...distractors];
       for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [choices[i], choices[j]] = [choices[j], choices[i]]; }
       return { correct, choices, titleMode };
-    });
+    }).filter(Boolean);
+    if (!INTRUS_SESSION.length) { feedback.textContent = "Pas assez d'œuvres de même catégorie (déplaçables / non déplaçables) pour ce choix."; return; }
     intrusIndex = 0; intrusCorrectCount = 0;
     $('intrus-title-label').textContent = `Intrus — ${intrusMode === 'image' ? 'images intruses' : 'références intruses'}`;
     showPanel('intrus');
