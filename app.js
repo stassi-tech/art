@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v125';
+const APP_VERSION = 'v126';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -2019,12 +2019,22 @@ function findColumn(row, names) {
 // paliers utilisée par findArtistRow plus bas, pensée elle pour une saisie libre au clavier).
 // Retourne null tant que le fichier maître n'a pas été chargé (voir loadArtistListIfNeeded) : dans
 // ce cas, les champs concernés restent simplement vides, comme n'importe quelle donnée manquante.
-function findArtistMasterRow(prenom, patronyme) {
+function findArtistMasterRow(prenom, patronyme, surnom = '') {
   if (!artistListLoaded) return null;
   const q = keyName(`${prenom} ${patronyme}`);
-  if (!q) return null;
-  return artistListRows.find((row) => keyName(`${row['Prénom'] || ''} ${row['Patronyme'] || ''}`) === q) || null;
+  if (q) return artistListRows.find((row) => keyName(`${row['Prénom'] || ''} ${row['Patronyme'] || ''}`) === q) || null;
+  // v126 (Stéphane : « le Maître du diptyque de Wilton n'a pas de nom, seulement un surnom ») : une ligne
+  // ŒUVRE qui n'a NI prénom NI patronyme mais un Surnom est rattachée au maître par ce surnom. Ça couvre
+  // les artistes de convention (« Maître de… ») et aussi un artiste connu seulement sous son surnom dans
+  // le fichier d'œuvres (ex. « Giorgione » : le maître fournira alors le vrai nom, la nationalité, etc.).
+  const s = keyName(surnom);
+  if (!s) return null;
+  return artistListRows.find((row) => keyName(row['Surnom'] || '') === s) || null;
 }
+// v126 : artistes connus seulement par un nom de convention (« Maître du diptyque de Wilton ») — pas de
+// prénom/patronyme, donc pas de « Prénom NOM » : on ne met pas leur dernier mot en majuscules et on ne
+// dit pas « X, dit X » à voix haute. Rempli par normaliseRows, lu par formatArtistName.
+const ANONYMOUS_ARTIST_KEYS = new Set();
 function normaliseRows(rows) {
   return rows.map((row, rowIndex) => {
     // "image de l oeuvre" : nom de colonne du nouveau modèle ŒUVRES (restructuration V11, fichier
@@ -2079,8 +2089,8 @@ function normaliseRows(rows) {
     const patronymeKey = findColumn(row, ['patronyme', 'patronyme artiste']);
     const surnomFrKey = findColumn(row, ['surnom francais', 'surnom']);
     const surnomOrigKey = findColumn(row, ["surnom langue d origine", 'surnom original', 'surnom origine']);
-    const prenom = prenomKey ? String(row[prenomKey] || '').trim() : '';
-    const patronyme = patronymeKey ? String(row[patronymeKey] || '').trim() : '';
+    let prenom = prenomKey ? String(row[prenomKey] || '').trim() : '';
+    let patronyme = patronymeKey ? String(row[patronymeKey] || '').trim() : '';
     let surnomFr = surnomFrKey ? String(row[surnomFrKey] || '').trim() : '';
     let surnomOrig = surnomOrigKey ? String(row[surnomOrigKey] || '').trim() : '';
     let artist;
@@ -2215,10 +2225,20 @@ function normaliseRows(rows) {
     // qui la fusionne dans masterRow sous "Légende de l'artiste", même mécanique que la photo
     // elle-même juste au-dessus (artistImage).
     let artistImageCaption = '';
-    const masterRow = findArtistMasterRow(prenom, patronyme);
+    const masterRow = findArtistMasterRow(prenom, patronyme, surnomFr);
     if (masterRow) {
-      if (!surnomFrKey && masterRow['Surnom']) surnomFr = String(masterRow['Surnom']).trim();
-      if (!naissanceKey && !mortKey && masterRow['Année de naissance'] && masterRow['Année de mort']) {
+      // v126 : le surnom écrit dans le fichier d'œuvres l'emporte ; s'il est vide sur cette ligne (colonne
+      // « Surnom » présente mais non remplie pour cet artiste), on prend celui du maître. Avant, la seule
+      // PRÉSENCE de la colonne coupait la lecture du maître et faisait perdre « Le Greco » & co.
+      if (!surnomFr && masterRow['Surnom']) surnomFr = String(masterRow['Surnom']).trim();
+      // Artiste retrouvé par son seul surnom : on reprend son vrai nom depuis le maître, s'il en a un.
+      if (!prenom && !patronyme && (masterRow['Prénom'] || masterRow['Patronyme'])) {
+        prenom = String(masterRow['Prénom'] || '').trim();
+        patronyme = String(masterRow['Patronyme'] || '').trim();
+        artist = [prenom, patronyme].filter(Boolean).join(' ');
+      }
+      // v126 : « Inconnue » (ex. Maître du diptyque de Wilton) n'est pas une date : on n'affiche rien.
+      if (!naissanceKey && !mortKey && masterRow['Année de naissance'] && masterRow['Année de mort'] && !/inconnu/i.test(`${masterRow['Année de naissance']} ${masterRow['Année de mort']}`)) {
         artistDates = `${masterRow['Année de naissance']}-${masterRow['Année de mort']}`;
       }
       if (!nationalityKey && masterRow['Nationalité']) nationality = String(masterRow['Nationalité']).trim();
@@ -2227,6 +2247,13 @@ function normaliseRows(rows) {
       if (masterRow['Bio']) bio = String(masterRow['Bio']).trim();
     }
 
+    // v126 : ni prénom ni patronyme (même après la jointure) mais un surnom = artiste de convention :
+    // son nom EST ce surnom ; on l'efface du champ « surnom » pour ne pas l'afficher/le dire deux fois.
+    if (!prenom && !patronyme && surnomFr) {
+      artist = surnomFr;
+      surnomFr = '';
+      ANONYMOUS_ARTIST_KEYS.add(keyName(artist));
+    }
     // v80 (retour Stéphane, docx 29 sept, IMPREGNATION item 6 : « l'app lit la ligne titre des
     // fichiers Excel comme s'il s'agissait d'une œuvre ») : trouvé en creusant le bug « Bronzino
     // vide » (sculpture-16e.xlsx contenait une ligne 2 qui n'était qu'une copie de la ligne d'en-tête,
@@ -2719,6 +2746,7 @@ function renderQuestion() {
   }
 }
 function formatArtistName(name) {
+  if (ANONYMOUS_ARTIST_KEYS.has(keyName(name))) return String(name).trim(); // v126 : « Maître du diptyque de Wilton », pas de « WILTON » en capitales
   // Convention des légendes muséales : prénom normal, nom de famille en MAJUSCULES
   // (ex. « Auguste RENOIR »). Heuristique : le dernier mot est considéré comme le nom de famille.
   const parts = String(name).trim().split(/\s+/).filter(Boolean);
@@ -8710,6 +8738,11 @@ const NATURE_DESIGNATIONS = [
   // la cellule « Nature de l'objet » de l'œuvre concernée est probablement vide dans le fichier.
   { match: 'peinture murale', word: 'fresque', feminine: true },
   { match: 'mur peint', word: 'fresque', feminine: true },
+  // v126 (Stéphane : statues équestres et fontaines = « Monument avec ronde-bosse », donc non déplaçables) :
+  // ces deux entrées passent AVANT « ronde bosse », sinon « Monument avec ronde-bosse » se dirait « cette
+  // ronde-bosse » ; la voix dit « ce monument » (« ce monument funéraire » pour un tombeau).
+  { match: 'monument funeraire', word: 'monument funéraire', feminine: false },
+  { match: 'monument', word: 'monument', feminine: false },
   { match: 'haut relief', word: 'haut-relief', feminine: false },
   { match: 'bas relief', word: 'bas-relief', feminine: false },
   { match: 'ronde bosse', word: 'ronde-bosse', feminine: true },
@@ -8729,7 +8762,6 @@ const NATURE_DESIGNATIONS = [
   { match: 'triptyque', word: 'triptyque', feminine: false },
   { match: 'diptyque', word: 'diptyque', feminine: false },
   { match: 'retable', word: 'retable', feminine: false },
-  { match: 'monument funeraire', word: 'monument funéraire', feminine: false },
   { match: 'medaillon', word: 'médaillon', feminine: false },
   { match: 'element', word: 'élément', feminine: false },
   { match: 'sculpture', word: 'sculpture', feminine: true },
