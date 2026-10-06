@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v126';
+const APP_VERSION = 'v127';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -8743,6 +8743,13 @@ const NATURE_DESIGNATIONS = [
   // ronde-bosse » ; la voix dit « ce monument » (« ce monument funéraire » pour un tombeau).
   { match: 'monument funeraire', word: 'monument funéraire', feminine: false },
   { match: 'monument', word: 'monument', feminine: false },
+  // v127 : natures de sculpture courantes dans les fichiers (« Mobilier liturgique », « Groupe de 3 rondes-bosses »,
+  // « Buste portrait »…) qui retombaient sur « cette sculpture » / « ce tableau » ; « Groupe… » passe avant
+  // « ronde bosse » (sinon « cette ronde-bosse » pour un groupe de plusieurs figures).
+  { match: 'mobilier liturgique', word: 'mobilier liturgique', feminine: false },
+  { match: 'objet liturgique', word: 'objet liturgique', feminine: false },
+  { match: 'groupe', word: 'groupe', feminine: false },
+  { match: 'buste', word: 'buste', feminine: false },
   { match: 'haut relief', word: 'haut-relief', feminine: false },
   { match: 'bas relief', word: 'bas-relief', feminine: false },
   { match: 'ronde bosse', word: 'ronde-bosse', feminine: true },
@@ -8764,6 +8771,7 @@ const NATURE_DESIGNATIONS = [
   { match: 'retable', word: 'retable', feminine: false },
   { match: 'medaillon', word: 'médaillon', feminine: false },
   { match: 'element', word: 'élément', feminine: false },
+  { match: 'statue', word: 'statue', feminine: true },
   { match: 'sculpture', word: 'sculpture', feminine: true },
 ];
 function artDesignation(work) {
@@ -8773,7 +8781,7 @@ function artDesignation(work) {
     if (found) {
       // Élision « ce » → « cet » devant un mot masculin commençant par une voyelle (« cet
       // élément », jamais « ce élément »).
-      const article = found.feminine ? 'cette' : (/^[aeiouhàâéèêëîïôöùûü]/i.test(found.word) ? 'cet' : 'ce');
+      const article = found.feminine ? 'cette' : (/^[aeiouàâéèêëîïôöùûü]/i.test(found.word) ? 'cet' : 'ce');
       return `${article} ${found.word}`;
     }
   }
