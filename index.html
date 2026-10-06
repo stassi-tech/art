@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=256" />
+    <link rel="stylesheet" href="style.css?v=257" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -641,7 +641,7 @@
               <label class="rubrique-option"><input type="checkbox" id="imp-field-artist" /><span>Auteur</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-title" /><span>Titre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-date" /><span>Date</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="imp-field-materiaux" /><span>Matériau</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="imp-field-materiaux" /><span>Nature et matériau de l’œuvre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-dimensions" /><span>Dimensions</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-field-location" /><span>Lieu de conservation actuel</span></label>
             </div>
@@ -713,7 +713,7 @@
               </figure>
             </div>
             <section class="answer-card" aria-label="Rubriques">
-              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Écoutez ces références pour vous en imprégner</h2>
+              <h2 id="imp-instruction" style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Écoutez ces références pour vous en imprégner</h2>
               <div class="mic-nav-row" id="imp-nav-row" style="margin-top:auto;padding-top:20px;justify-content:center;">
                 <button type="button" id="imp-prev-button" class="nav-arrow-button" aria-label="Précédent">←</button>
                 <button type="button" id="imp-pause-button" class="nav-arrow-button" aria-label="Pause">⏸</button>
@@ -776,7 +776,7 @@
             <div>
               <p class="config-table-col-title">Rubriques en correction</p>
               <label class="rubrique-option"><input type="checkbox" id="intrus-field-date" /><span>Date</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="intrus-field-materiaux" /><span>Matériau</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="intrus-field-materiaux" /><span>Nature et matériau de l’œuvre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-field-dimensions" /><span>Dimensions</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-field-location" /><span>Lieu de conservation actuel</span></label>
               <p class="modal-hint" style="margin-bottom:0;">Auteur et titre toujours affichés.</p>
@@ -882,7 +882,7 @@
             <div>
               <p class="config-table-col-title">Rubriques en correction</p>
               <label class="rubrique-option"><input type="checkbox" id="recon-field-date" /><span>Date</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="recon-field-materiaux" /><span>Matériau</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="recon-field-materiaux" /><span>Nature et matériau de l’œuvre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-field-dimensions" /><span>Dimensions</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-field-location" /><span>Lieu de conservation actuel</span></label>
               <p class="modal-hint" style="margin-bottom:0;">Auteur et titre toujours affichés.</p>
@@ -994,7 +994,7 @@
               <label class="rubrique-option"><input type="checkbox" id="vf-field-artist" /><span>Auteur</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-title" /><span>Titre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-date" /><span>Date</span></label>
-              <label class="rubrique-option"><input type="checkbox" id="vf-field-materiaux" /><span>Matériau</span></label>
+              <label class="rubrique-option"><input type="checkbox" id="vf-field-materiaux" /><span>Nature et matériau de l’œuvre</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-dimensions" /><span>Dimensions</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-field-location" /><span>Lieu de conservation actuel</span></label>
             </div>
@@ -1037,7 +1037,7 @@
             </div>
             <section class="answer-card" aria-label="Référence proposée">
               <!-- v81 (docx 29 sept, VRAI/FAUX : nouvelle consigne) -->
-              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Chaque rubrique est-elle bien renseignée ? Il peut y avoir deux fausses informations au maximum pour une œuvre. Poussez le curseur sur faux si vous les repérez.</h2>
+              <h2 id="vf-instruction" style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Chaque rubrique est-elle bien renseignée ? Il peut y avoir deux fausses informations au maximum pour une œuvre. Poussez le curseur sur faux si vous les repérez.</h2>
               <div id="vf-field-rows"></div>
               <!-- v81 (docx 29 sept, « même système ») : carré coloré au lieu du texte "Exact"/
                    "À réviser" (#vf-verdict, supprimé) — voir #vf-validate-button listener. -->
@@ -1151,7 +1151,7 @@
                  rangée. -->
             <section class="answer-card" aria-label="Sélection">
               <!-- v82 (vérification vouvoiement, retour Stéphane 29/09) -->
-              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">La moitié de ces images est du même artiste. Retrouvez cette famille en cliquant sur les images.</h2>
+              <h2 id="fam-instruction" style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">La moitié de ces images est du même artiste. Retrouvez cette famille en cliquant sur les images.</h2>
               <div id="fam-step0">
                 <button type="button" class="primary-button" id="fam-validate-selection-button" style="width:100%">Valider ma sélection</button>
               </div>
@@ -1469,7 +1469,7 @@
             </div>
 
             <section class="answer-card" aria-label="Vos réponses">
-              <h2 style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Donnez les références de cette œuvre</h2>
+              <h2 id="quiz-instruction" style="font-family:Arial,sans-serif;font-size:1.2rem;font-weight:700;margin:0 0 16px;">Donnez les références de cette œuvre</h2>
               <div class="mic-nav-row">
                 <button type="button" id="mic-global" class="mic-icon-button hidden" aria-label="Dicter la réponse au champ sélectionné">🎤</button>
                 <button type="button" id="previous-button-overlay" class="nav-arrow-button" aria-label="Question précédente">←</button>
@@ -2043,7 +2043,7 @@
                 <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="artist" /><span>Artiste</span></label>
                 <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="title" /><span>Titre</span></label>
                 <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="date" /><span>Date</span></label>
-                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="materiaux" /><span>Matériau</span></label>
+                <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="materiaux" /><span>Nature et matériau de l’œuvre</span></label>
                 <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="dimensions" /><span>Dimensions</span></label>
                 <label class="rubrique-option"><input type="checkbox" class="pf-rubrique-field" value="location" /><span>Lieu de conservation actuel</span></label>
               </div>
@@ -2094,6 +2094,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=342"></script>
+    <script src="app.js?v=343"></script>
   </body>
 </html>

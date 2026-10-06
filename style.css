@@ -1819,7 +1819,11 @@ body.has-other-works .correction-label { font-size:.76rem; }
   .imp-bio-photo-col { flex:0 0 40%; padding:14px; }
   .imp-bio-text-col { padding:16px 18px; }
   #imp-correction-details .correction-label { font-size:.68rem; }
-  #imp-correction-details .correction-value { font-size:.92rem; margin-bottom:6px; }
+  #imp-correction-details .correction-value { font-size:.92rem; margin-bottom:4px; }
+  /* v116 (docx 29 sept, IMPREGNATION : « sur mobile compacter les références dans un encadré, comme dans
+     INTRUS ») : même "cartouche" (fond + bordure) que la référence d'Intrus (voir plus bas), mobile
+     seulement (sur PC la liste garde son aspect habituel). */
+  #imp-correction-details { background:var(--canvas); border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-top:8px; row-gap:2px; }
   /* INTRUS (docx 29 sept, v77) : contrairement à Imprégnation/VRAI-FAUX ci-dessus, la consigne ne
      disparaît plus jamais entièrement sur mobile — les boutons 1-2-3 ayant déménagé sous les images
      (voir plus haut, hors media query : ce déplacement vaut maintenant pour PC ET mobile), la
@@ -2525,3 +2529,6 @@ body.stephane-test-decor .scale-wall-pillar {
 #placement-proto-setup.placement-proto-saved-only #placement-proto-room-count,
 #placement-proto-setup.placement-proto-saved-only #placement-proto-setup-confirm { display:none; }
 #placement-proto-setup.placement-proto-saved-only #placement-proto-saved-section { margin-top:0; padding-top:0; border-top:none; }
+
+/* v116 (docx 29 sept) : sur mobile, la consigne n'est affichée que sur la première question de chaque jeu (classe posée par setMobileInstructionState). */
+@media (max-width:700px){ .mobile-instr-hidden{display:none !important;} }

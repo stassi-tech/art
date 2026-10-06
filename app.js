@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v115';
+const APP_VERSION = 'v116';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -685,7 +685,7 @@ function initProfilePage() {
 // Libellés français des rubriques (mêmes intitulés que les cases à cocher #pf-rubrique-field,
 // voir index.html) — utilisés pour traduire les clés techniques internes ("artist", "location"...)
 // partout où elles risqueraient sinon de s'afficher telles quelles (v80, voir renderExerciseOverrides).
-const RUBRIQUE_FIELD_LABELS = { artist: 'Artiste', title: 'Titre', date: 'Date', materiaux: 'Matériau', dimensions: 'Dimensions', location: 'Lieu de conservation actuel' };
+const RUBRIQUE_FIELD_LABELS = { artist: 'Artiste', title: 'Titre', date: 'Date', materiaux: 'Nature et matériau de l’œuvre', dimensions: 'Dimensions', location: 'Lieu de conservation actuel' };
 // Liste, sous chaque tableau (champ / rubrique), les exercices pour lesquels une sélection
 // spécifique a été mémorisée (via l'icône ✏️ sur leur bouton) — avec un bouton pour l'oublier.
 function renderExerciseOverrides() {
@@ -1747,8 +1747,8 @@ const PRONUNCIATION_FIXES = {
   'ruan gris': 'jouane griss',
   'bandini': 'bandini',
   'masaccio': 'masatchio',
-  'michel-ange': 'mikelange',
-  'michel ange': 'mikelange',
+  'michel-ange': 'mikélange',
+  'michel ange': 'mikélange',
   'sabin': 'sabine',
   'antéa': 'antéa',
   'antea': 'antéa',
@@ -1806,6 +1806,21 @@ const PRONUNCIATION_FIXES = {
   'chœur': 'keur',
   'adam': 'Adan',
   'kunst*': 'kounst',
+  // v116 (docx 29 sept, tableau PRONONCIATION) : réécritures phonétiques ajoutées d'après les
+  // indications de Stéphane (les noms déjà présents plus haut — Sœurs, Adam, Kunst…, Rijn… — n'ont pas
+  // été redoublés).
+  'chaïm': 'raïme',
+  'chaim': 'raïme',
+  'berruguete': 'bèrrougueté',
+  'san bernardo alle terme': 'san bernardo allé termé',
+  'baccio': 'batchio',
+  'milon de crotone': 'milon de crotonne',
+  'large colour prints': 'larj keulor prinnts',
+  'loggetta': 'lodjétta',
+  'andrea bolgi': 'andréa boldji',
+  'bolgi': 'boldji',
+  'juan de juni': 'rouane dé rouni',
+  'élément': 'éléman',
   'tempera': 'tanpéra',
   'escorial': 'Eskorial',
   'vespucci': 'Vespoutchi',
@@ -1881,7 +1896,7 @@ const PRONUNCIATION_FIXES = {
   'tahitiennes': 'Tahissiennes',
   'phryné': 'Friné',
   'vallotton': 'Valloton',
-  'gismonda': 'Guismonda',
+  'gismonda': 'Djismonda', // v116 (docx 29 sept : « Gismonda = jismonda »)
   'léonidas': 'Léonidasse',
   'caliban': 'Caliba',
   'hylas': 'Ilasse',
@@ -2595,6 +2610,14 @@ function showPanel(name) {
   $('bg-mosaic')?.classList.toggle('hidden', name !== 'welcome' && name !== 'training-hub' && name !== 'guided-config');
 }
 
+// v116 (docx 29 sept, « SUR MOBILE pour tous les jeux en général ne laisser la consigne que sur la
+// première question, ensuite l'enlever pour remonter le bouton Valider/Suivant et les textes de
+// références ») : on pose simplement la classe .mobile-instr-hidden dès la 2ᵉ question ; c'est la
+// feuille de style (media query mobile) qui décide si elle masque réellement — sur PC la consigne
+// reste affichée à chaque question, comme avant.
+function setMobileInstructionState(ids, questionIndex) {
+  ids.forEach((id) => $(id)?.classList.toggle('mobile-instr-hidden', questionIndex > 0));
+}
 function commonsFilePageUrl(imageUrl) {
   // Reconstruit l'adresse de la page Commons (avec les crédits complets) à partir de l'URL
   // d'image stockée dans le fichier Excel, qu'il s'agisse du fichier original ou d'une miniature
@@ -2633,6 +2656,7 @@ $('quiz-launch-first-button')?.addEventListener('click', () => {
   renderQuestion();
 });
 function renderQuestion() {
+  setMobileInstructionState(['quiz-instruction'], state.index);
   document.body.classList.remove('has-other-works'); // repart d'un état propre à chaque question
   // v82 (retour Stéphane : « la tablette est encore présente ») : ce bandeau de vignettes (portrait/
   // lieu/ensemble, voir showBottomGallery ci-dessous) est celui déjà supprimé d'Imprégnation en v73
@@ -2865,12 +2889,16 @@ function spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, 
     `Le créateur de « ${title} » n’est pas ${wrongValue}, mais bien ${trueValue}.`,
   ]);
 }
-function spokenFullReference(work, extraFields = null) {
+// v116 (docx 29 sept, RECONSTITUTION : « la voix ne donne pas les surnoms comme LE GRECO, ils ne sont
+// pas écrits non plus ») : withSurnom=true ajoute le surnom français après le nom civil (« Domenikos
+// Theotokopoulos, dit Le Greco »), comme Vrai/Faux le fait déjà depuis la v22. Paramètre optionnel :
+// Intrus, qui appelle aussi cette fonction, garde son comportement actuel.
+function spokenFullReference(work, extraFields = null, withSurnom = false) {
   const on = (key) => !extraFields || extraFields.includes(key);
   const dimsPhrase = on('dimensions') ? spokenDimensionsPhrase(work) : '';
   const matDims = [on('materiaux') ? (work.materialsPhrase || work.materials) : '', dimsPhrase].filter(Boolean).join(' ');
   const parts = [
-    `${work.artist}, «\u00a0${work.title}\u00a0»${on('date') ? `, ${work.date}` : ''}.`,
+    `${withSurnom && work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist}, «\u00a0${work.title}\u00a0»${on('date') ? `, ${work.date}` : ''}.`,
     matDims ? `${matDims}.` : '',
     (on('location') && work.location) ? `${work.location}.` : '',
   ].filter(Boolean);
@@ -2904,7 +2932,7 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     // Matériaux/technique et dimensions : toujours purement informatifs, jamais quizzés, affichés
     // juste après la ligne « date de création ».
     if (key === 'date') {
-      if (displayedWork.materials) html += correctionInfoRow('Matériaux et technique', displayedWork.materialsPhrase || displayedWork.materials);
+      if (displayedWork.materials) html += correctionInfoRow('Nature et matériau de l’œuvre', displayedWork.materialsPhrase || displayedWork.materials);
       const dims = formatDimensionsDisplay(displayedWork);
       if (dims) {
         html += `<div class="correction-item correction-extra">
@@ -7724,6 +7752,7 @@ function chronoYearOf(w) {
 }
 
 function chronoShowQuestion() {
+  setMobileInstructionState(['chrono-instruction', 'chrono-instruction-hint'], chronoIndex);
   speechSynthesis.cancel();
   chronoTimers.forEach(clearTimeout); chronoTimers = [];
   chronoAnswered = false;
@@ -8179,6 +8208,7 @@ function famOrdinalWord(i) {
 // retirée : la petite loupe posée au coin de chaque cadre (appui maintenu = agrandissement, voir
 // attachZoomHold) l'a remplacée avec succès — plus simple à comprendre et à utiliser.
 function famShowQuestion() {
+  setMobileInstructionState(['fam-instruction'], famIndex);
   speechSynthesis.cancel();
   famTimers.forEach(clearTimeout); famTimers = [];
   famSelectedImages = [];
@@ -8430,7 +8460,7 @@ function vfActiveFields() {
     { key: 'artist', label: 'Auteur' },
     { key: 'title', label: 'Titre de l\u2019œuvre' },
     { key: 'date', label: 'Date' },
-    { key: 'materials', label: 'Matériau' },
+    { key: 'materials', label: 'Nature et matériau de l’œuvre' },
     { key: 'dimensions', label: 'Dimensions' },
     { key: 'location', label: 'Lieu de conservation actuel' },
   ];
@@ -8486,10 +8516,10 @@ function spokenReconCorrect(work, extraFields) {
   const opener = pickSynonym([
     'Ce détail appartenait bien à', 'Bravo pour l’observation, il s’agissait bien de', 'Vous avez bien reconnu',
   ]);
-  return `${opener} ${spokenFullReference(work, extraFields)}`;
+  return `${opener} ${spokenFullReference(work, extraFields, true)}`;
 }
 function spokenReconWrong(work, extraFields) {
-  return `Ce détail appartenait en réalité à ${artDesignation(work)} : ${spokenFullReference(work, extraFields)}`;
+  return `Ce détail appartenait en réalité à ${artDesignation(work)} : ${spokenFullReference(work, extraFields, true)}`;
 }
 function vfFieldValue(row, key) {
   if (key === 'dimensions') return formatDimensionsPlainText(row) || [row.hauteur, row.longueur].filter(Boolean).join(' × ');
@@ -8668,6 +8698,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
 });
 
 function vfShowQuestion() {
+  setMobileInstructionState(['vf-instruction'], vfIndex);
   speechSynthesis.cancel();
   vfTimers.forEach(clearTimeout); vfTimers = [];
   vfAnswered = false;
@@ -8744,7 +8775,7 @@ function vfRefreshExtraFields() {
     { key: 'artist', label: 'Auteur' },
     { key: 'title', label: 'Titre de l’œuvre' },
     { key: 'date', label: 'Date' },
-    { key: 'materials', label: 'Matériau' },
+    { key: 'materials', label: 'Nature et matériau de l’œuvre' },
     { key: 'dimensions', label: 'Dimensions' },
     { key: 'location', label: 'Lieu de conservation actuel' },
   ];
@@ -8860,7 +8891,13 @@ $('vf-validate-button')?.addEventListener('click', async () => {
         return isBonne ? `Le matériau est bien ${trueValue}.` : `Le matériau n'est pas ${wrongValue}, mais bien ${trueValue}.`;
       case 'dimensions': {
         const trueSpoken = spokenDimensionsPhrase(q.correct) || trueValue;
-        return isBonne ? `Les dimensions sont bien ${trueSpoken}.` : `Les dimensions ne sont pas ${wrongValue}, mais bien ${trueSpoken}.`;
+        // v116 (docx 29 sept, VRAI/FAUX) : la voix lisait la FAUSSE valeur telle qu'écrite à l'écran
+        // (« h 50 × l 40 »), que la synthèse vocale prononce en abrégé (« h 50 sur l 40 ») alors que
+        // la bonne valeur, elle, était déjà dite en toutes lettres. On passe maintenant les deux par
+        // la même fonction parlée (« de 50 de hauteur, et 40 centimètres de longueur »).
+        const wrongRow = q.displayedSource?.dimensions;
+        const wrongSpoken = (wrongRow && spokenDimensionsPhrase(wrongRow)) || wrongValue;
+        return isBonne ? `Les dimensions sont bien ${trueSpoken}.` : `Les dimensions ne sont pas ${wrongSpoken}, mais bien ${trueSpoken}.`;
       }
       case 'location':
         return isBonne ? `Le lieu est bien ${trueValue}.` : `Le lieu n'est pas ${wrongValue}, mais bien ${trueValue}.`;
@@ -9094,6 +9131,7 @@ $('recon-launch-first-button')?.addEventListener('click', () => {
   reconShowQuestion();
 });
 function reconShowQuestion() {
+  setMobileInstructionState(['recon-instruction'], reconIndex);
   speechSynthesis.cancel();
   reconTimers.forEach(clearTimeout); reconTimers = [];
   // Même correction que pour Intrus : bref délai de sécurité avant que les choix deviennent
@@ -9117,7 +9155,7 @@ function reconShowQuestion() {
   const src = escapeHtml(imageSourceSized(q.correct.image, 1200));
   $('recon-prompt-card').innerHTML = `<div class="recon-detail-crop" style="background-image:url('${src}');background-position:${q.cropX}% ${q.cropY}%;"></div>`;
   $('recon-choices').innerHTML = `<div class="intrus-choice-list">${q.choices.map((c, i) =>
-    `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${escapeHtml(c.artist)}</strong><br><em>« ${escapeHtml(c.title || c.date || 'œuvre non titrée')} »</em></button>`
+    `<button type="button" class="intrus-choice-btn" data-index="${i}"><strong>${formatArtistDisplayName(c)}</strong><br><em>« ${escapeHtml(c.title || c.date || 'œuvre non titrée')} »</em></button>`
   ).join('')}</div>`;
   $('recon-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
     btn.addEventListener('click', () => reconAnswer(Number(btn.dataset.index)));
@@ -9146,7 +9184,7 @@ function reconRefreshCorrectionDetails() {
   // conservation ») : ces deux rubriques s'affichent désormais toujours à l'écran, sans dépendre
   // des rubriques choisies pour la correction (qui ne conditionnent plus que Matériau/Dimensions).
   detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
+  if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Nature et matériau de l’œuvre</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if ((showFullCorrection || reconExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
   detailsParts.push(`<span class="correction-label">Lieu de conservation actuel</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   el.innerHTML = detailsParts.join('');
@@ -9180,7 +9218,7 @@ function reconAnswer(chosenIndex) {
       // bouton par ceux de la bonne œuvre (q.correct), pour que tout le contenu du bouton (texte +
       // rubriques ajoutées ensuite) parle bien de la même référence.
       if (!isCorrect) {
-        btn.innerHTML = `<strong>${escapeHtml(q.correct.artist)}</strong><br><em>« ${escapeHtml(q.correct.title || q.correct.date || 'œuvre non titrée')} »</em>`;
+        btn.innerHTML = `<strong>${formatArtistDisplayName(q.correct)}</strong><br><em>« ${escapeHtml(q.correct.title || q.correct.date || 'œuvre non titrée')} »</em>`;
       }
       btn.insertAdjacentHTML('beforeend', inlineDetailsHtml);
     }
@@ -9190,7 +9228,12 @@ function reconAnswer(chosenIndex) {
   setVerdictSquare('recon-verdict-square', isCorrect);
 
   // L'image entière est révélée, avec la référence complète.
-  $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSourceSized(q.correct.image, 700))}" alt="" />`;
+  // v116 (docx 29 sept, RECONSTITUTION : « les crédits doivent apparaître dans la correction ») : même
+  // lien « Crédits et licence de l'image » que dans Imprégnation, ajouté seulement ICI (à la
+  // correction) car la page Commons révèle le titre et l'auteur de l'œuvre.
+  const reconCommonsUrl = commonsFilePageUrl(imageSourceSized(q.correct.image, 700));
+  $('recon-prompt-card').innerHTML = `<img class="recon-full-image" src="${escapeHtml(imageSourceSized(q.correct.image, 700))}" alt="" />`
+    + (reconCommonsUrl ? `<a id="recon-source-link" class="artwork-source-link" href="${escapeHtml(reconCommonsUrl)}" target="_blank" rel="noopener">Crédits et licence de l'image ↗</a>` : '');
 
   // « Exact »/« À réviser » dit à voix haute avant d'enchaîner sur la référence, pas seulement
   // affiché — plus stimulant à l'oral (retour de Stéphane, valable pour tous les jeux), et
@@ -10102,7 +10145,15 @@ let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioO
 let impFlowBusyUntil = 0;
 const impTimer = createTimer('topbar-timer');
 
-function impClearTimers() { impTimers.forEach(clearTimeout); impTimers = []; }
+// v116 (docx 29 sept, IMPREGNATION : « si on revient en arrière sur la page suivante, la voix mélange
+// les références entre les pages ; quand on le fait très vite, gros cafouillage ») : speechSynthesis.cancel()
+// déclenche AUSSI le onend/onerror de la phrase annulée — jusqu'ici ce rappel (finish) enchaînait quand
+// même la suite de l'ANCIENNE œuvre (segment suivant, programmé dans la nouvelle liste de minuteurs),
+// d'où la voix qui mélangeait deux références. impRunId change à chaque remise à zéro des minuteurs
+// (changement d'œuvre, pause, ouverture de la bio) : une phrase lancée sous un ancien numéro ne
+// déclenche plus jamais sa suite.
+let impRunId = 0;
+function impClearTimers() { impRunId++; impTimers.forEach(clearTimeout); impTimers = []; }
 // v66 (docx 29 sept, item 8) : onEnd optionnel, même mécanique que intrusSpeak/vfSpeak/famSpeak —
 // utilisé pour enchaîner les segments de la référence avec un vrai silence entre eux (voir
 // impShowCurrent). Le filet de sécurité (setTimeout) couvre les navigateurs/voix où onend ne se
@@ -10115,9 +10166,17 @@ function impSpeak(text, onEnd) {
   if (impSelectedVoice) u.voice = impSelectedVoice;
   if (onEnd) {
     let done = false;
-    const finish = () => { if (!done) { done = true; onEnd(); } };
+    const myRun = impRunId;
+    const finish = () => { if (!done) { done = true; if (myRun === impRunId) onEnd(); } };
     u.onend = finish; u.onerror = finish;
-    impTimers.push(setTimeout(finish, Math.max(1200, (text.length / 13) * 1000) + 400));
+    // v116 (docx 29 sept, IMPREGNATION : « la voix est coupée sur les dimensions, elle n'a pas le
+    // temps de finir ») : la voix d'Imprégnation tourne à la vitesse 0,72 (plus lente que les autres
+    // jeux, 0,85) mais ce filet de sécurité supposait 13 caractères par seconde, une vitesse bien trop
+    // rapide pour elle — il se déclenchait donc AVANT la fin réelle de la phrase, et le segment suivant
+    // (Ensemble, ou Lieu) coupait la voix en plein milieu des dimensions, la dernière chose dite. On
+    // compte désormais ~8 caractères par seconde, plus une marge de 3 s : onend reste la vraie fin
+    // dans tous les cas normaux, ce minuteur ne sert que si la voix ne la signale jamais.
+    impTimers.push(setTimeout(finish, Math.max(2000, (text.length / 8) * 1000) + 3000));
   }
   speechSynthesis.speak(u);
 }
@@ -10193,6 +10252,7 @@ const impLoupe = attachProgressiveLoupe($('imp-stage-img')?.closest('figure'), $
   zoomFor: (level) => [1, 1.8, 2.8][level],
 });
 function impShowCurrent() {
+  setMobileInstructionState(['imp-instruction'], impIndex);
   impLoupe?.setLevel(0); // on repart sans zoom à chaque nouvelle œuvre
   impClearTimers();
   speechSynthesis.cancel();
@@ -10250,7 +10310,7 @@ function impShowCurrent() {
     })(), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
-    { key: 'materiaux', label: 'Matériau', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
+    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },
     // Nouvelle rubrique demandée par Stéphane : quand l'œuvre appartient à un ensemble plus vaste
     // (un cycle de fresques, un manuscrit...), le texte qui le décrit (déjà récupéré dans
@@ -10273,7 +10333,7 @@ function impShowCurrent() {
     // désormais d'abord le contexte plus large (l'ensemble dont l'œuvre fait partie) avant de dire
     // où elle se trouve précisément, dans les deux sens (texte affiché, ordre des champs plus bas
     // pour la voix et pour le déroulé d'images) plutôt que l'inverse.
-    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: (showFullCorrection || !anyFieldChecked) && !!work.cycle },
+    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: false /* v116 (docx 29 sept) : rubrique Ensemble retirée (écrite ET lue) ; remplacée à terme par un petit commentaire oral à la 1ʳᵉ personne */ },
     { key: 'location', label: 'Lieu de conservation actuel', value: cityFlag(work.ville) ? `${escapeHtml(work.location)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${cityFlag(work.ville)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
   ].filter((f) => f.on);
 
@@ -10297,7 +10357,11 @@ function impShowCurrent() {
   let currentSpeechSegment = [];
   fields.forEach((f, i) => {
     const prev = fields[i - 1];
-    const startsNewSegment = f.key === 'cycle' || (f.key === 'location' && (prev?.key === 'materiaux' || prev?.key === 'cycle'));
+    // v116 (docx 29 sept, IMPREGNATION : rubrique Ensemble retirée + « la voix est coupée sur les dimensions ») :
+    // Ensemble n'existant plus, le Lieu démarre TOUJOURS son propre segment (2 s de silence avant lui,
+    // et l'image du lieu n'apparaît qu'une fois ce segment commencé, donc jamais pendant qu'on lit
+    // encore le titre ou les dimensions) — jusqu'ici il ne le faisait que juste après Matériau/Ensemble.
+    const startsNewSegment = f.key === 'cycle' || f.key === 'location';
     if (startsNewSegment && currentSpeechSegment.length) { speechSegments.push(currentSpeechSegment); currentSpeechSegment = []; }
     currentSpeechSegment.push(f);
   });
@@ -10330,7 +10394,7 @@ function impShowCurrent() {
     const flowField = segment.find((f) => f.key === 'cycle' || f.key === 'location');
     const flowImage = flowField?.key === 'location' ? work.locationImage : flowField?.key === 'cycle' ? work.cycleImage : null;
     if (flowImage) {
-      const estimatedSegDurMs = Math.max(1200, (text.length / 13) * 1000) + 400;
+      const estimatedSegDurMs = Math.max(1200, (text.length / 10) * 1000) + 400;
       const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
       impTimers.push(setTimeout(() => impShowFlowImage(flowImage, flowField.label), flowDelayMs));
     }
@@ -10686,6 +10750,7 @@ $('intrus-launch-first-button')?.addEventListener('click', () => {
   intrusShowQuestion();
 });
 function intrusShowQuestion() {
+  setMobileInstructionState(['intrus-instruction'], intrusIndex);
   speechSynthesis.cancel();
   intrusTimers.forEach(clearTimeout); intrusTimers = [];
   // Bref délai de sécurité avant que les images ne deviennent cliquables : sur un tap rapide
@@ -10758,7 +10823,11 @@ function intrusShowQuestion() {
       <span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>
       <span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>« ${escapeHtml(q.correct.title)} »</em></span>
     </div>`;
-    intrusSpeak(`${q.correct.artist} — « ${q.correct.title} »`);
+    // v116 (docx 29 sept, INTRUS : « la voix doit donner la consigne sur la première question, plus
+    // après ») : la consigne écrite (#intrus-instruction) est lue avant la référence uniquement à la
+    // question 1.
+    const intrusConsigne = intrusIndex === 0 ? `${($('intrus-instruction')?.textContent || '').trim()} ` : '';
+    intrusSpeak(`${intrusConsigne}${q.correct.artist} — « ${q.correct.title} »`);
   } else {
     // Image en haut à gauche. Choix à droite : le plus souvent le nom du peintre seul (le cas
     // le plus exigeant), parfois artiste + titre pour varier (q.titleMode).
@@ -10771,6 +10840,8 @@ function intrusShowQuestion() {
     $('intrus-choices').querySelectorAll('.intrus-choice-btn').forEach((btn) => {
       btn.addEventListener('click', () => intrusAnswer(Number(btn.dataset.index)));
     });
+    // v116 : même règle en mode « références » — consigne dite une seule fois, à la 1ʳᵉ question.
+    if (intrusIndex === 0) { const c = ($('intrus-instruction')?.textContent || '').trim(); if (c) intrusSpeak(c); }
   }
 }
 
@@ -10785,7 +10856,7 @@ function intrusRefreshCorrectionDetails() {
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>«\u00a0${escapeHtml(q.correct.title)}\u00a0»</em></span>`);
   if (showFullCorrection || intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if ((showFullCorrection || intrusExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Matériau</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
+  if ((showFullCorrection || intrusExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Nature et matériau de l’œuvre</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if ((showFullCorrection || intrusExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
   if (showFullCorrection || intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu de conservation actuel</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
