@@ -2532,3 +2532,10 @@ body.stephane-test-decor .scale-wall-pillar {
 
 /* v116 (docx 29 sept) : sur mobile, la consigne n'est affichée que sur la première question de chaque jeu (classe posée par setMobileInstructionState). */
 @media (max-width:700px){ .mobile-instr-hidden{display:none !important;} }
+
+/* v118 : titres des deux groupes de la page LISTE (taille d'exposition / monuments), chacun avec
+   sa propre échelle. Pleine largeur dans la disposition souple (flex) pour forcer le retour à la ligne. */
+.other-works-panel-list .other-works-group-title { flex:0 0 100%; width:100%; margin:18px 0 4px; padding-bottom:4px; border-bottom:1px solid #d9cdb8; font-family:Arial,sans-serif; font-size:1rem; text-align:left; }
+.other-works-panel-list .other-works-group-title span { font-weight:400; font-size:.85rem; color:#7a6e5d; }
+.other-works-panel-list .other-works-group-title:first-child { margin-top:0; }
+.other-work-size { font-family:Arial,sans-serif; font-size:.8rem; color:#7a6e5d; }

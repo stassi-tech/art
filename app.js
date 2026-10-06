@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v117';
+const APP_VERSION = 'v120';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -6681,6 +6681,20 @@ async function openArtistWorksPage(idx) {
   if (!works.length) { list.innerHTML = '<p class="modal-hint">Aucune œuvre trouvée pour cet artiste.</p>'; return; }
   renderOtherWorksPanel();
 }
+// Au-delà de cette hauteur (cm), une œuvre qui n'est pas un tableau est un « monument » : elle ne peut pas être accrochée ou
+// exposée à côté d'un tableau, donc elle est présentée dans un groupe à part, avec sa propre échelle.
+const MONUMENT_MIN_CM = 500;
+// Taille réelle lisible sous la légende : « 38 × 30 cm », « 2,43 × 1,35 m »… (hauteur × longueur ;
+// la hauteur seule si la longueur n'est pas connue). Écrite en toutes lettres pour qu'on ne dépende
+// pas uniquement de la taille de la vignette pour juger des proportions.
+function otherWorkSizeLabel(work) {
+  const h = parseCmValue(work.hauteur); const l = parseCmValue(work.longueur);
+  if (!h) return '';
+  const useMeters = Math.max(h, l || 0) >= 100;
+  const fmt = (cm) => { const v = useMeters ? cm / 100 : cm; return String(Math.round(v * 100) / 100).replace('.', ','); };
+  const unit = useMeters ? 'm' : 'cm';
+  return l ? `${fmt(h)} × ${fmt(l)} ${unit}` : `h ${fmt(h)} ${unit}`;
+}
 function renderOtherWorksPanel() {
   const otherWorks = state.currentOtherWorks || [];
   const list = $('other-works-panel-list');
@@ -6697,19 +6711,51 @@ function renderOtherWorksPanel() {
   // grande œuvre connue de cet artiste — pour voir d'un coup d'œil les écarts de taille entre ses
   // œuvres, sans avoir besoin d'ouvrir la vue à l'échelle. Les œuvres sans hauteur connue gardent
   // la taille par défaut (impossible de les mettre à l'échelle).
-  const knownHeights = otherWorks.map((w) => parseCmValue(w.hauteur)).filter(Boolean);
-  const maxHeightCm = knownHeights.length ? Math.max(...knownHeights) : 0;
-  list.innerHTML = otherWorks.map((otherQuestion, index) => {
+  // v118 : deux groupes, chacun avec sa propre échelle. Avant, une seule échelle valait pour toute
+  // la page, ramenée à la plus grande œuvre (ex. 35 m pour les Quatre-Fleuves du Bernin) avec un
+  // plancher à 15 % : tout ce qui faisait moins de ~5 m recevait exactement la même taille, donc
+  // l'Autoportrait (38 cm) paraissait aussi grand que David (2 m). Désormais :
+  //  - « taille d'exposition » (jusqu'à MONUMENT_MIN_CM de hauteur, et œuvres sans hauteur connue) :
+  //    tableaux, statues, bustes… peuvent cohabiter dans une même salle, donc une échelle commune,
+  //    calée sur la plus grande œuvre DE CE GROUPE, sans plancher artificiel ;
+  //  - « monuments » (au-delà, et seulement pour ce qui n'est PAS un tableau) : Baldaquin, Colonnade,
+  //    fontaines… ne peuvent pas voisiner avec un tableau ; ils ont leur propre échelle, sous un titre
+  //    séparé. Un tableau, même de 7 m (Noces de Cana), reste TOUJOURS avec les autres tableaux.
+  const groupOf = (w) => { const h = parseCmValue(w.hauteur); return h && h > MONUMENT_MIN_CM && w.artCategory !== 'peinture' ? 'monument' : 'expo'; };
+  const maxOf = (group) => {
+    const hs = otherWorks.filter((w) => groupOf(w) === group).map((w) => parseCmValue(w.hauteur)).filter(Boolean);
+    return hs.length ? Math.max(...hs) : 0;
+  };
+  const groupMax = { expo: maxOf('expo'), monument: maxOf('monument') };
+  const hasMonuments = otherWorks.some((w) => groupOf(w) === 'monument');
+  const cardHtml = (otherQuestion, index) => {
     const source = imageSourceSized(otherQuestion.image, 400);
     const titleValue = formatCorrectionValue('title', otherQuestion.title);
     const hCm = parseCmValue(otherQuestion.hauteur);
-    const scaleStyle = hCm && maxHeightCm ? ` style="--scale-ratio:${Math.max(hCm / maxHeightCm, 0.15)};"` : '';
+    const gMax = groupMax[groupOf(otherQuestion)];
+    const scaleStyle = hCm && gMax ? ` style="--scale-ratio:${Math.max(hCm / gMax, 0.04)};"` : '';
+    const sizeText = otherWorkSizeLabel(otherQuestion);
     return `<button type="button" class="other-work-card-big${hCm ? ' scaled' : ''}" data-index="${index}"${scaleStyle}>
       <img src="${escapeHtml(source)}" alt="" loading="lazy" data-original="${escapeHtml(source)}"
            onerror="if(!this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src='https://images.weserv.nl/?url='+encodeURIComponent(this.dataset.original)+'&w=300';}" />
-      <span class="other-work-caption"><strong>${titleValue}</strong><br>${otherWorksSource === 'museum' ? `${escapeHtml(otherQuestion.artist)}<br>${escapeHtml(otherQuestion.date)}` : `${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}`}</span>
+      <span class="other-work-caption"><strong>${titleValue}</strong><br>${otherWorksSource === 'museum' ? `${escapeHtml(otherQuestion.artist)}<br>${escapeHtml(otherQuestion.date)}` : `${escapeHtml(otherQuestion.date)} — ${escapeHtml(otherQuestion.location)}`}${sizeText ? `<br><span class="other-work-size">${escapeHtml(sizeText)}</span>` : ''}</span>
     </button>`;
-  }).join('');
+  };
+  let html = '';
+  const expoIdx = []; const monIdx = [];
+  otherWorks.forEach((w, i) => (groupOf(w) === 'monument' ? monIdx : expoIdx).push(i));
+  if (hasMonuments && expoIdx.length) html += '<h3 class="other-works-group-title">Œuvres de taille d’exposition <span>— à l’échelle les unes des autres</span></h3>';
+  html += expoIdx.map((i) => cardHtml(otherWorks[i], i)).join('');
+  if (hasMonuments) {
+    html += `<h3 class="other-works-group-title">Monuments et ensembles <span>— à l’échelle entre eux, mais pas par rapport au groupe précédent</span></h3>`;
+    html += monIdx.map((i) => cardHtml(otherWorks[i], i)).join('');
+  }
+  list.innerHTML = html;
+  // Rectangles de statues (v117) : la vignette montre la statue seule, sans socle ni décor, à la
+  // vraie proportion de son rectangle — cohérent avec la hauteur lue dans le fichier Excel.
+  list.querySelectorAll('.other-work-card-big').forEach((card) => {
+    applyEmpriseCrop(card.querySelector('img'), otherWorks[Number(card.dataset.index)]);
+  });
   // Clic sur une vignette : ouvre l'image en grand dans la visionneuse, avec juste un bouton
   // de fermeture (les boutons du haut restent accessibles pour revenir en arrière).
   $('other-works-panel-list').querySelectorAll('.other-work-card-big').forEach((card) => {
@@ -10209,6 +10255,7 @@ const impTimer = createTimer('topbar-timer');
 // (changement d'œuvre, pause, ouverture de la bio) : une phrase lancée sous un ancien numéro ne
 // déclenche plus jamais sa suite.
 let impRunId = 0;
+const IMP_GAP_BEFORE_LOCATION_MS = 800; // pause avant la lecture du Lieu (voir impSpeakSegment)
 function impClearTimers() { impRunId++; impTimers.forEach(clearTimeout); impTimers = []; }
 // v66 (docx 29 sept, item 8) : onEnd optionnel, même mécanique que intrusSpeak/vfSpeak/famSpeak —
 // utilisé pour enchaîner les segments de la référence avec un vrai silence entre eux (voir
@@ -10454,7 +10501,15 @@ function impShowCurrent() {
       const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
       impTimers.push(setTimeout(() => impShowFlowImage(flowImage, flowField.label), flowDelayMs));
     }
-    impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), 2000)); });
+    // v120 (retour Stéphane : « trop de marge entre la dernière rubrique et le lieu de conservation, surtout
+    // s'il n'y a plus Ensemble ; on revient à ce qui était, un tout petit peu plus ») : avant v116, le
+    // Lieu se lisait d'une traite à la suite des dimensions (aucune pause). v116 y avait mis les 2 s de
+    // silence des autres coupures de segment, devenues inutiles sans Ensemble. Avant le Lieu, la pause
+    // n'est donc plus que de 0,8 s — juste de quoi laisser finir la voix et séparer nettement le lieu,
+    // sans attente perceptible. Les autres coupures (Ensemble, s'il revenait) gardent 2 s.
+    const nextSegment = speechSegments[i + 1];
+    const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : 2000;
+    impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), gapMs)); });
   }
   if (speechSegments.length) impSpeakSegment(0); else impSpeak(work.artist);
 
