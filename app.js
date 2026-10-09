@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v127';
+const APP_VERSION = 'v128';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -1785,8 +1785,10 @@ const PRONUNCIATION_FIXES = {
   'manneken pis': 'mannekenne piss',
   'copley': 'kopli',
   'vuillard': 'vuiyar',
-  'damian forment': 'damianne forment',
-  'ambrogio lorenzetti': 'ambrogio lorainezétti',
+  'damian forment': 'damianne formènnte',
+  'damián forment': 'damianne formènnte', // v128 : « prononcer le ENT » (avec l'accent du fichier, la clé sans accent ne s'appliquait pas)
+  'forment': 'formènnte',
+  'ambrogio lorenzetti': 'ambrogio lorendzétti',
   'borghese': 'borguézé',
   'borghèse': 'borguézé',
   'bernini': 'bérnini',
@@ -1804,7 +1806,7 @@ const PRONUNCIATION_FIXES = {
   'poyer': 'Poyé',
   'marmion': 'Marmiyon',
   'chœur': 'keur',
-  'adam': 'Adan',
+  'adam': 'Adant', // v128 : « Adam = dan, comme une dent » — la finale « -ant » est un « an » sûr (« Adan » restait lu « adane »)
   'kunst*': 'kounst',
   // v116 (docx 29 sept, tableau PRONONCIATION) : réécritures phonétiques ajoutées d'après les
   // indications de Stéphane (les noms déjà présents plus haut — Sœurs, Adam, Kunst…, Rijn… — n'ont pas
@@ -1816,7 +1818,7 @@ const PRONUNCIATION_FIXES = {
   'baccio': 'batchio',
   'milon de crotone': 'milon de crotonne',
   'large colour prints': 'larj keulor prinnts',
-  'loggetta': 'lodjétta',
+  'loggetta': 'lojéta', // v128 (docx 9 oct : « Loggetta = lojéta »)
   'andrea bolgi': 'andréa boldji',
   'bolgi': 'boldji',
   'juan de juni': 'rouane dé rouni',
@@ -1857,7 +1859,7 @@ const PRONUNCIATION_FIXES = {
   'gozzoli': 'Gotsoli',
   'simone': 'Simoné',
   'cione': 'tchioné',
-  'lorenzetti': 'lorainezétti',
+  'lorenzetti': 'lorendzétti', // v128 : le « z » italien se dit « dz » (comme dans « piazza », « Gozzoli »)
   'orsanmichele': 'Orsanmikélé',
   'santa croce': 'Santa Croché',
   'cimabue': 'Chimaboué',
@@ -1958,6 +1960,18 @@ const PRONUNCIATION_FIXES = {
   // certitude sur l'œuvre exacte — corrigé au cas où ce nom apparaît quelque part dans les
   // données (surnom, titre...), sans effet sinon.
   'pajarito': 'pararito',
+  // v128 (docx 9 oct, tableau PRONONCIATION) : réécritures phonétiques d'après les indications de Stéphane.
+  'baie': 'bè', // « Baie de Naples »
+  'sangallo': 'Sangalo', // on entendait « sangalio »
+  'schwerin': 'Schwérinne', // « n » prononcé
+  'algardi': 'Âlgardi',
+  'sebastiano': 'Sébastiano',
+  'cáceres': 'Cacérés',
+  'caceres': 'Cacérés',
+  'houston': 'Youstonne',
+  'pollux': 'Pollukss',
+  'giacomo': 'Djacomo',
+  'piazza': 'Piadza',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2175,7 +2189,12 @@ function normaliseRows(rows) {
     // v125 : même logique quand le matériau répète déjà le mot de la nature (« Enluminure » + « Enluminure sur
     // vélin », « Aquarelle » + « Aquarelle et gouache ») : on garde le matériau seul, sans « X en X ».
     const materialsRepeatNature = !!(nature && materials && keyName(materials).includes(keyName(nature)));
-    const materialsPhrase = nature && materials && !natureIsPaintingGenre && !materialsRepeatNature ? `${nature} en ${materials.charAt(0).toLowerCase()}${materials.slice(1)}` : ((natureIsPaintingGenre || materialsRepeatNature) && materials ? materials : (nature || materials));
+    // v128 (docx 9 oct, NATURE ET MATERIAU : « si triptyque ou retable, ne pas utiliser la préposition "en" ; dire
+    // "Triptyque, huile sur panneau de bois" ») : pour un ensemble de panneaux (triptyque, diptyque, polyptyque,
+    // retable, y compris « Panneau de retable »), la nature et le matériau se séparent par une virgule.
+    const natureTakesComma = /(triptyque|diptyque|polyptyque|polyptique|retable)/.test(keyName(nature));
+    const materialsLower = materials ? `${materials.charAt(0).toLowerCase()}${materials.slice(1)}` : '';
+    const materialsPhrase = nature && materials && !natureIsPaintingGenre && !materialsRepeatNature ? `${nature}${natureTakesComma ? ',' : ' en'} ${materialsLower}` : ((natureIsPaintingGenre || materialsRepeatNature) && materials ? materials : (nature || materials));
 
     // --- Dimensions : nouvelle structure Hauteur/Longueur/Profondeur si présente, sinon ancienne
     // colonne unique « dimensions » (repliée dans hauteur/longueur via une expression régulière).
@@ -7307,10 +7326,12 @@ async function loadArtistListIfNeeded() {
       });
       rows.forEach((r) => {
         const key = keyName(`${r['Prénom'] || ''} ${r['Patronyme'] || ''}`);
+        // v128 : les colonnes « Image de l'artiste » / « Légende de l'artiste » saisies directement dans
+        // l'onglet principal l'emportent sur l'ancien onglet Images (qui ne sert plus que de repli).
         const photo = photoByKey.get(key);
-        if (photo) r["Image de l'artiste"] = photo;
+        if (photo && !String(r["Image de l'artiste"] || '').trim()) r["Image de l'artiste"] = photo;
         const caption = captionByKey.get(key);
-        if (caption) r["Légende de l'artiste"] = caption;
+        if (caption && !String(r["Légende de l'artiste"] || '').trim()) r["Légende de l'artiste"] = caption;
       });
     }
     // v76 (retour Stéphane 29/09 : « rendre le nom de l'artiste cliquable — portrait puis bio lue,
@@ -7330,7 +7351,7 @@ async function loadArtistListIfNeeded() {
       rows.forEach((r) => {
         const key = keyName(`${r['Prénom'] || ''} ${r['Patronyme'] || ''}`);
         const bio = bioByKey.get(key);
-        if (bio) r['Bio'] = bio;
+        if (bio && !String(r['Bio'] || '').trim()) r['Bio'] = bio; // v128 : colonne « Bio » de l'onglet principal prioritaire
       });
     }
     artistListRows = rows;
@@ -10527,7 +10548,9 @@ $('imp-start-button')?.addEventListener('click', async () => {
   }
 });
 
+let impConsigneSpoken = false; // v128 : la consigne vocale n'est dite qu'à la 1re œuvre de chaque séance
 $('imp-launch-first-button')?.addEventListener('click', () => {
+  impConsigneSpoken = false;
   $('imp-ready-screen').classList.add('hidden');
   $('imp-quiz-grid').classList.remove('hidden');
   $('bg-mosaic').classList.add('hidden');
@@ -10704,7 +10727,17 @@ function impShowCurrent() {
     const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : 2000;
     impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), gapMs)); });
   }
-  if (speechSegments.length) impSpeakSegment(0); else impSpeak(work.artist);
+  // v128 (docx 9 oct, IMPREGNATION : « la voix doit donner la consigne sur la première page ; c'est bon pour
+  // les autres jeux ») : comme dans Intrus & co., la consigne écrite (#imp-instruction) est lue UNE fois,
+  // avant la référence de la toute première œuvre, puis la lecture normale enchaîne après une courte pause.
+  const startReference = () => { if (speechSegments.length) impSpeakSegment(0); else impSpeak(work.artist); };
+  const impConsigne = (impIndex === 0 && !impConsigneSpoken) ? ($('imp-instruction')?.textContent || '').trim() : '';
+  if (impConsigne) {
+    impConsigneSpoken = true;
+    impSpeak(impConsigne, () => { impTimers.push(setTimeout(startReference, 700)); });
+  } else {
+    startReference();
+  }
 
   const STAGGER = impDelayMs * 0.5;
   fields.forEach((f, i) => {
@@ -11135,7 +11168,7 @@ function intrusShowQuestion() {
     // après ») : la consigne écrite (#intrus-instruction) est lue avant la référence uniquement à la
     // question 1.
     const intrusConsigne = intrusIndex === 0 ? `${($('intrus-instruction')?.textContent || '').trim()} ` : '';
-    intrusSpeak(`${intrusConsigne}${q.correct.artist} — « ${q.correct.title} »`);
+    intrusSpeak(`${intrusConsigne}${spokenArtistWithSurnom(q.correct)} — « ${q.correct.title} »`);
   } else {
     // Image en haut à gauche. Choix à droite : le plus souvent le nom du peintre seul (le cas
     // le plus exigeant), parfois artiste + titre pour varier (q.titleMode).
@@ -11253,16 +11286,16 @@ function intrusAnswer(chosenIndex) {
     $('intrus-choices').innerHTML = '';
     if (isCorrect) {
       setVerdictSquare('intrus-verdict-square', true);
-      intrusSpeak(`${spokenVerdictOpener(true)} ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
+      intrusSpeak(`${spokenVerdictOpener(true)} ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields, true)}`);
     } else {
       // Étape 2 (après la phrase de l'étape 1) : révèle la bonne image + sa référence complète,
       // introduite par « La bonne référence était » (à l'écran comme à la voix) — puis réaffiche les
       // boutons, jusque-là masqués (voir ci-dessus).
       deferControlsReveal = true;
-      intrusSpeak(`À réviser. Vous avez confondu avec ${artDesignation(chosen)} de ${chosen.artist}, ${chosen.title || 'œuvre non titrée'}.`, () => {
+      intrusSpeak(`À réviser. Vous avez confondu avec ${artDesignation(chosen)} de ${spokenArtistWithSurnom(chosen)}, ${chosen.title || 'œuvre non titrée'}.`, () => {
         intrusRenderConfusionStep(q.correct, 'La bonne référence était :', true);
         setVerdictSquare('intrus-verdict-square', false);
-        intrusSpeak(`La bonne référence était : ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
+        intrusSpeak(`La bonne référence était : ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields, true)}`);
         intrusRevealCorrectionControls();
       });
     }
@@ -11276,7 +11309,7 @@ function intrusAnswer(chosenIndex) {
     // v82 (« même système » étendu à Intrus) : le verdict écrit dans le bouton disparaît, remplacé
     // par le carré coloré commun à tous les jeux.
     setVerdictSquare('intrus-verdict-square', isCorrect);
-    intrusSpeak(`${spokenVerdictOpener(isCorrect)} ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields)}`);
+    intrusSpeak(`${spokenVerdictOpener(isCorrect)} ${spokenFullReference(q.correct, showFullCorrection ? null : intrusExtraFields, true)}`);
   }
 
   if (!deferControlsReveal) intrusRevealCorrectionControls();
