@@ -780,6 +780,9 @@ body.lefty .quiz-grid .answer-card { order:1; }
 #imp-bio-split-close:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); }
 .imp-artist-name-button { background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; font-weight:inherit; cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:3px; }
 .imp-artist-name-button:hover { color:var(--accent); }
+/* v129 : petits haut-parleurs (bio de l'artiste / histoire de l'œuvre) à côté du nom et du titre. */
+.imp-speaker-btn { background:none; border:0; padding:0 .2em; margin:0 0 0 .25em; font-size:.8em; line-height:1; cursor:pointer; opacity:.65; vertical-align:middle; }
+.imp-speaker-btn:hover, .imp-speaker-btn:focus-visible { opacity:1; transform:scale(1.15); }
 .answer-card { padding:30px 26px; }.answer-card h2 { margin-bottom:7px; font-size:1.3rem; }.answer-card form { display:grid; gap:14px; }.answer-card label { display:grid; gap:6px; font-family:Arial,sans-serif; font-size:.82rem; font-weight:700; }.answer-card input { width:100%; padding:10px; color:#2b2620; border:1px solid #cfc8bc; border-radius:4px; background:#fff; transition:background .15s, border-color .15s; }.answer-card input:focus { outline:2px solid #df947f; border-color:var(--accent); }.answer-card input:disabled { background:#f4f1eb; }
 #impregnation-panel .answer-card { display:flex; flex-direction:column; min-height:100%; }
 /* Ordre par défaut (grand écran, image et texte côte à côte) : titre, références, boutons de

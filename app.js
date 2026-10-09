@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v128';
+const APP_VERSION = 'v129';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -2244,6 +2244,7 @@ function normaliseRows(rows) {
     // qui la fusionne dans masterRow sous "Légende de l'artiste", même mécanique que la photo
     // elle-même juste au-dessus (artistImage).
     let artistImageCaption = '';
+    let workText = '';
     const masterRow = findArtistMasterRow(prenom, patronyme, surnomFr);
     if (masterRow) {
       // v126 : le surnom écrit dans le fichier d'œuvres l'emporte ; s'il est vide sur cette ligne (colonne
@@ -2264,6 +2265,15 @@ function normaliseRows(rows) {
       if (!artistImageKey && masterRow["Image de l'artiste"]) artistImage = String(masterRow["Image de l'artiste"]).trim();
       if (masterRow["Légende de l'artiste"]) artistImageCaption = String(masterRow["Légende de l'artiste"]).trim();
       if (masterRow['Bio']) bio = String(masterRow['Bio']).trim();
+      // v129 (Stéphane : « pour chaque artiste de niveau 1, l'œuvre emblématique et un petit texte ») : le maître
+      // porte, par artiste, le titre de son œuvre emblématique et le texte (à la première personne) qui la raconte.
+      // Le texte n'est rattaché QU'À la ligne d'œuvre dont le titre correspond (comparaison sans accents ni
+      // ponctuation, et tolérante à un titre plus long que celui noté au maître) : les autres œuvres du même
+      // artiste n'ont donc pas de haut-parleur. Rien à saisir dans les 14 fichiers d'œuvres.
+      const emblemKey = keyName(masterRow['Œuvre emblématique']);
+      const workTextRaw = String(masterRow["Texte de l'œuvre"] || '').trim();
+      const titleKeyNow = keyName(title);
+      if (emblemKey && workTextRaw && titleKeyNow && (titleKeyNow === emblemKey || (emblemKey.length >= 12 && (titleKeyNow.startsWith(emblemKey) || emblemKey.startsWith(titleKeyNow))))) workText = workTextRaw;
     }
 
     // v126 : ni prénom ni patronyme (même après la jointure) mais un surnom = artiste de convention :
@@ -2288,7 +2298,7 @@ function normaliseRows(rows) {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, artistImageCaption, locationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio,
+      artistImage, artistImageCaption, locationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
       row: rowIndex + 2
     };
   }).filter((question) => question && (question.image || question.artist || question.date || question.location || question.title));
@@ -10475,8 +10485,9 @@ function impClearTimers() { impRunId++; impTimers.forEach(clearTimeout); impTime
 // utilisé pour enchaîner les segments de la référence avec un vrai silence entre eux (voir
 // impShowCurrent). Le filet de sécurité (setTimeout) couvre les navigateurs/voix où onend ne se
 // déclenche pas de façon fiable.
-function impSpeak(text, onEnd) {
-  if (!impAudioOn || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
+function impSpeak(text, onEnd, force) {
+  // v129 : un clic sur un haut-parleur est une demande explicite d'écoute : il passe outre l'interrupteur son général.
+  if ((!impAudioOn && !force) || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.72; u.volume = getGlobalPrefs().speechVolume ?? 1;
@@ -10625,9 +10636,11 @@ function impShowCurrent() {
     // du texte (boucle STAGGER, plus bas) puisque cet id n'existe qu'une fois le HTML injecté.
     { key: 'artist', label: 'Auteur', value: (() => {
       const nameHtml = artistFlag(work.nationality) ? `${formatArtistDisplayName(work)} <span title="${escapeHtml(nationalityCountryName(work.nationality))}">${artistFlag(work.nationality)}</span>` : formatArtistDisplayName(work);
-      return (work.bio || work.artistImage) ? `<button type="button" class="imp-artist-name-button" id="imp-artist-name-button">${nameHtml}</button>` : nameHtml;
+      const nameBtn = (work.bio || work.artistImage) ? `<button type="button" class="imp-artist-name-button" id="imp-artist-name-button">${nameHtml}</button>` : nameHtml;
+      // v129 : petit haut-parleur derrière le nom (bio lue), uniquement s'il y a une bio.
+      return work.bio ? `${nameBtn} <button type="button" class="imp-speaker-btn" id="imp-speaker-bio" title="Écouter la biographie" aria-label="Écouter la biographie de l’artiste">🔊</button>` : nameBtn;
     })(), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
-    { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
+    { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>${work.workText ? ` <button type="button" class="imp-speaker-btn" id="imp-speaker-work" title="Écouter l’histoire de cette œuvre" aria-label="Écouter l’histoire de cette œuvre">🔊</button>` : ''}`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
     { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },
@@ -10750,7 +10763,8 @@ function impShowCurrent() {
         // v76 : le bouton nom-d'artiste cliquable (voir plus haut) est réinjecté à chaque œuvre avec
         // le reste du HTML de la rubrique — son écouteur de clic doit donc être rattaché à chaque
         // fois, l'ancien élément (et son écouteur) ayant disparu avec l'ancien innerHTML.
-        if (f.key === 'artist') { $('imp-artist-name-button')?.addEventListener('click', () => openImpArtistBio(work)); }
+        if (f.key === 'artist') { $('imp-artist-name-button')?.addEventListener('click', () => openImpArtistBio(work)); $('imp-speaker-bio')?.addEventListener('click', () => openImpArtistBio(work, true)); }
+        if (f.key === 'title') { $('imp-speaker-work')?.addEventListener('click', () => openImpWorkText(work)); }
       }
     }, textDelay));
   });
@@ -10828,7 +10842,7 @@ function impShowFlowImage(url, label) {
 // automatique pendant que la bio est ouverte (impClearTimers) — sinon l'image du lieu/de l'ensemble
 // pourrait basculer PENDANT la lecture de la bio, invisible sous ce nouvel écran mais reprenant à
 // un moment incohérent une fois refermé.
-function openImpArtistBio(work) {
+function openImpArtistBio(work, force) {
   impClearTimers();
   const portrait = $('imp-bio-split-portrait');
   if (portrait) {
@@ -10851,7 +10865,25 @@ function openImpArtistBio(work) {
   // #imp-correction-details, qui n'a plus sa place une fois la bio ouverte — remis en place par
   // closeImpArtistBio ci-dessous, jamais ailleurs, donc jamais oublié en sortant de la bio.
   $('imp-quiz-grid')?.classList.add('imp-bio-open');
-  if (work.bio) impSpeak(work.bio);
+  if (work.bio) impSpeak(work.bio, undefined, force);
+}
+// v129 : même écran partagé que la bio, mais avec l'image de l'œuvre à gauche et son texte (première personne) à droite.
+function openImpWorkText(work) {
+  impClearTimers();
+  const img = $('imp-bio-split-portrait');
+  if (img) {
+    if (work.image) { img.src = imageSourceSized(work.image, 900); img.classList.remove('hidden'); }
+    else img.classList.add('hidden');
+  }
+  const captionEl = $('imp-bio-split-caption');
+  if (captionEl) captionEl.textContent = [formatArtistDisplayName(work).replace(/<[^>]+>/g, ''), work.date].filter(Boolean).join(', ');
+  const nameEl = $('imp-bio-split-name');
+  if (nameEl) nameEl.textContent = `«\u00a0${work.title}\u00a0»`;
+  const textEl = $('imp-bio-split-text');
+  if (textEl) textEl.textContent = work.workText;
+  $('imp-bio-split')?.classList.remove('hidden');
+  $('imp-quiz-grid')?.classList.add('imp-bio-open');
+  impSpeak(work.workText, undefined, true);
 }
 function closeImpArtistBio() {
   $('imp-bio-split')?.classList.add('hidden');
