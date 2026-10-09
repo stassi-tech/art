@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v129';
+const APP_VERSION = 'v130';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -7154,10 +7154,36 @@ function renderArtistListTable() {
 // généralement instantané) et on regroupe les œuvres par musée = « Lieu précis » du fichier (sans le
 // sous-lieu : la salle ou la chapelle ne doit pas créer un musée à part). Un ancien fichier sans
 // colonne « Lieu précis » retombe sur son lieu complet.
-let museumIndexRows = null; // [{ key, name, ville, works }] — remis à null par « Actualiser »
+let museumIndexRows = null; // [{ key, name, ville, cityKey, category, works }] — remis à null par « Actualiser »
 let museumListSortedRows = [];
 let museumNavRows = [];
+let cityViewKey = null; // v129 : ville ouverte dans la LISTE (null = on voit la liste des villes)
 function museumNameOfWork(w) { return String(w.lieuPrecis || w.location || '').trim(); }
+// v129 (retour Stéphane : « au lieu de tri par musée, un premier bouton tri par ville ; puis à
+// l'intérieur de Florence, tu distingues les musées, les galeries, des établissements religieux — on
+// ne mélange pas église, abbaye et musée ») : la LISTE « par musée » devient « par ville ». Dans une
+// ville, les lieux sont rangés en trois rubriques d'après le NOM du lieu (le fichier n'a pas de
+// colonne « type de lieu ») : musées et galeries / établissements religieux / autres lieux (palais,
+// places, jardins, châteaux, collections privées…). Les mots-clés ci-dessous sont lus sans accent ni
+// majuscule (keyName). Le musée passe AVANT le religieux : « Musée de la Cathédrale » est un musée.
+const MUSEUM_WORDS = ['musee', 'museo', 'museu', 'museum', 'museet', 'galer', 'galleri', 'gallery', 'pinacot', 'pinakot', 'kunsth', 'kunstm', 'kunstsamm', 'sammlung', 'beaux arts', 'art institute', 'institute of art', 'institut d art', 'fondation', 'kupferstich', 'glyptotek', 'muséal', 'museal', 'art center', 'collection frick', 'wallace collection', 'royal collection'];
+const MUSEUM_EXACT = ['palazzo bianco', 'palazzo rosso', 'palazzo abatellis', 'palais abatellis', 'palazzo bellomo', 'palazzo poggi', 'palazzo braschi', 'palazzo dei conservatori', 'ca d oro', 'ca rezzonico', 'casa buonarroti', 'hotel carnavalet', 'mauritshuis', 'academie carrara', 'royal academy of arts', 'pennsylvania academy of the fine arts', 'cenacolo di sant apollonia', 'belvedere', 'palais du belvedere', 'petit palais', 'wadsworth atheneum', 'hispanic society of america', 'zentrum paul klee', 'la boverie', 'kettle s yard', 'centre getty', 'centre des arts shimane', 'gleimhaus', 'fembohaus', 'lenbachhaus', 'le rosenbach', 'palais des beaux arts', 'galerie des offices', 'wallace collection', 'frick collection', 'the frick collection', 'palais barberini', 'palazzo barberini', 'tate britain', 'tate modern', 'the huntington', 'the phillips collection', 'yale center for british art', 'institut stadel', 'buffalo bill center of the west', 'butler institute of american art', 'california palace of the legion of honor', 'ospedale degli innocenti'];
+const RELIGIOUS_WORDS = ['eglise', 'cathedrale', 'basilique', 'basilica', 'abbaye', 'abbey', 'chapelle', 'chapel', 'couvent', 'monastere', 'baptistere', 'collegiale', 'collegiata', 'chiesa', 'oratoire', 'oratorio', 'sanctuaire', 'santuario', 'pieve', 'chartreuse', 'certosa', 'cloitre', 'sainte maison', 'badia', 'tempio', 'seminaire', 'grotte de saint', 'kerk', 'minster', 'duomo'];
+function placeCategory(name) {
+  const k = keyName(name);
+  if (MUSEUM_EXACT.includes(k) || MUSEUM_WORDS.some((w) => k.includes(keyName(w)))) return 'museum';
+  const tokens = k.split(' ');
+  if (RELIGIOUS_WORDS.some((w) => (w.includes(' ') ? k.includes(w) : tokens.some((t) => t === w || t === w + 's')))) return 'religious'; // « chapelles », « cathédrales »…
+  if (/^(santa|sant|san|santo|santi|sante) /.test(k)) return 'religious'; // « Santa Maria Novella », « San Lazzaro degli Armeni »…
+  return 'other';
+}
+const CITY_ALIASES = { london: 'londres', 'cite du vatican': 'vatican', 'francfort sur le main': 'francfort', 'frankfort sur le main': 'francfort', passadena: 'pasadena', marseile: 'marseille', toledo: 'tolede', winterthour: 'winterthur', 'loreto lorette': 'lorette' };
+function cityKeyOf(ville) {
+  const k = keyName(ville);
+  if (!k || k === 'ville de conservation') return '';
+  return CITY_ALIASES[k] || k;
+}
+const CATEGORY_LABELS = { museum: 'Musées et galeries', religious: 'Établissements religieux', other: 'Autres lieux (palais, places, jardins, collections…)' };
 async function buildMuseumIndex() {
   if (museumIndexRows) return museumIndexRows;
   const arts = ['peinture', 'sculpture'];
@@ -7167,9 +7193,10 @@ async function buildMuseumIndex() {
   const map = new Map();
   batches.flat().forEach((work) => {
     const name = museumNameOfWork(work);
-    if (!name) return;
-    const key = keyName(name);
-    if (!map.has(key)) map.set(key, { key, name, ville: work.ville || '', works: [] });
+    if (!name || keyName(work.ville) === 'ville de conservation') return; // ligne d'en-tête recopiée par erreur dans un fichier
+    const cityKey = cityKeyOf(work.ville);
+    const key = `${cityKey}|${keyName(name)}`; // même nom dans deux villes différentes = deux lieux
+    if (!map.has(key)) map.set(key, { key, name, ville: work.ville || '', cityKey, category: placeCategory(name), works: [] });
     const museum = map.get(key);
     if (!museum.ville && work.ville) museum.ville = work.ville;
     museum.works.push(work);
@@ -7177,34 +7204,87 @@ async function buildMuseumIndex() {
   museumIndexRows = [...map.values()];
   return museumIndexRows;
 }
-function filteredMuseumRows() {
-  const term = keyName(artistListSearchTerm.trim());
-  const all = (museumIndexRows || []).slice().sort((a, b) => a.key.localeCompare(b.key, 'fr'));
-  return { all, shown: term ? all.filter((m) => m.key.includes(term) || keyName(m.ville).includes(term)) : all };
+// Regroupe les lieux par ville. Nom affiché de la ville = l'écriture la plus fréquente (« Londres »
+// l'emporte sur « London »). Les lieux sans ville vont dans « Ville non précisée », en dernier.
+function buildCityGroups() {
+  const cities = new Map();
+  (museumIndexRows || []).forEach((p) => {
+    if (!cities.has(p.cityKey)) cities.set(p.cityKey, { key: p.cityKey, spellings: new Map(), places: [], nWorks: 0 });
+    const c = cities.get(p.cityKey);
+    const label = String(p.ville || '').trim();
+    if (label) c.spellings.set(label, (c.spellings.get(label) || 0) + p.works.length);
+    c.places.push(p); c.nWorks += p.works.length;
+  });
+  const order = { museum: 0, religious: 1, other: 2 };
+  return [...cities.values()].map((c) => {
+    const best = [...c.spellings.entries()].sort((a, b) => b[1] - a[1])[0];
+    c.name = c.key === '' ? 'Ville non précisée' : (best ? best[0] : c.key);
+    c.places.sort((a, b) => order[a.category] - order[b.category] || keyName(a.name).localeCompare(keyName(b.name), 'fr'));
+    return c;
+  }).sort((a, b) => (a.key === '') - (b.key === '') || keyName(a.name).localeCompare(keyName(b.name), 'fr'));
 }
-function renderMuseumListTable() {
+function renderMuseumListTable(keepScroll) {
+  const scrollers = [$('modal-artist-list')?.querySelector('.modal-box'), $('artist-list-table')].filter(Boolean);
+  const tops = scrollers.map((el) => el.scrollTop);
+  if (cityViewKey !== null) renderCityView(); else renderCityTable();
+  scrollers.forEach((el, i) => { el.scrollTop = keepScroll ? tops[i] : 0; }); // changer de ville ou revenir à la liste : on repart du haut
+}
+function renderCityTable() {
   const container = $('artist-list-table');
-  const { all, shown } = filteredMuseumRows();
-  museumListSortedRows = shown;
-  const html = ['<table class="artist-table"><thead><tr><th>Musée / lieu</th><th>Ville</th><th>Œuvres</th></tr></thead><tbody>'];
-  shown.forEach((m, idx) => {
-    html.push(`<tr><td><button type="button" class="artist-name-link" data-idx="${idx}"><strong>${escapeHtml(m.name)}</strong></button></td><td>${escapeHtml(m.ville)}</td><td>${m.works.length}</td></tr>`);
+  const groups = buildCityGroups();
+  const term = keyName(artistListSearchTerm.trim());
+  const shown = term ? groups.filter((c) => keyName(c.name).includes(term) || c.places.some((p) => keyName(p.name).includes(term))) : groups;
+  const count = (c, cat) => c.places.filter((p) => p.category === cat).length;
+  const html = ['<table class="artist-table"><thead><tr><th>Ville</th><th>Musées et galeries</th><th>Établissements religieux</th><th>Autres lieux</th><th>Œuvres</th></tr></thead><tbody>'];
+  shown.forEach((c) => {
+    html.push(`<tr><td><button type="button" class="artist-name-link" data-city="${escapeHtml(c.key)}"><strong>${escapeHtml(c.name)}</strong></button></td><td>${count(c, 'museum') || ''}</td><td>${count(c, 'religious') || ''}</td><td>${count(c, 'other') || ''}</td><td>${c.nWorks}</td></tr>`);
   });
   html.push('</tbody></table>');
   container.innerHTML = html.join('');
   container.querySelectorAll('.artist-name-link').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const museum = museumListSortedRows[Number(btn.dataset.idx)];
-      // Même principe que pour les artistes : si une recherche a réduit la liste, les flèches de la
-      // fiche parcourent la liste complète plutôt que quelques résultats seulement.
-      museumNavRows = artistListSearchTerm.trim() ? all : museumListSortedRows;
-      openMuseumWorksPage(museumNavRows.indexOf(museum));
+      cityViewKey = btn.dataset.city;
+      artistListSearchTerm = ''; if ($('artist-list-search')) $('artist-list-search').value = '';
+      renderMuseumListTable();
     });
   });
-  const hasSearch = artistListSearchTerm.trim().length > 0;
-  $('artist-list-status').textContent = hasSearch
-    ? `${shown.length} musée${shown.length > 1 ? 's' : ''} correspondant${shown.length > 1 ? 's' : ''} (sur ${all.length} au total).`
-    : `${all.length} musées et lieux référencés. Cliquez sur un nom pour voir toutes ses œuvres.`;
+  $('artist-list-status').textContent = term
+    ? `${shown.length} ville${shown.length > 1 ? 's' : ''} correspondant${shown.length > 1 ? 's' : ''} (sur ${groups.length} au total).`
+    : `${groups.length} villes référencées. Cliquez sur une ville pour voir ses musées, ses établissements religieux et ses autres lieux.`;
+}
+function renderCityView() {
+  const container = $('artist-list-table');
+  const city = buildCityGroups().find((c) => c.key === cityViewKey);
+  if (!city) { cityViewKey = null; renderCityTable(); return; }
+  const term = keyName(artistListSearchTerm.trim());
+  const visible = term ? city.places.filter((p) => keyName(p.name).includes(term)) : city.places;
+  // Les flèches de la fiche d'un lieu parcourent tous les lieux de la ville, dans l'ordre affiché
+  // (musées, puis établissements religieux, puis autres lieux), même si une recherche a réduit la liste.
+  museumNavRows = city.places;
+  const html = [`<div class="city-view-head"><button type="button" class="secondary-button" id="city-view-back">← Toutes les villes</button> <strong class="city-view-name">${escapeHtml(city.name)}</strong> <span class="city-view-count">${city.places.length} lieu${city.places.length > 1 ? 'x' : ''} · ${city.nWorks} œuvre${city.nWorks > 1 ? 's' : ''}</span></div>`];
+  ['museum', 'religious', 'other'].forEach((cat) => {
+    const rows = visible.filter((p) => p.category === cat);
+    if (!rows.length) return;
+    html.push(`<h4 class="city-section-title">${CATEGORY_LABELS[cat]} <span class="city-section-count">(${rows.length})</span></h4>`);
+    html.push('<table class="artist-table"><thead><tr><th>Lieu</th><th>Œuvres</th></tr></thead><tbody>');
+    rows.forEach((p) => {
+      html.push(`<tr><td><button type="button" class="artist-name-link" data-idx="${museumNavRows.indexOf(p)}"><strong>${escapeHtml(p.name)}</strong></button></td><td>${p.works.length}</td></tr>`);
+    });
+    html.push('</tbody></table>');
+  });
+  if (!visible.length) html.push('<p class="modal-hint">Aucun lieu ne correspond à cette recherche dans cette ville.</p>');
+  container.innerHTML = html.join('');
+  $('city-view-back')?.addEventListener('click', () => {
+    cityViewKey = null;
+    artistListSearchTerm = ''; if ($('artist-list-search')) $('artist-list-search').value = '';
+    renderMuseumListTable();
+  });
+  container.querySelectorAll('.artist-name-link').forEach((btn) => {
+    btn.addEventListener('click', () => openMuseumWorksPage(Number(btn.dataset.idx)));
+  });
+  $('artist-list-status').textContent = term
+    ? `${visible.length} lieu${visible.length > 1 ? 'x' : ''} correspondant${visible.length > 1 ? 's' : ''} à Florence`.replace('Florence', city.name) + ` (sur ${city.places.length}).`
+    : `${city.name} : cliquez sur un lieu pour voir toutes ses œuvres.`;
 }
 function openMuseumWorksPage(idx) {
   const museum = museumNavRows[idx];
@@ -7238,9 +7318,9 @@ async function setArtistListMode(mode) {
   $('artist-list-mode-museum')?.classList.toggle('active-mode', mode === 'museum');
   $('artist-list-filters')?.classList.toggle('hidden', mode !== 'filtered');
   const search = $('artist-list-search');
-  if (search) search.placeholder = mode === 'museum' ? 'Rechercher un musée ou une ville…' : 'Rechercher un artiste ou une œuvre…';
+  if (search) search.placeholder = mode === 'museum' ? 'Rechercher une ville ou un lieu…' : 'Rechercher un artiste ou une œuvre…';
   if (mode === 'museum') {
-    $('artist-list-status').textContent = 'Chargement des musées…';
+    $('artist-list-status').textContent = 'Chargement des villes…'; cityViewKey = null;
     $('artist-list-table').innerHTML = '';
     await buildMuseumIndex();
     if (artistListMode === 'museum') renderMuseumListTable(); // l'utilisateur a pu changer de mode pendant le chargement
@@ -7260,7 +7340,7 @@ $('artist-list-refresh')?.addEventListener('click', async () => {
   status.textContent = 'Actualisation…';
   quizRowsCache.clear(); quizRowsResolvedCache.clear();
   titleSearchIndex = null; titleSearchIndexCacheSize = -1;
-  museumIndexRows = null;
+  museumIndexRows = null; cityViewKey = null;
   artistListLoaded = false; artistListAutoDone = false;
   DATA_CACHE_BUST = Date.now();
   const ok = await loadArtistListComplete();
@@ -7722,6 +7802,7 @@ $('menu-item-artistes')?.addEventListener('click', async () => {
   artistListSearchTerm = '';
   if ($('artist-list-search')) $('artist-list-search').value = '';
   openModal('modal-artist-list');
+  if (artistListMode === 'museum' && museumIndexRows) renderMuseumListTable(); // v129 : la recherche vient d'être effacée
   if (artistListLoaded && artistListAutoDone) return;
   const status = $('artist-list-status');
   const ok = await loadArtistListComplete();
