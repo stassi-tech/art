@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>MNEMART — Peintures et sculptures en Occident, 14e au 20e siècle</title>
+    <title>MNEMART — Peintures et sculptures en Occident, 15e au 20e siècle</title>
     <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=265" />
+    <link rel="stylesheet" href="style.css?v=266" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -335,7 +335,7 @@
       <main class="main-content">
         <section id="welcome-panel" class="welcome-panel">
           <p class="app-brand-name">MNEMART</p>
-          <p class="eyebrow home-eyebrow">Peinture et sculpture en Occident<br>14e au 20e siècle</p>
+          <p class="eyebrow home-eyebrow">Peinture et sculpture en Occident<br>15e au 20e siècle</p>
           <h1 class="home-tagline">Mémoriser des milliers d'œuvres d'art,<br>c'est possible.</h1>
 
           <figure class="home-illustration">
@@ -343,7 +343,7 @@
             <figcaption>Auguste RENOIR, <em>Portrait d'Eugène Murer</em>, 1877, Metropolitan Museum of Art, New York.</figcaption>
           </figure>
 
-          <p class="intro-banner">Cette application vous propose de jouer avec <a href="#base" target="_blank" rel="noopener">une base de plusieurs milliers d'œuvres d'art</a> — peintures et sculptures en Occident, du 14e au 20e siècle (actuellement <span id="intro-stats-counter">un chargement de la base est en cours…</span>) — à travers <a href="#exercices" target="_blank" rel="noopener">des exercices d'entraînement</a> à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. <a href="#" id="intro-account-link">Créez un compte</a> pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
+          <p class="intro-banner">Cette application vous propose de jouer avec <a href="#base" target="_blank" rel="noopener">une base de plusieurs milliers d'œuvres d'art</a> — peintures et sculptures en Occident, du 15e au 20e siècle (actuellement <span id="intro-stats-counter">un chargement de la base est en cours…</span>) — à travers <a href="#exercices" target="_blank" rel="noopener">des exercices d'entraînement</a> à la mémoire et des quiz d'identification où vous pourrez vous autoévaluer. <a href="#" id="intro-account-link">Créez un compte</a> pour mémoriser vos choix et vos scores d'une session à l'autre.</p>
 
           <!-- Retour de Stéphane : 4 boutons en grille 2x2 plutôt que 2 rangées séparées (3 portes
                d'entrée aux jeux + les boutons de compte tout en haut) — "Mon compte" rejoint donc
@@ -436,7 +436,7 @@
 
           <div id="gc-step-century" class="gc-step hidden">
             <p class="config-table-col-title">Avec quel(s) siècle(s) ?</p>
-            <label class="rubrique-option"><input type="checkbox" class="gc-century" value="14e" /><span>14e siècle</span></label>
+            <label class="rubrique-option" hidden style="display:none"><input type="checkbox" class="gc-century" value="14e" /><span>14e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-century" value="15e" /><span>15e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-century" value="16e" /><span>16e siècle</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-century" value="17e" /><span>17e siècle</span></label>
@@ -547,7 +547,7 @@
         <section id="training-hub-panel" class="welcome-panel hidden">
 
           <p class="app-brand-name">MNEMART</p>
-          <p class="eyebrow home-eyebrow">Peinture et sculpture en Occident<br>14e au 20e siècle</p>
+          <p class="eyebrow home-eyebrow">Peinture et sculpture en Occident<br>15e au 20e siècle</p>
 
           <p class="intro-banner" id="training-hub-intro-text">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique, sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez, depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
           <p id="training-hub-config-name" style="font-family:Arial,sans-serif;font-size:.9rem;color:var(--ink);line-height:1.5;margin:0 0 10px;"></p>
@@ -606,7 +606,7 @@
             </div>
             <div>
               <p class="config-table-col-title">Siècle</p>
-              <label class="rubrique-option"><input type="checkbox" id="imp-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option" hidden style="display:none"><input type="checkbox" id="imp-century-14e" /><span>14e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-century-15e" /><span>15e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-century-16e" /><span>16e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="imp-century-17e" /><span>17e siècle</span></label>
@@ -750,7 +750,7 @@
             </div>
             <div>
               <p class="config-table-col-title">Siècle</p>
-              <label class="rubrique-option"><input type="checkbox" id="intrus-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option" hidden style="display:none"><input type="checkbox" id="intrus-century-14e" /><span>14e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-century-15e" /><span>15e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-century-16e" /><span>16e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="intrus-century-17e" /><span>17e siècle</span></label>
@@ -856,7 +856,7 @@
             </div>
             <div>
               <p class="config-table-col-title">Siècle</p>
-              <label class="rubrique-option"><input type="checkbox" id="recon-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option" hidden style="display:none"><input type="checkbox" id="recon-century-14e" /><span>14e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-century-15e" /><span>15e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-century-16e" /><span>16e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="recon-century-17e" /><span>17e siècle</span></label>
@@ -966,7 +966,7 @@
             </div>
             <div>
               <p class="config-table-col-title">Siècle</p>
-              <label class="rubrique-option"><input type="checkbox" id="vf-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option" hidden style="display:none"><input type="checkbox" id="vf-century-14e" /><span>14e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-century-15e" /><span>15e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-century-16e" /><span>16e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="vf-century-17e" /><span>17e siècle</span></label>
@@ -1070,7 +1070,7 @@
             </div>
             <div>
               <p class="config-table-col-title">Siècle</p>
-              <label class="rubrique-option"><input type="checkbox" id="fam-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option" hidden style="display:none"><input type="checkbox" id="fam-century-14e" /><span>14e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-century-15e" /><span>15e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-century-16e" /><span>16e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="fam-century-17e" /><span>17e siècle</span></label>
@@ -1188,7 +1188,7 @@
             </div>
             <div>
               <p class="config-table-col-title">Siècle</p>
-              <label class="rubrique-option"><input type="checkbox" id="chrono-century-14e" /><span>14e siècle</span></label>
+              <label class="rubrique-option" hidden style="display:none"><input type="checkbox" id="chrono-century-14e" /><span>14e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="chrono-century-15e" /><span>15e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="chrono-century-16e" /><span>16e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="chrono-century-17e" /><span>17e siècle</span></label>
@@ -1293,7 +1293,7 @@
             </div>
             <div>
               <p class="config-table-col-title">Siècle</p>
-              <label class="rubrique-option"><input type="checkbox" id="century-14e" /><span title="Œuvres créées entre 1301 et 1400">14e siècle</span></label>
+              <label class="rubrique-option" hidden style="display:none"><input type="checkbox" id="century-14e" /><span title="Œuvres créées entre 1301 et 1400">14e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="century-15e" /><span title="Œuvres créées entre 1401 et 1500">15e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="century-16e" /><span title="Œuvres créées entre 1501 et 1600">16e siècle</span></label>
               <label class="rubrique-option"><input type="checkbox" id="century-17e" /><span title="Œuvres créées entre 1601 et 1700">17e siècle</span></label>
@@ -1977,7 +1977,7 @@
 
           <div id="profile-section-esthetique" class="hidden">
             <p class="modal-hint" style="margin-top:0;">Change l'apparence de l'application — fond, cadres des œuvres. Rien coché = apparence actuelle, inchangée. Premier essai avec quelques salles ; d'autres suivront.</p>
-            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="gothique" /><span>Gothique international — or et bleu lapis-lazuli (réf. enluminures, 14e siècle)</span></label>
+            <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="gothique" /><span>Gothique international — or et bleu lapis-lazuli (réf. enluminures, 15e siècle)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="renaissance" /><span>Galerie Renaissance — terre cuite et or vieilli (réf. palais florentins)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="versailles" /><span>Château de Versailles — or et marbre veiné (réf. Galerie des Glaces)</span></label>
             <label class="rubrique-option"><input type="radio" name="pf-ambiance" value="ermitage" /><span>Ermitage Rococo — bleu impérial et or (réf. Saint-Pétersbourg)</span></label>
@@ -2002,7 +2002,7 @@
               </div>
               <div>
                 <p class="config-table-col-title">Siècle</p>
-                <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="14e" /><span>14e siècle</span></label>
+                <label class="rubrique-option" hidden style="display:none"><input type="checkbox" class="pf-field-century" value="14e" /><span>14e siècle</span></label>
                 <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="15e" /><span>15e siècle</span></label>
                 <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="16e" /><span>16e siècle</span></label>
                 <label class="rubrique-option"><input type="checkbox" class="pf-field-century" value="17e" /><span>17e siècle</span></label>
@@ -2096,6 +2096,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=359"></script>
+    <script src="app.js?v=360"></script>
   </body>
 </html>

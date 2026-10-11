@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v131';
+const APP_VERSION = 'v132';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -386,7 +386,11 @@ async function loadAccountPage() {
   }
 }
 let lastAccountLevelGroups = null;
-const CENTURY_KEYS = ['14e', '15e', '16e', '17e', '18e', '19e', '20e'];
+// v132 : le 14e siècle est mis de côté pour l'instant (trop peu d'œuvres/artistes pour porter des
+// quiz équilibrés) : plus de case 14e, plus de colonne 14e dans les exports. Les fichiers et le fichier
+// maître gardent leurs données 14e (rien n'est supprimé), l'appli ne les propose simplement plus.
+const RETIRED_CENTURIES = ['14e'];
+const CENTURY_KEYS = ['15e', '16e', '17e', '18e', '19e', '20e'];
 const ART_KEYS = ['peinture', 'sculpture'];
 const RUBRIQUE_COLUMNS = [
   { label: 'Artiste', match: (r) => r.startsWith('Artiste') },
@@ -889,7 +893,7 @@ async function populateArtistSuggestions() {
     list.innerHTML = '';
     return;
   }
-  let matchingRows = artistListRows.filter(artistMatchesCurrentField);
+  let matchingRows = listedArtistRows().filter(artistMatchesCurrentField);
   // Le niveau de célébrité n'est pas une colonne du fichier maître des artistes — il se lit sur
   // leurs œuvres elles-mêmes (colonne Niveau des fichiers quiz). On ne va vérifier ceci œuvre par
   // œuvre que si la liste est déjà raisonnablement réduite par le champ (sinon, trop d'artistes à
@@ -1260,7 +1264,7 @@ async function computeFieldAmbiance() {
 // Textes pédagogiques accompagnant le changement (ou la question posée) — brefs, dans l'esprit
 // « la mémoire s'imprègne aussi du style d'une époque ».
 const AMBIANCE_AUTO_TEXTS = {
-  gothique: "Aux 14e et 15e siècles, l'art occidental restait marqué par le style gothique international — or et bleus profonds des enluminures. Vous voilà plongé dans cette ambiance.",
+  gothique: "Au 15e siècle, l'art occidental restait marqué par le style gothique international — or et bleus profonds des enluminures. Vous voilà plongé dans cette ambiance.",
   renaissance: "La Renaissance a débuté au Quattrocento en Italie. Vous voilà dans un environnement Renaissance.",
   versailles: "Le 17e siècle en France, c'est le siècle du Roi-Soleil et de Versailles. Vous voilà dans cette ambiance.",
 };
@@ -6970,6 +6974,7 @@ $('excel-file')?.addEventListener('change', async (event) => {
 // publiée dans quizzes/ — pas besoin de retoucher ce code après une mise à jour du fichier.
 let artistListLoaded = false;
 let artistListRows = [];
+function listedArtistRows() { return artistListRows.filter((r) => !r._retired); }
 let artistListSort = { col: 'Patronyme', dir: 1 };
 let artistListFilters = { nationalite: '', art: '', siecle: '' };
 // v65 (document du 29 sept, LISTE item 2 : « créer une entrée dans la liste par saisie d'un nom ou
@@ -7064,7 +7069,7 @@ function artistRowMatchesSearch(row, term) {
   return titleMatchesForRow(row, term);
 }
 function filteredArtistListRows() {
-  let rows = artistListRows;
+  let rows = listedArtistRows();
   if (artistListMode !== 'full') {
     const { nationalite, art, siecle } = artistListFilters;
     rows = rows.filter((r) => {
@@ -7136,7 +7141,7 @@ function renderArtistListTable() {
   container.querySelectorAll('.artist-name-link').forEach((btn) => {
     btn.addEventListener('click', () => {
       const row = artistListSortedRows[Number(btn.dataset.idx)];
-      artistNavRows = artistListSearchTerm.trim() ? sortArtistRows(artistListRows) : artistListSortedRows;
+      artistNavRows = artistListSearchTerm.trim() ? sortArtistRows(listedArtistRows()) : artistListSortedRows;
       openArtistWorksPage(artistNavRows.indexOf(row));
     });
   });
@@ -7144,8 +7149,8 @@ function renderArtistListTable() {
   const hasMenuFilter = artistListMode === 'filtered' && (artistListFilters.nationalite || artistListFilters.art || artistListFilters.siecle);
   const hasSearch = artistListSearchTerm.trim().length > 0;
   status.textContent = (hasMenuFilter || hasSearch)
-    ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant${sorted.length > 1 ? 's' : ''} (sur ${artistListRows.length} au total).${sorted.length === 0 && hasSearch ? ' Un artiste qui vient d’être ajouté aux fichiers d’œuvres n’apparaît ici que s’il figure aussi dans le fichier maître (onglet Sheet1) : vérifiez-le, puis appuyez sur « Actualiser ».' : ''}`
-    : `${artistListRows.length} artistes référencés dans les quiz. Cliquez sur un nom pour voir ses œuvres.${artistListAutoNames.length ? ` Ajouté${artistListAutoNames.length > 1 ? 's' : ''} automatiquement depuis les fichiers d’œuvres (nationalité, dates et bio à compléter dans le fichier maître) : ${artistListAutoNames.slice(0, 12).join(', ')}${artistListAutoNames.length > 12 ? `… (+${artistListAutoNames.length - 12})` : ''}.` : ''}`;
+    ? `${sorted.length} artiste${sorted.length > 1 ? 's' : ''} correspondant${sorted.length > 1 ? 's' : ''} (sur ${listedArtistRows().length} au total).${sorted.length === 0 && hasSearch ? ' Un artiste qui vient d’être ajouté aux fichiers d’œuvres n’apparaît ici que s’il figure aussi dans le fichier maître (onglet Sheet1) : vérifiez-le, puis appuyez sur « Actualiser ».' : ''}`
+    : `${listedArtistRows().length} artistes référencés dans les quiz. Cliquez sur un nom pour voir ses œuvres.${artistListAutoNames.length ? ` Ajouté${artistListAutoNames.length > 1 ? 's' : ''} automatiquement depuis les fichiers d’œuvres (nationalité, dates et bio à compléter dans le fichier maître) : ${artistListAutoNames.slice(0, 12).join(', ')}${artistListAutoNames.length > 12 ? `… (+${artistListAutoNames.length - 12})` : ''}.` : ''}`;
 }
 // v115 (retour Stéphane : « ce qui serait bien dans la liste, c'est aussi de prévoir une entrée par
 // musée — la liste de toutes les œuvres présentes dans le musée s'afficherait ») : 3e mode de la LISTE.
@@ -7187,7 +7192,7 @@ const CATEGORY_LABELS = { museum: 'Musées et galeries', religious: 'Établissem
 async function buildMuseumIndex() {
   if (museumIndexRows) return museumIndexRows;
   const arts = ['peinture', 'sculpture'];
-  const centuries = ['14e', '15e', '16e', '17e', '18e', '19e', '20e'];
+  const centuries = ['15e', '16e', '17e', '18e', '19e', '20e'];
   const batches = await Promise.all(arts.flatMap((art) => centuries.map((century) =>
     fetchQuizRows(art, century).then((rows) => rows.map((r) => ({ ...r, artCategory: art }))).catch(() => []))));
   const map = new Map();
@@ -7349,9 +7354,9 @@ $('artist-list-refresh')?.addEventListener('click', async () => {
   await setArtistListMode(artistListMode);
 });
 function populateArtistListFilters() {
-  const nationalites = [...new Set(artistListRows.map((r) => r['Nationalité']).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
-  const arts = [...new Set(artistListRows.flatMap((r) => String(r['Art(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean)))].sort();
-  const siecles = [...new Set(artistListRows.flatMap((r) => String(r['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean)))].sort((a, b) => parseInt(a) - parseInt(b));
+  const nationalites = [...new Set(listedArtistRows().map((r) => r['Nationalité']).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+  const arts = [...new Set(listedArtistRows().flatMap((r) => String(r['Art(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean)))].sort();
+  const siecles = [...new Set(listedArtistRows().flatMap((r) => String(r['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean)))].filter((c) => !RETIRED_CENTURIES.includes(c)).sort((a, b) => parseInt(a) - parseInt(b));
   const fill = (id, values, placeholder) => {
     const select = $(id);
     select.innerHTML = `<option value="">${placeholder}</option>` + values.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
@@ -7444,6 +7449,13 @@ async function loadArtistListIfNeeded() {
         if (bio && !String(r['Bio'] || '').trim()) r['Bio'] = bio; // v128 : colonne « Bio » de l'onglet principal prioritaire
       });
     }
+    // v132 : les artistes qui n'ont QUE des œuvres du 14e (siècle mis de côté) restent dans artistListRows
+    // (les jointures nom/surnom/nationalité des fichiers d'œuvres en ont encore besoin) mais sont
+    // marqués : ils ne sont plus listés ni comptés (voir listedArtistRows).
+    rows.forEach((r) => {
+      const sc = String(r['Siècle(s)'] || '').split(',').map((x) => x.trim()).filter(Boolean);
+      r._retired = !!(sc.length && sc.every((x) => RETIRED_CENTURIES.includes(x)));
+    });
     artistListRows = rows;
     artistListLoaded = true;
     return true;
@@ -7469,7 +7481,7 @@ async function augmentArtistListFromQuizFiles() {
   artistListAutoDone = true;
   artistListAutoNames = [];
   const arts = ['peinture', 'sculpture'];
-  const centuries = ['14e', '15e', '16e', '17e', '18e', '19e', '20e'];
+  const centuries = ['15e', '16e', '17e', '18e', '19e', '20e'];
   const found = new Map(); // clé de nom -> { prenom, patronyme, arts:Set, centuries:Set, alt:Set<clé alternative> }
   await Promise.all(arts.flatMap((art) => centuries.map(async (century) => {
     let rows;
@@ -7999,7 +8011,7 @@ CHRONO_ACCORDIONS.forEach((pair) => {
   $(toggleId)?.addEventListener('click', () => { $(bodyId)?.classList.toggle('hidden'); });
 });
 function chronoSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`chrono-art-${a}`)?.checked); }
-function chronoSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`chrono-century-${c}`)?.checked); }
+function chronoSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`chrono-century-${c}`)?.checked); }
 function chronoSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`chrono-zone-${z}`)?.checked); }
 function chronoSelectedLevels() { return ['1', '2', '3'].filter((l) => $(`chrono-level-${l}`)?.checked); }
 function showChronoConfig() {
@@ -8022,7 +8034,7 @@ $('chrono-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('chrono', 'chrono-setup-panel');
   saveLastSelection('chrono-setup-panel');
   let arts = chronoSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
-  let centuries = chronoSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let centuries = chronoSelectedCenturies(); if (!centuries.length) centuries = ['15e','16e','17e','18e','19e','20e'];
   chronoFieldLabel = buildFieldLabel(arts, centuries);
   let levels = chronoSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('chrono-setup-feedback');
@@ -8350,7 +8362,7 @@ FAM_ACCORDIONS.forEach((pair) => {
 });
 
 function famSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`fam-art-${a}`)?.checked); }
-function famSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`fam-century-${c}`)?.checked); }
+function famSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`fam-century-${c}`)?.checked); }
 function famSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`fam-zone-${z}`)?.checked); }
 function famSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`fam-level-${lvl}`)?.checked); }
 function famSelectedTypes() {
@@ -8467,7 +8479,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
     return;
   }
   let arts = famSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
-  let centuries = famSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let centuries = famSelectedCenturies(); if (!centuries.length) centuries = ['15e','16e','17e','18e','19e','20e'];
   famFieldLabel = buildFieldLabel(arts, centuries);
   let levels = famSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('fam-setup-feedback');
@@ -8815,7 +8827,7 @@ function populateVfVoices() {
 }
 
 function vfSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`vf-art-${a}`)?.checked); }
-function vfSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`vf-century-${c}`)?.checked); }
+function vfSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`vf-century-${c}`)?.checked); }
 function vfSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`vf-zone-${z}`)?.checked); }
 function vfSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`vf-level-${lvl}`)?.checked); }
 
@@ -9005,7 +9017,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
     return;
   }
   let arts = vfSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
-  let centuries = vfSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let centuries = vfSelectedCenturies(); if (!centuries.length) centuries = ['15e','16e','17e','18e','19e','20e'];
   let levels = vfSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('vf-setup-feedback');
   feedback.classList.remove('hidden');
@@ -9439,7 +9451,7 @@ RECON_ACCORDIONS.forEach((pair) => {
 });
 
 function reconSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`recon-art-${a}`)?.checked); }
-function reconSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`recon-century-${c}`)?.checked); }
+function reconSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`recon-century-${c}`)?.checked); }
 function reconSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`recon-zone-${z}`)?.checked); }
 function reconSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`recon-level-${lvl}`)?.checked); }
 
@@ -9459,7 +9471,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('recon', 'reconstitution-setup-panel');
   saveLastSelection('reconstitution-setup-panel');
   let arts = reconSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
-  let centuries = reconSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let centuries = reconSelectedCenturies(); if (!centuries.length) centuries = ['15e','16e','17e','18e','19e','20e'];
   reconFieldLabel = buildFieldLabel(arts, centuries);
   let levels = reconSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('recon-setup-feedback');
@@ -9822,7 +9834,7 @@ $('load-saved-choice-button')?.addEventListener('click', () => {
   const raw = localStorage.getItem('savedQuizConfig');
   if (!raw) return;
   const cfg = JSON.parse(raw);
-  ['art-peinture', 'art-sculpture', 'century-14e', 'century-15e', 'century-16e', 'century-17e', 'century-18e', 'century-19e', 'century-20e',
+  ['art-peinture', 'art-sculpture', 'century-15e', 'century-16e', 'century-17e', 'century-18e', 'century-19e', 'century-20e',
    'zone-france', 'zone-italie', 'zone-espagne', 'zone-royaume_uni', 'zone-allemagne', 'zone-europe_centrale_russie', 'zone-europe_nord', 'zone-amerique', 'level-1', 'level-2', 'level-3'].forEach((id) => { const el = $(id); if (el) el.checked = false; });
   allFields.forEach((field) => { $(field.checkbox).checked = false; });
   (cfg.arts || []).forEach((a) => { const el = $(`art-${a}`); if (el) el.checked = true; });
@@ -10097,7 +10109,7 @@ function applyGlobalDefaultsToQuiz() {
   const gr = readGlobalRubriqueDefaults();
   if (gf.remember) {
     ['peinture', 'sculpture'].forEach((a) => { const el = $(`art-${a}`); if (el) el.checked = (gf.arts || []).includes(a); });
-    ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`century-${c}`); if (el) el.checked = (gf.centuries || []).includes(c); });
+    ['15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`century-${c}`); if (el) el.checked = (gf.centuries || []).includes(c); });
     ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].forEach((z) => { const el = $(`zone-${z}`); if (el) el.checked = (gf.zones || []).includes(z); });
   }
   if (gr.remember) {
@@ -10134,7 +10146,7 @@ function applyGlobalFieldDefaultsTo(prefix) {
   const gr = readGlobalRubriqueDefaults();
   if (gf.remember) {
     ['peinture', 'sculpture'].forEach((a) => { const el = $(`${prefix}-art-${a}`); if (el) el.checked = (gf.arts || []).includes(a); });
-    ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`${prefix}-century-${c}`); if (el) el.checked = (gf.centuries || []).includes(c); });
+    ['15e', '16e', '17e', '18e', '19e', '20e'].forEach((c) => { const el = $(`${prefix}-century-${c}`); if (el) el.checked = (gf.centuries || []).includes(c); });
     ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].forEach((z) => { const el = $(`${prefix}-zone-${z}`); if (el) el.checked = (gf.zones || []).includes(z); });
   }
   if (gr.remember) {
@@ -10334,7 +10346,7 @@ async function populateGuidedArtistList() {
   status.textContent = 'Chargement de la liste des artistes…';
   const ok = await loadArtistListComplete();
   if (!ok) { patience.classList.add('hidden'); status.textContent = "La liste des artistes n'a pas pu être chargée (connexion internet ?)."; list.innerHTML = ''; return; }
-  let matchingRows = artistListRows.filter(artistMatchesCurrentField);
+  let matchingRows = listedArtistRows().filter(artistMatchesCurrentField);
   const levels = readGlobalRubriqueDefaults().levels || [];
   if (levels.length && matchingRows.length <= 80) {
     status.textContent = 'Vérification du niveau des artistes…';
@@ -10538,7 +10550,7 @@ function populateImpVoices() {
 }
 
 function impSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`imp-art-${a}`)?.checked); }
-function impSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`imp-century-${c}`)?.checked); }
+function impSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`imp-century-${c}`)?.checked); }
 function impSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`imp-zone-${z}`)?.checked); }
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
@@ -10596,7 +10608,7 @@ $('imp-start-button')?.addEventListener('click', async () => {
   // Avancement toujours manuel désormais (flèche → ou touche Entrée) — plus de défilement
   // automatique, qui posait des problèmes de synchronisation difficiles à diagnostiquer.
   let arts = impSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
-  let centuries = impSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let centuries = impSelectedCenturies(); if (!centuries.length) centuries = ['15e','16e','17e','18e','19e','20e'];
   impFieldLabel = buildFieldLabel(arts, centuries);
   let levels = impSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('imp-setup-feedback');
@@ -11049,7 +11061,7 @@ INTRUS_ACCORDIONS.forEach((pair) => {
 });
 
 function intrusSelectedArts() { return ['peinture', 'sculpture'].filter((a) => $(`intrus-art-${a}`)?.checked); }
-function intrusSelectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`intrus-century-${c}`)?.checked); }
+function intrusSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20e'].filter((c) => $(`intrus-century-${c}`)?.checked); }
 function intrusSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`intrus-zone-${z}`)?.checked); }
 function intrusSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`intrus-level-${lvl}`)?.checked); }
 
@@ -11115,7 +11127,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('intrus', 'intrus-setup-panel');
   saveLastSelection('intrus-setup-panel');
   let arts = intrusSelectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
-  let centuries = intrusSelectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let centuries = intrusSelectedCenturies(); if (!centuries.length) centuries = ['15e','16e','17e','18e','19e','20e'];
   intrusFieldLabel = buildFieldLabel(arts, centuries);
   let levels = intrusSelectedLevels(); if (!levels.length) levels = ['1','2','3'];
   const feedback = $('intrus-setup-feedback');
@@ -11475,7 +11487,7 @@ $('century-20e-notice-close')?.addEventListener('click', () => {
   if ($('century-20e-notice-dismiss')?.checked) localStorage.setItem('century20eNoticeDismissed', 'true');
 });
 function selectedArts() { return ['peinture', 'sculpture'].filter((art) => $(`art-${art}`).checked); }
-function selectedCenturies() { return ['14e', '15e', '16e', '17e', '18e', '19e', '20e'].filter((century) => $(`century-${century}`).checked); }
+function selectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20e'].filter((century) => $(`century-${century}`).checked); }
 function selectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((zone) => $(`zone-${zone}`)?.checked); }
 const ZONE_LABELS = { france: 'France', italie: 'Italie', espagne: 'Espagne', royaume_uni: 'Royaume-Uni', allemagne: 'Allemagne', europe_centrale_russie: 'Europe centrale et Russie', europe_nord: 'Europe du Nord', amerique: 'Amérique' };
 // Zone géographique déduite de la nationalité (colonne I, texte libre) : rattachement par
@@ -11639,7 +11651,7 @@ async function fetchQuizRows(art, century) {
 let quizFieldLabel = '';
 $('launch-quiz-button')?.addEventListener('click', async () => {
   let arts = selectedArts(); if (!arts.length) arts = ['peinture', 'sculpture'];
-  let centuries = selectedCenturies(); if (!centuries.length) centuries = ['14e','15e','16e','17e','18e','19e','20e'];
+  let centuries = selectedCenturies(); if (!centuries.length) centuries = ['15e','16e','17e','18e','19e','20e'];
   quizFieldLabel = buildFieldLabel(arts, centuries);
   let levels = selectedLevels(); if (!levels.length) levels = ['1','2','3'];
   let chosenKeys = allFields.filter((field) => $(field.checkbox).checked).map((field) => field.key);
@@ -11881,13 +11893,13 @@ async function updateHomeStatsCounter() {
   if (!counterEl) return;
   try {
     const arts = ['peinture', 'sculpture'];
-    const centuries = ['14e', '15e', '16e', '17e', '18e', '19e', '20e'];
+    const centuries = ['15e', '16e', '17e', '18e', '19e', '20e'];
     const [artistsOk, ...workResults] = await Promise.all([
       loadArtistListIfNeeded(),
       ...arts.flatMap((art) => centuries.map((century) => fetchQuizRows(art, century).catch(() => []))),
     ]);
     if (!artistsOk) throw new Error('liste des artistes indisponible');
-    const artistCount = artistListRows.length;
+    const artistCount = listedArtistRows().length;
     const workCount = workResults.reduce((total, rows) => total + rows.length, 0);
     counterEl.textContent = `${artistCount} artiste${artistCount > 1 ? 's' : ''} y sont représentés et ${workCount} œuvre${workCount > 1 ? 's' : ''}`;
   } catch (error) {
