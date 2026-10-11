@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v130';
+const APP_VERSION = 'v131';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -6733,10 +6733,10 @@ async function openArtistWorksPage(idx) {
   // chaque fichier (peinture-SIÈCLE.xlsx / sculpture-SIÈCLE.xlsx), élimine de lui-même celui où
   // l'artiste n'a rien.
   const arts = ['peinture', 'sculpture'];
-  const centuries = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const centuriesOfArtist = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   let allRows = [];
   for (const art of arts) {
-    for (const century of centuries) {
+    for (const century of expandMergedCenturies(art, centuriesOfArtist)) {
       try {
         const rows = await fetchQuizRows(art, century);
         rows.forEach((r) => { r.artCategory = art; });
@@ -7338,7 +7338,7 @@ $('artist-list-mode-museum')?.addEventListener('click', () => setArtistListMode(
 $('artist-list-refresh')?.addEventListener('click', async () => {
   const status = $('artist-list-status');
   status.textContent = 'Actualisation…';
-  quizRowsCache.clear(); quizRowsResolvedCache.clear();
+  quizRowsCache.clear(); quizRowsResolvedCache.clear(); quizFileCache.clear();
   titleSearchIndex = null; titleSearchIndexCacheSize = -1;
   museumIndexRows = null; cityViewKey = null;
   artistListLoaded = false; artistListAutoDone = false;
@@ -7557,10 +7557,10 @@ async function fetchWorksForArtistRow(row) {
   // toujours vide) — on fixe donc directement le filtre à la peinture, sans dépendre d'une colonne
   // qui n'existe plus dans le fichier.
   const arts = ['peinture'];
-  const centuries = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const centuriesOfArtist = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   const works = [];
   for (const art of arts) {
-    for (const century of centuries) {
+    for (const century of expandMergedCenturies(art, centuriesOfArtist)) {
       try {
         const rows = await fetchQuizRows(art, century);
         rows.filter((w) => keyName(w.artist) === keyName(artistName)).forEach((w) => { w.artCategory = art; works.push(w); });
@@ -11555,24 +11555,73 @@ const quizRowsCache = new Map();
 // déjà en cache de toute façon, updateHomeStatsCounter() les ayant tous préchargés en arrière-plan
 // dès l'écran d'accueil.
 const quizRowsResolvedCache = new Map();
+// v131 : FICHIERS FUSIONNÉS. Certains siècles ont trop peu d'artistes pour porter un fichier à eux
+// seuls (ex. sculpture du 20e : beaucoup de sculpteurs ont commencé au 19e). Stéphane les réunit
+// alors dans UN fichier (ex. sculpture-19e_20e.xlsx). Les menus gardent leurs cases « 19e » et
+// « 20e » (rien ne change pour le joueur) : l'appli lit le fichier fusionné une seule fois, puis
+// répartit chaque œuvre dans le siècle correspondant à sa DATE (jusqu'à 1900 = 19e, après = 20e).
+// Ainsi cocher « 20e » ne ramène que les œuvres du 20e, cocher les deux ramène tout, et jamais
+// une œuvre n'est comptée deux fois. Pour fusionner d'autres siècles (ex. 14e + 15e) il suffit
+// d'ajouter une ligne ici : { file:'14e_15e', centuries:{ '14e':[0,1400], '15e':[1401,9999] } }.
+const MERGED_QUIZ_FILES = {
+  sculpture: [
+    { file: '19e_20e', centuries: { '19e': [0, 1900], '20e': [1901, 9999] } },
+  ],
+};
+function mergedGroupOf(art, century) {
+  return (MERGED_QUIZ_FILES[art] || []).find((g) => Object.prototype.hasOwnProperty.call(g.centuries, century)) || null;
+}
+// Pour les pages qui veulent TOUT d'un artiste (« autres œuvres », salle d'exposition) : si le
+// fichier maître ne cite que « 19e » pour un sculpteur dont certaines œuvres datent d'après 1900,
+// on ajoute le ou les autres siècles du même fichier fusionné.
+function expandMergedCenturies(art, centuries) {
+  const out = new Set(centuries);
+  centuries.forEach((c) => { const g = mergedGroupOf(art, c); if (g) Object.keys(g.centuries).forEach((k) => out.add(k)); });
+  return [...out];
+}
+function mergedRowCentury(group, row) {
+  const year = yearsOf(row.date)[0];
+  const keys = Object.keys(group.centuries);
+  if (year == null) return keys[0];
+  return keys.find((k) => year >= group.centuries[k][0] && year <= group.centuries[k][1]) || keys[keys.length - 1];
+}
+const quizFileCache = new Map(); // fichiers fusionnés déjà téléchargés (clé art-fichier)
+async function loadQuizFile(art, fileKey) {
+  const response = await fetch(`quizzes/${art}-${fileKey}.xlsx?v=${DATA_CACHE_BUST}`);
+  if (!response.ok) throw new Error('fichier introuvable');
+  const buffer = await response.arrayBuffer();
+  const book = XLSX.read(buffer, { type: 'array' });
+  const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
+  // Nécessaire depuis la restructuration V11 : les nouveaux fichiers ŒUVRES n'ont plus la
+  // nationalité/les surnoms/les dates de l'artiste inline, normaliseRows() doit pouvoir les
+  // rejoindre depuis le fichier maître, donc celui-ci doit être chargé avant. Sans effet (déjà en
+  // cache) si un autre appel l'a déjà chargé ; silencieux si indisponible (hors-ligne...), les
+  // champs concernés restent alors simplement vides plutôt que de faire échouer le quiz.
+  await loadArtistListIfNeeded();
+  return normaliseRows(rows).map((q) => ({ ...q, art }));
+}
 async function fetchQuizRows(art, century) {
   // Un seul fichier par (art, siècle) désormais : le filtrage par niveau se fait côté appli via
   // la colonne "Niveau" de chaque ligne (voir plus bas), plus de suffixe "-niveauX" dans l'URL.
   const cacheKey = `${art}-${century}`;
   if (quizRowsCache.has(cacheKey)) return quizRowsCache.get(cacheKey);
+  const group = mergedGroupOf(art, century);
   const promise = (async () => {
-    const response = await fetch(`quizzes/${art}-${century}.xlsx?v=${DATA_CACHE_BUST}`);
-    if (!response.ok) throw new Error('fichier introuvable');
-    const buffer = await response.arrayBuffer();
-    const book = XLSX.read(buffer, { type: 'array' });
-    const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: '' });
-    // Nécessaire depuis la restructuration V11 : les nouveaux fichiers ŒUVRES n'ont plus la
-    // nationalité/les surnoms/les dates de l'artiste inline, normaliseRows() doit pouvoir les
-    // rejoindre depuis le fichier maître, donc celui-ci doit être chargé avant. Sans effet (déjà en
-    // cache) si un autre appel l'a déjà chargé ; silencieux si indisponible (hors-ligne...), les
-    // champs concernés restent alors simplement vides plutôt que de faire échouer le quiz.
-    await loadArtistListIfNeeded();
-    return normaliseRows(rows).map((q) => ({ ...q, art }));
+    if (group) {
+      // Fichier fusionné : téléchargé une fois pour tous les siècles du groupe, puis filtré par date.
+      // Repli : si le fichier fusionné est introuvable, on retombe sur l'ancien fichier du siècle.
+      const fileCacheKey = `${art}-${group.file}`;
+      if (!quizFileCache.has(fileCacheKey)) quizFileCache.set(fileCacheKey, loadQuizFile(art, group.file));
+      try {
+        const all = await quizFileCache.get(fileCacheKey);
+        return all.filter((r) => mergedRowCentury(group, r) === century);
+      } catch (error) {
+        quizFileCache.delete(fileCacheKey);
+        // pas de repli si le fichier existe mais est illisible : l'erreur doit se voir
+        if (String(error && error.message) !== 'fichier introuvable') throw error;
+      }
+    }
+    return loadQuizFile(art, century);
   })();
   quizRowsCache.set(cacheKey, promise);
   try {
