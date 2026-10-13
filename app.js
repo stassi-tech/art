@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v137';
+const APP_VERSION = 'v138';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -10235,14 +10235,37 @@ function closeConfigPopup(prefix) {
 // reste disponible si besoin, mais n'est plus déclenché depuis nulle part pour l'instant.
 // Les boutons « ✕ Fermer » referment la fenêtre superposée si elle est ouverte ainsi ; sinon
 // (accès direct improbable) ils gardent leur comportement de repli vers le menu des exercices.
-// v137 (retour Stéphane : « en cours d'exercice, pour retoucher la configuration on est obligé de passer par la flèche de
-// retour… il faudrait un petit encart "configurer l'exercice" dans le bandeau de chaque exercice ») : le bouton ⚙️ du
-// bandeau rouvre la page de configuration de l'exercice en cours (sélection mémorisée restaurée) ; « Démarrer » relance.
-const PLAY_PANEL_TO_PREFIX = { impregnation: 'imp', intrus: 'intrus', reconstitution: 'recon', vraifaux: 'vf', famille: 'fam', chrono: 'chrono', quiz: 'quiz' };
-$('global-config-button')?.addEventListener('click', () => {
-  const prefix = PLAY_PANEL_TO_PREFIX[currentPanelName];
-  if (prefix) EXERCISE_SHOW_CONFIG[prefix]?.();
-});
+// v138 (retour Stéphane : « le bouton pour configurer chaque exercice, il faudrait le mettre à gauche des boutons pause et
+// flèches de défilement… dans le bandeau il y a déjà beaucoup de petits logos, on ne sait plus à quoi ça correspond ») : un
+// bouton ⚙️ est posé à gauche des boutons d'action de CHAQUE exercice (pause/flèches pour Imprégnation et Quiz, Valider/Suivant
+// pour les autres). Il rouvre la page de configuration de l'exercice (sélection mémorisée restaurée) ; « Démarrer » relance.
+(function installExerciseConfigButtons() {
+  const targets = [
+    ['imp', 'imp-prev-button', 'before'], ['quiz', 'previous-button-overlay', 'before'],
+    ['intrus', 'intrus-next-button', 'rowStart'], ['recon', 'recon-next-button', 'rowStart'], ['vf', 'vf-validate-button', 'rowStart'],
+    ['fam', 'fam-next-button', 'rowStart'], ['chrono', 'chrono-next-button', 'rowStart'],
+    ['fam', 'fam-validate-selection-button', 'wrap'], ['chrono', 'chrono-validate-button', 'wrap'],
+  ];
+  targets.forEach(([prefix, anchorId, mode]) => {
+    const anchor = $(anchorId);
+    if (!anchor || !anchor.parentNode) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'nav-arrow-button panel-config-button';
+    btn.textContent = '⚙️';
+    btn.title = 'Configurer cet exercice';
+    btn.setAttribute('aria-label', 'Configurer cet exercice');
+    btn.addEventListener('click', () => EXERCISE_SHOW_CONFIG[prefix]?.());
+    if (mode === 'before') anchor.parentNode.insertBefore(btn, anchor);
+    else if (mode === 'rowStart') anchor.parentNode.insertBefore(btn, anchor.parentNode.firstChild);
+    else {
+      const row = document.createElement('div');
+      row.className = 'config-action-row';
+      anchor.parentNode.insertBefore(row, anchor);
+      row.append(btn, anchor);
+    }
+  });
+})();
 Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
   const backBtn = document.querySelector(`#${info.panel} [id$="-setup-back-button"]`);
   backBtn?.addEventListener('click', () => {

@@ -2565,6 +2565,9 @@ body.stephane-test-decor .scale-wall-pillar {
   #gallery-proto-silhouette { pointer-events:auto; cursor:grab; }
 }
 
-/* v137 : bouton ⚙️ « Configurer cet exercice » du bandeau, visible seulement pendant un exercice. */
-#global-config-button { display:none; }
-body.in-exercise #global-config-button { display:inline-flex; align-items:center; justify-content:center; }
+/* v138 : bouton ⚙️ « Configurer cet exercice », posé à gauche des boutons d'action de chaque exercice
+   (pause/flèches, Valider, Suivant) — ajouté par app.js (voir installExerciseConfigButtons). */
+.config-action-row { display:flex; align-items:center; gap:10px; }
+.config-action-row > .primary-button { flex:1; width:auto !important; }
+.config-action-row:has(> .primary-button.hidden) { display:none; }
+.panel-config-button { font-size:1rem; line-height:1; padding:0; }
