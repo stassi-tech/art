@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v144';
+const APP_VERSION = 'v145';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -10356,6 +10356,21 @@ function commitQuickConfig(permanent) {
   const rubrique = { ...d.rubrique, remember: true };
   const artist = { ...d.artist, remember: true };
   clearSessionLayers(); // un choix général plus récent remet à zéro les réglages « du jour » des jeux
+  // v145 : « Modifier la configuration générale » repart de zéro pour TOUT : les réglages propres à chaque jeu
+  // gardés d'une fois sur l'autre (lastSelection_…) sont effacés aussi, sinon ils continuent de l'emporter sur
+  // le choix général. (Sauf si l'on est seulement passé par le lien « Mes choix d'artiste » d'une page de jeu.)
+  if (!returnToExercisePanel) {
+    try { Object.keys(localStorage).filter((k) => k.startsWith('lastSelection_')).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignoré */ }
+    // …et on remet aussi à leur état d'origine les cases des pages de configuration déjà ouvertes pendant cette visite
+    // (elles gardent leur dernier état tant que la page n'est pas rechargée).
+    Object.values(EXERCISE_INFO).forEach((info) => {
+      $(info.panel)?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+        if (!el.id || el.id.includes('opt-') || el.id.includes('skip-objective')) return;
+        el.checked = el.defaultChecked;
+      });
+      $(info.panel)?.querySelectorAll('input[type="radio"][name$="count"]').forEach((el) => { el.checked = el.defaultChecked; });
+    });
+  }
   try {
     sessionStorage.setItem('sessGlobalField', JSON.stringify(field));
     sessionStorage.setItem('sessGlobalRubrique', JSON.stringify(rubrique));
