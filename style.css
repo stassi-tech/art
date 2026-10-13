@@ -2564,3 +2564,7 @@ body.stephane-test-decor .scale-wall-pillar {
   #gallery-proto-floor-dot { padding:16px; margin:-16px; }
   #gallery-proto-silhouette { pointer-events:auto; cursor:grab; }
 }
+
+/* v137 : bouton ⚙️ « Configurer cet exercice » du bandeau, visible seulement pendant un exercice. */
+#global-config-button { display:none; }
+body.in-exercise #global-config-button { display:inline-flex; align-items:center; justify-content:center; }

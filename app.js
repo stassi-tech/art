@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v136';
+const APP_VERSION = 'v137';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -10235,6 +10235,14 @@ function closeConfigPopup(prefix) {
 // reste disponible si besoin, mais n'est plus déclenché depuis nulle part pour l'instant.
 // Les boutons « ✕ Fermer » referment la fenêtre superposée si elle est ouverte ainsi ; sinon
 // (accès direct improbable) ils gardent leur comportement de repli vers le menu des exercices.
+// v137 (retour Stéphane : « en cours d'exercice, pour retoucher la configuration on est obligé de passer par la flèche de
+// retour… il faudrait un petit encart "configurer l'exercice" dans le bandeau de chaque exercice ») : le bouton ⚙️ du
+// bandeau rouvre la page de configuration de l'exercice en cours (sélection mémorisée restaurée) ; « Démarrer » relance.
+const PLAY_PANEL_TO_PREFIX = { impregnation: 'imp', intrus: 'intrus', reconstitution: 'recon', vraifaux: 'vf', famille: 'fam', chrono: 'chrono', quiz: 'quiz' };
+$('global-config-button')?.addEventListener('click', () => {
+  const prefix = PLAY_PANEL_TO_PREFIX[currentPanelName];
+  if (prefix) EXERCISE_SHOW_CONFIG[prefix]?.();
+});
 Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
   const backBtn = document.querySelector(`#${info.panel} [id$="-setup-back-button"]`);
   backBtn?.addEventListener('click', () => {
