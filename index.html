@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=271" />
+    <link rel="stylesheet" href="style.css?v=272" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -548,14 +548,15 @@
           <div class="settings-title-band">
             <div>
               <h2 style="margin:0;color:var(--accent);font-size:1.4rem;font-weight:700;">Mes choix pour tous les jeux</h2>
-              <p class="modal-hint" style="margin:4px 0 0;max-width:560px;">Ces choix valent pour tous les jeux et pour le quiz final. Rien coché = tout. Une fois un jeu commencé, vous pourrez l'ajuster à part avec le bouton ⚙️.</p>
+              <p class="modal-hint" style="margin:4px 0 0;max-width:560px;">Ces choix valent pour tous les jeux et pour le quiz final. Si vous ne cochez rien, les jeux par défaut porteront sur tous les domaines. Une fois un jeu commencé, vous pourrez le configurer à part avec le bouton ⚙️.</p>
             </div>
-            <button type="button" class="secondary-button" id="qc-clear" style="margin:0;width:auto;padding:8px 16px;white-space:nowrap;">Tout effacer</button>
           </div>
           <p class="config-section-title">1. Choisissez vos champs</p>
           <div id="qc-fields-slot"></div>
+          <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-fields">Tout effacer</button></div>
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div id="qc-rubriques-slot"></div>
+          <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-rubriques">Tout effacer</button></div>
           <details id="qc-artists-details" style="margin:14px 0 4px;">
             <summary style="cursor:pointer;font-family:Arial,sans-serif;font-weight:700;color:var(--muted);">3. Se limiter à des artistes précis (facultatif)</summary>
             <div id="qc-artists-slot" style="margin-top:8px;"></div>
@@ -2137,6 +2138,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=370"></script>
+    <script src="app.js?v=371"></script>
   </body>
 </html>

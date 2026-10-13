@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v142';
+const APP_VERSION = 'v143';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null;
@@ -10419,10 +10419,18 @@ function commitQuickConfig(permanent) {
   $('save-config-validate')?.addEventListener('click', validateSaveConfig);
   $('save-config-name')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); validateSaveConfig(); } });
   $('save-config-cancel')?.addEventListener('click', () => closeModal('modal-save-config'));
-  $('qc-clear')?.addEventListener('click', () => {
+  // « Tout effacer » : un bouton sous chacun des deux tableaux, qui ne vide que son propre tableau
+  // (champs d'un côté ; rubriques, niveaux et nombre d'œuvres de l'autre).
+  $('qc-clear-fields')?.addEventListener('click', () => {
     if (!quickDraft) return;
-    quickDraft = { field: { arts: [], centuries: [], zones: [] }, rubrique: { rubriques: [], levels: [], count: '' }, artist: { artists: [] } };
-    document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone, .pf-rubrique-field, .pf-rubrique-level, input[name="pf-count"]').forEach((el) => { el.checked = false; });
+    quickDraft.field = { arts: [], centuries: [], zones: [] };
+    document.querySelectorAll('.pf-field-art, .pf-field-century, .pf-field-zone').forEach((el) => { el.checked = false; });
+    populateArtistSuggestions();
+  });
+  $('qc-clear-rubriques')?.addEventListener('click', () => {
+    if (!quickDraft) return;
+    quickDraft.rubrique = { rubriques: [], levels: [], count: '' };
+    document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level, input[name="pf-count"]').forEach((el) => { el.checked = false; });
     if ($('pf-count-custom')) $('pf-count-custom').value = '';
     populateArtistSuggestions();
   });

@@ -2582,3 +2582,13 @@ body.stephane-test-decor .scale-wall-pillar {
 /* v140 : « Mon compte » simplifié — les choix de champ/rubrique/artiste vivent désormais sur la page « Mes choix pour tous les jeux ». */
 #profile-menu-grid-2, #pf-validate-button { display:none !important; }
 #quick-config-panel details > summary { padding:6px 0; }
+
+/* v143 — bas des tableaux de la page « Mes choix pour tous les jeux » : « Tout effacer » */
+.qc-clear-row { display:flex; justify-content:flex-end; margin:6px 0 18px; }
+.qc-clear-btn { margin:0; width:auto; padding:7px 16px; font-size:.88rem; white-space:nowrap; }
+
+/* v143 — Mon compte : quatre boutons identiques, deux par ligne */
+#profile-menu-grid, #profile-hub-secondary-buttons { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:0; max-width:none; }
+#profile-menu-grid { margin-bottom:10px !important; }
+#profile-hub-secondary-buttons { margin-bottom:24px !important; }
+#profile-menu-grid .home-mode-button, #profile-hub-secondary-buttons .home-mode-button { padding:16px 10px; min-height:64px; display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-size:.95rem; font-weight:700; line-height:1.25; }
