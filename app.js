@@ -6,10 +6,10 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v143';
+const APP_VERSION = 'v144';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
-let quickDraft = null;
+let quickDraft = null; let speechEpoch = 0;
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -2662,6 +2662,10 @@ function showPanel(name) {
   // exercice dès qu'on change de page — sinon un rappel programmé (setTimeout) d'un exercice
   // quitté en cours de route peut se déclencher plus tard, en plein milieu d'un autre exercice
   // (voix qui parle d'une œuvre sans rapport avec ce qui est affiché).
+  // v144 : speechSynthesis.cancel() déclenche aussi le onend de la phrase coupée, dont le rappel enchaînait la suite
+  // du commentaire de l'exercice quitté (voix qui continue sur la page de configuration). On change donc d'époque :
+  // toute phrase lancée avant ce changement de page ne déclenche plus jamais sa suite.
+  speechEpoch++;
   if (window.speechSynthesis) speechSynthesis.cancel();
   // Remise à zéro systématique du marqueur « en plein exercice » (fond de l'ambiance) à chaque
   // navigation — seul le clic explicite sur « Démarrer le jeu » le repose ensuite.
@@ -8276,7 +8280,8 @@ function famSpeak2(text, onEnd) {
   if (chronoSelectedVoiceRef) u.voice = chronoSelectedVoiceRef;
   if (onEnd) {
     let done = false;
-    const finish = () => { if (!done) { done = true; onEnd(); } };
+    const myEpoch = speechEpoch;
+    const finish = () => { if (!done) { done = true; if (myEpoch === speechEpoch) onEnd(); } };
     u.onend = finish; u.onerror = finish;
     chronoTimers.push(setTimeout(finish, Math.max(1200, (text.length / 13) * 1000) + 400));
   }
@@ -8513,7 +8518,8 @@ function famSpeak(text, onEnd) {
   if (famSelectedVoiceRef) u.voice = famSelectedVoiceRef;
   if (onEnd) {
     let done = false;
-    const finish = () => { if (!done) { done = true; onEnd(); } };
+    const myEpoch = speechEpoch;
+    const finish = () => { if (!done) { done = true; if (myEpoch === speechEpoch) onEnd(); } };
     u.onend = finish; u.onerror = finish;
     const estimatedMs = Math.max(1200, (text.length / 13) * 1000) + 400;
     famTimers.push(setTimeout(finish, estimatedMs));
@@ -9053,7 +9059,8 @@ function vfSpeak(text, onEnd) {
     // fiable. On estime la durée de lecture (≈ 13 caractères/seconde à ce débit) et on force
     // la suite si l'événement tarde trop, plutôt que de rester bloqué ou de chevaucher.
     let done = false;
-    const finish = () => { if (!done) { done = true; onEnd(); } };
+    const myEpoch = speechEpoch;
+    const finish = () => { if (!done) { done = true; if (myEpoch === speechEpoch) onEnd(); } };
     u.onend = finish; u.onerror = finish;
     const estimatedMs = Math.max(1200, (text.length / 13) * 1000) + 400;
     vfTimers.push(setTimeout(finish, estimatedMs));
@@ -10873,8 +10880,8 @@ function impSpeak(text, onEnd, force) {
   if (impSelectedVoice) u.voice = impSelectedVoice;
   if (onEnd) {
     let done = false;
-    const myRun = impRunId;
-    const finish = () => { if (!done) { done = true; if (myRun === impRunId) onEnd(); } };
+    const myRun = impRunId; const myEpoch = speechEpoch;
+    const finish = () => { if (!done) { done = true; if (myRun === impRunId && myEpoch === speechEpoch) onEnd(); } };
     u.onend = finish; u.onerror = finish;
     // v116 (docx 29 sept, IMPREGNATION : « la voix est coupée sur les dimensions, elle n'a pas le
     // temps de finir ») : la voix d'Imprégnation tourne à la vitesse 0,72 (plus lente que les autres
@@ -11376,7 +11383,8 @@ function intrusSpeak(text, onEnd) {
   if (intrusSelectedVoice) u.voice = intrusSelectedVoice;
   if (onEnd) {
     let done = false;
-    const finish = () => { if (!done) { done = true; onEnd(); } };
+    const myEpoch = speechEpoch;
+    const finish = () => { if (!done) { done = true; if (myEpoch === speechEpoch) onEnd(); } };
     u.onend = finish; u.onerror = finish;
     intrusTimers.push(setTimeout(finish, Math.max(1200, (text.length / 13) * 1000) + 400));
   }
