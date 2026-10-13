@@ -2571,3 +2571,14 @@ body.stephane-test-decor .scale-wall-pillar {
 .config-action-row > .primary-button { flex:1; width:auto !important; }
 .config-action-row:has(> .primary-button.hidden) { display:none; }
 .panel-config-button { font-size:1rem; line-height:1; padding:0; }
+
+/* v139 : barre d'actions collée en bas des pages de configuration (Commencer / Enregistrer puis commencer). */
+.setup-legacy-hidden { display:none !important; }
+.setup-action-bar { position:sticky; bottom:0; z-index:30; background:var(--paper); border-top:1px solid var(--border); margin:14px 0 0; padding:10px 0 12px; display:flex; flex-direction:column; gap:8px; }
+.setup-action-bar > p { margin:0; text-align:center; }
+.setup-action-row { display:flex; gap:10px; flex-wrap:wrap; }
+.setup-action-row > button { flex:1 1 180px; margin:0; width:auto; padding:12px 14px; }
+
+/* v140 : « Mon compte » simplifié — les choix de champ/rubrique/artiste vivent désormais sur la page « Mes choix pour tous les jeux ». */
+#profile-menu-grid-2, #pf-validate-button { display:none !important; }
+#quick-config-panel details > summary { padding:6px 0; }

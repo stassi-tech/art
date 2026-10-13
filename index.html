@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=269" />
+    <link rel="stylesheet" href="style.css?v=271" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -544,6 +544,30 @@
           </div>
         </section>
 
+        <section id="quick-config-panel" class="welcome-panel hidden">
+          <div class="settings-title-band">
+            <div>
+              <h2 style="margin:0;color:var(--accent);font-size:1.4rem;font-weight:700;">Mes choix pour tous les jeux</h2>
+              <p class="modal-hint" style="margin:4px 0 0;max-width:560px;">Ces choix valent pour tous les jeux et pour le quiz final. Rien coché = tout. Une fois un jeu commencé, vous pourrez l'ajuster à part avec le bouton ⚙️.</p>
+            </div>
+            <button type="button" class="secondary-button" id="qc-clear" style="margin:0;width:auto;padding:8px 16px;white-space:nowrap;">Tout effacer</button>
+          </div>
+          <p class="config-section-title">1. Choisissez vos champs</p>
+          <div id="qc-fields-slot"></div>
+          <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
+          <div id="qc-rubriques-slot"></div>
+          <details id="qc-artists-details" style="margin:14px 0 4px;">
+            <summary style="cursor:pointer;font-family:Arial,sans-serif;font-weight:700;color:var(--muted);">3. Se limiter à des artistes précis (facultatif)</summary>
+            <div id="qc-artists-slot" style="margin-top:8px;"></div>
+          </details>
+          <div class="setup-action-bar">
+            <div class="setup-action-row">
+              <button type="button" class="primary-button" id="qc-go">Accéder aux jeux →</button>
+              <button type="button" class="secondary-button" id="qc-save-go">Enregistrer, puis accéder aux jeux →</button>
+            </div>
+          </div>
+        </section>
+
         <section id="training-hub-panel" class="welcome-panel hidden">
 
           <p class="app-brand-name">MNEMART</p>
@@ -551,11 +575,10 @@
 
           <p class="intro-banner" id="training-hub-intro-text">Choisissez vos exercices d'entraînement à la mémoire, sur un échantillon d'œuvres que vous filtrez vous-même par champs (art, siècle, zone géographique, sélection d'artistes) en choisissant les rubriques d'identification, le niveau de difficulté et le nombre de questions que vous souhaitez, depuis votre compte (icône <span class="intro-icon-sync" id="hub-account-icon" aria-hidden="true">👤</span>). Les exercices sont classés par ordre croissant de difficulté (1, 2, 3…). Le quiz final vous permet ensuite de vous autoévaluer.</p>
           <p id="training-hub-config-name" style="font-family:Arial,sans-serif;font-size:.9rem;color:var(--ink);line-height:1.5;margin:0 0 10px;"></p>
-          <div id="training-hub-save-box" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px;">
-            <input type="text" id="training-hub-save-name" placeholder="Nom de cette configuration" style="flex:1;min-width:180px;padding:8px 10px;border:1px solid #cfc8bc;border-radius:4px;" />
-            <button type="button" class="secondary-button" id="training-hub-save-button" style="padding:8px 16px;">Enregistrer cette configuration</button>
+          <div id="training-hub-general-actions" class="hidden" style="margin:0 0 12px;">
+            <button type="button" class="secondary-button" id="training-hub-edit-general" style="padding:8px 16px;">← Modifier la configuration générale</button>
+            <p class="modal-hint" style="margin:6px 0 0;">Une fois un jeu commencé, le bouton ⚙️ placé près des boutons d'action permet d'ajuster ce jeu en particulier.</p>
           </div>
-          <p id="training-hub-save-feedback" style="font-family:Arial,sans-serif;font-size:.85rem;margin:-10px 0 16px;"></p>
           <p id="ambiance-auto-message" class="hidden" style="font-family:Georgia,serif;font-style:italic;font-size:.92rem;line-height:1.5;background:#f3e6c9;padding:12px 16px;border-radius:6px;margin:0 0 16px;"></p>
           <div id="ambiance-ask-box" class="hidden" style="background:#f3e6c9;padding:14px 16px;border-radius:6px;margin:0 0 16px;">
             <p id="ambiance-ask-text" style="font-family:Georgia,serif;font-style:italic;font-size:.92rem;line-height:1.5;margin:0 0 10px;"></p>
@@ -1354,6 +1377,18 @@
           <p id="launch-feedback" class="hint hidden"></p>
         </section>
 
+        <div class="modal-overlay hidden" id="modal-save-config">
+          <div class="modal-box">
+            <h3 style="margin-top:0;">Enregistrer cette configuration</h3>
+            <p class="modal-hint" style="margin-top:0;">Sous quel nom voulez-vous l'enregistrer ? Elle s'appliquera à vos prochaines visites, et vous la retrouverez dans « Mon compte » (Mes configurations enregistrées).</p>
+            <input type="text" id="save-config-name" maxlength="60" placeholder="Nom de la configuration" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #cfc8bc;border-radius:4px;font-size:1rem;" />
+            <div class="modal-actions" style="display:flex;flex-direction:column;gap:8px;">
+              <button type="button" class="primary-button" id="save-config-validate">Valider et accéder aux jeux →</button>
+              <button type="button" class="secondary-button" id="save-config-cancel" style="width:100%;">Annuler</button>
+            </div>
+          </div>
+        </div>
+
         <div class="modal-overlay hidden" id="modal-exercise-results">
           <div class="modal-box" style="text-align:center;">
             <p class="eyebrow" style="margin-bottom:6px;">EXERCICE TERMINÉ</p>
@@ -2102,6 +2137,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=366"></script>
+    <script src="app.js?v=370"></script>
   </body>
 </html>
