@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=266" />
+    <link rel="stylesheet" href="style.css?v=267" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -656,6 +656,12 @@
             <div>
               <p class="config-table-col-title">Avancement</p>
               <p class="modal-hint" style="margin-top:0;">Manuel : cliquez sur → ou appuyez sur Entrée pour passer à l'œuvre suivante.</p>
+              <!-- v133 (Stéphane : « pour Imprégnation, ne s'imprégner que d'œuvres avec commentaire oral ») : filtre propre à
+                   Imprégnation (pas valable pour les autres jeux). Voir imp-start-button dans app.js. L'état de la case est mémorisé
+                   comme les autres cases du panneau (saveLastSelection/restoreLastSelection parcourent toutes les cases). -->
+              <p class="config-table-col-title" style="margin-top:14px;">Œuvres</p>
+              <label class="rubrique-option"><input type="checkbox" id="imp-only-commented" /><span>Uniquement les œuvres commentées</span></label>
+              <p class="modal-hint" style="margin-top:2px;">Œuvres emblématiques qui racontent leur histoire à voix haute (haut-parleur 🔊).</p>
             </div>
           </div>
           <button type="button" class="secondary-button" id="imp-validate-choice-button" style="width:100%;margin-top:8px;">Valider mon choix pour ce jeu →</button>
@@ -2096,6 +2102,6 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=360"></script>
+    <script src="app.js?v=364"></script>
   </body>
 </html>

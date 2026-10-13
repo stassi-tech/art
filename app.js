@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v132';
+const APP_VERSION = 'v136';
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -1127,7 +1127,7 @@ $('global-account-button')?.addEventListener('click', () => {
 const EXERCISE_RULES = {
   imp: {
     titre: 'Imprégnation — comment ça marche',
-    texte: "Cet exercice sert à mémoriser passivement, sans notation ni score. Une œuvre s'affiche à l'écran, et sa référence complète (artiste, titre, date, lieu de conservation…) s'écrit progressivement pendant qu'une voix la lit à voix haute. Il n'y a rien à faire d'autre que regarder et écouter, à votre rythme. Utilisez la flèche → (ou la touche Entrée) pour passer à l'œuvre suivante, ← pour revenir à la précédente, et ⏸ pour mettre en pause.",
+    texte: "Cet exercice sert à mémoriser passivement, sans notation ni score. Une œuvre s'affiche à l'écran, et sa référence complète (artiste, titre, date, lieu de conservation…) s'écrit progressivement pendant qu'une voix la lit à voix haute. Il n'y a rien à faire d'autre que regarder et écouter, à votre rythme. Utilisez la flèche → (ou la touche Entrée) pour passer à l'œuvre suivante, ← pour revenir à la précédente, et ⏸ pour mettre en pause. Vous pouvez aussi cocher « Uniquement les œuvres commentées » : vous ne retrouverez alors que les œuvres emblématiques, qui racontent leur histoire à la première personne (haut-parleur 🔊).",
   },
   intrus: {
     titre: 'Intrus — comment ça marche',
@@ -2277,7 +2277,15 @@ function normaliseRows(rows) {
       const emblemKey = keyName(masterRow['Œuvre emblématique']);
       const workTextRaw = String(masterRow["Texte de l'œuvre"] || '').trim();
       const titleKeyNow = keyName(title);
-      if (emblemKey && workTextRaw && titleKeyNow && (titleKeyNow === emblemKey || (emblemKey.length >= 12 && (titleKeyNow.startsWith(emblemKey) || emblemKey.startsWith(titleKeyNow))))) workText = workTextRaw;
+      // v134 : quand le maître précise le « Lieu de l'œuvre emblématique » (artistes dont plusieurs lignes portent le
+      // même titre : Cranach, Fra Angelico, Sisley… ou un titre voisin : Mariani, Uccello), le texte n'est rattaché qu'à
+      // LA ligne dont le titre est strictement le même ET dont le lieu contient ce mot-clé : la bonne version.
+      const emblemPlace = keyName(masterRow["Lieu de l'œuvre emblématique"]);
+      if (emblemKey && workTextRaw && titleKeyNow) {
+        if (emblemPlace) {
+          if (titleKeyNow === emblemKey && keyName(`${location} ${ville}`).includes(emblemPlace)) workText = workTextRaw;
+        } else if (titleKeyNow === emblemKey || (emblemKey.length >= 12 && (titleKeyNow.startsWith(emblemKey) || emblemKey.startsWith(titleKeyNow)))) workText = workTextRaw;
+      }
     }
 
     // v126 : ni prénom ni patronyme (même après la jointure) mais un surnom = artiste de convention :
@@ -6792,6 +6800,10 @@ function isMovableWork(work) {
 // sur des œuvres déplaçables (à l'échelle), jamais les deux : comparer un tableau à un baldaquin n'aurait
 // aucun sens, et compliquerait l'échelle des images).
 function sameMovability(a, b) { return isMovableWork(a) === isMovableWork(b); }
+// v136 (capture de Stéphane : face à la « Chaire de Santa Croce », deux intrus étaient une façade d'église et un pont) :
+// parmi les œuvres non déplaçables, l'architecture (église, pont, cour, porte, escalier, décor…) ne se mélange pas avec la
+// sculpture (chaire, tombeau, fontaine…). Préférence douce : si le réservoir ne permet pas de faire autrement, on y revient.
+function isArchitecturalWork(work) { return /element (architectural|decoratif)/.test(keyName(work?.nature || '')); }
 // Taille réelle lisible sous la légende : « 38 × 30 cm », « 2,43 × 1,35 m »… (hauteur × longueur ;
 // la hauteur seule si la longueur n'est pas connue). Écrite en toutes lettres pour qu'on ne dépende
 // pas uniquement de la taille de la vignette pour juger des proportions.
@@ -9902,7 +9914,7 @@ function buildExerciseSummary(prefix) {
   const ownCenturies = Object.keys(state).filter((k) => k.startsWith(`${idPrefix}century-`) && state[k]).map((k) => k.replace(`${idPrefix}century-`, '').replace('e', ''));
   if (ownArts.length || ownCenturies.length) {
     const artLabel = ownArts.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
-    return `▶ ${artLabel}${ownCenturies.join('+')}`;
+    return `▶ ${artLabel}${ownCenturies.join('+')}${prefix === 'imp' && state['imp-only-commented'] ? ' 💬' : ''}`;
   }
   const gf = readGlobalFieldDefaults();
   const ga = readGlobalArtistDefaults();
@@ -10637,6 +10649,16 @@ $('imp-start-button')?.addEventListener('click', async () => {
     pool = filterPoolByGlobalArtists(pool, allRows);
     // Mélange, sans limitation de nombre : tout l'échantillon correspondant au choix.
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    // v133 (Stéphane : « pour Imprégnation, ne s'imprégner que d'œuvres avec commentaire ») : case « Uniquement
+    // les œuvres commentées ». Une œuvre est « commentée » quand le maître (colonnes Œuvre emblématique + Texte
+    // de l'œuvre) lui attache un texte à la première personne, lu par son haut-parleur — c'est la propriété
+    // work.workText posée dans fetchQuizRows. Le filtre s'applique en dernier, après art/siècle/zone/niveau/artistes ;
+    // s'il ne reste rien, on le dit plutôt que de lancer silencieusement des œuvres sans commentaire.
+    if ($('imp-only-commented')?.checked) {
+      const commented = pool.filter((r) => r.workText);
+      if (!commented.length) { feedback.textContent = "Aucune œuvre commentée pour ce choix : élargissez l'art, le siècle, la zone ou le niveau."; return; }
+      pool = commented;
+    }
     IMP_SESSION = pool;
     impAudioOn = getGlobalPrefs().audioOn;
     impSelectedVoice = getGlobalVoice();
@@ -11105,6 +11127,7 @@ function pickIntrusDistractors(correct, pool, requireDistinctArtist) {
   // Quand seul le nom de l'artiste sera affiché (pas de titre pour distinguer), il FAUT trois
   // artistes différents, sinon deux « Monet » pourraient se retrouver face à face.
   if (requireDistinctArtist) others = others.filter((r) => !usedArtists.has(famNormalize(r.artist)));
+  { const sameKind = others.filter((r) => isArchitecturalWork(r) === isArchitecturalWork(correct)); if (sameKind.length >= 2) others = sameKind; } // v136 : pas d'architecture face à une sculpture
   let candidates = correctWords.size ? others.filter((r) => intrusTitleWords(r.title).some((w) => correctWords.has(w))) : [];
   const picked = [];
   const drawFrom = (list) => {
@@ -12647,3 +12670,17 @@ $('placement-proto-add-room')?.addEventListener('click', () => {
 $('open-placement-proto-temp')?.addEventListener('click', () => {
   enterPlacementProto(state.currentOtherWorks);
 });
+
+// v135 (retour Stéphane, capture d'écran du téléphone : « sur certains jeux, le jeu passe en dessous du bandeau, on ne
+// voit plus les titres des exercices ») : le bandeau du haut (#global-topbar, position:fixed) fait plus de 44px dès que le
+// téléphone agrandit les caractères ou que « Question 1/10 » passe sur deux lignes, alors que la page ne réservait que
+// 44px. On mesure donc la vraie hauteur du bandeau et on la publie dans --topbar-h, que style.css utilise pour réserver la place.
+(function trackTopbarHeight() {
+  const bar = document.getElementById('global-topbar');
+  if (!bar) return;
+  const apply = () => { const h = Math.ceil(bar.getBoundingClientRect().height); if (h > 0) document.documentElement.style.setProperty('--topbar-h', `${h}px`); };
+  apply();
+  if (typeof ResizeObserver === 'function') new ResizeObserver(apply).observe(bar);
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', apply);
+})();

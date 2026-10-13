@@ -1881,7 +1881,7 @@ body.has-other-works .correction-label { font-size:.76rem; }
   #profile-menu-grid { grid-template-columns:repeat(3, 1fr); }
   #profile-menu-grid .home-mode-button { font-size:.78rem; padding:10px 6px; }
   .accordion-columns { grid-template-columns:1fr; gap:0; }
-  .app-shell { flex-direction:column; width:min(100% - 24px, 1120px); padding-top:44px; min-height:auto; }
+  .app-shell { flex-direction:column; width:min(100% - 24px, 1120px); padding-top:calc(var(--topbar-h, 44px) + 6px); min-height:auto; }
   #quiz-panel .progress-row { margin-top:10px; }
   .sidebar { flex-direction:column; width:100%; max-width:100%; flex-basis:auto; position:static; align-self:stretch; padding:18px; }
   .sidebar-illustration { max-height:160px; }
