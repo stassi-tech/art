@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v146';
+const APP_VERSION = 'v147';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -10672,13 +10672,22 @@ function quitSession() {
     btn.title = 'Configurer cet exercice';
     btn.setAttribute('aria-label', 'Configurer cet exercice');
     btn.addEventListener('click', () => EXERCISE_SHOW_CONFIG[prefix]?.());
+    // v147 : bouton « Quitter la session » à droite des boutons de défilement — ouvre l'écran de sortie (nom facultatif).
+    const quit = document.createElement('button');
+    quit.type = 'button';
+    quit.className = 'nav-arrow-button panel-quit-button';
+    quit.textContent = '🚪';
+    quit.title = 'Quitter la session';
+    quit.setAttribute('aria-label', 'Quitter la session');
+    quit.addEventListener('click', () => $('menu-item-quit')?.click());
+    anchor.parentNode.appendChild(quit);
     if (mode === 'before') anchor.parentNode.insertBefore(btn, anchor);
     else if (mode === 'rowStart') anchor.parentNode.insertBefore(btn, anchor.parentNode.firstChild);
     else {
       const row = document.createElement('div');
       row.className = 'config-action-row';
       anchor.parentNode.insertBefore(row, anchor);
-      row.append(btn, anchor);
+      row.append(btn, anchor, quit);
     }
   });
 })();
