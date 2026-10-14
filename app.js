@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v145';
+const APP_VERSION = 'v146';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -1546,9 +1546,41 @@ function applyGameLayerTo(prefix) {
 // n'écrit rien : il applique seulement les niveaux existants.
 function saveLastSelection(panelId) {
   if (suppressSaveLastSelection) { suppressSaveLastSelection = false; return; }
-  const state = collectPanelState(panelId);
+  const state = dropInheritedGroups(panelId, collectPanelState(panelId));
+  // v146 : le réglage vaut pour la session ET est gardé comme « dernière configuration » de ce jeu (plus de bouton « enregistrer »).
   try { sessionStorage.setItem(`sessGame_${panelId}`, JSON.stringify(state)); } catch (e) { /* session indisponible : ignoré */ }
-  if (forcePermanentSave) { try { localStorage.setItem(`lastSelection_${panelId}`, JSON.stringify(state)); } catch (e) { /* ignoré */ } }
+  try { localStorage.setItem(`lastSelection_${panelId}`, JSON.stringify(state)); } catch (e) { /* ignoré */ }
+}
+// Un groupe de cases identique au choix général n'est PAS un réglage propre au jeu : on ne le mémorise pas, pour qu'il
+// continue de suivre le choix général si celui-ci change (sinon chaque jeu ouvert « figerait » le choix du moment).
+function dropInheritedGroups(panelId, state) {
+  const prefix = Object.keys(EXERCISE_INFO).find((p) => EXERCISE_INFO[p].panel === panelId);
+  if (!prefix) return state;
+  const idp = prefix === 'quiz' ? '' : `${prefix}-`;
+  const gf = readGlobalFieldDefaults(); const gr = readGlobalRubriqueDefaults();
+  const keysOf = (re) => Object.keys(state).filter((k) => re.test(k));
+  const sameSet = (keys, strip, general) => {
+    const mine = keys.filter((k) => state[k]).map((k) => k.slice(strip.length)).sort().join(',');
+    return mine === [...(general || [])].sort().join(',');
+  };
+  const artKeys = keysOf(new RegExp(`^${idp}art-`)); const cenKeys = keysOf(new RegExp(`^${idp}century-`)); const zoneKeys = keysOf(new RegExp(`^${idp}zone-`));
+  if (sameSet(artKeys, `${idp}art-`, gf.arts) && sameSet(cenKeys, `${idp}century-`, gf.centuries) && sameSet(zoneKeys, `${idp}zone-`, gf.zones)) {
+    [...artKeys, ...cenKeys, ...zoneKeys].forEach((k) => { state[k] = false; });
+  }
+  const lvlKeys = keysOf(new RegExp(`^${idp}level-`));
+  const rubKeys = keysOf(prefix === 'quiz' ? /^rubrique-/ : new RegExp(`^${idp}field-`));
+  const rubStrip = prefix === 'quiz' ? 'rubrique-' : `${idp}field-`;
+  const available = new Set(rubKeys.map((k) => k.slice(rubStrip.length)));
+  const generalRubs = (gr.rubriques || []).filter((r) => available.has(r));
+  if (sameSet(lvlKeys, `${idp}level-`, gr.levels) && sameSet(rubKeys, rubStrip, generalRubs)) {
+    [...lvlKeys, ...rubKeys].forEach((k) => { state[k] = false; });
+  }
+  Object.keys(state).filter((k) => k.startsWith('radio:') && /count$/.test(k)).forEach((k) => {
+    const radios = [...($(panelId)?.querySelectorAll(`input[type="radio"][name="${k.slice(6)}"]`) || [])];
+    const def = radios.find((r) => r.defaultChecked)?.value;
+    if (state[k] === def || (gr.count && state[k] === gr.count)) delete state[k];
+  });
+  return state;
 }
 // Bouton « Valider mon choix pour ce jeu » : enregistre la sélection courante comme choix propre
 // à cet exercice puis revient directement au menu, sans lancer la partie — pour voir tout de
@@ -10009,20 +10041,23 @@ function updateExerciseSummaries() {
 function loadSavedGuidedConfig(name, savedConfigs) {
   const cfg = savedConfigs[name];
   if (!cfg) return;
-  clearSessionLayers(); // v140 : une configuration chargée remplace les réglages « de session »
+  clearSessionLayers(); // une configuration chargée remplace tous les réglages de session
+  try { Object.keys(localStorage).filter((k) => k.startsWith('lastSelection_')).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignoré */ }
+  Object.values(EXERCISE_INFO).forEach((info) => resetPanelContentToDefaults(info.panel));
   localStorage.setItem('globalFieldDefaults', JSON.stringify(cfg.field || {}));
   localStorage.setItem('globalArtistDefaults', JSON.stringify(cfg.artists || {}));
   localStorage.setItem('globalRubriqueDefaults', JSON.stringify(cfg.rubrique || {}));
+  Object.entries(cfg.perGame || {}).forEach(([panelId, state]) => { try { localStorage.setItem(`lastSelection_${panelId}`, JSON.stringify(state)); } catch (e) { /* ignoré */ } });
   if (cfg.allGames) localStorage.removeItem('globalGamesDefaults');
   else localStorage.setItem('globalGamesDefaults', JSON.stringify({ games: cfg.games || [], remember: true }));
+  try { sessionStorage.removeItem(SESSION_CONFIRMED_KEY); sessionStorage.setItem(SESSION_LOADED_NAME_KEY, name); } catch (e) { /* ignoré */ }
   loadedGuidedConfigName = name;
   guidedModeActive = true;
   localStorage.setItem('guidedModeActive', 'true');
   guidedTourActive = true;
   localStorage.setItem('guidedTourActive', 'true');
-  showPanel('training-hub');
-  updateExerciseSummaries();
-  applyFieldLinkedAmbiance();
+  // v146 : on revient sur la page 2, remplie avec cette configuration, pour pouvoir la conserver ou l'ajuster.
+  showPanel('quick-config');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 // Petit résumé texte d'une configuration enregistrée, affiché sous son bouton — pour se rappeler
@@ -10347,44 +10382,38 @@ function prepareQuickConfig() {
   }
   if ($('qc-artists-details')?.open) populateArtistSuggestions();
   renderExerciseOverrides();
+  updateQuickIntro();
+  renderQuickOverrides();
 }
-function commitQuickConfig(permanent) {
+// v146 (retour Stéphane : « au départ il n'enregistre rien ; en quittant la session, un écran propose de donner un nom ») :
+// valider la page 2 écrit TOUJOURS le choix à deux endroits — la session en cours (sessionStorage) et la mémoire de
+// l'appareil (localStorage), qui devient « la dernière configuration », proposée au début de la session suivante.
+// Les réglages propres à un jeu ne sont plus effacés en silence : la page 2 les liste, le joueur les efface lui-même.
+const SESSION_CONFIRMED_KEY = 'sessionConfirmed';
+const SESSION_LOADED_NAME_KEY = 'quickLoadedName';
+function commitQuickConfig() {
   const d = quickDraft;
   if (!d) return;
   quickDraft = null;
   const field = { ...d.field, remember: true };
   const rubrique = { ...d.rubrique, remember: true };
   const artist = { ...d.artist, remember: true };
-  clearSessionLayers(); // un choix général plus récent remet à zéro les réglages « du jour » des jeux
-  // v145 : « Modifier la configuration générale » repart de zéro pour TOUT : les réglages propres à chaque jeu
-  // gardés d'une fois sur l'autre (lastSelection_…) sont effacés aussi, sinon ils continuent de l'emporter sur
-  // le choix général. (Sauf si l'on est seulement passé par le lien « Mes choix d'artiste » d'une page de jeu.)
-  if (!returnToExercisePanel) {
-    try { Object.keys(localStorage).filter((k) => k.startsWith('lastSelection_')).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignoré */ }
-    // …et on remet aussi à leur état d'origine les cases des pages de configuration déjà ouvertes pendant cette visite
-    // (elles gardent leur dernier état tant que la page n'est pas rechargée).
-    Object.values(EXERCISE_INFO).forEach((info) => {
-      $(info.panel)?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
-        if (!el.id || el.id.includes('opt-') || el.id.includes('skip-objective')) return;
-        el.checked = el.defaultChecked;
-      });
-      $(info.panel)?.querySelectorAll('input[type="radio"][name$="count"]').forEach((el) => { el.checked = el.defaultChecked; });
-    });
-  }
+  SESSION_GLOBAL_KEYS.forEach((k) => { try { sessionStorage.removeItem(k); } catch (e) { /* ignoré */ } });
   try {
     sessionStorage.setItem('sessGlobalField', JSON.stringify(field));
     sessionStorage.setItem('sessGlobalRubrique', JSON.stringify(rubrique));
     sessionStorage.setItem('sessGlobalArtist', JSON.stringify(artist));
     sessionStorage.setItem('hasConfiguredThisSession', 'true');
-  } catch (e) { /* session indisponible : le réglage vaudra seulement s'il est enregistré */ }
-  if (permanent) {
-    localStorage.setItem('globalFieldDefaults', JSON.stringify(field));
-    localStorage.setItem('globalRubriqueDefaults', JSON.stringify(rubrique));
-    if (artist.artists.length) localStorage.setItem('globalArtistDefaults', JSON.stringify(artist));
-    else localStorage.removeItem('globalArtistDefaults');
-  }
+    sessionStorage.setItem(SESSION_CONFIRMED_KEY, 'true');
+  } catch (e) { /* session indisponible : le réglage reste tout de même mémorisé sur l'appareil */ }
+  localStorage.setItem('globalFieldDefaults', JSON.stringify(field));
+  localStorage.setItem('globalRubriqueDefaults', JSON.stringify(rubrique));
+  if (artist.artists.length) localStorage.setItem('globalArtistDefaults', JSON.stringify(artist));
+  else localStorage.removeItem('globalArtistDefaults');
   localStorage.removeItem('globalGamesDefaults');
-  loadedGuidedConfigName = '';
+  let loadedName = '';
+  try { loadedName = sessionStorage.getItem(SESSION_LOADED_NAME_KEY) || ''; sessionStorage.removeItem(SESSION_LOADED_NAME_KEY); } catch (e) { /* ignoré */ }
+  loadedGuidedConfigName = loadedName;
   guidedModeActive = true;
   localStorage.setItem('guidedModeActive', 'true');
   if (returnToExercisePanel) { // arrivé ici depuis le lien « Mes choix d'artiste » d'une page de jeu : on y retourne
@@ -10396,6 +10425,136 @@ function commitQuickConfig(permanent) {
   updateExerciseSummaries();
   applyFieldLinkedAmbiance();
 }
+function sessionIsConfirmed() {
+  try { return sessionStorage.getItem(SESSION_CONFIRMED_KEY) === 'true'; } catch (e) { return false; }
+}
+// Contenu (art / siècle / zone / rubrique / niveau) d'un réglage propre à un jeu, en clair — pour la liste de la page 2.
+function describeGameOverride(prefix, state) {
+  const idp = prefix === 'quiz' ? '' : `${prefix}-`;
+  const on = Object.keys(state || {}).filter((k) => state[k] && !k.startsWith('radio:'));
+  const pick = (kind) => on.filter((k) => k.startsWith(`${idp}${kind}-`)).map((k) => k.slice(`${idp}${kind}-`.length));
+  const artLabel = { peinture: 'Peinture', sculpture: 'Sculpture' };
+  const arts = pick('art').map((a) => artLabel[a] || a);
+  const centuries = pick('century');
+  const zones = pick('zone');
+  const levels = pick('level');
+  const rubs = on.filter((k) => k.startsWith(`${idp}field-`) || (prefix === 'quiz' && k.startsWith('rubrique-')))
+    .map((k) => k.replace(`${idp}field-`, '').replace('rubrique-', '')).map((k) => (typeof RUBRIQUE_FIELD_LABELS !== 'undefined' && RUBRIQUE_FIELD_LABELS[k]) || k);
+  const parts = [arts.join(' + '), centuries.length ? `${centuries.join(' + ')} siècle` : '', zones.length ? `${zones.length} zone(s)` : '',
+    levels.length ? `niveau ${levels.join('/')}` : '', rubs.join(', ')].filter(Boolean);
+  return parts.join(', ');
+}
+function gameOverrides() {
+  const rows = [];
+  Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
+    const state = effectiveGameState(info.panel);
+    if (!state) return;
+    const text = describeGameOverride(prefix, state);
+    if (text) rows.push({ prefix, name: info.name, panel: info.panel, text });
+  });
+  return rows;
+}
+function resetPanelContentToDefaults(panelId) {
+  $(panelId)?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+    if (!el.id || el.id.includes('opt-') || el.id.includes('skip-objective')) return;
+    if (CONTENT_FIELD_RE.test(el.id) || CONTENT_RUB_RE.test(el.id)) el.checked = el.defaultChecked;
+  });
+  $(panelId)?.querySelectorAll('input[type="radio"][name$="count"]').forEach((el) => { el.checked = el.defaultChecked; });
+}
+function renderQuickOverrides() {
+  const box = $('qc-overrides'); if (!box) return;
+  const rows = gameOverrides();
+  box.classList.toggle('hidden', !rows.length);
+  box.innerHTML = rows.length
+    ? `<p class="config-section-title" style="margin-top:18px;">Jeux configurés à part</p>` + rows.map((r) =>
+      `<p class="hint" style="text-align:left;margin:6px 0;"><strong>${escapeHtml(r.name.toUpperCase())}</strong> : ${escapeHtml(r.text)}
+        <button type="button" class="secondary-button qc-override-erase" data-panel="${r.panel}" style="padding:2px 10px;margin-left:8px;">Effacer</button></p>`).join('')
+    : '';
+  box.querySelectorAll('.qc-override-erase').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      try { sessionStorage.removeItem(`sessGame_${btn.dataset.panel}`); } catch (e) { /* ignoré */ }
+      try { localStorage.removeItem(`lastSelection_${btn.dataset.panel}`); } catch (e) { /* ignoré */ }
+      resetPanelContentToDefaults(btn.dataset.panel);
+      renderQuickOverrides();
+      updateExerciseSummaries();
+    });
+  });
+}
+// Une dernière configuration existe-t-elle sur cet appareil (choix général non vide, ou jeu réglé à part) ?
+function hasSavedLastConfig() {
+  let gf = {}, gr = {}, ga = {};
+  try { gf = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); gr = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); ga = JSON.parse(localStorage.getItem('globalArtistDefaults') || '{}'); } catch (e) { /* ignoré */ }
+  if (gf.arts?.length || gf.centuries?.length || gf.zones?.length || gr.rubriques?.length || gr.levels?.length || gr.count || ga.artists?.length) return true;
+  return Object.keys(localStorage).some((k) => {
+    if (!k.startsWith('lastSelection_')) return false;
+    const panel = k.slice('lastSelection_'.length);
+    const prefix = Object.keys(EXERCISE_INFO).find((p) => EXERCISE_INFO[p].panel === panel);
+    try { return !!(prefix && describeGameOverride(prefix, JSON.parse(localStorage.getItem(k) || '{}'))); } catch (e) { return false; }
+  });
+}
+function savedConfigCount() {
+  try { return Object.keys(JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}')).length; } catch (e) { return 0; }
+}
+function updateQuickIntro() {
+  const intro = $('qc-intro'); if (!intro) return;
+  let loadedName = '';
+  try { loadedName = sessionStorage.getItem(SESSION_LOADED_NAME_KEY) || ''; } catch (e) { /* ignoré */ }
+  if (loadedName) intro.textContent = `Configuration « ${loadedName} » chargée. Vous pouvez la conserver ou la modifier.`;
+  else if (!sessionIsConfirmed() && hasSavedLastConfig()) intro.textContent = 'Voici la dernière configuration que vous avez utilisée pour vos jeux dans votre précédente session. Vous pouvez la conserver ou la modifier.';
+  else intro.textContent = 'Ces choix valent pour tous les jeux et pour le quiz final. Si vous ne cochez rien, les jeux par défaut porteront sur tous les domaines. Une fois un jeu commencé, vous pourrez le configurer à part avec le bouton ⚙️.';
+  $('qc-load-saved')?.classList.toggle('hidden', !savedConfigCount());
+}
+// Photo de la configuration en vigueur (choix général + jeux réglés à part) — pour la nommer et la ressortir plus tard.
+function snapshotConfig() {
+  const perGame = {};
+  Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => {
+    const state = effectiveGameState(info.panel);
+    if (!state || !describeGameOverride(prefix, state)) return;
+    const slim = {};
+    Object.keys(state).forEach((k) => { if (k.startsWith('radio:') ? state[k] : state[k] === true) slim[k] = state[k]; });
+    perGame[info.panel] = slim;
+  });
+  const f = readGlobalFieldDefaults(); const r = readGlobalRubriqueDefaults(); const a = readGlobalArtistDefaults();
+  return {
+    field: { arts: [...(f.arts || [])], centuries: [...(f.centuries || [])], zones: [...(f.zones || [])], remember: true },
+    rubrique: { rubriques: [...(r.rubriques || [])], levels: [...(r.levels || [])], count: r.count || '', remember: true },
+    artists: { artists: [...(a.artists || [])], remember: true },
+    allGames: true, games: [], perGame,
+  };
+}
+function suggestConfigName() {
+  const c = snapshotConfig();
+  const artLabel = { peinture: 'Peinture', sculpture: 'Sculpture' };
+  const parts = [
+    c.field.arts.map((a) => artLabel[a] || a).join(' + '),
+    c.field.centuries.join(' + '),
+    c.rubrique.levels.length ? 'N' + c.rubrique.levels.join('+') : '',
+    c.artists.artists.length ? c.artists.artists.slice(0, 2).join(', ') + (c.artists.artists.length > 2 ? '…' : '') : '',
+  ].filter(Boolean);
+  const base = parts.length ? parts.join(' · ') : 'Toutes les œuvres';
+  return Object.keys(c.perGame).length ? `${base} (+ jeux à part)` : base;
+}
+function saveNamedConfig(name) {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) { saved = {}; }
+  saved[name] = snapshotConfig();
+  localStorage.setItem('savedGuidedConfigs', JSON.stringify(saved));
+}
+// Quitter la session : on oublie tout ce qui ne valait que « pour aujourd'hui » ; la dernière configuration, elle,
+// reste mémorisée sur l'appareil et sera proposée au début de la session suivante.
+function quitSession() {
+  try {
+    [...SESSION_GLOBAL_KEYS, SESSION_CONFIRMED_KEY, SESSION_LOADED_NAME_KEY, 'hasConfiguredThisSession'].forEach((k) => sessionStorage.removeItem(k));
+    Object.keys(sessionStorage).filter((k) => k.startsWith('sessGame_')).forEach((k) => sessionStorage.removeItem(k));
+  } catch (e) { /* ignoré */ }
+  quickDraft = null;
+  loadedGuidedConfigName = '';
+  guidedModeActive = false; localStorage.removeItem('guidedModeActive');
+  guidedTourActive = false; localStorage.removeItem('guidedTourActive');
+  returnToExercisePanel = null;
+  showPanel('welcome');
+  window.scrollTo({ top: 0 });
+}
 (function installQuickConfig() {
   const move = (el, slot) => { if (el && slot) slot.appendChild(el); };
   move($('profile-section-fields')?.querySelector('.config-table'), $('qc-fields-slot'));
@@ -10403,44 +10562,52 @@ function commitQuickConfig(permanent) {
   move($('pf-artist-list-status'), $('qc-artists-slot'));
   move($('pf-artist-clickable-list'), $('qc-artists-slot'));
   move($('pf-artists-clear'), $('qc-artists-slot'));
-  $('qc-go')?.addEventListener('click', () => commitQuickConfig(false));
-  // « Enregistrer, puis accéder aux jeux » : une petite fenêtre demande sous quel nom enregistrer la configuration
-  // (proposition pré-remplie, modifiable). Valider = enregistre le choix général pour les prochaines sessions ET en
-  // garde un exemplaire nommé dans « Mes configurations enregistrées », puis ouvre le tableau des jeux.
-  const suggestConfigName = () => {
-    const d = quickDraft; if (!d) return 'Ma configuration';
-    const artLabel = { peinture: 'Peinture', sculpture: 'Sculpture' };
-    const parts = [
-      (d.field.arts || []).map((a) => artLabel[a] || a).join(' + '),
-      (d.field.centuries || []).join(' + '),
-      d.rubrique.levels?.length ? 'N' + d.rubrique.levels.join('+') : '',
-      d.artist.artists?.length ? d.artist.artists.slice(0, 2).join(', ') + (d.artist.artists.length > 2 ? '…' : '') : '',
-    ].filter(Boolean);
-    return parts.length ? parts.join(' · ') : 'Toutes les œuvres';
-  };
-  $('qc-save-go')?.addEventListener('click', () => {
-    if (!quickDraft) return;
-    $('save-config-name').value = suggestConfigName();
+  $('qc-go')?.addEventListener('click', () => commitQuickConfig());
+  // Fenêtre « nom de configuration » : deux usages. « exit » = écran affiché en quittant la session (le nom est facultatif) ;
+  // « save » = depuis Mon compte, enregistrer la configuration en cours sous un nom.
+  let nameModalMode = 'exit';
+  const openNameModal = (mode) => {
+    nameModalMode = mode;
+    const exit = mode === 'exit';
+    $('save-config-title').textContent = exit ? 'Vous quittez la session' : 'Enregistrer la configuration actuelle';
+    $('save-config-text').textContent = exit
+      ? "La configuration des jeux que vous avez choisie aujourd'hui sera proposée dès votre prochaine session. Vous pouvez également lui donner un nom et l'enregistrer si vous désirez conserver plusieurs configurations et pouvoir en relancer une rapidement."
+      : "Sous quel nom voulez-vous l'enregistrer ? Vous la retrouverez ici, dans « Mes configurations enregistrées ».";
+    $('save-config-name').value = exit ? '' : suggestConfigName();
+    $('save-config-name').placeholder = exit ? 'Nom de la configuration (facultatif)' : 'Nom de la configuration';
+    refreshNameModalButton();
     openModal('modal-save-config');
-    setTimeout(() => { $('save-config-name')?.focus(); $('save-config-name')?.select(); }, 50);
-  });
-  const validateSaveConfig = () => {
-    const d = quickDraft;
-    if (!d) { closeModal('modal-save-config'); return; }
-    const name = ($('save-config-name').value || '').trim() || suggestConfigName();
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) { saved = {}; }
-    saved[name] = {
-      field: { ...d.field, remember: true }, artists: { ...d.artist, remember: true }, rubrique: { ...d.rubrique, remember: true },
-      allGames: true, games: [],
-    };
-    localStorage.setItem('savedGuidedConfigs', JSON.stringify(saved));
-    closeModal('modal-save-config');
-    commitQuickConfig(true);
+    setTimeout(() => { $('save-config-name')?.focus(); if (!exit) $('save-config-name')?.select(); }, 50);
   };
-  $('save-config-validate')?.addEventListener('click', validateSaveConfig);
-  $('save-config-name')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); validateSaveConfig(); } });
+  const refreshNameModalButton = () => {
+    const hasName = !!($('save-config-name').value || '').trim();
+    $('save-config-validate').textContent = nameModalMode === 'exit' ? (hasName ? 'Enregistrer et quitter la session' : 'Quitter la session') : 'Enregistrer';
+  };
+  const validateNameModal = () => {
+    const typed = ($('save-config-name').value || '').trim();
+    if (nameModalMode === 'exit') {
+      if (typed) saveNamedConfig(typed);
+      closeModal('modal-save-config');
+      quitSession();
+    } else {
+      saveNamedConfig(typed || suggestConfigName());
+      closeModal('modal-save-config');
+      renderProfileConfigsTable();
+    }
+  };
+  $('save-config-validate')?.addEventListener('click', validateNameModal);
+  $('save-config-name')?.addEventListener('input', refreshNameModalButton);
+  $('save-config-name')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); validateNameModal(); } });
   $('save-config-cancel')?.addEventListener('click', () => closeModal('modal-save-config'));
+  $('menu-item-quit')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); openNameModal('exit'); });
+  $('profile-save-current-config')?.addEventListener('click', () => openNameModal('save'));
+  // « Charger une configuration de jeux enregistrée » (page 2) : mène à Mon compte, sur la liste des configurations.
+  $('qc-load-saved')?.addEventListener('click', () => {
+    if (!currentUser) { quickDraft = null; showPanel('welcome'); $('home-account-slot')?.scrollIntoView({ block: 'center' }); return; }
+    quickDraft = null;
+    showPanel('profile'); initProfilePage();
+    $('profile-menu-saved-configs')?.click();
+  });
   // « Tout effacer » : un bouton sous chacun des deux tableaux, qui ne vide que son propre tableau
   // (champs d'un côté ; rubriques, niveaux et nombre d'œuvres de l'autre).
   $('qc-clear-fields')?.addEventListener('click', () => {
@@ -10479,14 +10646,8 @@ function commitQuickConfig(permanent) {
     row.className = 'setup-action-row';
     const go = document.createElement('button');
     go.type = 'button'; go.className = 'primary-button'; go.textContent = 'Commencer le jeu →';
-    const saveGo = document.createElement('button');
-    saveGo.type = 'button'; saveGo.className = 'secondary-button'; saveGo.textContent = 'Enregistrer, puis commencer →';
     go.addEventListener('click', () => startBtn.click());
-    saveGo.addEventListener('click', () => {
-      forcePermanentSave = true;
-      try { startBtn.click(); } finally { forcePermanentSave = false; }
-    });
-    row.append(go, saveGo);
+    row.append(go);
     bar.appendChild(row);
     validateBtn.parentNode.insertBefore(bar, validateBtn);
     validateBtn.classList.add('setup-legacy-hidden');
@@ -10538,9 +10699,9 @@ $('open-training')?.addEventListener('click', () => {
   localStorage.removeItem('guidedTourActive');
   localStorage.removeItem('globalGamesDefaults');
   loadedGuidedConfigName = '';
-  // v140 : chemin rapide — page 3 (tableau des jeux) directement si un choix général existe (session ou enregistré),
-  // sinon page 2 pour le faire.
-  if (hasGeneralChoice()) {
+  // v146 : au début d'une session, on passe toujours par la page 2 (dernière configuration proposée, à conserver ou
+  // modifier) ; une fois la session confirmée, on revient directement au tableau des jeux.
+  if (sessionIsConfirmed()) {
     guidedModeActive = true;
     localStorage.setItem('guidedModeActive', 'true');
     showPanel('training-hub');
@@ -10621,6 +10782,7 @@ $('gc-personalize-continue')?.addEventListener('click', () => {
 });
 function saveGuidedFieldAndRubrique() {
   clearSessionLayers(); // v140 : le parcours guidé écrit le réglage enregistré ; il passe avant tout réglage « de session »
+  try { sessionStorage.setItem(SESSION_CONFIRMED_KEY, 'true'); } catch (e) { /* ignoré */ }
   const arts = [...document.querySelectorAll('.gc-art:checked')].map((el) => el.value);
   const centuries = [...document.querySelectorAll('.gc-century:checked')].map((el) => el.value);
   const zones = [...document.querySelectorAll('.gc-zone:checked')].map((el) => el.value);
