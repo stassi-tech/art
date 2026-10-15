@@ -6,10 +6,29 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v147';
+const APP_VERSION = 'v151';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
+
+// v148 (retour Stéphane, Vrai/Faux Piero della Francesca : « la voix corrige la dimension, elle est interrompue,
+// ça passe à l'erreur du matériau ») : le filet de sécurité des voix (onend parfois jamais signalé) supposait
+// 13 caractères/seconde, plus vite que la vraie voix (surtout sur mobile) ; il se déclenchait donc AVANT la fin
+// de la phrase, et la rubrique suivante coupait la voix en plein milieu. Désormais : délai d'attente large, puis,
+// tant que la synthèse indique qu'elle parle encore, on attend (jamais de coupure) — avec un plafond au cas où
+// elle resterait bloquée.
+function armSpeechFallback(timers, finish, text) {
+  const len = String(text || '').length;
+  const first = Math.max(2000, (len / 8) * 1000) + 2500;
+  const hardCap = Math.max(8000, (len / 3) * 1000) + 8000;
+  const t0 = Date.now();
+  const check = () => {
+    const stillSpeaking = !!(window.speechSynthesis && speechSynthesis.speaking);
+    if (stillSpeaking && Date.now() - t0 < hardCap) { timers.push(setTimeout(check, 600)); return; }
+    finish();
+  };
+  timers.push(setTimeout(check, first));
+}
 document.addEventListener('DOMContentLoaded', () => {
   if ($('app-version-badge')) $('app-version-badge').textContent = APP_VERSION;
   if ($('global-version-badge')) $('global-version-badge').textContent = APP_VERSION;
@@ -1864,10 +1883,10 @@ const PRONUNCIATION_FIXES = {
   'manneken pis': 'mannekenne piss',
   'copley': 'kopli',
   'vuillard': 'vuiyar',
-  'damian forment': 'damianne formènnte',
-  'damián forment': 'damianne formènnte', // v128 : « prononcer le ENT » (avec l'accent du fichier, la clé sans accent ne s'appliquait pas)
-  'forment': 'formènnte',
-  'ambrogio lorenzetti': 'ambrogio lorendzétti',
+  'damian forment': 'damianne for-menthe', // v150 (atelier 15 oct, validé à l'oreille) ; avant : 'damianne formènnte'
+  'damián forment': 'damianne for-menthe', // v128 : « prononcer le ENT » (avec l'accent du fichier, la clé sans accent ne s'appliquait pas)
+  'forment': 'for-menthe', // v150 : même écriture que ci-dessus (note de Stéphane : « for-menthe »)
+  'ambrogio lorenzetti': 'ambrogio loréndzéti',
   'borghese': 'borguézé',
   'borghèse': 'borguézé',
   'bernini': 'bérnini',
@@ -1883,7 +1902,6 @@ const PRONUNCIATION_FIXES = {
   'chassériau': 'Chasériau',
   'malevitch': 'Malévitch',
   'poyer': 'Poyé',
-  'marmion': 'Marmiyon',
   'chœur': 'keur',
   'adam': 'Adant', // v128 : « Adam = dan, comme une dent » — la finale « -ant » est un « an » sûr (« Adan » restait lu « adane »)
   'kunst*': 'kounst',
@@ -1894,7 +1912,7 @@ const PRONUNCIATION_FIXES = {
   'chaim': 'raïme',
   'berruguete': 'bèrrougueté',
   'san bernardo alle terme': 'san bernardo allé termé',
-  'baccio': 'batchio',
+  'baccio': 'batt-chio', // v150 (atelier 15 oct : « j'entends bak-chio, il faut dire bat-chio ») ; avant : 'batchio'
   'milon de crotone': 'milon de crotonne',
   'large colour prints': 'larj keulor prinnts',
   'loggetta': 'lojéta', // v128 (docx 9 oct : « Loggetta = lojéta »)
@@ -1925,9 +1943,6 @@ const PRONUNCIATION_FIXES = {
   'condottiere': 'condotière',
   'condottière': 'condotière',
   'rogier': 'Roger',
-  'weyden': 'védeune',
-  'pollaiuolo': 'Pollayouolo',
-  'veneziano': 'Vénétsiano',
   'angelico': 'Angéliko',
   'ursins': 'Ursin',
   'ciarda': 'Tcharda',
@@ -1938,7 +1953,7 @@ const PRONUNCIATION_FIXES = {
   'gozzoli': 'Gotsoli',
   'simone': 'Simoné',
   'cione': 'tchioné',
-  'lorenzetti': 'lorendzétti', // v128 : le « z » italien se dit « dz » (comme dans « piazza », « Gozzoli »)
+  'lorenzetti': 'loréndzéti', // v128 : le « z » italien se dit « dz » (comme dans « piazza », « Gozzoli »)
   'orsanmichele': 'Orsanmikélé',
   'santa croce': 'Santa Croché',
   'cimabue': 'Chimaboué',
@@ -2045,12 +2060,26 @@ const PRONUNCIATION_FIXES = {
   'schwerin': 'Schwérinne', // « n » prononcé
   'algardi': 'Âlgardi',
   'sebastiano': 'Sébastiano',
-  'cáceres': 'Cacérés',
-  'caceres': 'Cacérés',
+  'cáceres': 'Cassérès', // v150 (atelier 15 oct, validé à l'oreille) ; avant : 'Cacérés'
+  'caceres': 'Cassérès',
   'houston': 'Youstonne',
-  'pollux': 'Pollukss',
+  'pollux': 'Pollûkss', // v150 : « u comme rue »
   'giacomo': 'Djacomo',
   'piazza': 'Piadza',
+  // v149 (docx 15 oct, PRONONCIATION) : nouvelles réécritures phonétiques d'après les indications de Stéphane.
+  'della robbia': 'della Robbiya',
+  'bellechose': 'belle chose', // « ch pas k »
+  'pollaiuolo': 'Pollayolo', // « ai-uo-lo mal prononcé »
+  'venise': 'Venize', // « z pas ch »
+  'veneziano': 'vénétziano', // v150 (atelier 15 oct)
+  'ginevra': 'Djinèvra',
+  'benci': 'BéNtchi', // v150 (atelier 15 oct)
+  'weyden': 'védène', // « dén »
+  'simon': 'Si-mon', // « pas saïmon » (les cas particuliers, ex. « Simon Vouet », sont traités plus haut)
+  'marmion': 'Mar-mi-on', // « pas marmillon »
+  'puccio': 'Poutchio', // « chio pas xio »
+  // Consigne de Vrai/Faux : « si vous les repérez » — le « z » final ne doit pas s'entendre.
+  'repérez': 'repéré',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2093,6 +2122,9 @@ function fixSpeechPronunciation(text) {
     if (exceptFor.test(currentSpeechNationality)) return; // nationalité exceptée : on ne touche pas
     out = out.replace(new RegExp(`${NB}${wrong}${NA}`, 'giu'), otherwise);
   });
+  // v149 (« Ginevra de’ Benci : ne pas marquer d'arrêt ») : l'apostrophe de l'italien « de' » provoque une pause
+  // dans certaines voix — on la retire (« de Benci »), comme on le ferait à l'oral.
+  out = out.replace(new RegExp(`${NB}([Dd]e)[’']\\s*`, 'gu'), '$1 ');
   Object.entries(PRONUNCIATION_FIXES).forEach(([wrong, right]) => {
     const isPrefix = wrong.endsWith('*');
     const stem = isPrefix ? wrong.slice(0, -1) : wrong;
@@ -2154,7 +2186,12 @@ function normaliseRows(rows) {
     // juste plus bas — un champ TEXTE distinct, présent depuis la restructuration Ville/Lieu
     // précis/Sous-lieu) qui figure dans le nom de sa colonne photo. On ajoute donc les variantes
     // correspondantes, par la même symétrie que pour « cycle ».
-    const locationImageKey = findColumn(row, ['images du lieu', 'image du lieu', 'image 1 du lieu', 'images 1 du lieu', 'photo lieu', 'photo musee', 'photo musée', 'image du sous lieu', 'images du sous lieu', 'image 1 du sous lieu', 'images 1 du sous lieu', 'photo sous lieu', 'photo du sous lieu']);
+    // v149 (docx 15 oct, IMPREGNATION : « l'image n'apparaît pas pour les sous-lieux ») : la recherche renvoyait la
+    // PREMIÈRE colonne reconnue parmi toutes ces variantes — « Image du lieu » (col. G) l'emportait donc toujours,
+    // et « Image du sous lieu » (col. I) n'était jamais lue quand les deux existent (sauf si G était absente de
+    // la feuille). Deux colonnes, deux champs : locationImage (le lieu) et subLocationImage (le sous-lieu).
+    const locationImageKey = findColumn(row, ['images du lieu', 'image du lieu', 'image 1 du lieu', 'images 1 du lieu', 'photo lieu', 'photo musee', 'photo musée']);
+    const subLocationImageKey = findColumn(row, ['image du sous lieu', 'images du sous lieu', 'image 1 du sous lieu', 'images 1 du sous lieu', 'photo sous lieu', 'photo du sous lieu', 'image du sous lieu de conservation']);;
     const cycleImageKey = findColumn(row, ['images du cycle', 'image 1 du cycle', 'image du cycle', 'photo cycle']);
     // v80 (retour Stéphane, docx 29 sept, IMPREGNATION item 4 : « l'image de la colonne M apparaît
     // sur la tablette mais pas celle de la colonne O ») : « Image 2 du cycle » (+ sa légende propre,
@@ -2167,6 +2204,7 @@ function normaliseRows(rows) {
     const cycleCaption2Key = findColumn(row, ['legende image 2', 'legende 2 du cycle']);
     let artistImage = artistImageKey ? String(row[artistImageKey] || '').trim() : '';
     const locationImage = locationImageKey ? String(row[locationImageKey] || '').trim() : '';
+    const subLocationImage = subLocationImageKey ? String(row[subLocationImageKey] || '').trim() : '';
     const cycleImage = cycleImageKey ? String(row[cycleImageKey] || '').trim() : '';
     const cycleImage2 = cycleImage2Key ? String(row[cycleImage2Key] || '').trim() : '';
     const cycleCaption1 = cycleCaption1Key ? String(row[cycleCaption1Key] || '').trim() : '';
@@ -2264,7 +2302,13 @@ function normaliseRows(rows) {
     // est un simple genre de peinture (tableau, peinture, fresque), elle sert à la voix (« cette fresque »)
     // et au classement déplaçable / non déplaçable, mais n'est PAS préfixée au matériau dans la rubrique
     // « Nature et matériau » — on y lit seulement « Huile sur toile ». Sans matériau, on garde la nature.
-    const natureIsPaintingGenre = /^(tableau|peinture|fresque)s?$/.test(keyName(nature));
+    // v149 (docx 15 oct, TOUS LES JEUX : « si dans le titre figurent retable, diptyque, triptyque, polyptique, ils ne
+    // doivent pas être récrits dans la nature de l'œuvre, et la voix ne les répète pas : elle ne dit que le matériau ») :
+    // quand le titre porte déjà l'un de ces mots, la nature (« Triptyque », « Retable »…) n'est pas préfixée au
+    // matériau — ni à l'écran ni à la voix.
+    const PANEL_WORDS = /(triptyque|diptyque|polyptyque|polyptique|retable)/;
+    const titleHasPanelWord = PANEL_WORDS.test(keyName(title)) && PANEL_WORDS.test(keyName(nature));
+    const natureIsPaintingGenre = titleHasPanelWord || /^(tableau|peinture|fresque)s?$/.test(keyName(nature));
     // v125 : même logique quand le matériau répète déjà le mot de la nature (« Enluminure » + « Enluminure sur
     // vélin », « Aquarelle » + « Aquarelle et gouache ») : on garde le matériau seul, sans « X en X ».
     const materialsRepeatNature = !!(nature && materials && keyName(materials).includes(keyName(nature)));
@@ -2385,7 +2429,7 @@ function normaliseRows(rows) {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, artistImageCaption, locationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
+      artistImage, artistImageCaption, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
       row: rowIndex + 2
     };
   }).filter((question) => question && (question.image || question.artist || question.date || question.location || question.title));
@@ -2430,6 +2474,13 @@ const NATIONALITY_FLAGS = {
   "roumaine": "🇷🇴", "roumain": "🇷🇴", "roumanie": "🇷🇴",
   "serbe": "🇷🇸", "serbie": "🇷🇸",
   "bulgare": "🇧🇬", "bulgarie": "🇧🇬",
+  "australienne": "🇦🇺", "australien": "🇦🇺", "australie": "🇦🇺",
+  "slovaque": "🇸🇰", "slovaquie": "🇸🇰",
+  "taiwanaise": "🇹🇼", "taiwan": "🇹🇼",
+  "algerienne": "🇩🇿", "algerien": "🇩🇿", "algerie": "🇩🇿",
+  "maltaise": "🇲🇹", "maltais": "🇲🇹", "malte": "🇲🇹",
+  "vaticane": "🇻🇦", "vatican": "🇻🇦",
+  "saint marinaise": "🇸🇲",
 };
 // Dérive le code ISO 3166-1 (2 lettres, ex. "gb") depuis l'emoji drapeau déjà stocké dans
 // NATIONALITY_FLAGS, plutôt que de dupliquer une deuxième table pays → code à maintenir en double.
@@ -2502,11 +2553,52 @@ const CITY_TO_COUNTRY = {
   'mexico': 'mexicaine', 'rio de janeiro': 'bresilienne', 'sao paulo': 'bresilienne', 'buenos aires': 'argentine',
   'pekin': 'chinoise', 'shanghai': 'chinoise', 'tokyo': 'japonaise', 'kyoto': 'japonaise', 'seoul': 'coreenne',
   'sibiu': 'roumaine', 'bucarest': 'roumaine',
+  // v151 (Stéphane : « certaines villes, Messine par exemple, n'ont pas de drapeau ») : toutes les villes présentes dans
+  // les fichiers Excel au 15 oct. 2026 ont été ajoutées. Les clés sont normalisées au chargement (accents, tirets, majuscules).
+  'Versailles': 'francaise', 'Montpellier': 'francaise', 'Nogent-sur-Seine': 'francaise', 'Colmar': 'francaise', 'Toulouse': 'francaise', 'Saint-Denis': 'francaise', 'Nancy': 'francaise', 'Besançon': 'francaise', 'Troyes': 'francaise', 'Saint-Germain-en-Laye': 'francaise', 'Rennes': 'francaise', 'Pau': 'francaise', 'Bordeaux': 'francaise', 'Vesoul': 'francaise', 'Saint-Mihiel': 'francaise', 'Reims': 'francaise', 'Nice': 'francaise', 'Montauban': 'francaise', 'Le Mans': 'francaise', 'Le Havre': 'francaise', 'Grenoble': 'francaise', 'Fontainebleau': 'francaise', 'Fontaine-Chaalis': 'francaise', 'Amiens': 'francaise', 'Albi': 'francaise', 'Villeneuve-lès-Avignon': 'francaise', 'Vichy': 'francaise', 'Valenciennes': 'francaise', 'Valence': 'francaise', 'Toulon': 'francaise', 'Sens': 'francaise', 'Saulieu': 'francaise', 'Saint-Tropez': 'francaise', 'Saint-Quentin': 'francaise', 'Rueil-Malmaison': 'francaise', 'Quimper': 'francaise', 'Nouans-les-Fontaines': 'francaise', 'Moulins': 'francaise', 'Mont-Saint-Michel': 'francaise', 'Limoges': 'francaise', 'Langres': 'francaise', 'La Rochelle': 'francaise', 'Fixin': 'francaise', 'Douai': 'francaise', 'Compiègne': 'francaise', 'Clermont-Ferrand': 'francaise', 'Chartres': 'francaise', 'Castres': 'francaise', 'Calais': 'francaise', 'Caen': 'francaise', 'Blois': 'francaise', 'Belfort': 'francaise', 'Beaune': 'francaise', 'Bar-le-Duc': 'francaise', 'Avignon': 'francaise', 'Angers': 'francaise', 'Ajaccio': 'francaise', 'Aix-les-Bains': 'francaise', 'Hattonchâtel': 'francaise',
+  'Gênes': 'italienne', 'Lucques': 'italienne', 'Bergame': 'italienne', 'Vérone': 'italienne', 'Pistoia': 'italienne', 'Sansepolcro': 'italienne', 'Modène': 'italienne', 'Mantoue': 'italienne', 'Arezzo': 'italienne', 'Volterra': 'italienne', 'San Gimignano': 'italienne', 'Prato': 'italienne', 'Plaisance': 'italienne', 'Orvieto': 'italienne', 'Cortone': 'italienne', 'Ascoli Piceno': 'italienne', 'Syracuse': 'italienne', 'Cefalù': 'italienne', 'Rimini': 'italienne', 'San Severino Marche': 'italienne', 'Pise': 'italienne', 'Montefalco': 'italienne', 'Tarquinia': 'italienne', 'Fano': 'italienne', 'Città di Castello': 'italienne', 'Lucca': 'italienne', 'Recanati': 'italienne', 'Asolo': 'italienne', 'Cingoli': 'italienne', 'Trescore Balneario': 'italienne', 'Saronno': 'italienne', 'Colorno': 'italienne', 'Carmignano': 'italienne', 'Poggio a Caiano': 'italienne', 'Maser': 'italienne', 'Castelfranco Veneto': 'italienne', 'Asciano': 'italienne', 'Tremezzo': 'italienne', 'Verbania': 'italienne', 'Vaglia': 'italienne', 'Trevise': 'italienne', 'Rovereto': 'italienne', 'Ravenne': 'italienne', 'Livourne': 'italienne', 'Impruneta': 'italienne', 'La Verna': 'italienne', 'Fiesole': 'italienne', 'Faenza': 'italienne', 'Carrare': 'italienne', 'Alcamo': 'italienne', 'Messine': 'italienne', 'Lorette': 'italienne',
+  'Vatican': 'vaticane',
+  'San Marino': 'saint marinaise',
+  'Valladolid': 'espagnole', 'Murcie': 'espagnole', 'Ségovie': 'espagnole', 'Burgos': 'espagnole', 'Salamanque': 'espagnole', 'Malaga': 'espagnole', 'Antequera': 'espagnole', 'Huesca': 'espagnole', 'Medina de Rioseco': 'espagnole', 'Alcalá de Henares': 'espagnole', 'Terrassa': 'espagnole', 'Cáceres': 'espagnole', 'San Lorenzo de El Escorial': 'espagnole', 'San Lorenzo': 'espagnole', 'L\'Escorial': 'espagnole', 'El Escorial': 'espagnole', 'Vitoria': 'espagnole', 'Poblet': 'espagnole', 'Salas': 'espagnole', 'Lebrija': 'espagnole', 'Santiponce': 'espagnole',
+  'Nuremberg': 'allemande', 'Wurtzbourg': 'allemande', 'Augsbourg': 'allemande', 'Duisbourg': 'allemande', 'Wuppertal': 'allemande', 'Wittenberg': 'allemande', 'Weimar': 'allemande', 'Schwerin': 'allemande', 'Rott am Inn': 'allemande', 'Potsdam': 'allemande', 'Hanovre': 'allemande', 'Fribourg-en-Brisgau': 'allemande', 'Düsseldorf': 'allemande', 'Wiesbaden': 'allemande', 'Swäbisch Hall': 'allemande', 'Stadthagen': 'allemande', 'Sarrebruck': 'allemande', 'Rottenburg am Neckar': 'allemande', 'Rostock': 'allemande', 'Pommersfelden': 'allemande', 'Münnerstadt': 'allemande', 'Heidelberg': 'allemande', 'Halberstadt': 'allemande', 'Essen': 'allemande', 'Dortmund': 'allemande', 'Bamberg': 'allemande', 'Munster': 'allemande', 'Stuppach': 'allemande', 'Weyarn': 'allemande',
+  'Gurk': 'autrichienne', 'Sankt Wolfgang': 'autrichienne',
+  'Bâle': 'suisse', 'Lugano': 'suisse', 'Winterthour': 'suisse', 'Lucerne': 'suisse', 'Riehen': 'suisse', 'Davos': 'suisse', 'Ascona': 'suisse', 'Ligornetto': 'suisse',
+  'Windsor': 'anglaise', 'Birmingham': 'anglaise', 'Liverpool': 'anglaise', 'Cardiff': 'anglaise', 'Aberdeen': 'anglaise', 'Bristol': 'anglaise', 'Yorkshire': 'anglaise', 'Worcester': 'anglaise', 'Stratford-upon-Avon': 'anglaise', 'Port Sunlight': 'anglaise', 'Plymouth': 'anglaise', 'Nottingham': 'anglaise', 'Chichester': 'anglaise', 'Burnley': 'anglaise', 'Bakewell': 'anglaise', 'Derbyshire': 'anglaise', 'Derby': 'anglaise', 'Salisbury': 'anglaise', 'Norfolk': 'anglaise', 'Greenwich': 'anglaise', 'Petworth': 'anglaise', 'Chatsworth': 'anglaise',
+  'Pasadena': 'americaine', 'New Haven': 'americaine', 'Richmond': 'americaine', 'Springfield': 'americaine', 'Raleigh': 'americaine', 'Hartford': 'americaine', 'Dallas': 'americaine', 'Youngstown': 'americaine', 'Urbana': 'americaine', 'Université de Yale': 'americaine', 'Ohio': 'americaine', 'Stone Mountain': 'americaine', 'Salt Lake City': 'americaine', 'Providence': 'americaine', 'Princeton': 'americaine', 'Pittsburgh': 'americaine', 'Phoenix': 'americaine', 'Oberlin': 'americaine', 'New Brunswick': 'americaine', 'Newark': 'americaine', 'Lexington': 'americaine', 'La Nouvelle-Orléans': 'americaine', 'Harvard': 'americaine', 'El Paso': 'americaine', 'Cody': 'americaine', 'Chapel Hill': 'americaine', 'Buffalo': 'americaine', 'Bentonville': 'americaine', 'Concord': 'americaine', 'Williamstone': 'americaine', 'Oregon': 'americaine', 'Dakota du Sud': 'americaine',
+  'Dordrecht': 'neerlandaise', 'Otterlo': 'neerlandaise', 'Delft': 'neerlandaise', 'Leyde': 'neerlandaise',
+  'Tournai': 'belge', 'Louvain': 'belge',
+  'Gmina Konstancin-Jeziorna': 'polonaise', 'Łańcut': 'polonaise', 'Poznań': 'polonaise', 'Gdańsk': 'polonaise',
+  'Kaliningrad': 'russe',
+  'Komaki': 'japonaise', 'Masuda': 'japonaise', 'Japon': 'japonaise',
+  'Taïwan': 'taiwanaise',
+  'Alger': 'algerienne',
+  'Ottawa': 'canadienne', 'Toronto': 'canadienne', 'Montréal': 'canadienne',
+  'Melbourne': 'australienne', 'Sydney': 'australienne', 'Adélaïde': 'australienne', 'Adélaîde': 'australienne',
+  'Bratislava': 'slovaque',
+  'La Valette': 'maltaise', 'Rabat': 'maltaise',
+  'Uppsala': 'suedoise', 'Mariefred': 'suedoise',
+  'Nivå': 'danoise',
+  'Queluz': 'portugaise',
 };
+// v151 : table normalisée une fois (les clés « Gênes », « Bâle »... avaient un accent et n'étaient donc JAMAIS
+// retrouvées : la recherche se fait sur le nom sans accent). Pour une valeur composée (« Tolède, Ohio »,
+// « Sankt Wolfgang (Autriche) », « Washington / Boston »), on essaie d'abord la valeur entière, puis chaque
+// morceau en partant de la fin (le pays ou l'État est en général donné en dernier).
+const CITY_TO_COUNTRY_NORM = Object.fromEntries(Object.entries(CITY_TO_COUNTRY).map(([k, v]) => [keyName(k), v]));
+function cityCountryKey(ville) {
+  const whole = keyName(ville);
+  if (!whole) return '';
+  if (CITY_TO_COUNTRY_NORM[whole]) return CITY_TO_COUNTRY_NORM[whole];
+  const parts = String(ville).split(/[,()\/]/).map(keyName).filter(Boolean).reverse();
+  for (const part of parts) {
+    if (CITY_TO_COUNTRY_NORM[part]) return CITY_TO_COUNTRY_NORM[part];
+    for (const label of Object.keys(NATIONALITY_FLAGS)) { if (part === label) return label; }
+  }
+  return '';
+}
 function cityFlag(ville) {
-  const key = keyName(ville);
-  if (!key) return '';
-  return nationalityFlag(CITY_TO_COUNTRY[key] || '');
+  const nat = cityCountryKey(ville);
+  return nat ? nationalityFlag(nat) : '';
 }
 // Nom de pays (pour l'info-bulle au survol du drapeau) à partir de l'adjectif de nationalité
 // utilisé dans CITY_TO_COUNTRY.
@@ -2519,11 +2611,17 @@ const COUNTRY_NAMES = {
   croate: 'Croatie', serbe: 'Serbie', bulgare: 'Bulgarie', suisse: 'Suisse',
   mexicaine: 'Mexique', bresilienne: 'Brésil', argentine: 'Argentine',
   chinoise: 'Chine', japonaise: 'Japon', coreenne: 'Corée du Sud', roumaine: 'Roumanie',
+  australienne: 'Australie', slovaque: 'Slovaquie', taiwanaise: 'Taïwan', algerienne: 'Algérie', maltaise: 'Malte',
+  vaticane: 'Vatican', 'saint marinaise': 'Saint-Marin', canadienne: 'Canada',
 };
 function countryNameFromFlag(ville) {
-  const key = keyName(ville);
-  const nat = CITY_TO_COUNTRY[key];
-  return nat ? (COUNTRY_NAMES[nat] || '') : '';
+  const nat = cityCountryKey(ville);
+  if (!nat) return '';
+  if (COUNTRY_NAMES[nat]) return COUNTRY_NAMES[nat];
+  // Pays donné directement dans la valeur (« … (Autriche) ») : on retrouve le nom via le drapeau.
+  const emoji = NATIONALITY_FLAGS[nat];
+  const same = Object.keys(COUNTRY_NAMES).find((k) => NATIONALITY_FLAGS[k] === emoji);
+  return same ? COUNTRY_NAMES[same] : '';
 }
 function answerFor(index) {
   if (!state.answers[index]) state.answers[index] = { artist: '', date: '', location: '', title: '', checked: false };
@@ -6783,6 +6881,7 @@ function showBottomGallery(work) {
   const items = [];
   if (work.artistImage) items.push({ url: work.artistImage, label: work.artist, caption: work.artist });
   if (work.locationImage) items.push({ url: work.locationImage, label: work.ville || 'Lieu', caption: work.location });
+  if (work.subLocationImage) items.push({ url: work.subLocationImage, label: 'Sous-lieu', caption: work.location });
   // Nouvelle vignette : une photo supplémentaire du même cycle/ensemble (colonne « Images du
   // cycle » du fichier maître — ex. une autre fresque de la même chapelle, un autre folio du même
   // manuscrit), jusqu'ici récupérée depuis le fichier Excel mais jamais montrée nulle part.
@@ -8315,7 +8414,7 @@ function famSpeak2(text, onEnd) {
     const myEpoch = speechEpoch;
     const finish = () => { if (!done) { done = true; if (myEpoch === speechEpoch) onEnd(); } };
     u.onend = finish; u.onerror = finish;
-    chronoTimers.push(setTimeout(finish, Math.max(1200, (text.length / 13) * 1000) + 400));
+    armSpeechFallback(chronoTimers, finish, text);
   }
   speechSynthesis.speak(u);
 }
@@ -8553,8 +8652,7 @@ function famSpeak(text, onEnd) {
     const myEpoch = speechEpoch;
     const finish = () => { if (!done) { done = true; if (myEpoch === speechEpoch) onEnd(); } };
     u.onend = finish; u.onerror = finish;
-    const estimatedMs = Math.max(1200, (text.length / 13) * 1000) + 400;
-    famTimers.push(setTimeout(finish, estimatedMs));
+    armSpeechFallback(famTimers, finish, text);
   }
   speechSynthesis.speak(u);
 }
@@ -9070,8 +9168,20 @@ function vfSameArtist(a, b) {
 // et INTRUS_STOPWORDS, plus bas dans ce fichier) : deux matériaux sont jugés « trop semblables pour
 // servir de piège » dès que tous les mots significatifs de la formulation la plus courte se
 // retrouvent dans l'autre.
+// v148 (retour Stéphane : « tempera sur bois et détrempe sur bois ne sont pas considérés comme la même
+// technique, d'où un signalement d'erreur inapproprié ») : avant de comparer les mots, on ramène les
+// synonymes d'usage à un mot unique — détrempe = tempera ; panneau / planche = bois (« huile sur panneau »
+// ≈ « huile sur bois »). Liste volontairement courte : à compléter au fil des retours.
+const VF_MATERIAL_SYNONYMS = {
+  detrempe: 'tempera', detrempes: 'tempera', tempera: 'tempera', tempere: 'tempera', temperas: 'tempera',
+  panneau: 'bois', panneaux: 'bois', planche: 'bois', peuplier: 'bois', chene: 'bois',
+};
+function vfCanonMaterialWord(w) {
+  const plain = String(w).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return VF_MATERIAL_SYNONYMS[plain] || w;
+}
 function vfSameMaterials(a, b) {
-  const wordsOf = (r) => new Set(intrusTitleWords(vfFieldValue(r, 'materials')));
+  const wordsOf = (r) => new Set(intrusTitleWords(vfFieldValue(r, 'materials')).map(vfCanonMaterialWord));
   const wa = wordsOf(a), wb = wordsOf(b);
   if (!wa.size || !wb.size) return false;
   const [smaller, larger] = wa.size <= wb.size ? [wa, wb] : [wb, wa];
@@ -9094,8 +9204,7 @@ function vfSpeak(text, onEnd) {
     const myEpoch = speechEpoch;
     const finish = () => { if (!done) { done = true; if (myEpoch === speechEpoch) onEnd(); } };
     u.onend = finish; u.onerror = finish;
-    const estimatedMs = Math.max(1200, (text.length / 13) * 1000) + 400;
-    vfTimers.push(setTimeout(finish, estimatedMs));
+    armSpeechFallback(vfTimers, finish, text);
   }
   speechSynthesis.speak(u);
 }
@@ -11306,11 +11415,18 @@ function impShowCurrent() {
     const segment = speechSegments[i];
     const text = segment.map((f) => f.spoken || f.value).join(' — ') || work.artist;
     const flowField = segment.find((f) => f.key === 'cycle' || f.key === 'location');
-    const flowImage = flowField?.key === 'location' ? work.locationImage : flowField?.key === 'cycle' ? work.cycleImage : null;
-    if (flowImage) {
+    // v149 : pour le Lieu, on enchaîne l'image du lieu puis celle du sous-lieu (si les deux existent ; une seule
+    // suffit à s'afficher), et on n'affiche AUCUN badge « Lieu de conservation » par-dessus (« pour une place
+    // publique, c'est bizarre : on ne met rien, le texte des références suffit »). Le badge reste pour le cycle.
+    const flowImages = flowField?.key === 'location' ? [work.locationImage, work.subLocationImage].filter(Boolean) : flowField?.key === 'cycle' ? [work.cycleImage].filter(Boolean) : [];
+    if (flowImages.length) {
       const estimatedSegDurMs = Math.max(1200, (text.length / 10) * 1000) + 400;
       const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
-      impTimers.push(setTimeout(() => impShowFlowImage(flowImage, flowField.label), flowDelayMs));
+      const badge = flowField.key === 'location' ? '' : flowField.label;
+      flowImages.forEach((url, k) => {
+        // 2e image : après le fondu enchaîné de la 1re (2 s) + ~3 s d'affichage
+        impTimers.push(setTimeout(() => impShowFlowImage(url, badge), flowDelayMs + k * 5000));
+      });
     }
     // v120 (retour Stéphane : « trop de marge entre la dernière rubrique et le lieu de conservation, surtout
     // s'il n'y a plus Ensemble ; on revient à ce qui était, un tout petit peu plus ») : avant v116, le
@@ -11392,7 +11508,8 @@ function impShowFlowImage(url, label) {
         nextImg.classList.remove('imp-flow-next-visible');
         impLoupe?.setLevel(0);
       }, CROSSFADE_MS)); // doit correspondre à la durée de transition en CSS
-      if (labelEl) {
+      if (labelEl && !label) { labelEl.classList.add('hidden'); labelEl.textContent = ''; }
+      else if (labelEl) {
         labelEl.textContent = label;
         labelEl.classList.remove('hidden');
         // Force un reflow avant d'ajouter la classe d'opacité, pour garantir le fondu (sinon le
@@ -11572,7 +11689,7 @@ function intrusSpeak(text, onEnd) {
     const myEpoch = speechEpoch;
     const finish = () => { if (!done) { done = true; if (myEpoch === speechEpoch) onEnd(); } };
     u.onend = finish; u.onerror = finish;
-    intrusTimers.push(setTimeout(finish, Math.max(1200, (text.length / 13) * 1000) + 400));
+    armSpeechFallback(intrusTimers, finish, text);
   }
   speechSynthesis.speak(u);
 }

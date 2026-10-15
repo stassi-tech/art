@@ -2592,3 +2592,15 @@ body.stephane-test-decor .scale-wall-pillar {
 #profile-menu-grid { margin-bottom:10px !important; }
 #profile-hub-secondary-buttons { margin-bottom:24px !important; }
 #profile-menu-grid .home-mode-button, #profile-hub-secondary-buttons .home-mode-button { padding:16px 10px; min-height:64px; display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-size:.95rem; font-weight:700; line-height:1.25; }
+
+/* v149 (docx 15 oct, AMBIANCES) : lisibilité des consignes.
+   INTRUS — dans les ambiances sombres (gothique, Renaissance, Versailles, Ermitage/Rococo, Pitti, Bauhaus), la
+   référence à retrouver (valeurs en brun très foncé, intitulés en gris) se lisait mal : on l'écrit en blanc.
+   CHRONOLOGIE — la consigne est écrite en blanc en ligne (style="color:#fff") ; sur les ambiances claires
+   (Renoir = ambiance par défaut, Wedgwood, Space Age) elle devient invisible : on l'écrit en noir. */
+body:is([data-ambiance="gothique"],[data-ambiance="renaissance"],[data-ambiance="versailles"],[data-ambiance="ermitage"],[data-ambiance="pitti"],[data-ambiance="bauhaus"]).in-exercise :is(#intrus-choices, #intrus-correction-details) :is(.correction-value, .correction-value *, em) { color:#fff !important; }
+body:is([data-ambiance="gothique"],[data-ambiance="renaissance"],[data-ambiance="versailles"],[data-ambiance="ermitage"],[data-ambiance="pitti"],[data-ambiance="bauhaus"]).in-exercise :is(#intrus-choices, #intrus-correction-details) .correction-label { color:rgba(255,255,255,.82) !important; }
+body:not([data-ambiance]) #chrono-instruction, body:not([data-ambiance]) #chrono-instruction-hint,
+body[data-ambiance=""] #chrono-instruction, body[data-ambiance=""] #chrono-instruction-hint,
+body[data-ambiance="wedgwood"] #chrono-instruction, body[data-ambiance="wedgwood"] #chrono-instruction-hint,
+body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #chrono-instruction-hint { color:#000 !important; }
