@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v151';
+const APP_VERSION = 'v152';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -1796,20 +1796,20 @@ const PRONUNCIATION_FIXES = {
   'bakst': 'bakstte',
   'guidi': 'gwidi',
   'ilya': 'riya',
-  'fountain': 'fwaountaïne',
+  'fountain': 'fwaontène', // v152 (atelier 16 oct)
   'osmer': 'osmère',
   'ariette': 'ariette',
   'xxiii': 'vingt-trois',
   'xvi': 'seize',
   'brueghel': 'breuguel',
   'bruegel': 'breuguel',
-  'guglielmo': 'goulyémo',
-  'tino di camaino': 'tino di kaméno',
+  'guglielmo': 'goulyélmo', // v152 (atelier 16 oct)
+  'tino di camaino': 'tino di kama-ï-no', // v152 (atelier 16 oct)
   // « van lo » tout court restait mal prononcé (« vané lo ») : le simple « n » de « van » se
   // nasalise en français (comme dans « vent »), puis le moteur ajoutait un « é » en bout de
   // syllabe. Doubler le « n » (« vanne ») bloque cette nasalisation — comme dans « Anne », qui se
   // prononce bien « ane » et pas « an(e) » nasalisé — et donne enfin le son attendu.
-  'carle van loo': 'carle vanne lo',
+  'carle van loo': 'carle vaN lô', // v152 (atelier 16 oct)
   'watteau': 'vatteau',
   // « Simon » se lisait à l'anglaise (« Saïmon », comme le prénom anglais) plutôt qu'à la
   // française (« Simon », comme dans « Simone ») — certaines voix semblent reconnaître ce prénom
@@ -1818,7 +1818,7 @@ const PRONUNCIATION_FIXES = {
   // plus déclencher cette reconnaissance, tout en se prononçant pareil une fois lu en français.
   'simon vouet': 'symon vouet',
   'reichler': 'raïchlère',
-  'jacopo': 'giacopo',
+  'jacopo': 'djiacopo', // v152 (atelier 16 oct)
   'serpotta': 'serpotta',
   'giusto di menabuoi': 'djousto di ménabwoï',
   'egon': 'égone',
@@ -1830,20 +1830,20 @@ const PRONUNCIATION_FIXES = {
   'permoser': 'permozère',
   'rusconi': 'rousconi',
   'gossaert': 'rossart',
-  'bocklin': 'boklinne',
+  'bocklin': 'beuklinne', // v152 (atelier 16 oct)
   'arcimboldo': 'archimboldo',
   'gellee': 'gelé',
   'gellée': 'gelé',
-  'barocci': 'barotchi',
+  'barocci': 'barottchi', // v152 (atelier 16 oct)
   'filippo della valle': 'filippo della vallé',
-  'flaxman': 'flaxmane',
+  'flaxman': 'flaksmane', // v152 (atelier 16 oct)
   'fabritius': 'fabritsiousse',
   'bartolomeo': 'bartoloméo',
-  'gibson': 'gibsone',
-  'pollaiolo': 'pollayolo',
+  'gibson': 'gibssone', // v152 (atelier 16 oct)
+  'pollaiolo': 'pollaîyuolo', // v152 (atelier 16 oct)
   'juan gris': 'jouane griss',
   'ruan gris': 'jouane griss',
-  'bandini': 'bandini',
+  'bandini': 'bândini', // v152 (atelier 16 oct)
   'masaccio': 'masatchio',
   'michel-ange': 'mikélange',
   'michel ange': 'mikélange',
@@ -1856,52 +1856,52 @@ const PRONUNCIATION_FIXES = {
   // Repéré à nouveau malgré 'vérmeur' : le moteur semble parfois avaler le second "r" final —
   // 'vérmère' calque la finale sur un mot français très courant ("mère"), dont le "r" final se
   // prononce toujours de façon fiable.
-  'vermeer': 'vérmère',
-  'kalf': 'kalf',
+  'vermeer': 'vermère', // v152 (atelier 16 oct)
+  'kalf': 'kalfe', // v152 (atelier 16 oct)
   'edvard': 'édvard',
-  'campione': 'campioné',
+  'campione': 'campionné', // v152 (atelier 16 oct)
   'ercole': 'ércolé',
   'gaudens': 'gaudenss',
-  'leone': 'léoné',
+  'leone': 'léonné', // v152 (atelier 16 oct)
   'allan ramsay': 'allanne ramsay',
   'champaigne': 'champagne',
-  'boccioni': 'bochioni',
+  'boccioni': 'botchyoni', // v152 (atelier 16 oct)
   'dordrecht': 'dordrekt',
   'horaces': 'oraces',
-  'mochi': 'moki',
+  'mochi': 'môki', // v152 (atelier 16 oct)
   'pacher': 'pareur',
   'guardi': 'gouardi',
   'straub': 'chtraob',
   'agnolo': 'aniolo',
   'faydherbe': 'féderbe',
-  'emmaüs': 'emmaüss',
-  'emmaus': 'emmauss',
-  'thomas ball': 'thomas boule',
+  'emmaüs': 'émaûs', // v152 (atelier 16 oct)
+  'emmaus': 'émaûs', // v152 (atelier 16 oct)
+  'thomas ball': 'thomas bwôle', // v152 (atelier 16 oct)
   'sœur': 'seur',
   'werefkin': 'werefkine',
   'coysevox': 'cozevo',
   'manneken pis': 'mannekenne piss',
   'copley': 'kopli',
   'vuillard': 'vuiyar',
-  'damian forment': 'damianne for-menthe', // v150 (atelier 15 oct, validé à l'oreille) ; avant : 'damianne formènnte'
-  'damián forment': 'damianne for-menthe', // v128 : « prononcer le ENT » (avec l'accent du fichier, la clé sans accent ne s'appliquait pas)
-  'forment': 'for-menthe', // v150 : même écriture que ci-dessus (note de Stéphane : « for-menthe »)
-  'ambrogio lorenzetti': 'ambrogio loréndzéti',
-  'borghese': 'borguézé',
-  'borghèse': 'borguézé',
-  'bernini': 'bérnini',
+  'damian forment': 'damianne formente', // v150 (atelier 15 oct, validé à l'oreille) ; avant : 'damianne formènnte' // v152 (atelier 16 oct)
+  'damián forment': 'damianne formente', // v128 : « prononcer le ENT » (avec l'accent du fichier, la clé sans accent ne s'appliquait pas) // v152 (atelier 16 oct)
+  'forment': 'formente', // v150 : même écriture que ci-dessus (note de Stéphane : « for-menthe ») // v152 (atelier 16 oct)
+  'ambrogio lorenzetti': 'ambbrogio loréndzéti', // v152 (atelier 16 oct)
+  'borghese': 'borguêzze', // v152 (atelier 16 oct)
+  'borghèse': 'borguêzze', // v152 (atelier 16 oct)
+  'bernini': 'bêrnini', // v152 (atelier 16 oct)
   'teniers': 'ténié',
-  'cumes': 'coumes',
+  'cumes': 'cûmes', // v152 (atelier 16 oct)
   // "pas zé" (retour de Stéphane) : la finale "-ueze" se faisait apparemment entendre comme un
   // "é" accentué plutôt qu'un e muet. "-èze" calque la finale sur des mots français courants
   // (ex. "obèse") dont le e final reste bien muet.
   'velasquez': 'vélaskèze',
   'velázquez': 'vélaskèze',
-  'gentileschi': 'gentileski',
+  'gentileschi': 'djéntilésski', // v152 (atelier 16 oct)
   'sœurs': 'seurs',
   'chassériau': 'Chasériau',
   'malevitch': 'Malévitch',
-  'poyer': 'Poyé',
+  'poyer': 'Pôyé', // v152 (atelier 16 oct)
   'chœur': 'keur',
   'adam': 'Adant', // v128 : « Adam = dan, comme une dent » — la finale « -ant » est un « an » sûr (« Adan » restait lu « adane »)
   'kunst*': 'kounst',
@@ -1910,7 +1910,7 @@ const PRONUNCIATION_FIXES = {
   // été redoublés).
   'chaïm': 'raïme',
   'chaim': 'raïme',
-  'berruguete': 'bèrrougueté',
+  'berruguete': 'bèrrouguété', // v152 (atelier 16 oct)
   'san bernardo alle terme': 'san bernardo allé termé',
   'baccio': 'batt-chio', // v150 (atelier 15 oct : « j'entends bak-chio, il faut dire bat-chio ») ; avant : 'batchio'
   'milon de crotone': 'milon de crotonne',
@@ -1921,30 +1921,30 @@ const PRONUNCIATION_FIXES = {
   'juan de juni': 'rouane dé rouni',
   'élément': 'éléman',
   'tempera': 'tanpéra',
-  'escorial': 'Eskorial',
+  'escorial': 'Esskôrial', // v152 (atelier 16 oct)
   'vespucci': 'Vespoutchi',
   'transfiguration': 'transfigurassion',
   'sacrements': 'sakremans',
-  'cosmè': 'Kosmè',
+  'cosmè': 'Kossmè', // v152 (atelier 16 oct)
   'fiore': 'Fioré',
-  'schifanoia': 'Skifanoya',
+  'schifanoia': 'Skifannôya', // v152 (atelier 16 oct)
   'bouts': 'Bout',
   'alte': 'Alté',
   'gemäldegalerie': 'Guémeldegalery',
   'linaioli': 'Linayoli',
   'botticelli': 'Bottitchelli',
   'groeninge': 'Grouningue',
-  'francesca': 'Franchéska',
-  'gentile': 'Gentilé',
-  'vecchietta': 'Vekietta',
+  'francesca': 'Frantchésska', // v152 (atelier 16 oct)
+  'gentile': 'Génntilé', // v152 (atelier 16 oct)
+  'vecchietta': 'Vékietta', // v152 (atelier 16 oct)
   'patmos': 'Patmoss',
   'verrocchio': 'Verrokio',
   'ecce': 'Étché',
   'condottiere': 'condotière',
   'condottière': 'condotière',
   'rogier': 'Roger',
-  'angelico': 'Angéliko',
-  'ursins': 'Ursin',
+  'angelico': 'Anddgéliko', // v152 (atelier 16 oct)
+  'ursins': 'ûrsin', // v152 (atelier 16 oct)
   'ciarda': 'Tcharda',
   'dürer': 'dureur',
   'durer': 'dureur',
@@ -1952,41 +1952,41 @@ const PRONUNCIATION_FIXES = {
   'benozzo': 'Bénotso',
   'gozzoli': 'Gotsoli',
   'simone': 'Simoné',
-  'cione': 'tchioné',
+  'cione': 'tchiôné', // v152 (atelier 16 oct)
   'lorenzetti': 'loréndzéti', // v128 : le « z » italien se dit « dz » (comme dans « piazza », « Gozzoli »)
   'orsanmichele': 'Orsanmikélé',
-  'santa croce': 'Santa Croché',
-  'cimabue': 'Chimaboué',
-  'menabuoi': 'Ménabuoîe',
-  'duccio': 'Douchio',
-  'buoninsegna': 'Bouninségna',
-  'firenze': 'Firenzé',
+  'santa croce': 'Santa Crotché', // v152 (atelier 16 oct)
+  'cimabue': 'Tchimaboué', // v152 (atelier 16 oct)
+  'menabuoi': 'Ménabwôy', // v152 (atelier 16 oct)
+  'duccio': 'Doutchio', // v152 (atelier 16 oct)
+  'buoninsegna': 'Bwoninneségna', // v152 (atelier 16 oct)
+  'firenze': 'Firennzé', // v152 (atelier 16 oct)
   'trastevere': 'Trastévéré',
   'modena': 'Modéna',
   'aretino': 'Arétino',
   'altichiero': 'Altikiero',
-  'giobbe': 'Giobbé',
+  'giobbe': 'djiobbé', // v152 (atelier 16 oct)
   'brera': 'Bréra',
   'procris': 'Pro criss',
   'bacchante': 'Bakante',
   'canova': 'Kanova',
-  'méphistophélès': 'méphistophélèsse',
+  'méphistophélès': 'méfistofélesse', // v152 (atelier 16 oct)
   'jason': 'Jazon',
   'thorvaldsen': 'Thordvalsenne',
-  'tate britain': 'Téte Britèn',
-  'mcneill': 'Macnil',
-  'jongkind': 'jongkinde',
+  'tate britain': 'Téte Britenn', // v152 (atelier 16 oct)
+  'mcneill': 'Macknil', // v152 (atelier 16 oct)
+  'jongkind': 'jonkinde', // v152 (atelier 16 oct)
   'fine': 'Faïne',
-  'oxbow': 'Oxbo',
+  'oxbow': 'Oksse-bô', // v152 (atelier 16 oct)
   'jaleo': 'raléo',
   'repin': 'Ryépine',
   'waterhouse': 'WaterHaouse',
   'hayez': 'Aiez',
   'hodler': 'Hodleur',
-  'epsom': 'Epsome',
-  'haussmann': 'Hosmane',
+  'epsom': 'épsomm', // v152 (atelier 16 oct)
+  'haussmann': 'Hossmann', // v152 (atelier 16 oct)
   'rügen': 'Ruguéne',
-  'böcklin': 'boklinne',
+  'böcklin': 'beuklinne', // v152 (atelier 16 oct)
   'edwin': 'Edwine',
   'iceberg': 'Aïceberg',
   'tahitiennes': 'Tahissiennes',
@@ -1994,13 +1994,13 @@ const PRONUNCIATION_FIXES = {
   'vallotton': 'Valloton',
   'gismonda': 'Djismonda', // v116 (docx 29 sept : « Gismonda = jismonda »)
   'léonidas': 'Léonidasse',
-  'caliban': 'Caliba',
+  'caliban': 'Calibant', // v152 (atelier 16 oct)
   'hylas': 'Ilasse',
   'thétis': 'Thétisse',
   'carlyle': 'Carlaile',
   'alyscamps': 'Aliscan',
   'poisson': 'Pouasson',
-  'vœu': 'veu',
+  'vœu': 'veut', // v152 (atelier 16 oct)
   'bernin': 'Bèrnin',
   // Nouvelle liste de retours (chiffres romains, noms d'artistes et lieux réels des fichiers,
   // vérifiés dans les données avant d'écrire chaque correction).
@@ -2016,19 +2016,19 @@ const PRONUNCIATION_FIXES = {
   'zurbaran': 'zurbaranne',
   // "Samson et Dalila", "Samson et le Philistin" : le nom biblique se nasalisait entièrement
   // ("an", "on"), perdant le m et le n. Les doubler bloque la nasalisation, comme pour "vanne".
-  'samson': 'sammesonne',
+  'samson': 'sansont', // v152 (atelier 16 oct)
   // Annibale Carrache : la finale italienne doit rester un "é" audible, pas un e muet à la française.
   'annibale': 'annibalé',
   // Rembrandt van Rijn : le digramme néerlandais "ij" se lit "aille"/"i" selon les moteurs — jamais
   // comme un "j" français. Rembrandt seul seul restait correct (le "dt" final s'avale naturellement
   // à la française) donc pas touché ici.
-  'rijn': 'rine',
+  'rijn': 'riinne', // v152 (atelier 16 oct)
   // Musée d'art Nelson-Atkins (Kansas City) : le "s" final anglais de "Atkins" restait muet.
-  'atkins': 'atkinnse',
+  'atkins': 'atkiinnse', // v152 (atelier 16 oct)
   // Bernardo Strozzi : le double "z" italien se prononce "ts", pas comme un "z" français.
-  'strozzi': 'strotsi',
+  'strozzi': 'strotzzi', // v152 (atelier 16 oct)
   // Metropolitan Museum of Art : le "n" final anglais se perdait dans la nasalisation française.
-  'metropolitan': 'metropolitanne',
+  'metropolitan': 'métropolitanne', // v152 (atelier 16 oct)
   // Piet Mondrian : prénom néerlandais (se prononce "pite"), pas le "pyè" que donnerait la lecture
   // à la française d'un "et" final.
   'piet': 'pitte',
@@ -2042,23 +2042,23 @@ const PRONUNCIATION_FIXES = {
   // Saint-Germain-en-Laye : "Laye" se prononce "lè", pas épelé ou lu autrement.
   'laye': 'lè',
   // Mount Rushmore : nom anglais, "mount" ne se prononce pas comme le mot français "mont".
-  'mount': 'maounnte',
+  'mount': 'maoûnntte', // v152 (atelier 16 oct)
   // Juan de Pareja (portrait peint par Vélasquez) : confirmé par Stéphane. Règle qu'il a donnée
   // pour l'espagnol — le "j" (jota, un son guttural absent du français) s'approche par un "r"
   // français, le son le plus proche dans notre alphabet — d'où "Rouanne" (Juan) et "Parera"
   // (Pareja). Double "nn" + "e" final sur "Rouanne" pour éviter la nasalisation du françois
   // "an" (même astuce que zurbaranne/kanonne/sammesonne ci-dessus) : on veut "rwane", pas "rwan"
   // nasalisé comme la ville de Rouen.
-  'juan de pareja': 'rouanne de parera',
+  'juan de pareja': 'rouanne de paréra', // v152 (atelier 16 oct)
   // Pajarito (« petit oiseau » en espagnol) : même règle jota→r. Repère laissé par Stéphane sans
   // certitude sur l'œuvre exacte — corrigé au cas où ce nom apparaît quelque part dans les
   // données (surnom, titre...), sans effet sinon.
-  'pajarito': 'pararito',
+  'pajarito': 'pararrito', // v152 (atelier 16 oct)
   // v128 (docx 9 oct, tableau PRONONCIATION) : réécritures phonétiques d'après les indications de Stéphane.
   'baie': 'bè', // « Baie de Naples »
   'sangallo': 'Sangalo', // on entendait « sangalio »
   'schwerin': 'Schwérinne', // « n » prononcé
-  'algardi': 'Âlgardi',
+  'algardi': 'Âl-gardi', // v152 (atelier 16 oct)
   'sebastiano': 'Sébastiano',
   'cáceres': 'Cassérès', // v150 (atelier 15 oct, validé à l'oreille) ; avant : 'Cacérés'
   'caceres': 'Cassérès',
@@ -2070,7 +2070,7 @@ const PRONUNCIATION_FIXES = {
   'della robbia': 'della Robbiya',
   'bellechose': 'belle chose', // « ch pas k »
   'pollaiuolo': 'Pollayolo', // « ai-uo-lo mal prononcé »
-  'venise': 'Venize', // « z pas ch »
+  'venise': 'Venîz', // « z pas ch » // v152 (atelier 16 oct)
   'veneziano': 'vénétziano', // v150 (atelier 15 oct)
   'ginevra': 'Djinèvra',
   'benci': 'BéNtchi', // v150 (atelier 15 oct)
@@ -2080,6 +2080,8 @@ const PRONUNCIATION_FIXES = {
   'puccio': 'Poutchio', // « chio pas xio »
   // Consigne de Vrai/Faux : « si vous les repérez » — le « z » final ne doit pas s'entendre.
   'repérez': 'repéré',
+  'institute of arts': 'Institute of Artz', // v152 (atelier 16 oct, validé à l'oreille)
+  'rijksmuseum': 'riksmûseom', // v152 (atelier 16 oct, validé à l'oreille)
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2095,6 +2097,24 @@ const NATIONALITY_AWARE_FIXES = {
 function deArtist(name) {
   if (/^le\s/i.test(name)) return `du ${name.replace(/^le\s+/i, '')}`;
   return `de ${name}`;
+}
+// v152 (atelier de prononciation, 16 oct) : certaines voix de synthèse ne disent pas un mot comme les
+// autres. PRONUNCIATION_FIXES (ci-dessus) est la table commune à toutes les voix ; cette table-ci ne
+// contient que les écritures PROPRES à une voix, repérée par un morceau de son nom (sans tenir compte des
+// majuscules). Pour un mot présent ici, l'écriture de la voix remplace l'écriture commune ; une valeur
+// vide ('') veut dire « lire le mot tel quel ». Une voix absente de cette table utilise la table commune.
+const PRONUNCIATION_BY_VOICE = {
+  'charline': {
+    'venise': 'Venize', // atelier 16 oct : avec « Venîz » (écriture commune), Charline ne dit pas bien ce nom
+  },
+};
+function currentPronunciationOverrides() {
+  try {
+    const name = String((getGlobalPrefs() || {}).voiceName || '').toLowerCase();
+    if (!name) return null;
+    const hit = Object.keys(PRONUNCIATION_BY_VOICE).find((part) => name.includes(part));
+    return hit ? PRONUNCIATION_BY_VOICE[hit] : null;
+  } catch (e) { return null; }
 }
 function fixSpeechPronunciation(text) {
   // Le texte entre parenthèses (ex. un nom de musée alternatif) reste utile à l'écran mais
@@ -2125,9 +2145,13 @@ function fixSpeechPronunciation(text) {
   // v149 (« Ginevra de’ Benci : ne pas marquer d'arrêt ») : l'apostrophe de l'italien « de' » provoque une pause
   // dans certaines voix — on la retire (« de Benci »), comme on le ferait à l'oral.
   out = out.replace(new RegExp(`${NB}([Dd]e)[’']\\s*`, 'gu'), '$1 ');
-  Object.entries(PRONUNCIATION_FIXES).forEach(([wrong, right]) => {
+  const voiceOverrides = currentPronunciationOverrides();
+  Object.entries(PRONUNCIATION_FIXES).forEach(([wrong, baseRight]) => {
     const isPrefix = wrong.endsWith('*');
     const stem = isPrefix ? wrong.slice(0, -1) : wrong;
+    const hasOverride = voiceOverrides && Object.prototype.hasOwnProperty.call(voiceOverrides, wrong);
+    const right = hasOverride ? voiceOverrides[wrong] : baseRight;
+    if (hasOverride && right === '') return; // '' = cette voix lit le mot tel quel
     out = out.replace(new RegExp(`${NB}${stem}${isPrefix ? '' : NA}`, 'giu'), right);
   });
   return out;
