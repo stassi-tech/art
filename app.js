@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v164';
+const APP_VERSION = 'v166';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -2985,7 +2985,10 @@ function commonsFilePageUrl(imageUrl) {
   if (match) return `https://commons.wikimedia.org/wiki/File:${match[1]}`;
   // v152 : adresse déjà celle d'une page Commons (ex. « .../wiki/Creator:X#/media/File:Nom.jpg »).
   const page = imageUrl.match(/commons\.wikimedia\.org\/.*?File:([^?#&\s]+)/i);
-  return page ? `https://commons.wikimedia.org/wiki/File:${page[1]}` : null;
+  if (page) return `https://commons.wikimedia.org/wiki/File:${page[1]}`;
+  // v165 : lien « Special:FilePath/Nom.jpg » (celui que l'atelier de textes met dans les balises)
+  const fp = imageUrl.match(/commons\.wikimedia\.org\/wiki\/Special:FilePath\/([^?#&\s]+)/i);
+  return fp ? `https://commons.wikimedia.org/wiki/File:${fp[1]}` : null;
 }
 // v152 (Stéphane : « dans les images des bios il faut faire apparaître les crédits ») : sous le portrait
 // (ou l'image d'œuvre) de l'écran de bio, on affiche le lien « Crédits et licence de l'image » et, si
@@ -3001,13 +3004,13 @@ function plainTextFromHtml(html) {
 function showImpBioCredit(imageRef, linkId, textId) {
   const link = $(linkId || 'imp-bio-split-credit'); const text = $(textId || 'imp-bio-split-credit-text');
   if (!link || !text) return;
-  text.textContent = '';
+  text.textContent = ''; link.title = 'Crédits et licence de l\u2019image (ouvre la page Wikimedia Commons)';
   const pageUrl = imageRef ? commonsFilePageUrl(String(imageRef)) : null;
   if (!pageUrl) { link.classList.add('hidden'); return; }
   link.href = pageUrl; link.classList.remove('hidden');
   const fileTitle = decodeURIComponent(pageUrl.split('/wiki/File:')[1] || '').replace(/_/g, ' ');
   if (!fileTitle) return;
-  const apply = (label) => { if (!link.classList.contains('hidden') && link.href === pageUrl) text.textContent = label; };
+  const apply = (label) => { if (!link.classList.contains('hidden') && link.href === pageUrl) { text.textContent = label; link.title = label ? `Crédits et licence : ${label} (ouvre la page Wikimedia Commons)` : 'Crédits et licence de l\u2019image (ouvre la page Wikimedia Commons)'; } };
   if (commonsCreditCache[fileTitle] !== undefined) { apply(commonsCreditCache[fileTitle]); return; }
   const api = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=extmetadata&titles=${encodeURIComponent('File:' + fileTitle)}`;
   fetch(api).then((r) => r.json()).then((data) => {
@@ -11877,7 +11880,7 @@ $('imp-bio-back')?.addEventListener('click', () => bioSeek(-1));
 $('imp-bio-fwd')?.addEventListener('click', () => bioSeek(1));
 $('imp-bio-toggle')?.addEventListener('click', () => {
   const A = bioAuto; if (!A.dual) return;
-  if (A.ended) { if (A.work) openImpArtistBio(A.work, A.force); return; }
+  if (A.ended) { if (A.work) openImpArtistBio(A.work, A.force, { work: A.isWork }); return; }
   if (!A.paused) { A.paused = true; A.pausedAt = performance.now(); try { speechSynthesis.pause(); } catch (e) { /* ignoré */ } }
   else { A.paused = false; A.startT += performance.now() - A.pausedAt; try { speechSynthesis.resume(); } catch (e) { /* ignoré */ } }
   bioSyncButton();
@@ -11908,8 +11911,11 @@ function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
     if (ref) openLightboxImage(ref, ($('imp-bio-slide-caption') || {}).textContent || '');
   });
 })();
-function openImpArtistBio(work, force) {
+function openImpArtistBio(work, force, opts) {
   impClearTimers();
+  // v165 : le texte de l'œuvre (première personne) passe par le même écran « film » que la bio : opts.work = true
+  const isWork = !!(opts && opts.work); const srcText = isWork ? (work.workText || '') : (work.bio || '');
+  bioAuto.isWork = isWork;
   const splitEl = $('imp-bio-split');
   const mode = bioWantMode(); const dual = !!mode;
   bioAuto.vert = mode === 'v'; bioAuto.dual = dual; bioAuto.work = work; bioAuto.force = !!force; bioAuto.artistRef = work.artistImage || '';
@@ -11925,8 +11931,8 @@ function openImpArtistBio(work, force) {
   const captionEl = $('imp-bio-split-caption');
   if (captionEl) captionEl.textContent = work.artistImageCaption || '';
   const nameEl = $('imp-bio-split-name');
-  if (nameEl) nameEl.textContent = formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
-  const bioText = work.bio || 'Aucune biographie n’est encore disponible pour cet artiste.';
+  if (nameEl) nameEl.textContent = isWork ? `«\u00a0${work.title}\u00a0»` : formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
+  const bioText = srcText || 'Aucune biographie n’est encore disponible pour cet artiste.';
   const textEl = $('imp-bio-split-text');
   const parsedBio = parseBioMarkup(bioText);
   if (textEl) bioRender(textEl, parsedBio);
@@ -11937,7 +11943,7 @@ function openImpArtistBio(work, force) {
   // #imp-correction-details, qui n'a plus sa place une fois la bio ouverte — remis en place par
   // closeImpArtistBio ci-dessous, jamais ailleurs, donc jamais oublié en sortant de la bio.
   $('imp-quiz-grid')?.classList.add('imp-bio-open');
-  const willSpeak = !!work.bio && (impAudioOn || !!force) && !!window.speechSynthesis;
+  const willSpeak = !!srcText && (impAudioOn || !!force) && !!window.speechSynthesis;
   // v164 : en mode « deux écrans », l'image de l'œuvre est la première image de la colonne centrale
   let baseRef = work.artistImage, baseCap = work.artistImageCaption || '';
   if (dual) {
@@ -11955,7 +11961,7 @@ function openImpArtistBio(work, force) {
   bioAuto.shownRef = baseRef || '';
   bioSyncButton();
   bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
-  if (work.bio) {
+  if (srcText) {
     bioAuto.rate = 0.72;
     const sid = bioAuto.sid;
     impSpeak(parsedBio.plain, undefined, force, {
@@ -11971,6 +11977,7 @@ function openImpArtistBio(work, force) {
 }
 // v129 : même écran partagé que la bio, mais avec l'image de l'œuvre à gauche et son texte (première personne) à droite.
 function openImpWorkText(work) {
+  if (bioWantMode()) { openImpArtistBio(work, true, { work: true }); return; }
   impClearTimers();
   bioAutoStop();
   bioAuto.dual = false; bioSyncButton();
@@ -11987,10 +11994,11 @@ function openImpWorkText(work) {
   const nameEl = $('imp-bio-split-name');
   if (nameEl) nameEl.textContent = `«\u00a0${work.title}\u00a0»`;
   const textEl = $('imp-bio-split-text');
-  if (textEl) textEl.textContent = work.workText;
+  const plainWork = parseBioMarkup(work.workText).plain; // les balises [image: …] ne s'affichent ni ne se lisent
+  if (textEl) textEl.textContent = plainWork;
   $('imp-bio-split')?.classList.remove('hidden');
   $('imp-quiz-grid')?.classList.add('imp-bio-open');
-  impSpeak(work.workText, undefined, true);
+  impSpeak(plainWork, undefined, true);
 }
 function closeImpArtistBio() {
   bioAutoStop();

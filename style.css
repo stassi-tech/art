@@ -2692,3 +2692,18 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .imp-bio-split.bio-dual.bio-vert .imp-bio-toggle { font-size:.9rem; padding:6px 20px; }
 
 .imp-bio-split.bio-dual.bio-vert .imp-bio-seek { width:36px; height:36px; }
+
+/* ============================================================
+   v166 — crédits : petit bouton discret « crédits » (PC et mobile) ; boutons de lecture dans un bandeau noir ;
+   téléphone : un peu moins de place pour le texte, un peu plus pour les images
+   ============================================================ */
+.imp-bio-split .imp-bio-split-credit { position:absolute; left:auto; right:8px; bottom:8px; top:auto; margin:0; padding:2px 9px; width:auto; display:inline-flex; flex-direction:row; gap:0; font:600 .68rem Arial,sans-serif; letter-spacing:.02em; color:rgba(255,255,255,.78); background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.28); border-radius:999px; text-decoration:none; z-index:4; opacity:.75; transition:opacity .15s; }
+.imp-bio-split .imp-bio-split-credit:hover { opacity:1; color:#fff; text-decoration:none; background:rgba(0,0,0,.8); }
+.imp-bio-split .imp-bio-split-credit.hidden { display:none; }
+.imp-bio-split .imp-bio-split-credit .imp-bio-split-credit-text { display:none; }
+.imp-bio-split.bio-dual .imp-bio-controls { background:#000; margin:12px -22px -14px -26px; padding:10px 12px; border-top:1px solid rgba(255,255,255,.18); }
+.imp-bio-split.bio-dual .imp-bio-controls .imp-bio-seek, .imp-bio-split.bio-dual .imp-bio-controls .imp-bio-toggle { color:#fff; opacity:1; }
+.imp-bio-split.bio-dual .imp-bio-controls .imp-bio-seek:hover, .imp-bio-split.bio-dual .imp-bio-controls .imp-bio-toggle:hover { background:rgba(255,255,255,.18); }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-controls { margin:6px -16px -6px -16px; padding:6px 10px; }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-photo-col { flex:0 0 35%; }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-slide-col { flex:0 0 34%; }
