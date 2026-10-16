@@ -6,7 +6,19 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v169';
+const APP_VERSION = 'v170';
+// v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
+// appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
+// mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
+try {
+  const q = new URLSearchParams(location.search).get('atelier');
+  if (q === '1') localStorage.setItem('mnemartAtelierLink', '1');
+  else if (q === '0') localStorage.removeItem('mnemartAtelierLink');
+  if (localStorage.getItem('mnemartAtelierLink') === '1') {
+    const showAtelierLink = () => document.getElementById('pf-atelier-link-row')?.classList.remove('hidden');
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showAtelierLink); else showAtelierLink();
+  }
+} catch (e) {}
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;

@@ -150,6 +150,9 @@ details summary{cursor:pointer;font-weight:600}
   .toast{bottom:80px}
 }
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div class="app">
@@ -189,6 +192,18 @@ details summary{cursor:pointer;font-weight:600}
       <div class="help" style="margin-top:6px;color:var(--muted)">À faire une fois : choisissez le dossier « prononciations » (dans « outils »). Ensuite, chaque modification met à jour le fichier <code>prononciations-a-jour.txt</code> dans ce dossier, que Claude peut lire sans que vous ayez rien à copier.</div>
     </div>
 
+    <div class="autosave" id="syncBox">
+      <b>Synchronisation téléphone ⇄ ordinateur</b>
+      <span class="st" id="syncState"></span>
+      <div id="syncIn" style="display:flex;gap:6px;flex-wrap:wrap">
+        <input type="email" id="syncEmail" placeholder="e-mail du compte Mnemart" autocomplete="email" style="flex:1 1 150px;min-width:0">
+        <input type="password" id="syncPass" placeholder="mot de passe" autocomplete="current-password" style="flex:1 1 110px;min-width:0">
+        <button id="syncLogin">Se connecter</button>
+      </div>
+      <div id="syncOut" style="display:none"><button id="syncLogout">Se déconnecter</button></div>
+      <div class="help" style="margin-top:6px;color:var(--muted)">Une fois connecté, vos essais passent d'un appareil à l'autre tout seuls. La voix choisie, la vitesse et la pause restent propres à chaque appareil.</div>
+    </div>
+
     <details>
       <summary>Réglages</summary>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px">
@@ -219,10 +234,10 @@ details summary{cursor:pointer;font-weight:600}
     <div class="vw" id="vpWord"></div>
     <div id="vpTries"></div>
     <details id="vpCopy" class="vcopy"><summary>⎘ Reprendre le réglage d'un autre mot <small>(ex. « ca' d'oro » comme « ca'rezzonico »)</small></summary>
-      <div class="help">Choisissez un mot déjà réglé : son écriture, voix par voix, est recopiée pour le mot ci-dessus. Corrigez ensuite l'écriture proposée : la partie que vous changez sera changée de la même façon dans l'écriture de chaque voix. Les voix sont ensuite lues l'une après l'autre : cliquez ✖ sur celles qui disent mal le mot, les autres seront validées.</div>
+      <div class="help">Choisissez un mot déjà réglé : son écriture, voix par voix, est recopiée pour le mot ci-dessus. Si une partie doit changer, indiquez-la : elle sera remplacée dans l'écriture de chaque voix. Les voix sont ensuite lues l'une après l'autre : cliquez ✖ sur celles qui disent mal le mot, les autres seront validées.</div>
       <div class="help" id="cpTarget"></div>
       <label>Mot modèle <small>(tapez quelques lettres : « rezzo », « ca'… »)</small><input id="cpSrc" type="text" list="cpList" placeholder="ex. ca'rezzonico" autocomplete="off" autocapitalize="off" spellcheck="false"></label><datalist id="cpList"></datalist>
-      <label>Écriture pour ce mot <small>(le modèle est recopié ici : <b>modifiez seulement la partie qui change</b>, par ex. « ka'rrétzzonico » → « ka'dôro »)</small><input id="cpNew" type="text" autocapitalize="off" autocomplete="off" spellcheck="false"></label>
+      <div class="cprow"><label>Remplacer <input id="cpFrom" type="text" placeholder="rrétzzonico" autocapitalize="off" spellcheck="false"></label><label>par <input id="cpTo" type="text" placeholder="dôro" autocapitalize="off" spellcheck="false"></label></div>
       <div class="help" id="cpPrev"></div>
       <button class="big" id="cpGo">Recopier puis lire avec toutes les voix</button>
     </details>
@@ -245,7 +260,7 @@ const BASEMAP = {}; BASE.forEach(([k,v])=>{ BASEMAP[k]=v; });
 let S = { rate:0.85, gap:1.2, voice:'', sel:'', words:[], v:{}, view:'all', removed:{}, shared:{}, sharedDone:false, applyAll:true };
 try { Object.assign(S, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch(e) {}
 let dirHandle = null, saveT = null, askedAuth = false;
-function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e) {} clearTimeout(saveT); saveT = setTimeout(()=>autosave(false), 600); }
+function save(){ try { stampChanges(); } catch(e) {} try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e) {} clearTimeout(saveT); saveT = setTimeout(()=>autosave(false), 600); try { schedulePush(); } catch(e) {} }
 // reprise de la version précédente de l'atelier
 try {
   if (!localStorage.getItem(STORE_KEY)) {
@@ -621,51 +636,31 @@ function cpFill(){
 function cpResolve(){
   const q = $('cpSrc').value.trim(); if (!q) return '';
   if (cpKeys.includes(q)) return q;
-  
-  for (const f of [cpNorm, cpNorm2]) {
-    const n = f(q); if (!n) continue;
-    for (const m of [(x)=>x===n, (x)=>x.startsWith(n), (x)=>x.includes(n)]) {
-      const hit = cpKeys.filter(x=>m(f(x))); if (hit.length===1) return hit[0];
-    }
-  }
-  return '';
+  const n = cpNorm(q); if (!n) return '';
+  const eq = cpKeys.filter(x=>cpNorm(x)===n); if (eq.length===1) return eq[0];
+  const st = cpKeys.filter(x=>cpNorm(x).startsWith(n)); if (st.length===1) return st[0];
+  const inc = cpKeys.filter(x=>cpNorm(x).includes(n)); return inc.length===1 ? inc[0] : '';
 }
-const cpNorm2 = (t)=> cpNorm(t).replace(/(.)\1+/g,'$1');   // « carrezzonico » = « carezonico » : lettres doublées ignorées
-// différence entre l'écriture du modèle et celle que vous tapez : début commun + partie changée + fin commune
-function cpDiff(oldT, newT){
-  let p = 0; while (p<oldT.length && p<newT.length && oldT[p]===newT[p]) p++;
-  let q = 0; while (q<oldT.length-p && q<newT.length-p && oldT[oldT.length-1-q]===newT[newT.length-1-q]) q++;
-  return { pre: oldT.slice(0,p), suf: q ? oldT.slice(oldT.length-q) : '', from: oldT.slice(p, oldT.length-q), to: newT.slice(p, newT.length-q) };
-}
-function cpApplyDiff(t, D){
-  t = String(t||'');
-  if (t.startsWith(D.pre) && t.endsWith(D.suf) && t.length >= D.pre.length + D.suf.length) return { v: D.pre + D.to + D.suf, ok:true };
-  if (D.from) { const i = t.toLowerCase().indexOf(D.from.toLowerCase()); if (i>=0) return { v: t.slice(0,i) + D.to + t.slice(i+D.from.length), ok:true }; }
-  return { v:t, ok:false };
-}
-let cpLastSrc = '';
+function cpApply(txt, from, to){ txt = String(txt||''); if (!from) return txt; const i = txt.toLowerCase().indexOf(from.toLowerCase()); return i<0 ? txt : txt.slice(0,i) + to + txt.slice(i+from.length); }
 function cpPreview(){
-  const src = cpResolve(), box = $('cpPrev'), inp = $('cpNew');
-  if (!cpKeys.length) { box.textContent = 'Aucun autre mot déjà réglé.'; inp.value = ''; cpLastSrc = ''; return; }
-  if (!src && cpNorm2($('cpSrc').value) && cpNorm2($('cpSrc').value) === cpNorm2(S.sel)) { box.textContent = 'Ce mot est celui qui est choisi en ce moment : cliquez d\'abord sur le mot À RÉGLER (cadoro…) dans la liste de gauche — s\'il n\'y est pas, ajoutez-le avec « ajouter un mot » — puis tapez ici le mot MODÈLE.'; inp.value=''; cpLastSrc=''; return; }
-  if (!src) { box.textContent = $('cpSrc').value.trim() ? 'Aucun mot (ou plusieurs) ne correspond : tapez plus de lettres ou choisissez dans la liste proposée.' : 'Tapez le début du mot modèle.'; inp.value=''; cpLastSrc=''; return; }
-  const base = inherited(src) || '';
-  if (src !== cpLastSrc) { inp.value = base; cpLastSrc = src; }
-  const nw = inp.value.trim(), D = cpDiff(base, nw);
-  box.textContent = `Modèle : « ${src} » — écriture « ${base} »` + (nw!==base ? ` → « ${nw} » (partie changée : « ${D.from} » → « ${D.to} »)` : ' — pour l\'instant identique : modifiez-la ci-dessus.');
+  const src = cpResolve(), from = $('cpFrom').value.trim(), to = $('cpTo').value.trim(), box = $('cpPrev');
+  if (!cpKeys.length) { box.textContent = 'Aucun autre mot déjà réglé.'; return; }
+  if (!src) { box.textContent = $('cpSrc').value.trim() ? 'Aucun mot (ou plusieurs) ne correspond : tapez plus de lettres ou choisissez dans la liste proposée.' : 'Tapez le début du mot modèle.'; return; }
+  const base = inherited(src) || ''; const out = cpApply(base, from, to);
+  box.textContent = `Modèle : « ${src} » — écriture commune : « ${base} »` + (from ? (out!==base ? ` → « ${out} »` : ' — la partie à remplacer n\'y figure pas') : '');
 }
-['cpSrc','cpNew'].forEach(id=>{ $(id).addEventListener('input', cpPreview); $(id).addEventListener('change', cpPreview); });
+['cpSrc','cpFrom','cpTo'].forEach(id=>{ $(id).addEventListener('input', cpPreview); $(id).addEventListener('change', cpPreview); });
 $('cpGo').onclick = ()=>{
   const k = S.sel, src = cpResolve(); if (!k || !src) { cpPreview(); return; }
-  const common = inherited(src) || '', nw = $('cpNew').value.trim(), D = cpDiff(common, nw); let missing = 0, n = 0;
-  const ff = (t)=>{ const r = cpApplyDiff(t, D); if (!r.ok && t) missing++; return r.v; };
-  if (nw) S.shared[k] = nw; else delete S.shared[k];
+  const from = $('cpFrom').value.trim(), to = $('cpTo').value.trim(); let missing = 0, n = 0;
+  const ff = (t)=>{ const o = cpApply(t, from, to); if (from && o===t && t) missing++; return o; };
+  const common = inherited(src); if (common) S.shared[k] = ff(common); else delete S.shared[k];
   Object.keys(S.v).forEach(m=>{ const Q = S.v[m]; delete Q.st[k]; delete Q.val[k]; });
   Object.keys(S.v).forEach(m=>{ const Q = S.v[m]; if (Object.prototype.hasOwnProperty.call(Q.val, src) && Q.val[src] !== common) { const o = Q.val[src] === '' ? '' : ff(Q.val[src]); if (o !== S.shared[k]) { Q.val[k] = o; n++; } } });
   if (S.shared[k]) addTry(k, S.shared[k]);
   Object.keys(S.v).forEach(m=>{ const v = S.v[m].val[k]; if (v) addTry(k, v); });
   save(); renderAll();
-  toast(`« ${k} » : réglage de « ${src} » recopié` + (n ? ` (${n} voix avec leur propre écriture)` : '') + (missing ? ` — attention : ${missing} écriture${missing>1?'s':''} propre${missing>1?'s':''} à une voix n'ont pas pu être adaptée${missing>1?'s':''}` : ''));
+  toast(`« ${k} » : réglage de « ${src} » recopié` + (n ? ` (${n} voix avec leur propre écriture)` : '') + (missing ? ` — attention : « ${from} » introuvable dans ${missing} écriture${missing>1?'s':''}` : ''));
   startWordRead();
 };
 let wordRead = null;
@@ -688,21 +683,15 @@ function startWordRead(list){
   vpSay('Lecture en cours… appuyez sur Stop (ou sur la barre Espace) dès qu\'une voix dit mal le mot.');
   setTimeout(nextWordVoice, 120);
 }
-// la voix qui vient de parler est « bonne » tout de suite (✔ vert) sauf si vous avez cliqué ✔ / ✖ sur elle
-function finishCur(W){
-  if (!W || !W.cur || W.manual[W.cur] || W.doneFor===W.cur) return; W.doneFor = W.cur;
-  const P = prof(W.cur); P.st[W.k] = (P.st[W.k]==='fixed') ? 'fixed' : 'ok'; save(); renderList();
-  const row = document.querySelector(`#vpRows .vr[data-n="${CSS.escape(W.cur)}"]`); if (row && W.k===S.sel) refreshRow(row);
-}
 function nextWordVoice(){
   const W = wordRead; if (!W) return;
   // la voix qui vient de finir est « bonne » sauf si vous avez vous-même cliqué ✔ / ✖ sur elle pendant la lecture
-  if (W.cur) { finishCur(W); W.prev = W.cur; }
+  if (W.cur) { if (!W.manual[W.cur]) { const P = prof(W.cur); P.st[W.k] = (P.st[W.k]==='fixed') ? 'fixed' : 'ok'; } W.prev = W.cur; }
   W.idx++;
   if (W.idx >= W.names.length) { wordRead = null; $('vpStopAll').disabled = true; $('vpPlayAll').disabled = false; markCur(''); save(); renderList(); renderPanel(); vpSay('Lecture terminée : les voix que vous n\'avez pas arrêtées sont marquées « bon ».'); return; }
   const n = W.names[W.idx]; W.cur = n; markCur(n); const row = document.querySelector(`#vpRows .vr[data-n="${CSS.escape(n)}"]`); if (row) { row.scrollIntoView({block:'nearest'}); }
   const text = curVal(W.k, prof(n)) || cap(raw(W.k)); const tok = W.token; let done = false;
-  const next = ()=>{ if (done || !wordRead || wordRead.token!==tok) return; done = true; clearTimers(); finishCur(wordRead); timers.push(setTimeout(()=>{ if (wordRead && wordRead.token===tok) nextWordVoice(); }, S.gap*1000)); };
+  const next = ()=>{ if (done || !wordRead || wordRead.token!==tok) return; done = true; clearTimers(); timers.push(setTimeout(()=>{ if (wordRead && wordRead.token===tok) nextWordVoice(); }, S.gap*1000)); };
   utter(text, n, next); timers.push(setTimeout(next, 3500 + text.length*250));
 }
 function stopWordRead(mark){
@@ -834,12 +823,123 @@ $('pickDir').onclick = async ()=>{
 document.addEventListener('click', ()=>{ if (dirHandle && !askedAuth) { askedAuth = true; autosave(true); } }, true);
 $('openState').onchange = async (e)=>{
   const f = e.target.files[0]; if (!f) return;
-  try { const o = JSON.parse(await f.text()); if (!o || typeof o!=='object' || !o.v) throw 0; stopReading(false); S = Object.assign({ rate:0.85, gap:1.2, voice:'', sel:'', words:[], v:{}, view:'all', removed:{}, shared:{}, sharedDone:false, applyAll:true }, o); save(); renderAll(); toast('Sauvegarde ouverte'); }
+  try { const o = JSON.parse(await f.text()); if (!o || typeof o!=='object' || !o.v) throw 0; stopReading(false); S = Object.assign({ rate:0.85, gap:1.2, voice:'', sel:'', words:[], v:{}, view:'all', removed:{}, shared:{}, sharedDone:false, applyAll:true }, o); prevFlat = {}; save(); renderAll(); toast('Sauvegarde ouverte'); }
   catch(err){ toast('Ce fichier n\'est pas une sauvegarde de l\'atelier'); }
   e.target.value = '';
 };
 idbGet('dir').then(async h=>{ if (h) { dirHandle = h; const p = await dirPerm(false); if (p==='granted') { autosave(false); } else setSaveLabel('auth'); } else setSaveLabel('none'); }).catch(()=>setSaveLabel('none'));
 window.addEventListener('beforeunload', ()=>{ if (window.speechSynthesis) speechSynthesis.cancel(); });
+// ===== Synchronisation entre appareils (v2) : compte Mnemart (Firebase) =====
+// Pourquoi : chaque navigateur garde sa propre mémoire (localStorage). On envoie donc l'état dans un document
+// privé du compte (users/<uid>/atelier/etat) et on FUSIONNE à l'arrivée au lieu d'écraser : chaque réglage porte
+// l'heure de sa dernière modification (S.mt) et le plus récent gagne, réglage par réglage. Ainsi deux appareils
+// utilisés à des moments différents s'additionnent au lieu de s'effacer. Voix choisie, vitesse et pause restent
+// propres à chaque appareil (le téléphone n'a pas les mêmes voix que l'ordinateur).
+const SYNC_CFG = { apiKey:"AIzaSyCIc15-0fy_OziKdcOHAv-CYxOku9iFX94", authDomain:"quiz-art-7378d.firebaseapp.com", projectId:"quiz-art-7378d", appId:"1:489975323244:web:d7070100f3a0e63cec9649" };
+const SEP = '\u0001';
+function flatS(o){
+  const f = {};
+  (o.words||[]).forEach(w=>{ f['w'+SEP+w] = 1; });
+  Object.keys(o.removed||{}).forEach(k=>{ if (o.removed[k]) f['r'+SEP+k] = 1; });
+  Object.keys(o.shared||{}).forEach(k=>{ if (o.shared[k]) f['s'+SEP+k] = o.shared[k]; });
+  Object.keys(o.v||{}).forEach(n=>{ const P = o.v[n] || {}; ['val','st','note'].forEach(t=>Object.keys(P[t]||{}).forEach(k=>{ if (P[t][k] !== undefined) f[t+SEP+n+SEP+k] = P[t][k]; })); });
+  return f;
+}
+function buildS(f, mt){
+  const o = { words:[], removed:{}, shared:{}, v:{}, mt };
+  Object.keys(f).forEach(key=>{
+    const p = key.split(SEP), t = p[0];
+    if (t==='w') o.words.push(p[1]);
+    else if (t==='r') o.removed[p[1]] = true;
+    else if (t==='s') o.shared[p[1]] = f[key];
+    else { const n = p[1], k = p.slice(2).join(SEP); const P = o.v[n] || (o.v[n] = { val:{}, st:{}, note:{} }); P[t][k] = f[key]; }
+  });
+  return o;
+}
+let prevFlat = flatS(S);
+function stampChanges(){
+  S.mt = S.mt || {}; const cur = flatS(S), now = Date.now();
+  new Set([...Object.keys(cur), ...Object.keys(prevFlat)]).forEach(k=>{ if (JSON.stringify(cur[k]) !== JSON.stringify(prevFlat[k])) S.mt[k] = now; });
+  prevFlat = cur;
+}
+function mergeInto(remote){
+  const fl = flatS(S), fr = flatS(remote), ml = S.mt || {}, mr = remote.mt || {}, out = {}, mtOut = {};
+  new Set([...Object.keys(fl), ...Object.keys(fr), ...Object.keys(ml), ...Object.keys(mr)]).forEach(k=>{
+    const tl = ml[k]||0, tr = mr[k]||0, a = fl[k], b = fr[k]; let val;
+    if (tl > tr) val = a; else if (tr > tl) val = b;
+    else if (a === undefined) val = b; else if (b === undefined) val = a;
+    else val = JSON.stringify(a) >= JSON.stringify(b) ? a : b;   // égalité parfaite : choix déterministe, les deux appareils convergent
+    if (val !== undefined) out[k] = val;
+    if (tl || tr) mtOut[k] = Math.max(tl, tr);
+  });
+  const before = JSON.stringify(fl), m = buildS(out, mtOut);
+  S.words = m.words; S.removed = m.removed; S.shared = m.shared; S.v = m.v; S.mt = m.mt; S.sharedDone = true;
+  prevFlat = flatS(S);
+  return JSON.stringify(prevFlat) !== before;
+}
+const payload = ()=> JSON.stringify({ words:S.words, removed:S.removed, shared:S.shared, v:S.v, mt:S.mt||{} });
+let fbAuth = null, fbDb = null, syncRef = null, syncUnsub = null, lastPushed = '', pushT = null, syncUser = null;
+function setSyncLabel(kind, extra){
+  const el = $('syncState'); if (!el) return; el.className = 'st';
+  const msg = {
+    off: 'Non connecté : cet appareil garde ses essais pour lui seul.',
+    ok: '✔ Synchronisé avec votre compte (' + (extra||'') + ').',
+    work: 'Synchronisation…',
+    noaccess: 'Connecté, mais le compte n\'a pas le droit d\'écrire ces données : il faut ajouter une règle dans Firebase (voir l\'explication de Claude).',
+    err: 'Échec de la synchronisation : ' + (extra||'') ,
+    file: 'La connexion ne fonctionne pas depuis un fichier ouvert directement sur l\'ordinateur : ouvrez l\'atelier à son adresse sur le site (https://…/atelier.html).'
+  }[kind];
+  el.textContent = msg; if (kind==='ok') el.classList.add('ok'); else if (kind!=='off' && kind!=='work') el.classList.add('warn');
+  const lo = $('syncOut'), li = $('syncIn'); if (lo) lo.style.display = syncUser ? '' : 'none'; if (li) li.style.display = syncUser ? 'none' : '';
+}
+async function pushNow(){
+  if (!syncRef || !syncUser) return;
+  const j = payload(); if (j === lastPushed) return;
+  try {
+    await syncRef.set({ json:j, updated:firebase.firestore.FieldValue.serverTimestamp(), from:(navigator.userAgent.match(/Android|iPhone|iPad|Windows|Macintosh|Linux/)||['?'])[0] });
+    lastPushed = j; setSyncLabel('ok', 'mise à jour à ' + new Date().toTimeString().slice(0,5));
+  } catch(e){ setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', e && (e.code||e.message)); }
+}
+function schedulePush(){ clearTimeout(pushT); pushT = setTimeout(pushNow, 900); }
+function applyRemote(json){
+  let remote; try { remote = JSON.parse(json); } catch(e){ return; }
+  const changed = mergeInto(remote);
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e){}
+  if (changed) { renderAll(); toast('Essais mis à jour depuis votre autre appareil'); }
+}
+async function startSync(user){
+  syncUser = user; setSyncLabel('work');
+  syncRef = fbDb.collection('users').doc(user.uid).collection('atelier').doc('etat');
+  try {
+    const snap = await syncRef.get();
+    if (snap.exists && snap.data().json) { lastPushed = snap.data().json; applyRemote(lastPushed); }
+    await pushNow();
+    syncUnsub = syncRef.onSnapshot(s=>{
+      if (s.metadata.hasPendingWrites || !s.exists) return;
+      const j = s.data().json; if (!j || j === lastPushed) return;
+      lastPushed = j; applyRemote(j); schedulePush();
+    }, e=>setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', e && (e.code||e.message)));
+  } catch(e){ setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', e && (e.code||e.message)); }
+}
+function initSync(){
+  if (location.protocol === 'file:') { setSyncLabel('file'); const li = $('syncIn'); if (li) li.style.display = 'none'; return; }
+  if (typeof firebase === 'undefined') { setSyncLabel('err', 'bibliothèque Firebase non chargée (connexion internet ?)'); return; }
+  try { firebase.initializeApp(SYNC_CFG); fbAuth = firebase.auth(); fbDb = firebase.firestore(); }
+  catch(e){ setSyncLabel('err', e.message); return; }
+  setSyncLabel('off');
+  fbAuth.onAuthStateChanged(u=>{
+    if (syncUnsub) { syncUnsub(); syncUnsub = null; }
+    if (u) startSync(u); else { syncUser = null; syncRef = null; setSyncLabel('off'); }
+  });
+  $('syncLogin').onclick = async ()=>{
+    const em = $('syncEmail').value.trim(), pw = $('syncPass').value;
+    if (!em || !pw) { toast('Entrez l\'adresse e-mail et le mot de passe de votre compte Mnemart'); return; }
+    try { await fbAuth.signInWithEmailAndPassword(em, pw); $('syncPass').value = ''; }
+    catch(e){ toast(e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||e.code==='auth/user-not-found' ? 'Adresse ou mot de passe incorrect' : 'Connexion impossible : ' + (e.code||e.message)); }
+  };
+  $('syncLogout').onclick = ()=>fbAuth.signOut();
+}
+initSync();
 loadVoices(); setTimeout(loadVoices, 600); phraseUpdate();
 </script>
 </body>

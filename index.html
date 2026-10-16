@@ -1986,6 +1986,10 @@
             <p id="profile-email" style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--muted);margin-top:8px;"></p>
             <button type="button" id="profile-resume-exercise-button" class="primary-button hidden" style="margin-top:10px;">↩ Revenir à l'exercice en cours</button>
           </div>
+          <!-- v170 (Stéphane : « un lien dans mon compte vers l'atelier phonétique, que personne d'autre ne voit ») :
+               lien d'outil personnel, caché par défaut ; il n'apparaît que sur un appareil « déverrouillé » une fois
+               en ouvrant l'appli avec ?atelier=1 à la fin de l'adresse (voir app.js, mnemartAtelierLink). -->
+          <p id="pf-atelier-link-row" class="hidden" style="text-align:center;margin:-8px 0 18px;"><a href="atelier.html" target="_blank" rel="noopener" class="link-label" style="font-family:Arial,sans-serif;">🎙️ Atelier de prononciation →</a></p>
 
           <div class="training-exercise-grid" id="profile-menu-grid" style="margin-bottom:24px;">
             <button type="button" class="home-mode-button profile-menu-btn inactive" id="profile-menu-tech" data-target="profile-section-tech">Mes paramètres techniques</button>
@@ -2162,6 +2166,6 @@
     <!-- v154 (Stéphane : « les crédits dans une fenêtre pop-up refermable, pas une grande fenêtre ») :
          fenêtre flottante affichée par-dessus l'exercice quand on clique sur « Crédits et licence de
          l'image ». Remplie par openCreditPopup (app.js) à partir de l'API Wikimedia Commons. -->
-    <script src="app.js?v=396"></script>
+    <script src="app.js?v=397"></script>
   </body>
 </html>
