@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=277" />
+    <link rel="stylesheet" href="style.css?v=279" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -2142,6 +2142,17 @@
         </section>
       </main>
     </div>
-    <script src="app.js?v=378"></script>
+    <!-- v154 (Stéphane : « les crédits dans une fenêtre pop-up refermable, pas une grande fenêtre ») :
+         fenêtre flottante affichée par-dessus l'exercice quand on clique sur « Crédits et licence de
+         l'image ». Remplie par openCreditPopup (app.js) à partir de l'API Wikimedia Commons. -->
+    <div id="credit-popup" class="credit-popup hidden" role="dialog" aria-modal="true" aria-labelledby="credit-popup-title">
+      <div class="credit-popup-card">
+        <button type="button" id="credit-popup-close" class="credit-popup-close" aria-label="Fermer" title="Fermer">✕</button>
+        <h3 id="credit-popup-title" class="credit-popup-title">Crédits de l'image</h3>
+        <dl id="credit-popup-body" class="credit-popup-body"></dl>
+        <a id="credit-popup-more" class="credit-popup-more" href="#" target="_blank" rel="noopener">Page complète sur Wikimedia Commons ↗</a>
+      </div>
+    </div>
+    <script src="app.js?v=381"></script>
   </body>
 </html>

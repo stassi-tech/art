@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v153';
+const APP_VERSION = 'v156';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -1831,7 +1831,7 @@ const PRONUNCIATION_FIXES = {
   'rusconi': 'rousconi',
   'gossaert': 'rossart',
   'bocklin': 'beuklinne', // v152 (atelier 16 oct)
-  'arcimboldo': 'archimboldo',
+  'arcimboldo': 'archimmeboldo', // v155 (atelier 16 oct, série finale)
   'gellee': 'gelé',
   'gellée': 'gelé',
   'barocci': 'barottchi', // v152 (atelier 16 oct)
@@ -1899,7 +1899,7 @@ const PRONUNCIATION_FIXES = {
   'velázquez': 'vélaskèze',
   'gentileschi': 'djéntilésski', // v152 (atelier 16 oct)
   'sœurs': 'seurs',
-  'chassériau': 'Chasériau',
+  'chassériau': 'Chassériau', // v155 (atelier 16 oct, série finale)
   'malevitch': 'Malévitch',
   'poyer': 'Pôyé', // v152 (atelier 16 oct)
   'chœur': 'keur',
@@ -1915,7 +1915,7 @@ const PRONUNCIATION_FIXES = {
   'baccio': 'batt-chio', // v150 (atelier 15 oct : « j'entends bak-chio, il faut dire bat-chio ») ; avant : 'batchio'
   'milon de crotone': 'milon de crotonne',
   'large colour prints': 'larj keulor prinnts',
-  'loggetta': 'lojéta', // v128 (docx 9 oct : « Loggetta = lojéta »)
+  'loggetta': 'lodjêta', // v128 (docx 9 oct : « Loggetta = lojéta ») // v155 (atelier 16 oct, série finale)
   'andrea bolgi': 'andréa boldji',
   'bolgi': 'boldji',
   'juan de juni': 'rouane dé rouni',
@@ -1976,7 +1976,7 @@ const PRONUNCIATION_FIXES = {
   'tate britain': 'Téte Britenn', // v152 (atelier 16 oct)
   'mcneill': 'Macknil', // v152 (atelier 16 oct)
   'jongkind': 'jonkinde', // v152 (atelier 16 oct)
-  'fine': 'Faïne',
+  'fine': 'Faillne', // v155 (atelier 16 oct, série finale)
   'oxbow': 'Oksse-bô', // v152 (atelier 16 oct)
   'jaleo': 'raléo',
   'repin': 'Ryépine',
@@ -1992,12 +1992,12 @@ const PRONUNCIATION_FIXES = {
   'tahitiennes': 'Tahissiennes',
   'phryné': 'Friné',
   'vallotton': 'Valloton',
-  'gismonda': 'Djismonda', // v116 (docx 29 sept : « Gismonda = jismonda »)
+  'gismonda': 'DjismonDa', // v116 (docx 29 sept : « Gismonda = jismonda ») // v155 (atelier 16 oct, série finale)
   'léonidas': 'Léonidasse',
   'caliban': 'Calibant', // v152 (atelier 16 oct)
   'hylas': 'Ilasse',
   'thétis': 'Thétisse',
-  'carlyle': 'Carlaile',
+  'carlyle': 'Carlaïle', // v155 (atelier 16 oct, série finale)
   'alyscamps': 'Aliscan',
   'poisson': 'Pouasson',
   'vœu': 'veut', // v152 (atelier 16 oct)
@@ -2042,7 +2042,7 @@ const PRONUNCIATION_FIXES = {
   // Saint-Germain-en-Laye : "Laye" se prononce "lè", pas épelé ou lu autrement.
   'laye': 'lè',
   // Mount Rushmore : nom anglais, "mount" ne se prononce pas comme le mot français "mont".
-  'mount': 'maoûnntte', // v152 (atelier 16 oct)
+  'mount': 'ma-ounte', // v152 (atelier 16 oct) // v155 (atelier 16 oct, série finale)
   // Juan de Pareja (portrait peint par Vélasquez) : confirmé par Stéphane. Règle qu'il a donnée
   // pour l'espagnol — le "j" (jota, un son guttural absent du français) s'approche par un "r"
   // français, le son le plus proche dans notre alphabet — d'où "Rouanne" (Juan) et "Parera"
@@ -2060,8 +2060,8 @@ const PRONUNCIATION_FIXES = {
   'schwerin': 'Schwérinne', // « n » prononcé
   'algardi': 'Âl-gardi', // v152 (atelier 16 oct)
   'sebastiano': 'Sébastiano',
-  'cáceres': 'Cassérès', // v150 (atelier 15 oct, validé à l'oreille) ; avant : 'Cacérés'
-  'caceres': 'Cassérès',
+  'cáceres': 'Cassérèsse', // v150 (atelier 15 oct, validé à l'oreille) ; avant : 'Cacérés' // v155 (atelier 16 oct, série finale)
+  'caceres': 'Cassérèsse', // v155 (atelier 16 oct, série finale)
   'houston': 'Youstonne',
   'pollux': 'Pollûkss', // v150 : « u comme rue »
   'giacomo': 'Djacomo',
@@ -2073,7 +2073,7 @@ const PRONUNCIATION_FIXES = {
   'venise': 'Venîz', // « z pas ch » // v152 (atelier 16 oct)
   'veneziano': 'vénétziano', // v150 (atelier 15 oct)
   'ginevra': 'Djinèvra',
-  'benci': 'BéNtchi', // v150 (atelier 15 oct)
+  'benci': 'Béntchi', // v150 (atelier 15 oct) // v155 (atelier 16 oct, série finale)
   'weyden': 'védène', // « dén »
   'simon': 'Si-mon', // « pas saïmon » (les cas particuliers, ex. « Simon Vouet », sont traités plus haut)
   'marmion': 'Mar-mi-on', // « pas marmillon »
@@ -2082,6 +2082,8 @@ const PRONUNCIATION_FIXES = {
   'repérez': 'repéré',
   'institute of arts': 'Institute of Artz', // v152 (atelier 16 oct, validé à l'oreille)
   'rijksmuseum': 'riksmûseom', // v152 (atelier 16 oct, validé à l'oreille)
+  'canaletto': 'kanâlétto', // v155 (atelier 16 oct, validé à l'oreille)
+  'salute': 'salouté', // v155 (atelier 16 oct, validé à l'oreille)
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2103,15 +2105,46 @@ function deArtist(name) {
 // contient que les écritures PROPRES à une voix, repérée par un morceau de son nom (sans tenir compte des
 // majuscules). Pour un mot présent ici, l'écriture de la voix remplace l'écriture commune ; une valeur
 // vide ('') veut dire « lire le mot tel quel ». Une voix absente de cette table utilise la table commune.
+// Voix du smartphone (« français France » et « français Canada »), réglées à l'oreille sur le téléphone
+// (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
+const PHONE_PRONUNCIATION = {
+  'alyscamps': 'Aliscant', 'baccio': 'battchio', 'caliban': 'Calibant', 'carle van loo': 'carle vane lô',
+  'carlyle': 'Carl-aïe-le', 'chassériau': 'Chassériau', 'fine': 'Faille-ne', 'firenze': 'Firéntzé',
+  'fountain': 'fountain', 'guglielmo': 'goulyélmo', 'iceberg': 'Iceberg', 'jongkind': 'djongkind',
+  'kirchner': 'kircheneur', 'menabuoi': 'Ménabuoïe', 'mount': 'maount', 'samson': 'sansont',
+  'schwerin': 'Schvéérinne', 'thomas ball': 'thomas bowl', 'venise': 'Veunize', 'vœu': 'veut',
+  'cumes': 'cumes', 'élément': 'élément', 'emmaüs': 'emmaüs', 'flaxman': 'flaxman', 'guidi': 'guidi',
+  'marmion': 'Mar-mion', 'pollux': 'Pollux', 'sœurs': 'seur',
+};
+const PHONE_VOICE_KEYS = ['français france', 'français canada'];
 const PRONUNCIATION_BY_VOICE = {
+  'français france': PHONE_PRONUNCIATION,
+  'français canada': PHONE_PRONUNCIATION,
+  // Résultats de l'atelier de prononciation (16 oct) : seules les écritures qui diffèrent de la table commune.
+  'hortense': {
+    'benci': 'BéNtchi',
+  },
   'charline': {
-    'venise': 'Venize', // atelier 16 oct : avec « Venîz » (écriture commune), Charline ne dit pas bien ce nom
+    'giusto di menabuoi': 'djousto di ménabwoille',
+    'jongkind': 'jonkinnde',
+    'menabuoi': 'Ménabwo-y',
+    'pollaiolo': '', // '' = cette voix lit le mot tel quel
+    'tate britain': 'Tête Britenn',
+    'venise': 'Venize',
+    'werefkin': 'weréfkine',
   },
 };
 function currentPronunciationOverrides() {
   try {
-    const name = String((getGlobalPrefs() || {}).voiceName || '').toLowerCase();
-    if (!name) return null;
+    const norm = (t) => String(t || '').toLowerCase().replace(/[()\-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+    let name = norm((getGlobalPrefs() || {}).voiceName);
+    if (!name) {
+      // Aucune voix choisie dans les réglages : sur un téléphone qui n'a que les deux voix françaises,
+      // c'est l'une d'elles qui parle, donc on applique leurs réglages.
+      const fr = (window.speechSynthesis ? speechSynthesis.getVoices() : []).filter((v) => /^fr/i.test(v.lang));
+      if (fr.length && fr.every((v) => PHONE_VOICE_KEYS.some((k) => norm(v.name).includes(k)))) return PHONE_PRONUNCIATION;
+      return null;
+    }
     const hit = Object.keys(PRONUNCIATION_BY_VOICE).find((part) => name.includes(part));
     return hit ? PRONUNCIATION_BY_VOICE[hit] : null;
   } catch (e) { return null; }
@@ -2918,6 +2951,65 @@ function plainTextFromHtml(html) {
   const tmp = document.createElement('div'); tmp.innerHTML = String(html || '');
   return (tmp.textContent || '').replace(/\s+/g, ' ').trim();
 }
+// v154 : les liens « Crédits et licence de l'image » n'ouvrent plus un grand onglet Commons : une fenêtre
+// flottante refermable (✕, clic à côté, Échap) affiche l'auteur, la licence et la source, tirés de l'API
+// Wikimedia Commons ; un lien « Page complète » reste proposé. Si l'API ne répond pas, le lien vers la page
+// Commons est tout de même affiché. Un seul écouteur sur le document couvre tous les jeux, la visionneuse
+// et l'écran de bio (liens de classe .artwork-source-link ou .imp-bio-split-credit).
+const creditPopupCache = {};
+function creditPopupEl(id) { return document.getElementById(id); }
+function closeCreditPopup() { creditPopupEl('credit-popup')?.classList.add('hidden'); }
+function addCreditRow(dl, label, valueText, valueUrl) {
+  if (!valueText) return;
+  const dt = document.createElement('dt'); dt.textContent = label;
+  const dd = document.createElement('dd');
+  if (valueUrl) { const a = document.createElement('a'); a.href = valueUrl; a.target = '_blank'; a.rel = 'noopener'; a.textContent = valueText; dd.appendChild(a); }
+  else dd.textContent = valueText;
+  dl.append(dt, dd);
+}
+function fillCreditPopup(meta) {
+  const dl = creditPopupEl('credit-popup-body'); if (!dl) return;
+  dl.textContent = '';
+  const v = (k) => plainTextFromHtml(meta[k] && meta[k].value);
+  addCreditRow(dl, 'Auteur', v('Artist'));
+  addCreditRow(dl, 'Licence', v('LicenseShortName') || v('UsageTerms'), (meta.LicenseUrl && meta.LicenseUrl.value) || '');
+  addCreditRow(dl, 'Source', v('Credit'));
+  addCreditRow(dl, 'Mention à indiquer', v('Attribution'));
+  addCreditRow(dl, 'Description', (v('ImageDescription') || '').slice(0, 300));
+  if (!dl.children.length) addCreditRow(dl, 'Crédits', 'Les informations de crédit ne sont pas disponibles ici : voir la page complète ci-dessous.');
+}
+function openCreditPopup(pageUrl) {
+  const box = creditPopupEl('credit-popup'); if (!box) { window.open(pageUrl, '_blank', 'noopener'); return; }
+  const fileTitle = decodeURIComponent(pageUrl.split('/wiki/File:')[1] || '').replace(/_/g, ' ');
+  creditPopupEl('credit-popup-more').href = pageUrl;
+  creditPopupEl('credit-popup-title').textContent = fileTitle ? fileTitle.replace(/\.[A-Za-z0-9]+$/, '') : 'Crédits de l\'image';
+  const dl = creditPopupEl('credit-popup-body'); dl.textContent = '';
+  box.classList.remove('hidden');
+  creditPopupEl('credit-popup-close')?.focus();
+  if (!fileTitle) { fillCreditPopup({}); return; }
+  if (creditPopupCache[fileTitle]) { fillCreditPopup(creditPopupCache[fileTitle]); return; }
+  addCreditRow(dl, 'Crédits', 'Chargement…');
+  const api = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=extmetadata&titles=${encodeURIComponent('File:' + fileTitle)}`;
+  fetch(api).then((r) => r.json()).then((data) => {
+    const page = Object.values((data.query && data.query.pages) || {})[0];
+    const meta = (page && page.imageinfo && page.imageinfo[0] && page.imageinfo[0].extmetadata) || {};
+    creditPopupCache[fileTitle] = meta;
+    if (!box.classList.contains('hidden') && creditPopupEl('credit-popup-more').href === pageUrl) fillCreditPopup(meta);
+  }).catch(() => {
+    if (!box.classList.contains('hidden')) { dl.textContent = ''; addCreditRow(dl, 'Crédits', 'Connexion à Wikimedia Commons impossible pour le moment : utilisez le lien ci-dessous.'); }
+  });
+}
+document.addEventListener('click', (e) => {
+  const a = e.target.closest && e.target.closest('a.artwork-source-link, a.imp-bio-split-credit');
+  if (a && /commons\.wikimedia\.org\/wiki\/File:/.test(a.href)) { e.preventDefault(); openCreditPopup(a.href); return; }
+  const box = creditPopupEl('credit-popup');
+  if (box && !box.classList.contains('hidden') && (e.target === box || e.target.closest('#credit-popup-close'))) closeCreditPopup();
+}, true);
+document.addEventListener('keydown', (e) => {
+  const box = creditPopupEl('credit-popup');
+  if (!box || box.classList.contains('hidden')) return;
+  if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); closeCreditPopup(); }
+}, true);
 function showImpBioCredit(imageRef) {
   const link = $('imp-bio-split-credit'); const text = $('imp-bio-split-credit-text');
   if (!link || !text) return;
