@@ -2653,10 +2653,10 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 #imp-bio-slide-next.hidden { display:none; }
 #imp-bio-slide-next.bio-next-on { opacity:1; }
 .imp-bio-split.bio-dual .imp-bio-text-col { flex:1 1 0; min-width:300px; padding:26px 22px 14px 26px; overflow:hidden; }
-.imp-bio-split.bio-dual #imp-bio-split-name { flex:0 0 auto; padding:0 40px; margin:0 0 16px; font-size:clamp(1.3rem,1.55vw,1.85rem); line-height:1.3; text-align:center; }
+.imp-bio-split.bio-dual #imp-bio-split-name { flex:0 0 auto; padding:0 40px; margin:0 0 16px; font-size:clamp(1.12rem,1.3vw,1.55rem); line-height:1.3; text-align:center; }
 .imp-bio-split.bio-dual #imp-bio-scroll { display:block; flex:1 1 0; min-height:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.25) transparent; }
 .imp-bio-split.bio-dual .imp-bio-pad { display:block; }
-.imp-bio-split.bio-dual #imp-bio-split-text { font-size:clamp(1.3rem,1.55vw,1.85rem) !important; line-height:1.6 !important; margin:0; hyphens:auto; -webkit-hyphens:auto; padding-right:6px; }
+.imp-bio-split.bio-dual #imp-bio-split-text { font-size:clamp(1.12rem,1.3vw,1.55rem) !important; line-height:1.58 !important; margin:0; hyphens:auto; -webkit-hyphens:auto; padding-right:6px; }
 /* en mode « film » (voix en marche), le texte à venir s'efface en bas : on le découvre au fil de la lecture */
 .imp-bio-split.bio-dual.bio-film #imp-bio-scroll { -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 12%, #000 56%, transparent 86%); mask-image:linear-gradient(to bottom, transparent 0, #000 12%, #000 56%, transparent 86%); }
 .imp-bio-split.bio-dual:not(.bio-film) #imp-bio-scroll { -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 4%, #000 94%, transparent 100%); mask-image:linear-gradient(to bottom, transparent 0, #000 4%, #000 94%, transparent 100%); }
