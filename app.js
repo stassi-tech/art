@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v168';
+const APP_VERSION = 'v169';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -943,7 +943,7 @@ async function populateArtistSuggestions() {
     const name = [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim();
     const isSel = selected.includes(name);
     const flag = artistFlag(r['Nationalité']) || '';
-    return `<label class="rubrique-option" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="pf-artist-pick" value="${escapeHtml(name)}" ${isSel ? 'checked' : ''} /><span>${flag} ${escapeHtml(name)}</span></label>`;
+    return `<label class="rubrique-option" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="pf-artist-pick" value="${escapeHtml(name)}" ${isSel ? 'checked' : ''} /><span>${flag} ${artistPickLabel(r, name)}</span></label>`;
   }).join('');
   list.querySelectorAll('.pf-artist-pick').forEach((cb) => {
     cb.addEventListener('change', () => toggleArtistSelection(cb.value));
@@ -2425,6 +2425,12 @@ function fixSpeechPronunciation(text) {
   // v149 (« Ginevra de’ Benci : ne pas marquer d'arrêt ») : l'apostrophe de l'italien « de' » provoque une pause
   // dans certaines voix — on la retire (« de Benci »), comme on le ferait à l'oral.
   out = out.replace(new RegExp(`${NB}([Dd]e)[’']\\s*`, 'gu'), '$1 ');
+  // v169 (retour Stéphane : « il dit toujours C-Arezzonico ») : les titres s'écrivent « Ca' Rezzonico » / « Ca’ d’Oro »
+  // (avec espace, parfois apostrophe courbe), alors que la table de prononciation connaît « ca'rezzonico » et « ca'd'oro »
+  // (sans espace, validés à l'atelier). Faute de correspondance, la voix lisait « Ca' » comme deux lettres. On ramène
+  // donc d'abord toutes ces écritures à la forme de la table.
+  out = out.replace(new RegExp(`${NB}Ca[’'\`´]?\\s*(?=Rezzonico${NA}|d[’'\`´]?\\s*Oro${NA})`, 'giu'), "Ca'");
+  out = out.replace(new RegExp(`${NB}(Ca')d[’'\`´]?\\s*Oro${NA}`, 'giu'), "$1d'Oro");
   const voiceOverrides = currentPronunciationOverrides();
   Object.entries(PRONUNCIATION_FIXES).forEach(([wrong, baseRight]) => {
     const isPrefix = wrong.endsWith('*');
@@ -7528,13 +7534,24 @@ function particleStrippedSortKey(patronyme) {
   while (words.length && ARTIST_NAME_PARTICLES.includes(words[0])) words.shift();
   return words.join(' ') || keyName(patronyme);
 }
+function artistPickLabel(row, civilName) {
+  // v169 : dans les listes à cocher, le surnom (ex. « Canaletto ») est affiché en plus du nom civil.
+  const surnom = String(row['Surnom'] || '').trim();
+  if (!surnom || keyName(surnom) === keyName(civilName)) return escapeHtml(civilName);
+  return `<strong>${escapeHtml(surnom)}</strong> <span class="artist-civil">(${escapeHtml(civilName)})</span>`;
+}
 function formatArtistListName(row) {
   // Si un surnom est connu (ex. « Le Greco », « Fra Angelico »), c'est lui qui identifie
   // l'artiste dans la liste — plus reconnaissable que le nom civil. Sinon, colonnes séparées
   // (Prénom, Patronyme) : l'entrée se lit nom puis prénom, le prénom en casse normale, le nom de
   // famille tel qu'enregistré (en général en majuscules) mis en avant.
   const surnom = String(row['Surnom'] || '').trim();
-  if (surnom) return `<strong>${escapeHtml(surnom)}</strong>`;
+  // v169 (Stéphane : « il n'y a pas le pseudonyme… je cherchais Canaletto, on donne son nom, Canal ») : on montre
+  // le surnom ET le nom civil entre parenthèses, pour qu'on retrouve l'artiste par l'un comme par l'autre.
+  if (surnom) {
+    const civil = [String(row['Prénom'] || '').trim(), String(row['Patronyme'] || '').trim()].filter(Boolean).join(' ');
+    return `<strong>${escapeHtml(surnom)}</strong>${civil && keyName(civil) !== keyName(surnom) ? ` <span class="artist-civil">(${escapeHtml(civil)})</span>` : ''}`;
+  }
   const nom = String(row['Patronyme'] || '').trim();
   const prenom = String(row['Prénom'] || '').trim();
   if (!nom) return `<strong>${escapeHtml(prenom)}</strong>`;
@@ -11296,7 +11313,7 @@ async function populateGuidedArtistList() {
     const name = [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim();
     const isSel = selected.includes(name);
     const flag = artistFlag(r['Nationalité']) || '';
-    return `<label class="rubrique-option" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="gc-artist-pick" value="${escapeHtml(name)}" ${isSel ? 'checked' : ''} /><span>${flag} ${escapeHtml(name)}</span></label>`;
+    return `<label class="rubrique-option" style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="gc-artist-pick" value="${escapeHtml(name)}" ${isSel ? 'checked' : ''} /><span>${flag} ${artistPickLabel(r, name)}</span></label>`;
   }).join('');
   list.querySelectorAll('.gc-artist-pick').forEach((cb) => {
     cb.addEventListener('change', () => {

@@ -2707,3 +2707,5 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .imp-bio-split.bio-dual.bio-vert .imp-bio-controls { margin:6px -16px -6px -16px; padding:6px 10px; }
 .imp-bio-split.bio-dual.bio-vert .imp-bio-photo-col { flex:0 0 35%; }
 .imp-bio-split.bio-dual.bio-vert .imp-bio-slide-col { flex:0 0 34%; }
+
+.artist-civil{color:#6b6b6b;font-size:.92em;font-weight:normal;}
