@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v160';
+const APP_VERSION = 'v161';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -3090,7 +3090,8 @@ function openCreditSheet(pageUrl) {
 }
 document.addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('a.artwork-source-link, a.imp-bio-split-credit');
-  if (a && /commons\.wikimedia\.org\/wiki\/File:/.test(a.href)) { e.preventDefault(); openCreditPopup(a.href); return; }
+  // v161 : plus de petite fenêtre intermédiaire : un clic sur « crédits » ouvre directement la fiche (une seule fermeture)
+  if (a && /commons\.wikimedia\.org\/wiki\/File:/.test(a.href)) { e.preventDefault(); openCreditSheet(a.href); return; }
   const more = e.target.closest && e.target.closest('#credit-popup-more');
   if (more && /commons\.wikimedia\.org\/wiki\/File:/.test(more.href)) { e.preventDefault(); openCreditSheet(more.href); return; }
   const sheet = creditPopupEl('credit-sheet');
