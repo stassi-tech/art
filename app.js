@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v163';
+const APP_VERSION = 'v164';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -2998,8 +2998,8 @@ function plainTextFromHtml(html) {
 }
 // v162 : les liens « Crédits et licence de l'image ↗ » s'ouvrent directement sur la page Wikimedia Commons, dans un nouvel onglet
 // (ils ont target="_blank" ; plus de fenêtre ni de fiche intermédiaire).
-function showImpBioCredit(imageRef) {
-  const link = $('imp-bio-split-credit'); const text = $('imp-bio-split-credit-text');
+function showImpBioCredit(imageRef, linkId, textId) {
+  const link = $(linkId || 'imp-bio-split-credit'); const text = $(textId || 'imp-bio-split-credit-text');
   if (!link || !text) return;
   text.textContent = '';
   const pageUrl = imageRef ? commonsFilePageUrl(String(imageRef)) : null;
@@ -11710,7 +11710,7 @@ function parseBioMarkup(text) {
   return { plain, marks };
 }
 const bioAuto = { active: false, speaking: false, marks: [], plainLen: 0, spokenLen: 0, startT: 0, gotBoundary: false, frac: 0,
-  pauseUntil: 0, raf: 0, rate: 0.72, curIdx: -2, baseRef: '', baseCap: '', nodes: [], shownRef: '', fading: false, pending: null, fadeTimer: 0, userMoved: false };
+  pauseUntil: 0, raf: 0, rate: 0.72, curIdx: -2, baseRef: '', baseCap: '', nodes: [], shownRef: '', fading: false, pending: null, fadeTimer: 0, userMoved: false, dual: false, paused: false, pausedAt: 0, ended: false, sid: 0, work: null, force: false };
 function bioRender(textEl, parsed) {
   textEl.textContent = '';
   bioAuto.nodes = [];
@@ -11737,12 +11737,18 @@ function bioYForOffset(col, off) {
 // la nouvelle image (#imp-bio-split-portrait-next, posée exactement sur la première) apparaît par-dessus pendant que
 // l'ancienne s'efface ; une fois le fondu fini, la première reprend la nouvelle image et la seconde se retire.
 const BIO_FADE_MS = 1600; // doit correspondre à la durée de transition en CSS
+function bioEls() {
+  return bioAuto.dual
+    ? { img: $('imp-bio-slide'), nx: $('imp-bio-slide-next'), cap: $('imp-bio-slide-caption'), link: 'imp-bio-slide-credit', txt: 'imp-bio-slide-credit-text' }
+    : { img: $('imp-bio-split-portrait'), nx: $('imp-bio-split-portrait-next'), cap: $('imp-bio-split-caption'), link: 'imp-bio-split-credit', txt: 'imp-bio-split-credit-text' };
+}
 function bioShowImage(ref, caption) {
-  const img = $('imp-bio-split-portrait'); const nx = $('imp-bio-split-portrait-next'); if (!img || !ref) return;
-  const cap = $('imp-bio-split-caption');
+  const E = bioEls(); const img = E.img; const nx = E.nx; if (!img || !ref) return;
+  const cap = E.cap;
+  if (bioAuto.dual) img.classList.remove('hidden');
   if (bioAuto.shownRef === ref) { if (cap) cap.textContent = caption || ''; return; }
   if (bioAuto.fading) { bioAuto.pending = { ref, caption }; return; }
-  if (!nx) { img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; if (cap) cap.textContent = caption || ''; showImpBioCredit(ref); return; }
+  if (!nx) { img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); return; }
   bioAuto.fading = true; bioAuto.shownRef = ref;
   const src = imageSourceSized(ref, 900);
   const finish = () => {
@@ -11758,7 +11764,7 @@ function bioShowImage(ref, caption) {
     nx.style.left = img.offsetLeft + 'px'; nx.style.top = img.offsetTop + 'px'; nx.style.width = img.offsetWidth + 'px'; nx.style.height = img.offsetHeight + 'px';
     nx.classList.remove('hidden'); void nx.offsetWidth;
     nx.classList.add('bio-next-on'); img.classList.add('bio-fading');
-    if (cap) cap.textContent = caption || ''; showImpBioCredit(ref);
+    if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt);
     bioAuto.fadeTimer = setTimeout(() => {
       img.onload = finish; img.onerror = finish; img.src = src;
       if (img.complete && img.naturalWidth) finish();
@@ -11770,17 +11776,18 @@ function bioShowImage(ref, caption) {
 function bioFrame() {
   const A = bioAuto; const split = $('imp-bio-split');
   if (!A.active || !split || split.classList.contains('hidden')) { A.active = false; A.raf = 0; return; }
-  const col = split.querySelector('.imp-bio-text-col');
+  const col = A.dual ? $('imp-bio-scroll') : split.querySelector('.imp-bio-text-col');
   const now = performance.now(); const maxScroll = Math.max(0, col.scrollHeight - col.clientHeight);
-  const reading = A.speaking && now > A.pauseUntil;
-  let lineY = col.scrollTop + col.clientHeight * 0.35;
+  const reading = A.speaking && !A.paused && now > A.pauseUntil;
+  const readFrac = A.dual ? 0.55 : 0.3;
+  let lineY = col.scrollTop + col.clientHeight * (A.dual ? 0.55 : 0.35);
   if (A.speaking) {
     let f = A.frac;
-    if (!A.gotBoundary && now - A.startT > 1500) f = Math.min(0.98, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen));
+    if (!A.gotBoundary && !A.paused && now - A.startT > 1500) f = Math.min(0.98, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen));
     const readY = bioYForOffset(col, f * A.plainLen);
     if (reading) {
       if (maxScroll > 0) {
-        const target = Math.max(0, Math.min(maxScroll, readY - col.clientHeight * 0.3)); const diff = target - col.scrollTop;
+        const target = Math.max(0, Math.min(maxScroll, readY - col.clientHeight * readFrac)); const diff = target - col.scrollTop;
         col.scrollTop = Math.abs(diff) < 0.6 ? target : col.scrollTop + diff * 0.08;
       }
       lineY = readY + 4;
@@ -11799,32 +11806,66 @@ function bioFrame() {
   A.raf = requestAnimationFrame(bioFrame);
 }
 function bioAutoStop() {
+  bioAuto.sid++; bioAuto.paused = false;
   bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
   clearTimeout(bioAuto.fadeTimer); bioAuto.fading = false; bioAuto.pending = null;
-  const nx = $('imp-bio-split-portrait-next'); if (nx) { nx.classList.remove('bio-next-on'); nx.classList.add('hidden'); }
-  $('imp-bio-split-portrait')?.classList.remove('bio-fading');
+  ['imp-bio-split-portrait-next', 'imp-bio-slide-next'].forEach((id) => { const nx = $(id); if (nx) { nx.classList.remove('bio-next-on'); nx.classList.add('hidden'); } });
+  $('imp-bio-split-portrait')?.classList.remove('bio-fading'); $('imp-bio-slide')?.classList.remove('bio-fading');
 }
+// v164 (PC) : mise en page « deux écrans » — artiste fixe à gauche, images successives au milieu, texte qui défile à droite.
+function bioWantDual() { return window.innerWidth >= 1000; }
+function bioSetPads() {
+  const sc = $('imp-bio-scroll'); if (!sc) return;
+  const film = $('imp-bio-split')?.classList.contains('bio-film');
+  $('imp-bio-pad-top').style.height = Math.round(sc.clientHeight * (film ? 0.9 : 0.02)) + 'px';
+  $('imp-bio-pad-bot').style.height = Math.round(sc.clientHeight * (film ? 0.6 : 0.05)) + 'px';
+}
+function bioSyncButton() {
+  const b = $('imp-bio-toggle'); if (!b) return;
+  const A = bioAuto;
+  if (!A.dual || !A.willSpeak) { b.classList.add('hidden'); return; }
+  b.classList.remove('hidden');
+  b.textContent = A.ended ? '↻ Rejouer' : (A.paused ? '▶ Reprise' : '⏸ Arrêt');
+}
+$('imp-bio-toggle')?.addEventListener('click', () => {
+  const A = bioAuto; if (!A.dual) return;
+  if (A.ended) { if (A.work) openImpArtistBio(A.work, A.force); return; }
+  if (!A.paused) { A.paused = true; A.pausedAt = performance.now(); try { speechSynthesis.pause(); } catch (e) { /* ignoré */ } }
+  else { A.paused = false; A.startT += performance.now() - A.pausedAt; try { speechSynthesis.resume(); } catch (e) { /* ignoré */ } }
+  bioSyncButton();
+});
+window.addEventListener('resize', () => { if (bioAuto.dual && !$('imp-bio-split')?.classList.contains('hidden')) bioSetPads(); });
 function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
   bioAutoStop();
   Object.assign(bioAuto, { marks: parsed.marks, plainLen: parsed.plain.length, spokenLen: Math.max(1, parsed.plain.length), frac: 0, gotBoundary: false,
-    startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false });
+    startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false });
   parsed.marks.forEach((mk) => { try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); } catch (e) { /* ignoré */ } });
-  const col = $('imp-bio-split')?.querySelector('.imp-bio-text-col'); if (col) col.scrollTop = 0;
+  const col = bioAuto.dual ? $('imp-bio-scroll') : $('imp-bio-split')?.querySelector('.imp-bio-text-col'); if (col) col.scrollTop = 0;
   bioAuto.raf = requestAnimationFrame(bioFrame);
 }
 (function wireBioScrollPause() {
   const col = () => $('imp-bio-split')?.querySelector('.imp-bio-text-col');
   ['touchstart', 'wheel', 'pointerdown'].forEach((ev) => document.addEventListener(ev, (e) => {
-    const c = col(); if (c && bioAuto.active && c.contains(e.target)) { bioAuto.pauseUntil = performance.now() + 6000; bioAuto.userMoved = true; }
+    const c = col(); if (c && bioAuto.active && c.contains(e.target) && !(e.target.closest && e.target.closest('.imp-bio-controls'))) { bioAuto.pauseUntil = performance.now() + 6000; bioAuto.userMoved = true; }
   }, { passive: true }));
   $('imp-bio-split-portrait')?.addEventListener('click', () => {
     const img = $('imp-bio-split-portrait'); if (!img || img.classList.contains('hidden')) return;
+    if (bioAuto.dual) { if (bioAuto.artistRef) openLightboxImage(bioAuto.artistRef, ($('imp-bio-split-caption') || {}).textContent || ''); return; }
     const ref = bioAuto.curIdx >= 0 && bioAuto.marks[bioAuto.curIdx] ? bioAuto.marks[bioAuto.curIdx].ref : bioAuto.baseRef;
     if (ref) openLightboxImage(ref, ($('imp-bio-split-caption') || {}).textContent || '');
+  });
+  $('imp-bio-slide')?.addEventListener('click', () => {
+    const img = $('imp-bio-slide'); if (!img || img.classList.contains('hidden')) return;
+    const ref = bioAuto.shownRef || bioAuto.baseRef;
+    if (ref) openLightboxImage(ref, ($('imp-bio-slide-caption') || {}).textContent || '');
   });
 })();
 function openImpArtistBio(work, force) {
   impClearTimers();
+  const splitEl = $('imp-bio-split');
+  const dual = bioWantDual();
+  bioAuto.dual = dual; bioAuto.work = work; bioAuto.force = !!force; bioAuto.artistRef = work.artistImage || '';
+  if (splitEl) { splitEl.classList.toggle('bio-dual', dual); splitEl.classList.toggle('bio-film', false); }
   const portrait = $('imp-bio-split-portrait');
   if (portrait) {
     if (work.artistImage) { portrait.src = imageSourceSized(work.artistImage, 700); portrait.classList.remove('hidden'); }
@@ -11849,13 +11890,33 @@ function openImpArtistBio(work, force) {
   // closeImpArtistBio ci-dessous, jamais ailleurs, donc jamais oublié en sortant de la bio.
   $('imp-quiz-grid')?.classList.add('imp-bio-open');
   const willSpeak = !!work.bio && (impAudioOn || !!force) && !!window.speechSynthesis;
-  if (textEl) bioAutoStart(parsedBio, work.artistImage, work.artistImageCaption || '', willSpeak);
+  // v164 : en mode « deux écrans », l'image de l'œuvre est la première image de la colonne centrale
+  let baseRef = work.artistImage, baseCap = work.artistImageCaption || '';
+  if (dual) {
+    baseRef = work.image || (parsedBio.marks[0] && parsedBio.marks[0].ref) || ''; baseCap = work.image ? [work.title, work.date].filter(Boolean).join(', ') : '';
+    const slide = $('imp-bio-slide'); const nxs = $('imp-bio-slide-next'); const scap = $('imp-bio-slide-caption');
+    if (nxs) { nxs.classList.remove('bio-next-on'); nxs.classList.add('hidden'); }
+    if (slide) { slide.classList.remove('bio-fading'); if (baseRef) { slide.src = imageSourceSized(baseRef, 900); slide.classList.remove('hidden'); } else slide.classList.add('hidden'); }
+    if (scap) scap.textContent = baseCap;
+    showImpBioCredit(baseRef, 'imp-bio-slide-credit', 'imp-bio-slide-credit-text');
+    splitEl.classList.toggle('bio-noslide', !baseRef);
+    splitEl.classList.toggle('bio-film', willSpeak);
+    bioSetPads();
+  }
+  if (textEl) bioAutoStart(parsedBio, baseRef, baseCap, willSpeak);
+  bioAuto.shownRef = baseRef || '';
+  bioSyncButton();
   if (work.bio) {
     bioAuto.rate = 0.72;
+    const sid = bioAuto.sid;
     impSpeak(parsedBio.plain, undefined, force, {
-      onStart: (spokenLen, rate) => { bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
-      onProgress: (ci, spokenLen) => { bioAuto.gotBoundary = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.frac = Math.min(1, ci / bioAuto.spokenLen); },
-      onStop: () => { bioAuto.speaking = false; },
+      onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
+      onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundary = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.frac = Math.min(1, ci / bioAuto.spokenLen); },
+      onStop: () => {
+        if (sid !== bioAuto.sid) return;
+        bioAuto.speaking = false;
+        if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); }
+      },
     });
   }
 }
@@ -11863,6 +11924,9 @@ function openImpArtistBio(work, force) {
 function openImpWorkText(work) {
   impClearTimers();
   bioAutoStop();
+  bioAuto.dual = false; bioSyncButton();
+  $('imp-bio-split')?.classList.remove('bio-dual', 'bio-film', 'bio-noslide');
+  const padT = $('imp-bio-pad-top'), padB = $('imp-bio-pad-bot'); if (padT) padT.style.height = ''; if (padB) padB.style.height = '';
   const img = $('imp-bio-split-portrait');
   if (img) {
     if (work.image) { img.src = imageSourceSized(work.image, 900); img.classList.remove('hidden'); }

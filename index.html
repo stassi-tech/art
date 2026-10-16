@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=280" />
+    <link rel="stylesheet" href="style.css?v=281" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -740,10 +740,22 @@
                     <span id="imp-bio-split-caption" class="imp-bio-split-caption"></span>
                     <a id="imp-bio-split-credit" class="imp-bio-split-credit hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗<span id="imp-bio-split-credit-text" class="imp-bio-split-credit-text"></span></a>
                   </div>
+                  <!-- v164 : colonne centrale (PC seulement) — les images qui accompagnent le texte s'y succèdent en fondu -->
+                  <div class="imp-bio-slide-col">
+                    <img id="imp-bio-slide" class="imp-bio-slide hidden" alt="" />
+                    <img id="imp-bio-slide-next" class="imp-bio-slide-next hidden" alt="" aria-hidden="true" />
+                    <span id="imp-bio-slide-caption" class="imp-bio-split-caption"></span>
+                    <a id="imp-bio-slide-credit" class="imp-bio-split-credit hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗<span id="imp-bio-slide-credit-text" class="imp-bio-split-credit-text"></span></a>
+                  </div>
                   <div class="imp-bio-text-col">
                     <h3 id="imp-bio-split-name" style="font-family:Georgia,serif;margin:0 0 10px;"></h3>
-                    <!-- v82 (retour Stéphane : « justifie le texte de la bio ») -->
-                    <p id="imp-bio-split-text" style="font-family:Arial,sans-serif;font-size:1.15rem;line-height:1.65;white-space:pre-line;text-align:justify;"></p>
+                    <div id="imp-bio-scroll" class="imp-bio-scroll">
+                      <div id="imp-bio-pad-top" class="imp-bio-pad"></div>
+                      <!-- v82 (retour Stéphane : « justifie le texte de la bio ») -->
+                      <p id="imp-bio-split-text" style="font-family:Arial,sans-serif;font-size:1.15rem;line-height:1.65;white-space:pre-line;text-align:justify;"></p>
+                      <div id="imp-bio-pad-bot" class="imp-bio-pad"></div>
+                    </div>
+                    <div class="imp-bio-controls"><button type="button" id="imp-bio-toggle" class="imp-bio-toggle hidden">⏸ Arrêt</button></div>
                   </div>
                 </div>
               </figure>
@@ -2146,6 +2158,6 @@
     <!-- v154 (Stéphane : « les crédits dans une fenêtre pop-up refermable, pas une grande fenêtre ») :
          fenêtre flottante affichée par-dessus l'exercice quand on clique sur « Crédits et licence de
          l'image ». Remplie par openCreditPopup (app.js) à partir de l'API Wikimedia Commons. -->
-    <script src="app.js?v=388"></script>
+    <script src="app.js?v=389"></script>
   </body>
 </html>

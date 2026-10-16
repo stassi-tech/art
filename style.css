@@ -2634,3 +2634,37 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
   .imp-bio-split-caption, .imp-bio-split-credit { z-index:3; }
   .imp-bio-text-col { scroll-behavior:auto; }
 }
+
+/* ============================================================
+   v164 — bio sur PC : « deux écrans en parallèle » (maquette Photoshop de Stéphane)
+   gauche : l'artiste (fixe) · milieu : les images qui se succèdent (fondu) · droite : le texte qui défile « comme un film »
+   ============================================================ */
+.imp-bio-slide-col { display:none; }
+#imp-bio-scroll { display:contents; }
+.imp-bio-pad { display:none; }
+.imp-bio-controls { display:none; }
+.imp-bio-split.bio-dual .imp-bio-photo-col { flex:0 0 32%; padding:22px 18px; }
+.imp-bio-split.bio-dual .imp-bio-slide-col { display:flex; flex:0 0 39%; min-width:0; min-height:0; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:22px 18px; position:relative; background:#0b0c0e; border-left:1px solid rgba(255,255,255,.08); border-right:1px solid rgba(255,255,255,.08); }
+.imp-bio-split.bio-dual.bio-noslide .imp-bio-slide-col { display:none; }
+#imp-bio-slide { display:block; flex:1 1 0; min-height:0; max-width:100%; width:100%; height:auto; object-fit:contain; border-radius:4px; box-shadow:0 10px 30px rgba(0,0,0,.5); transition:opacity 1.6s ease; cursor:zoom-in; }
+#imp-bio-slide.hidden { display:none; }
+#imp-bio-slide.bio-fading { opacity:0; }
+#imp-bio-slide-next { position:absolute; display:block; opacity:0; object-fit:contain; pointer-events:none; border-radius:4px; transition:opacity 1.6s ease; z-index:2; }
+#imp-bio-slide-next.hidden { display:none; }
+#imp-bio-slide-next.bio-next-on { opacity:1; }
+.imp-bio-split.bio-dual .imp-bio-text-col { flex:1 1 0; min-width:300px; padding:26px 22px 14px 26px; overflow:hidden; }
+.imp-bio-split.bio-dual #imp-bio-split-name { flex:0 0 auto; padding-right:38px; margin:0 0 12px; font-size:1.05rem; }
+.imp-bio-split.bio-dual #imp-bio-scroll { display:block; flex:1 1 0; min-height:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.25) transparent; }
+.imp-bio-split.bio-dual .imp-bio-pad { display:block; }
+.imp-bio-split.bio-dual #imp-bio-split-text { font-size:clamp(1.3rem,1.55vw,1.85rem) !important; line-height:1.6 !important; margin:0; hyphens:auto; -webkit-hyphens:auto; padding-right:6px; }
+/* en mode « film » (voix en marche), le texte à venir s'efface en bas : on le découvre au fil de la lecture */
+.imp-bio-split.bio-dual.bio-film #imp-bio-scroll { -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 12%, #000 56%, transparent 86%); mask-image:linear-gradient(to bottom, transparent 0, #000 12%, #000 56%, transparent 86%); }
+.imp-bio-split.bio-dual:not(.bio-film) #imp-bio-scroll { -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 4%, #000 94%, transparent 100%); mask-image:linear-gradient(to bottom, transparent 0, #000 4%, #000 94%, transparent 100%); }
+.imp-bio-split.bio-dual .imp-bio-controls { display:flex; flex:0 0 auto; justify-content:center; padding-top:12px; }
+.imp-bio-toggle { font:600 1rem Arial,sans-serif; color:var(--ink); background:transparent; border:1px solid currentColor; border-radius:999px; padding:9px 26px; cursor:pointer; opacity:.9; }
+.imp-bio-toggle:hover { background:rgba(255,255,255,.12); opacity:1; }
+.imp-bio-toggle.hidden { display:none; }
+/* v164 : sur PC, le cadre de la bio occupe toute la hauteur disponible (comme sur la maquette) */
+@media (min-width:1000px) {
+  #imp-quiz-grid.imp-bio-open .artwork-card { min-height:calc(100vh - 150px); min-height:calc(100svh - 150px); max-height:none; }
+}
