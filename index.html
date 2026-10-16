@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=282" />
+    <link rel="stylesheet" href="style.css?v=283" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -755,7 +755,11 @@
                       <p id="imp-bio-split-text" style="font-family:Arial,sans-serif;font-size:1.15rem;line-height:1.65;white-space:pre-line;text-align:justify;"></p>
                       <div id="imp-bio-pad-bot" class="imp-bio-pad"></div>
                     </div>
-                    <div class="imp-bio-controls"><button type="button" id="imp-bio-toggle" class="imp-bio-toggle hidden">⏸ Arrêt</button></div>
+                    <div class="imp-bio-controls" id="imp-bio-controls">
+                      <button type="button" id="imp-bio-back" class="imp-bio-seek hidden" title="Revenir à la phrase précédente" aria-label="Revenir à la phrase précédente"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 6v12l-9-6zM21 6v12l-9-6z" fill="currentColor"/></svg></button>
+                      <button type="button" id="imp-bio-toggle" class="imp-bio-toggle hidden">Arrêt</button>
+                      <button type="button" id="imp-bio-fwd" class="imp-bio-seek hidden" title="Passer à la phrase suivante" aria-label="Passer à la phrase suivante"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 6v12l9-6zM3 6v12l9-6z" fill="currentColor"/></svg></button>
+                    </div>
                   </div>
                 </div>
               </figure>
@@ -2158,6 +2162,6 @@
     <!-- v154 (Stéphane : « les crédits dans une fenêtre pop-up refermable, pas une grande fenêtre ») :
          fenêtre flottante affichée par-dessus l'exercice quand on clique sur « Crédits et licence de
          l'image ». Remplie par openCreditPopup (app.js) à partir de l'API Wikimedia Commons. -->
-    <script src="app.js?v=390"></script>
+    <script src="app.js?v=391"></script>
   </body>
 </html>

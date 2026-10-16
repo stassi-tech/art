@@ -11710,7 +11710,7 @@ function parseBioMarkup(text) {
   return { plain, marks };
 }
 const bioAuto = { active: false, speaking: false, marks: [], plainLen: 0, spokenLen: 0, startT: 0, gotBoundary: false, frac: 0,
-  pauseUntil: 0, raf: 0, rate: 0.72, curIdx: -2, baseRef: '', baseCap: '', nodes: [], shownRef: '', fading: false, pending: null, fadeTimer: 0, userMoved: false, dual: false, paused: false, pausedAt: 0, ended: false, sid: 0, work: null, force: false };
+  pauseUntil: 0, raf: 0, rate: 0.72, curIdx: -2, baseRef: '', baseCap: '', nodes: [], shownRef: '', fading: false, pending: null, fadeTimer: 0, userMoved: false, dual: false, parsed: null, baseFrac: 0, paused: false, pausedAt: 0, ended: false, sid: 0, work: null, force: false };
 function bioRender(textEl, parsed) {
   textEl.textContent = '';
   bioAuto.nodes = [];
@@ -11783,7 +11783,7 @@ function bioFrame() {
   let lineY = col.scrollTop + col.clientHeight * lineF;
   if (A.speaking) {
     let f = A.frac;
-    if (!A.gotBoundary && !A.paused && now - A.startT > 1500) f = Math.min(0.98, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen));
+    if (!A.gotBoundary && !A.paused && now - A.startT > 1500) f = Math.min(0.98, (A.baseFrac || 0) + Math.min(1, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen)) * (1 - (A.baseFrac || 0)));
     const readY = bioYForOffset(col, f * A.plainLen);
     if (reading) {
       if (maxScroll > 0) {
@@ -11824,13 +11824,57 @@ function bioSetPads() {
   $('imp-bio-pad-top').style.height = Math.round(sc.clientHeight * (film ? 0.9 : 0.02)) + 'px';
   $('imp-bio-pad-bot').style.height = Math.round(sc.clientHeight * (film ? 0.6 : 0.05)) + 'px';
 }
+const BIO_ICON = {
+  pause: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z" fill="currentColor"/></svg>',
+  play: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>',
+  replay: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" fill="currentColor"/></svg>',
+};
 function bioSyncButton() {
   const b = $('imp-bio-toggle'); if (!b) return;
-  const A = bioAuto;
-  if (!A.dual || !A.willSpeak) { b.classList.add('hidden'); return; }
+  const A = bioAuto; const show = A.dual && A.willSpeak;
+  ['imp-bio-back', 'imp-bio-fwd'].forEach((id) => $(id)?.classList.toggle('hidden', !show));
+  if (!show) { b.classList.add('hidden'); return; }
   b.classList.remove('hidden');
-  b.textContent = A.ended ? '↻ Rejouer' : (A.paused ? '▶ Reprise' : '⏸ Arrêt');
+  b.innerHTML = A.ended ? `${BIO_ICON.replay} Rejouer` : (A.paused ? `${BIO_ICON.play} Reprise` : `${BIO_ICON.pause} Arrêt`);
 }
+// v164c : « télécommande » façon vidéo — la voix ne sait pas sauter à un endroit précis, on la relance donc au début de la
+// phrase voulue (la position du défilement et l'image suivent aussitôt, puisqu'elles sont calculées d'après la voix).
+function bioSentenceStarts(plain) {
+  const starts = [0]; const re = /[.!?…]["»”)]*\s+|\n+/g; let m;
+  while ((m = re.exec(plain))) { const p = m.index + m[0].length; if (p < plain.length) starts.push(p); }
+  return starts;
+}
+function bioSpeakFrom(offset) {
+  const A = bioAuto; if (!A.parsed) return;
+  const plain = A.parsed.plain; offset = Math.max(0, Math.min(plain.length - 1, offset));
+  A.sid++; const sid = A.sid;
+  A.baseFrac = offset / Math.max(1, plain.length);
+  A.frac = A.baseFrac; A.gotBoundary = false; A.gotBoundaryOrSpoke = false; A.startT = performance.now();
+  A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0;
+  $('imp-bio-split')?.classList.add('bio-film');
+  try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch (e) { /* ignoré */ }
+  bioSyncButton();
+  impSpeak(plain.slice(offset), undefined, A.force, {
+    onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
+    onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundary = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.frac = bioAuto.baseFrac + Math.min(1, ci / bioAuto.spokenLen) * (1 - bioAuto.baseFrac); },
+    onStop: () => {
+      if (sid !== bioAuto.sid) return;
+      bioAuto.speaking = false;
+      if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); }
+    },
+  });
+}
+function bioSeek(dir) {
+  const A = bioAuto; if (!A.dual || !A.parsed) return;
+  const starts = bioSentenceStarts(A.parsed.plain);
+  const cur = A.ended ? A.parsed.plain.length : A.frac * A.parsed.plain.length;
+  let target;
+  if (dir < 0) { target = 0; for (const s of starts) { if (s < cur - 45) target = s; else break; } }
+  else { target = starts.find((s) => s > cur + 1); if (target === undefined) return; }
+  bioSpeakFrom(target);
+}
+$('imp-bio-back')?.addEventListener('click', () => bioSeek(-1));
+$('imp-bio-fwd')?.addEventListener('click', () => bioSeek(1));
 $('imp-bio-toggle')?.addEventListener('click', () => {
   const A = bioAuto; if (!A.dual) return;
   if (A.ended) { if (A.work) openImpArtistBio(A.work, A.force); return; }
@@ -11910,6 +11954,7 @@ function openImpArtistBio(work, force) {
   if (textEl) bioAutoStart(parsedBio, baseRef, baseCap, willSpeak);
   bioAuto.shownRef = baseRef || '';
   bioSyncButton();
+  bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
   if (work.bio) {
     bioAuto.rate = 0.72;
     const sid = bioAuto.sid;
