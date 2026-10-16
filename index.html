@@ -2150,9 +2150,18 @@
         <button type="button" id="credit-popup-close" class="credit-popup-close" aria-label="Fermer" title="Fermer">✕</button>
         <h3 id="credit-popup-title" class="credit-popup-title">Crédits de l'image</h3>
         <dl id="credit-popup-body" class="credit-popup-body"></dl>
-        <a id="credit-popup-more" class="credit-popup-more" href="#" target="_blank" rel="noopener">Page complète sur Wikimedia Commons ↗</a>
+        <a id="credit-popup-more" class="credit-popup-more" href="#" target="_blank" rel="noopener">Fiche complète du fichier (Wikimedia Commons) ›</a>
       </div>
     </div>
-    <script src="app.js?v=383"></script>
+    <div id="credit-sheet" class="credit-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="credit-sheet-title">
+      <div class="credit-sheet-panel">
+        <div class="credit-sheet-head">
+          <h3 id="credit-sheet-title" class="credit-popup-title">Fichier Wikimedia Commons</h3>
+          <button type="button" id="credit-sheet-close" class="credit-sheet-close" aria-label="Fermer cette fiche">✕ Fermer</button>
+        </div>
+        <div class="credit-sheet-scroll"><div id="credit-sheet-body" class="credit-sheet-body"></div></div>
+      </div>
+    </div>
+    <script src="app.js?v=385"></script>
   </body>
 </html>
