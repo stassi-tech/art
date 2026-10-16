@@ -2668,3 +2668,21 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 @media (min-width:1000px) {
   #imp-quiz-grid.imp-bio-open .artwork-card { min-height:calc(100vh - 150px); min-height:calc(100svh - 150px); max-height:none; }
 }
+
+/* ============================================================
+   v164b — bio sur téléphone (et tablette debout) : les mêmes « trois écrans », empilés
+   haut : l'artiste (fixe) · milieu : les images qui se succèdent · bas : le texte qui défile
+   ============================================================ */
+.imp-bio-split.bio-dual.bio-vert { flex-direction:column; }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-photo-col { flex:0 0 33%; padding:0; gap:0; position:relative; justify-content:flex-start; background:#000; }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-slide-col { flex:0 0 30%; padding:0; gap:0; justify-content:flex-start; background:#000; border:0; border-top:1px solid rgba(255,255,255,.12); }
+#imp-bio-slide { }
+.imp-bio-split.bio-dual.bio-vert #imp-bio-slide { width:100%; height:100%; max-width:none; border-radius:0; box-shadow:none; object-fit:contain; background:#000; }
+.imp-bio-split.bio-dual.bio-vert #imp-bio-slide-next { border-radius:0; background:#000; }
+.imp-bio-split.bio-dual.bio-vert.bio-noslide .imp-bio-photo-col { flex:0 0 55%; }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-text-col { flex:1 1 0; min-width:0; min-height:0; padding:8px 16px 6px; }
+.imp-bio-split.bio-dual.bio-vert #imp-bio-split-name { display:none; }
+.imp-bio-split.bio-dual.bio-vert #imp-bio-split-text { font-size:clamp(1.05rem,4.8vw,1.5rem) !important; line-height:1.55 !important; padding-right:0; }
+.imp-bio-split.bio-dual.bio-vert.bio-film #imp-bio-scroll { -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 14%, #000 66%, transparent 100%); mask-image:linear-gradient(to bottom, transparent 0, #000 14%, #000 66%, transparent 100%); }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-controls { padding-top:4px; }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-toggle { font-size:.9rem; padding:6px 20px; }

@@ -11779,8 +11779,8 @@ function bioFrame() {
   const col = A.dual ? $('imp-bio-scroll') : split.querySelector('.imp-bio-text-col');
   const now = performance.now(); const maxScroll = Math.max(0, col.scrollHeight - col.clientHeight);
   const reading = A.speaking && !A.paused && now > A.pauseUntil;
-  const readFrac = A.dual ? 0.55 : 0.3;
-  let lineY = col.scrollTop + col.clientHeight * (A.dual ? 0.55 : 0.35);
+  const lineF = A.dual ? (A.vert ? 0.5 : 0.55) : 0.35; const readFrac = A.dual ? lineF : 0.3;
+  let lineY = col.scrollTop + col.clientHeight * lineF;
   if (A.speaking) {
     let f = A.frac;
     if (!A.gotBoundary && !A.paused && now - A.startT > 1500) f = Math.min(0.98, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen));
@@ -11813,7 +11813,11 @@ function bioAutoStop() {
   $('imp-bio-split-portrait')?.classList.remove('bio-fading'); $('imp-bio-slide')?.classList.remove('bio-fading');
 }
 // v164 (PC) : mise en page « deux écrans » — artiste fixe à gauche, images successives au milieu, texte qui défile à droite.
-function bioWantDual() { return window.innerWidth >= 1000; }
+// 'h' : trois colonnes (PC) ; 'v' : trois étages empilés (téléphone ou tablette tenus debout) ; '' : ancienne mise en page (écran large et bas)
+function bioWantMode() {
+  if (window.innerWidth >= 1000) return 'h';
+  return window.innerHeight >= window.innerWidth * 0.9 ? 'v' : '';
+}
 function bioSetPads() {
   const sc = $('imp-bio-scroll'); if (!sc) return;
   const film = $('imp-bio-split')?.classList.contains('bio-film');
@@ -11863,9 +11867,9 @@ function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
 function openImpArtistBio(work, force) {
   impClearTimers();
   const splitEl = $('imp-bio-split');
-  const dual = bioWantDual();
-  bioAuto.dual = dual; bioAuto.work = work; bioAuto.force = !!force; bioAuto.artistRef = work.artistImage || '';
-  if (splitEl) { splitEl.classList.toggle('bio-dual', dual); splitEl.classList.toggle('bio-film', false); }
+  const mode = bioWantMode(); const dual = !!mode;
+  bioAuto.vert = mode === 'v'; bioAuto.dual = dual; bioAuto.work = work; bioAuto.force = !!force; bioAuto.artistRef = work.artistImage || '';
+  if (splitEl) { splitEl.classList.toggle('bio-dual', dual); splitEl.classList.toggle('bio-vert', mode === 'v'); splitEl.classList.toggle('bio-film', false); }
   const portrait = $('imp-bio-split-portrait');
   if (portrait) {
     if (work.artistImage) { portrait.src = imageSourceSized(work.artistImage, 700); portrait.classList.remove('hidden'); }
@@ -11925,7 +11929,7 @@ function openImpWorkText(work) {
   impClearTimers();
   bioAutoStop();
   bioAuto.dual = false; bioSyncButton();
-  $('imp-bio-split')?.classList.remove('bio-dual', 'bio-film', 'bio-noslide');
+  $('imp-bio-split')?.classList.remove('bio-dual', 'bio-vert', 'bio-film', 'bio-noslide');
   const padT = $('imp-bio-pad-top'), padB = $('imp-bio-pad-bot'); if (padT) padT.style.height = ''; if (padB) padB.style.height = '';
   const img = $('imp-bio-split-portrait');
   if (img) {
