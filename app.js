@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v161';
+const APP_VERSION = 'v162';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -2985,126 +2985,8 @@ function plainTextFromHtml(html) {
   const tmp = document.createElement('div'); tmp.innerHTML = String(html || '');
   return (tmp.textContent || '').replace(/\s+/g, ' ').trim();
 }
-// v154 : les liens « Crédits et licence de l'image » n'ouvrent plus un grand onglet Commons : une fenêtre
-// flottante refermable (✕, clic à côté, Échap) affiche l'auteur, la licence et la source, tirés de l'API
-// Wikimedia Commons ; un lien « Page complète » reste proposé. Si l'API ne répond pas, le lien vers la page
-// Commons est tout de même affiché. Un seul écouteur sur le document couvre tous les jeux, la visionneuse
-// et l'écran de bio (liens de classe .artwork-source-link ou .imp-bio-split-credit).
-const creditPopupCache = {};
-function creditPopupEl(id) { return document.getElementById(id); }
-function closeCreditPopup() { creditPopupEl('credit-popup')?.classList.add('hidden'); }
-function addCreditRow(dl, label, valueText, valueUrl) {
-  if (!valueText) return;
-  const dt = document.createElement('dt'); dt.textContent = label;
-  const dd = document.createElement('dd');
-  if (valueUrl) { const a = document.createElement('a'); a.href = valueUrl; a.target = '_blank'; a.rel = 'noopener'; a.textContent = valueText; dd.appendChild(a); }
-  else dd.textContent = valueText;
-  dl.append(dt, dd);
-}
-function fillCreditPopup(meta) {
-  const dl = creditPopupEl('credit-popup-body'); if (!dl) return;
-  dl.textContent = '';
-  const v = (k) => plainTextFromHtml(meta[k] && meta[k].value);
-  addCreditRow(dl, 'Auteur', v('Artist'));
-  addCreditRow(dl, 'Licence', v('LicenseShortName') || v('UsageTerms'), (meta.LicenseUrl && meta.LicenseUrl.value) || '');
-  addCreditRow(dl, 'Source', v('Credit'));
-  addCreditRow(dl, 'Mention à indiquer', v('Attribution'));
-  addCreditRow(dl, 'Description', (v('ImageDescription') || '').slice(0, 300));
-  if (!dl.children.length) addCreditRow(dl, 'Crédits', 'Les informations de crédit ne sont pas disponibles ici : voir la page complète ci-dessous.');
-}
-function openCreditPopup(pageUrl) {
-  const box = creditPopupEl('credit-popup'); if (!box) { window.open(pageUrl, '_blank', 'noopener'); return; }
-  const fileTitle = decodeURIComponent(pageUrl.split('/wiki/File:')[1] || '').replace(/_/g, ' ');
-  creditPopupEl('credit-popup-more').href = pageUrl;
-  creditPopupEl('credit-popup-title').textContent = fileTitle ? fileTitle.replace(/\.[A-Za-z0-9]+$/, '') : 'Crédits de l\'image';
-  const dl = creditPopupEl('credit-popup-body'); dl.textContent = '';
-  box.classList.remove('hidden');
-  creditPopupEl('credit-popup-close')?.focus();
-  if (!fileTitle) { fillCreditPopup({}); return; }
-  if (creditPopupCache[fileTitle]) { fillCreditPopup(creditPopupCache[fileTitle]); return; }
-  addCreditRow(dl, 'Crédits', 'Chargement…');
-  const api = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=extmetadata&titles=${encodeURIComponent('File:' + fileTitle)}`;
-  fetch(api).then((r) => r.json()).then((data) => {
-    const page = Object.values((data.query && data.query.pages) || {})[0];
-    const meta = (page && page.imageinfo && page.imageinfo[0] && page.imageinfo[0].extmetadata) || {};
-    creditPopupCache[fileTitle] = meta;
-    if (!box.classList.contains('hidden') && creditPopupEl('credit-popup-more').href === pageUrl) fillCreditPopup(meta);
-  }).catch(() => {
-    if (!box.classList.contains('hidden')) { dl.textContent = ''; addCreditRow(dl, 'Crédits', 'Connexion à Wikimedia Commons impossible pour le moment : utilisez le lien ci-dessous.'); }
-  });
-}
-// v160 : deuxième « feuille » posée par-dessus la petite fenêtre des crédits. Wikimedia interdit d'afficher ses pages
-// à l'intérieur d'un autre site (elles ne peuvent pas être « posées » sur la nôtre) ; on reconstruit donc ici la fiche
-// du fichier à partir de l'API publique de Commons : grande image, description complète, auteur, licence, catégories.
-const creditSheetCache = {};
-function closeCreditSheet() { creditPopupEl('credit-sheet')?.classList.add('hidden'); }
-function creditSheetOpen() { const el = creditPopupEl('credit-sheet'); return !!el && !el.classList.contains('hidden'); }
-function fillCreditSheet(pageUrl, fileTitle, info) {
-  const body = creditPopupEl('credit-sheet-body'); if (!body) return;
-  body.textContent = '';
-  const meta = (info && info.extmetadata) || {};
-  const v = (k) => plainTextFromHtml(meta[k] && meta[k].value);
-  const src = info && (info.thumburl || info.url);
-  if (src) {
-    const wrap = document.createElement('div'); wrap.className = 'credit-sheet-imgwrap';
-    const img = document.createElement('img'); img.src = src; img.alt = v('ObjectName') || fileTitle; img.className = 'credit-sheet-img';
-    img.title = 'Toucher pour agrandir / réduire';
-    img.addEventListener('click', () => wrap.classList.toggle('zoom'));
-    wrap.appendChild(img); body.appendChild(wrap);
-    if (info.width && info.height) { const p = document.createElement('p'); p.className = 'credit-sheet-size'; p.textContent = `Fichier d'origine : ${info.width} × ${info.height} px`; body.appendChild(p); }
-  }
-  const dl = document.createElement('dl'); dl.className = 'credit-popup-body';
-  addCreditRow(dl, 'Description', v('ImageDescription'));
-  addCreditRow(dl, 'Date', v('DateTimeOriginal') || v('DateTime'));
-  addCreditRow(dl, 'Auteur', v('Artist'));
-  addCreditRow(dl, 'Source', v('Credit'));
-  addCreditRow(dl, 'Licence', v('LicenseShortName') || v('UsageTerms'), (meta.LicenseUrl && meta.LicenseUrl.value) || '');
-  addCreditRow(dl, 'Mention à indiquer', v('Attribution'));
-  const cats = (v('Categories') || '').split('|').map((c) => c.trim()).filter(Boolean).slice(0, 12).join(' · ');
-  addCreditRow(dl, 'Catégories', cats);
-  if (!dl.children.length) addCreditRow(dl, 'Fiche', 'Les informations de ce fichier ne sont pas disponibles ici.');
-  body.appendChild(dl);
-  const a = document.createElement('a'); a.className = 'credit-popup-more'; a.href = pageUrl; a.target = '_blank'; a.rel = 'noopener';
-  a.textContent = 'Ouvrir la page sur Wikimedia Commons (nouvel onglet) ↗'; body.appendChild(a);
-}
-function openCreditSheet(pageUrl) {
-  const sheet = creditPopupEl('credit-sheet'); if (!sheet) { window.open(pageUrl, '_blank', 'noopener'); return; }
-  const fileTitle = decodeURIComponent(pageUrl.split('/wiki/File:')[1] || '').replace(/_/g, ' ');
-  creditPopupEl('credit-sheet-title').textContent = fileTitle ? fileTitle.replace(/\.[A-Za-z0-9]+$/, '') : 'Fichier Wikimedia Commons';
-  const body = creditPopupEl('credit-sheet-body'); body.textContent = 'Chargement…';
-  sheet.classList.remove('hidden');
-  creditPopupEl('credit-sheet-close')?.focus();
-  const scroller = sheet.querySelector('.credit-sheet-scroll'); if (scroller) scroller.scrollTop = 0;
-  if (!fileTitle) { fillCreditSheet(pageUrl, '', {}); return; }
-  if (creditSheetCache[fileTitle]) { fillCreditSheet(pageUrl, fileTitle, creditSheetCache[fileTitle]); return; }
-  const api = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=extmetadata|url|size&iiurlwidth=1400&titles=${encodeURIComponent('File:' + fileTitle)}`;
-  fetch(api).then((r) => r.json()).then((data) => {
-    const page = Object.values((data.query && data.query.pages) || {})[0];
-    const info = (page && page.imageinfo && page.imageinfo[0]) || {};
-    creditSheetCache[fileTitle] = info;
-    if (creditSheetOpen() && creditPopupEl('credit-sheet-title').textContent === fileTitle.replace(/\.[A-Za-z0-9]+$/, '')) fillCreditSheet(pageUrl, fileTitle, info);
-  }).catch(() => {
-    if (creditSheetOpen()) { body.textContent = ''; const p = document.createElement('p'); p.textContent = 'Connexion à Wikimedia Commons impossible pour le moment.'; body.appendChild(p);
-      const a = document.createElement('a'); a.className = 'credit-popup-more'; a.href = pageUrl; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Ouvrir la page sur Wikimedia Commons ↗'; body.appendChild(a); }
-  });
-}
-document.addEventListener('click', (e) => {
-  const a = e.target.closest && e.target.closest('a.artwork-source-link, a.imp-bio-split-credit');
-  // v161 : plus de petite fenêtre intermédiaire : un clic sur « crédits » ouvre directement la fiche (une seule fermeture)
-  if (a && /commons\.wikimedia\.org\/wiki\/File:/.test(a.href)) { e.preventDefault(); openCreditSheet(a.href); return; }
-  const more = e.target.closest && e.target.closest('#credit-popup-more');
-  if (more && /commons\.wikimedia\.org\/wiki\/File:/.test(more.href)) { e.preventDefault(); openCreditSheet(more.href); return; }
-  const sheet = creditPopupEl('credit-sheet');
-  if (sheet && !sheet.classList.contains('hidden') && (e.target === sheet || e.target.closest('#credit-sheet-close'))) { closeCreditSheet(); return; }
-  const box = creditPopupEl('credit-popup');
-  if (box && !box.classList.contains('hidden') && (e.target === box || e.target.closest('#credit-popup-close'))) closeCreditPopup();
-}, true);
-document.addEventListener('keydown', (e) => {
-  if (creditSheetOpen()) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCreditSheet(); } return; }
-  const box = creditPopupEl('credit-popup');
-  if (!box || box.classList.contains('hidden')) return;
-  if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); closeCreditPopup(); }
-}, true);
+// v162 : les liens « Crédits et licence de l'image ↗ » s'ouvrent directement sur la page Wikimedia Commons, dans un nouvel onglet
+// (ils ont target="_blank" ; plus de fenêtre ni de fiche intermédiaire).
 function showImpBioCredit(imageRef) {
   const link = $('imp-bio-split-credit'); const text = $('imp-bio-split-credit-text');
   if (!link || !text) return;
