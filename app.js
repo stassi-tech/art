@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v156';
+const APP_VERSION = 'v158';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -1877,6 +1877,9 @@ const PRONUNCIATION_FIXES = {
   'emmaüs': 'émaûs', // v152 (atelier 16 oct)
   'emmaus': 'émaûs', // v152 (atelier 16 oct)
   'thomas ball': 'thomas bwôle', // v152 (atelier 16 oct)
+  // v157 : expression anglaise (portraits de famille). Seule l'EXPRESSION est réécrite : le mot « conversation » seul,
+  // en français, n'est pas touché. Le * couvre aussi « conversation pieces » (la fin « s » est conservée).
+  'conversation piece*': 'konveuséïchenne pîce',
   'sœur': 'seur',
   'werefkin': 'werefkine',
   'coysevox': 'cozevo',
@@ -2149,6 +2152,31 @@ function currentPronunciationOverrides() {
     return hit ? PRONUNCIATION_BY_VOICE[hit] : null;
   } catch (e) { return null; }
 }
+// v158 (retour Stéphane : « la voix insiste sur le deuxième chiffre d'une date : 1810 devient 188810 ») :
+// on écrit les années EN TOUTES LETTRES avant de parler (1810 → « mille huit cent dix »). La voix lit alors
+// des mots ordinaires au lieu de décoder une suite de chiffres, ce qui supprime l'accent sur le 2ᵉ chiffre.
+const FR_UNITS = ['zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize'];
+const FR_TENS = { 2: 'vingt', 3: 'trente', 4: 'quarante', 5: 'cinquante', 6: 'soixante' };
+function frBelow100(n) {
+  if (n < 17) return FR_UNITS[n];
+  if (n < 20) return 'dix-' + FR_UNITS[n - 10];
+  if (n < 70) {
+    const t = Math.floor(n / 10), u = n % 10;
+    return FR_TENS[t] + (u === 0 ? '' : u === 1 ? ' et un' : '-' + FR_UNITS[u]);
+  }
+  if (n < 80) return 'soixante' + (n === 71 ? ' et onze' : '-' + frBelow100(n - 60));
+  return n === 80 ? 'quatre-vingt' : 'quatre-vingt-' + frBelow100(n - 80);
+}
+function frBelow1000(n) {
+  const c = Math.floor(n / 100), r = n % 100;
+  const head = c === 0 ? '' : c === 1 ? 'cent' : FR_UNITS[c] + ' cent';
+  return [head, r ? frBelow100(r) : ''].filter(Boolean).join(' ');
+}
+function frYearInWords(y) {
+  const r = y % 1000;
+  const head = y >= 2000 ? 'deux mille' : 'mille';
+  return head + (r ? ' ' + frBelow1000(r) : '');
+}
 function fixSpeechPronunciation(text) {
   // Le texte entre parenthèses (ex. un nom de musée alternatif) reste utile à l'écran mais
   // alourdit la lecture à voix haute : on le retire ici, avant toute autre correction, pour que
@@ -2170,6 +2198,10 @@ function fixSpeechPronunciation(text) {
   // \p{L}\p{N} à la place, qui couvrent aussi les lettres accentuées.
   const NB = '(?<![\\p{L}\\p{N}])';
   const NA = '(?![\\p{L}\\p{N}])';
+  // années (1000-2099) en toutes lettres ; on laisse tels quels les nombres décimaux (1.810, 1,5)
+  // deux années reliées par un tiret (1810-1850) : « de … à … » plutôt que « dix-mille huit cent… »
+  out = out.replace(/(?<![\p{L}\p{N}])(1\d{3}|20\d{2})\s*[-–—]\s*(1\d{3}|20\d{2})(?![\p{L}\p{N}])/gu, '$1 à $2');
+  out = out.replace(/(?<![\p{L}\p{N}])(?<!\d[.,])(1\d{3}|20\d{2})(?![\p{L}\p{N}])(?![.,]\d)/gu, (m, y) => frYearInWords(Number(y)));
   out = out.replace(new RegExp(`${NB}[A-ZÀ-Ý]{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
   Object.entries(NATIONALITY_AWARE_FIXES).forEach(([wrong, { exceptFor, otherwise }]) => {
     if (exceptFor.test(currentSpeechNationality)) return; // nationalité exceptée : on ne touche pas
