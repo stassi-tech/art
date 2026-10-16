@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v162';
+const APP_VERSION = 'v163';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -2201,8 +2201,19 @@ function fixSpeechPronunciation(text) {
   const NB = '(?<![\\p{L}\\p{N}])';
   const NA = '(?![\\p{L}\\p{N}])';
   // années (1000-2099) en toutes lettres ; on laisse tels quels les nombres décimaux (1.810, 1,5)
-  // deux années reliées par un tiret (1810-1850) : « de … à … » plutôt que « dix-mille huit cent… »
-  out = out.replace(/(?<![\p{L}\p{N}])(1\d{3}|20\d{2})\s*[-–—]\s*(1\d{3}|20\d{2})(?![\p{L}\p{N}])/gu, '$1 à $2');
+  // v163 (retour Stéphane : « peint en 1773, 1774 : ça fait sec ») : deux années qui se suivent ou reliées par un tiret se disent
+  // naturellement : « en 1773-1774 » → « entre 1773 et 1774 », « de 1810-1850 » → « de 1810 à 1850 »,
+  // « vers 1773-74 » → « vers 1773 ou 1774 ». Avec une virgule, seulement si les deux années se suivent (1773, 1774).
+  out = out.replace(/(?<![\p{L}\p{N}.,])(?:(en|de|du|vers|environ|autour de|entre|depuis)\s+)?(1\d{3}|20\d{2})(\s*[-–—\/]\s*|,\s+)(1\d{3}|20\d{2}|\d{2})(?![\p{L}\p{N}])(?![.,]\d)/giu, (m, prep, a, sep, bRaw) => {
+    const y1 = Number(a); let y2 = Number(bRaw);
+    if (bRaw.length === 2) y2 = Math.floor(y1 / 100) * 100 + y2;
+    const isComma = sep.includes(',');
+    if (y2 <= y1 || (isComma && y2 - y1 !== 1)) return m;
+    const p = (prep || '').toLowerCase();
+    if (p === 'de' || p === 'du' || p === 'depuis') return `${prep} ${y1} à ${y2}`;
+    if (p === 'vers' || p === 'environ' || p === 'autour de') return `${prep} ${y1} ou ${y2}`;
+    return `entre ${y1} et ${y2}`;
+  });
   out = out.replace(/(?<![\p{L}\p{N}])(?<!\d[.,])(1\d{3}|20\d{2})(?![\p{L}\p{N}])(?![.,]\d)/gu, (m, y) => frYearInWords(Number(y)));
   out = out.replace(new RegExp(`${NB}[A-ZÀ-Ý]{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
   Object.entries(NATIONALITY_AWARE_FIXES).forEach(([wrong, { exceptFor, otherwise }]) => {
@@ -11291,13 +11302,21 @@ function impClearTimers() { impRunId++; impTimers.forEach(clearTimeout); impTime
 // utilisé pour enchaîner les segments de la référence avec un vrai silence entre eux (voir
 // impShowCurrent). Le filet de sécurité (setTimeout) couvre les navigateurs/voix où onend ne se
 // déclenche pas de façon fiable.
-function impSpeak(text, onEnd, force) {
+function impSpeak(text, onEnd, force, opts) {
   // v129 : un clic sur un haut-parleur est une demande explicite d'écoute : il passe outre l'interrupteur son général.
   if ((!impAudioOn && !force) || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
   u.lang = 'fr-FR'; u.rate = 0.72; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (impSelectedVoice) u.voice = impSelectedVoice;
+  // v163 : suivi de la lecture (bio) — position de la voix dans le texte, pour faire défiler le texte et changer d'image.
+  if (opts && opts.onProgress) {
+    const spokenLen = u.text.length;
+    u.onboundary = (ev) => { if (typeof ev.charIndex === 'number') opts.onProgress(ev.charIndex, spokenLen); };
+    u.onstart = () => { if (opts.onStart) opts.onStart(spokenLen, u.rate); };
+    u.onend = () => { if (opts.onStop) opts.onStop(); };
+    u.onerror = () => { if (opts.onStop) opts.onStop(); };
+  }
   if (onEnd) {
     let done = false;
     const myRun = impRunId; const myEpoch = speechEpoch;
@@ -11666,6 +11685,144 @@ function impShowFlowImage(url, label) {
 // automatique pendant que la bio est ouverte (impClearTimers) — sinon l'image du lieu/de l'ensemble
 // pourrait basculer PENDANT la lecture de la bio, invisible sous ce nouvel écran mais reprenant à
 // un moment incohérent une fois refermé.
+// ============================================================
+// v163 — BIOS : texte qui défile tout seul en suivant la voix + diaporama d'images piloté par des balises.
+// Dans le texte de la bio (fichier maître, onglet Bio) on peut écrire, à l'endroit où l'image doit changer :
+//     [image: lien Wikimedia Commons]            ou          [image: lien | légende affichée sous l'image]
+// La balise n'est ni affichée ni lue. L'image change quand la lecture (ou le doigt) arrive à cet endroit.
+// ============================================================
+const BIO_TAG_RE = /\[\s*(?:image|img)\s*:\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]/gi;
+function parseBioMarkup(text) {
+  const src = String(text || '');
+  let plain = ''; const marks = []; let last = 0; let m;
+  BIO_TAG_RE.lastIndex = 0;
+  while ((m = BIO_TAG_RE.exec(src))) {
+    plain += src.slice(last, m.index);
+    let end = m.index + m[0].length;
+    // balise seule sur sa ligne : on retire aussi le saut de ligne qui la suit ; sinon, les espaces qui la suivent
+    const before = plain.endsWith('\n') || plain === '';
+    if (before && /^[ \t]*\n/.test(src.slice(end))) end += src.slice(end).match(/^[ \t]*\n/)[0].length;
+    else end += src.slice(end).match(/^[ \t]*/)[0].length;
+    marks.push({ offset: plain.length, ref: m[1].trim(), caption: (m[2] || '').trim() });
+    last = end; BIO_TAG_RE.lastIndex = end;
+  }
+  plain += src.slice(last);
+  return { plain, marks };
+}
+const bioAuto = { active: false, speaking: false, marks: [], plainLen: 0, spokenLen: 0, startT: 0, gotBoundary: false, frac: 0,
+  pauseUntil: 0, raf: 0, rate: 0.72, curIdx: -2, baseRef: '', baseCap: '', nodes: [], shownRef: '', fading: false, pending: null, fadeTimer: 0, userMoved: false };
+function bioRender(textEl, parsed) {
+  textEl.textContent = '';
+  bioAuto.nodes = [];
+  let pos = 0;
+  const addText = (str) => { if (!str) return; const n = document.createTextNode(str); textEl.appendChild(n); bioAuto.nodes.push({ node: n, start: pos, end: pos + str.length }); pos += str.length; };
+  let cursor = 0;
+  parsed.marks.forEach((mk) => {
+    addText(parsed.plain.slice(cursor, mk.offset)); cursor = mk.offset;
+    const sp = document.createElement('span'); sp.className = 'imp-bio-mark'; sp.setAttribute('aria-hidden', 'true'); textEl.appendChild(sp); mk.el = sp;
+  });
+  addText(parsed.plain.slice(cursor));
+}
+// position verticale (dans le contenu défilant) d'un caractère du texte
+function bioYForOffset(col, off) {
+  const nodes = bioAuto.nodes; if (!nodes.length) return 0;
+  const colTop = col.getBoundingClientRect().top - col.scrollTop;
+  let target = nodes[nodes.length - 1], local = target.node.length;
+  for (const n of nodes) { if (off <= n.end) { target = n; local = Math.max(0, Math.min(n.node.length, off - n.start)); break; } }
+  const r = document.createRange(); r.setStart(target.node, local); r.setEnd(target.node, Math.min(target.node.length, local + 1));
+  const rects = r.getClientRects(); const rc = rects.length ? rects[0] : r.getBoundingClientRect();
+  return rc.top - colTop;
+}
+// Changement d'image en FONDU ENCHAÎNÉ (même principe que les lieux / sous-lieux d'Imprégnation, impShowFlowImage) :
+// la nouvelle image (#imp-bio-split-portrait-next, posée exactement sur la première) apparaît par-dessus pendant que
+// l'ancienne s'efface ; une fois le fondu fini, la première reprend la nouvelle image et la seconde se retire.
+const BIO_FADE_MS = 1600; // doit correspondre à la durée de transition en CSS
+function bioShowImage(ref, caption) {
+  const img = $('imp-bio-split-portrait'); const nx = $('imp-bio-split-portrait-next'); if (!img || !ref) return;
+  const cap = $('imp-bio-split-caption');
+  if (bioAuto.shownRef === ref) { if (cap) cap.textContent = caption || ''; return; }
+  if (bioAuto.fading) { bioAuto.pending = { ref, caption }; return; }
+  if (!nx) { img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; if (cap) cap.textContent = caption || ''; showImpBioCredit(ref); return; }
+  bioAuto.fading = true; bioAuto.shownRef = ref;
+  const src = imageSourceSized(ref, 900);
+  const finish = () => {
+    // la première image reprend la nouvelle, sans transition, puis on retire la seconde : aucun instant de vide
+    img.style.transition = 'none'; nx.style.transition = 'none';
+    img.classList.remove('bio-fading'); nx.classList.remove('bio-next-on'); nx.classList.add('hidden');
+    void img.offsetWidth; img.style.transition = ''; nx.style.transition = '';
+    bioAuto.fading = false;
+    if (bioAuto.pending) { const p = bioAuto.pending; bioAuto.pending = null; bioShowImage(p.ref, p.caption); }
+  };
+  const run = () => {
+    if (!bioAuto.fading) return;
+    nx.style.left = img.offsetLeft + 'px'; nx.style.top = img.offsetTop + 'px'; nx.style.width = img.offsetWidth + 'px'; nx.style.height = img.offsetHeight + 'px';
+    nx.classList.remove('hidden'); void nx.offsetWidth;
+    nx.classList.add('bio-next-on'); img.classList.add('bio-fading');
+    if (cap) cap.textContent = caption || ''; showImpBioCredit(ref);
+    bioAuto.fadeTimer = setTimeout(() => {
+      img.onload = finish; img.onerror = finish; img.src = src;
+      if (img.complete && img.naturalWidth) finish();
+    }, BIO_FADE_MS);
+  };
+  nx.onload = run; nx.onerror = run; nx.src = src;
+  if (nx.complete && nx.naturalWidth) { nx.onload = null; run(); }
+}
+function bioFrame() {
+  const A = bioAuto; const split = $('imp-bio-split');
+  if (!A.active || !split || split.classList.contains('hidden')) { A.active = false; A.raf = 0; return; }
+  const col = split.querySelector('.imp-bio-text-col');
+  const now = performance.now(); const maxScroll = Math.max(0, col.scrollHeight - col.clientHeight);
+  const reading = A.speaking && now > A.pauseUntil;
+  let lineY = col.scrollTop + col.clientHeight * 0.35;
+  if (A.speaking) {
+    let f = A.frac;
+    if (!A.gotBoundary && now - A.startT > 1500) f = Math.min(0.98, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen));
+    const readY = bioYForOffset(col, f * A.plainLen);
+    if (reading) {
+      if (maxScroll > 0) {
+        const target = Math.max(0, Math.min(maxScroll, readY - col.clientHeight * 0.3)); const diff = target - col.scrollTop;
+        col.scrollTop = Math.abs(diff) < 0.6 ? target : col.scrollTop + diff * 0.08;
+      }
+      lineY = readY + 4;
+    }
+  }
+  // image courante = dernière balise située au-dessus de la ligne de lecture ; une fois la voix terminée, on garde la
+  // dernière image affichée tant que vous n'avez pas fait défiler vous-même le texte
+  if (!A.speaking && !A.userMoved && A.gotBoundaryOrSpoke) { A.raf = requestAnimationFrame(bioFrame); return; }
+  let idx = -1; const colTop = col.getBoundingClientRect().top - col.scrollTop;
+  A.marks.forEach((mk, i) => { if (mk.el && mk.el.getBoundingClientRect().top - colTop <= lineY) idx = i; });
+  if (idx !== A.curIdx) {
+    A.curIdx = idx;
+    if (idx >= 0) bioShowImage(A.marks[idx].ref, A.marks[idx].caption);
+    else if (A.baseRef) bioShowImage(A.baseRef, A.baseCap);
+  }
+  A.raf = requestAnimationFrame(bioFrame);
+}
+function bioAutoStop() {
+  bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
+  clearTimeout(bioAuto.fadeTimer); bioAuto.fading = false; bioAuto.pending = null;
+  const nx = $('imp-bio-split-portrait-next'); if (nx) { nx.classList.remove('bio-next-on'); nx.classList.add('hidden'); }
+  $('imp-bio-split-portrait')?.classList.remove('bio-fading');
+}
+function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
+  bioAutoStop();
+  Object.assign(bioAuto, { marks: parsed.marks, plainLen: parsed.plain.length, spokenLen: Math.max(1, parsed.plain.length), frac: 0, gotBoundary: false,
+    startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false });
+  parsed.marks.forEach((mk) => { try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); } catch (e) { /* ignoré */ } });
+  const col = $('imp-bio-split')?.querySelector('.imp-bio-text-col'); if (col) col.scrollTop = 0;
+  bioAuto.raf = requestAnimationFrame(bioFrame);
+}
+(function wireBioScrollPause() {
+  const col = () => $('imp-bio-split')?.querySelector('.imp-bio-text-col');
+  ['touchstart', 'wheel', 'pointerdown'].forEach((ev) => document.addEventListener(ev, (e) => {
+    const c = col(); if (c && bioAuto.active && c.contains(e.target)) { bioAuto.pauseUntil = performance.now() + 6000; bioAuto.userMoved = true; }
+  }, { passive: true }));
+  $('imp-bio-split-portrait')?.addEventListener('click', () => {
+    const img = $('imp-bio-split-portrait'); if (!img || img.classList.contains('hidden')) return;
+    const ref = bioAuto.curIdx >= 0 && bioAuto.marks[bioAuto.curIdx] ? bioAuto.marks[bioAuto.curIdx].ref : bioAuto.baseRef;
+    if (ref) openLightboxImage(ref, ($('imp-bio-split-caption') || {}).textContent || '');
+  });
+})();
 function openImpArtistBio(work, force) {
   impClearTimers();
   const portrait = $('imp-bio-split-portrait');
@@ -11682,7 +11839,8 @@ function openImpArtistBio(work, force) {
   if (nameEl) nameEl.textContent = formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
   const bioText = work.bio || 'Aucune biographie n’est encore disponible pour cet artiste.';
   const textEl = $('imp-bio-split-text');
-  if (textEl) textEl.textContent = bioText;
+  const parsedBio = parseBioMarkup(bioText);
+  if (textEl) bioRender(textEl, parsedBio);
   $('imp-bio-split')?.classList.remove('hidden');
   // v81 (retour Stéphane, capture d'écran de la bio de Giambologna : « la référence de l'œuvre à
   // droite doit disparaître, ça permettra au texte de se déployer davantage ») : #imp-quiz-grid
@@ -11690,11 +11848,21 @@ function openImpArtistBio(work, force) {
   // #imp-correction-details, qui n'a plus sa place une fois la bio ouverte — remis en place par
   // closeImpArtistBio ci-dessous, jamais ailleurs, donc jamais oublié en sortant de la bio.
   $('imp-quiz-grid')?.classList.add('imp-bio-open');
-  if (work.bio) impSpeak(work.bio, undefined, force);
+  const willSpeak = !!work.bio && (impAudioOn || !!force) && !!window.speechSynthesis;
+  if (textEl) bioAutoStart(parsedBio, work.artistImage, work.artistImageCaption || '', willSpeak);
+  if (work.bio) {
+    bioAuto.rate = 0.72;
+    impSpeak(parsedBio.plain, undefined, force, {
+      onStart: (spokenLen, rate) => { bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
+      onProgress: (ci, spokenLen) => { bioAuto.gotBoundary = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.frac = Math.min(1, ci / bioAuto.spokenLen); },
+      onStop: () => { bioAuto.speaking = false; },
+    });
+  }
 }
 // v129 : même écran partagé que la bio, mais avec l'image de l'œuvre à gauche et son texte (première personne) à droite.
 function openImpWorkText(work) {
   impClearTimers();
+  bioAutoStop();
   const img = $('imp-bio-split-portrait');
   if (img) {
     if (work.image) { img.src = imageSourceSized(work.image, 900); img.classList.remove('hidden'); }
@@ -11712,6 +11880,7 @@ function openImpWorkText(work) {
   impSpeak(work.workText, undefined, true);
 }
 function closeImpArtistBio() {
+  bioAutoStop();
   $('imp-bio-split')?.classList.add('hidden');
   $('imp-quiz-grid')?.classList.remove('imp-bio-open');
   speechSynthesis.cancel();

@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=279" />
+    <link rel="stylesheet" href="style.css?v=280" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -736,6 +736,7 @@
                   <button type="button" class="modal-close-x" id="imp-bio-split-close" aria-label="Fermer" title="Fermer">✕</button>
                   <div class="imp-bio-photo-col">
                     <img id="imp-bio-split-portrait" class="imp-bio-split-portrait hidden" alt="" />
+                    <img id="imp-bio-split-portrait-next" class="imp-bio-split-portrait-next hidden" alt="" aria-hidden="true" />
                     <span id="imp-bio-split-caption" class="imp-bio-split-caption"></span>
                     <a id="imp-bio-split-credit" class="imp-bio-split-credit hidden" href="#" target="_blank" rel="noopener">Crédits et licence de l'image ↗<span id="imp-bio-split-credit-text" class="imp-bio-split-credit-text"></span></a>
                   </div>
@@ -2145,6 +2146,6 @@
     <!-- v154 (Stéphane : « les crédits dans une fenêtre pop-up refermable, pas une grande fenêtre ») :
          fenêtre flottante affichée par-dessus l'exercice quand on clique sur « Crédits et licence de
          l'image ». Remplie par openCreditPopup (app.js) à partir de l'API Wikimedia Commons. -->
-    <script src="app.js?v=387"></script>
+    <script src="app.js?v=388"></script>
   </body>
 </html>
