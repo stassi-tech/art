@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v167';
+const APP_VERSION = 'v168';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -2088,7 +2088,89 @@ const PRONUNCIATION_FIXES = {
   'institute of arts': 'Institute of Artz', // v152 (atelier 16 oct, validé à l'oreille)
   'rijksmuseum': 'riksmûseom', // v152 (atelier 16 oct, validé à l'oreille)
   'canaletto': 'kanâlétto', // v155 (atelier 16 oct, validé à l'oreille)
+  // v168 : « Médicis » (avec accent, comme dans les textes) : sans écriture commune, l'écriture propre à certaines voix ne s'appliquerait pas.
+  'médicis': 'Médicis',
+  'medicis': 'Medicis',
   'salute': 'salouté', // v155 (atelier 16 oct, validé à l'oreille)
+  // v168 (atelier de prononciation, export du 16 oct 21:51) : écritures communes à toutes les voix. La dernière écriture
+  // d'une même clé l'emporte ; les écritures propres à une voix sont dans PRONUNCIATION_BY_VOICE plus bas.
+  'adam': 'Adan',
+  'algardi': 'Âl-gardi',
+  'ambrogio lorenzetti': 'ambbrogio loréndzéti',
+  'angelico': 'Anddgéliko',
+  'arcimboldo': 'archimmeboldo',
+  'atkins': 'atkiinnse',
+  'bandini': 'bândini',
+  'barocci': 'barottchi',
+  'benci': 'Béntchi',
+  'bernini': 'bêrnini',
+  'berruguete': 'bèrrouguété',
+  'boccioni': 'botchyoni',
+  'bocklin': 'beuklinne',
+  'borghese': 'borguêzze',
+  'buoninsegna': 'Bwoninneségna',
+  'ca\'d\'oro': 'ka\'dôro',
+  'ca\'rezzonico': 'ka\'rrétzzonico',
+  'caceres': 'Cassérèsse',
+  'caliban': 'Calibant',
+  'campione': 'campionné',
+  'canaletto': 'kanâlétto',
+  'carle van loo': 'carle vaN lô',
+  'carlyle': 'CarlâÏlle',
+  'chassériau': 'Chassériau',
+  'cimabue': 'Tchimaboué',
+  'cione': 'tchiôné',
+  'cosmè': 'Kossmè',
+  'cumes': 'cûmes',
+  'damián forment': 'damianne formente',
+  'duccio': 'Doutchio',
+  'emmaüs': 'émaûs',
+  'epsom': 'éppsomm',
+  'escorial': 'Esskôrial',
+  'fine': 'Faillne',
+  'firenze': 'Firennzé',
+  'flaxman': 'flaksmane',
+  'fountain': 'fwaontène',
+  'francesca': 'Frantchésska',
+  'gentile': 'Génntilé',
+  'gentileschi': 'djéntilésski',
+  'gibson': 'gibssone',
+  'giobbe': 'djiobbé',
+  'gismonda': 'DjismonDa',
+  'guglielmo': 'goulyélmo',
+  'haussmann': 'Hossmann',
+  'institute of arts': 'Institute of Artz',
+  'jacopo': 'djiacopo',
+  'jongkind': 'jonkinde',
+  'juan de pareja': 'rouanne de paréra',
+  'kalf': 'kalfe',
+  'leone': 'léonné',
+  'loggetta': 'lodjêta',
+  'mcneill': 'Macknil',
+  'menabuoi': 'Ménabwôy',
+  'méphistophélès': 'méfistofélesse',
+  'metropolitan': 'métropolitanne',
+  'mochi': 'môki',
+  'oxbow': 'Oksse-bô',
+  'pajarito': 'pararrito',
+  'pollaiolo': 'pollaîyuolo',
+  'poyer': 'Pôyé',
+  'rijksmuseum': 'riksmûseom',
+  'rijn': 'riinne',
+  'salute': 'salouté',
+  'samson': 'sansont',
+  'santa croce': 'Santa Crotché',
+  'schifanoia': 'Skifannôya',
+  'strozzi': 'strotzzi',
+  'tate britain': 'Téte Britenn',
+  'thomas ball': 'thomas bwôle',
+  'tino di camaino': 'tino di kama-ï-no',
+  'titien': 'TISSIEN',
+  'ursins': 'ûrsin',
+  'vecchietta': 'Vékietta',
+  'venise': 'Venis',
+  'vermeer': 'vermère',
+  'vœu': 'veut',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2120,23 +2202,143 @@ const PHONE_PRONUNCIATION = {
   'schwerin': 'Schvéérinne', 'thomas ball': 'thomas bowl', 'venise': 'Veunize', 'vœu': 'veut',
   'cumes': 'cumes', 'élément': 'élément', 'emmaüs': 'emmaüs', 'flaxman': 'flaxman', 'guidi': 'guidi',
   'marmion': 'Mar-mion', 'pollux': 'Pollux', 'sœurs': 'seur',
+  // v168 : l'écriture commune de ces deux mots a changé (atelier du 16 oct 21:51, voix de l'ordinateur) ; les voix du
+  // smartphone gardent celle qui leur convenait jusqu'ici.
+  'adam': 'Adant', 'epsom': 'épsomm',
 };
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
 const PRONUNCIATION_BY_VOICE = {
   'français france': PHONE_PRONUNCIATION,
   'français canada': PHONE_PRONUNCIATION,
-  // Résultats de l'atelier de prononciation (16 oct) : seules les écritures qui diffèrent de la table commune.
+  // v168 : résultats de l'atelier de prononciation (16 oct 21:51), une table par voix, repérée par un morceau de son nom.
+  // Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
+  // Microsoft Hortense - French (France)
   'hortense': {
+    'adam': 'Adant',
+    'arcimboldo': 'archimeboldo',
     'benci': 'BéNtchi',
+    'canaletto': 'kanâléto',
+    'epsom': 'épsomm',
+    'médicis': 'médississe',
+    'medicis': 'médississe',
+    'venise': 'Venîz',
   },
+  // Microsoft Charline Online (Natural) - French (Belgium)
   'charline': {
+    'adam': 'Adant',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
     'giusto di menabuoi': 'djousto di ménabwoille',
     'jongkind': 'jonkinnde',
     'menabuoi': 'Ménabwo-y',
-    'pollaiolo': '', // '' = cette voix lit le mot tel quel
+    'pollaiolo': '',
     'tate britain': 'Tête Britenn',
     'venise': 'Venize',
     'werefkin': 'weréfkine',
+  },
+  // Microsoft Julie - French (France)
+  'julie': {
+    'adam': 'Adant',
+    'arcimboldo': 'archimeboldo',
+    'canaletto': 'kanâléto',
+    'carlyle': 'Carl-aïe-le',
+    'epsom': 'épsomm',
+    'médicis': 'médississe',
+    'medicis': 'médississe',
+    'venise': 'Venîz',
+  },
+  // Microsoft Paul - French (France)
+  'paul': {
+    'adam': 'Adant',
+    'arcimboldo': 'archimeboldo',
+    'canaletto': 'kanâléto',
+    'epsom': 'épsomm',
+    'médicis': 'médississe',
+    'medicis': 'médississe',
+    'venise': 'Venîz',
+  },
+  // Microsoft Gerard Online (Natural) - French (Belgium)
+  'gerard': {
+    'adam': 'Adant',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'tate britain': 'Tétte Britenn',
+    'venise': 'Venîz',
+  },
+  // Microsoft Sylvie Online (Natural) - French (Canada)
+  'sylvie': {
+    'adam': 'Adant',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'venise': 'Venîz',
+  },
+  // Microsoft Jean Online (Natural) - French (Canada)
+  'jean': {
+    'adam': 'Adant',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'venise': 'Venîz',
+  },
+  // Microsoft Antoine Online (Natural) - French (Canada)
+  'antoine': {
+    'adam': 'Adant',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'venise': 'Venîz',
+  },
+  // Microsoft Thierry Online (Natural) - French (Canada)
+  'thierry': {
+    'adam': 'Adant',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'venise': 'Venîz',
+  },
+  // Microsoft Ariane Online (Natural) - French (Switzerland)
+  'ariane': {
+    'adam': 'Adant',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'tate britain': 'Tétte Britenn',
+    'venise': 'Venîz',
+  },
+  // Microsoft Fabrice Online (Natural) - French (Switzerland)
+  'fabrice': {
+    'adam': 'Adant',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'tate britain': 'Tétte Britenn',
+    'venise': 'Venîz',
+  },
+  // Microsoft Denise Online (Natural) - French (France)
+  'denise': {
+    'adam': 'Adant',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'venise': 'Venîz',
+  },
+  // Microsoft Henri Online (Natural) - French (France)
+  'henri': {
+    'adam': 'Adant',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'venise': 'Venîz',
+  },
+  // Microsoft Vivienne Multilingue Online (Natural) - French (France)
+  'vivienne': {
+    'ca\'d\'oro': 'ka\'dôorro',
+    'emmaüs': 'émaüsse',
+    'titien': 'TITIEN',
+  },
+  // Microsoft Rémy Multilingue Online (Natural) - French (France)
+  'rémy': {
+    'ca\'d\'oro': 'ka\'dôorro',
+    'emmaüs': 'émaüsse',
+    'titien': 'TITIEN',
+  },
+  // Microsoft Eloise Online (Natural) - French (France)
+  'eloise': {
+    'emmaüs': 'émaüsse',
+    'venise': 'Venîz',
   },
 };
 function currentPronunciationOverrides() {
