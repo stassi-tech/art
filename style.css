@@ -766,6 +766,12 @@ body.lefty .quiz-grid .answer-card { order:1; }
    ".artwork-card img". */
 #imp-bio-split-portrait { display:block; flex:1 1 0; min-height:0; max-width:100%; width:100%; height:auto; object-fit:contain; border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,.4); }
 .imp-bio-split-caption { font-family:Georgia,"Times New Roman",serif; font-style:italic; font-size:.78rem; color:#c9c9c9; text-align:center; }
+/* v152 : crédits de l'image (portrait ou œuvre) sous la légende, dans l'écran de bio. */
+.imp-bio-split-credit { display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:4px; font-family:Arial,sans-serif; font-size:.72rem; color:#b5b5b5; text-decoration:none; text-align:center; }
+.imp-bio-split-credit:hover { color:#fff; text-decoration:underline; }
+.imp-bio-split-credit.hidden { display:none; }
+.imp-bio-split-credit-text { font-size:.68rem; color:#9a9a9a; }
+.imp-bio-split-credit-text:empty { display:none; }
 .imp-bio-text-col { flex:1; display:flex; flex-direction:column; min-width:0; padding:26px 28px; overflow-y:auto; background:var(--paper); color:var(--ink); }
 /* v81 (retour Stéphane, capture d'écran de la bio de Giambologna) : pendant que la bio est ouverte,
    la colonne de droite (référence de l'œuvre qu'on regardait avant de cliquer sur le nom de

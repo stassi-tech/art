@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v152';
+const APP_VERSION = 'v153';
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
@@ -2904,8 +2904,40 @@ function commonsFilePageUrl(imageUrl) {
   // d'image stockée dans le fichier Excel, qu'il s'agisse du fichier original ou d'une miniature
   // (.../thumb/x/xx/Nom_du_fichier.jpg/1280px-Nom_du_fichier.jpg).
   const match = imageUrl.match(/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+?)(?:\/\d+px-[^/]+)?(?:\?.*)?$/i);
-  if (!match) return null;
-  return `https://commons.wikimedia.org/wiki/File:${match[1]}`;
+  if (match) return `https://commons.wikimedia.org/wiki/File:${match[1]}`;
+  // v152 : adresse déjà celle d'une page Commons (ex. « .../wiki/Creator:X#/media/File:Nom.jpg »).
+  const page = imageUrl.match(/commons\.wikimedia\.org\/.*?File:([^?#&\s]+)/i);
+  return page ? `https://commons.wikimedia.org/wiki/File:${page[1]}` : null;
+}
+// v152 (Stéphane : « dans les images des bios il faut faire apparaître les crédits ») : sous le portrait
+// (ou l'image d'œuvre) de l'écran de bio, on affiche le lien « Crédits et licence de l'image » et, si
+// Wikimedia Commons répond, l'auteur et la licence en clair (« Auteur · Licence »). Si le réseau ou
+// l'API échoue, le lien reste affiché : les crédits ne disparaissent jamais.
+const commonsCreditCache = {};
+function plainTextFromHtml(html) {
+  const tmp = document.createElement('div'); tmp.innerHTML = String(html || '');
+  return (tmp.textContent || '').replace(/\s+/g, ' ').trim();
+}
+function showImpBioCredit(imageRef) {
+  const link = $('imp-bio-split-credit'); const text = $('imp-bio-split-credit-text');
+  if (!link || !text) return;
+  text.textContent = '';
+  const pageUrl = imageRef ? commonsFilePageUrl(String(imageRef)) : null;
+  if (!pageUrl) { link.classList.add('hidden'); return; }
+  link.href = pageUrl; link.classList.remove('hidden');
+  const fileTitle = decodeURIComponent(pageUrl.split('/wiki/File:')[1] || '').replace(/_/g, ' ');
+  if (!fileTitle) return;
+  const apply = (label) => { if (!link.classList.contains('hidden') && link.href === pageUrl) text.textContent = label; };
+  if (commonsCreditCache[fileTitle] !== undefined) { apply(commonsCreditCache[fileTitle]); return; }
+  const api = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=extmetadata&titles=${encodeURIComponent('File:' + fileTitle)}`;
+  fetch(api).then((r) => r.json()).then((data) => {
+    const page = Object.values((data.query && data.query.pages) || {})[0];
+    const meta = (page && page.imageinfo && page.imageinfo[0] && page.imageinfo[0].extmetadata) || {};
+    const author = plainTextFromHtml(meta.Artist && meta.Artist.value);
+    const licence = plainTextFromHtml(meta.LicenseShortName && meta.LicenseShortName.value);
+    const label = [author.length > 80 ? author.slice(0, 77) + '…' : author, licence].filter(Boolean).join(' · ');
+    commonsCreditCache[fileTitle] = label; apply(label);
+  }).catch(() => { commonsCreditCache[fileTitle] = ''; });
 }
 function displayArtworkImage(work, altText, showSourceLink = false) {
   const image = $('artwork-image'); const message = $('image-message'); const source = imageSourceSized(work.image, 900);
@@ -11572,6 +11604,7 @@ function openImpArtistBio(work, force) {
     if (work.artistImage) { portrait.src = imageSourceSized(work.artistImage, 700); portrait.classList.remove('hidden'); }
     else portrait.classList.add('hidden');
   }
+  showImpBioCredit(work.artistImage);
   // Légende du portrait (onglet Images, colonne « Légende 1 ») : petite mention façon cartel de
   // musée sous la photo, absente si le fichier n'en fournit pas pour cet artiste.
   const captionEl = $('imp-bio-split-caption');
@@ -11598,6 +11631,7 @@ function openImpWorkText(work) {
     if (work.image) { img.src = imageSourceSized(work.image, 900); img.classList.remove('hidden'); }
     else img.classList.add('hidden');
   }
+  showImpBioCredit(work.image);
   const captionEl = $('imp-bio-split-caption');
   if (captionEl) captionEl.textContent = [formatArtistDisplayName(work).replace(/<[^>]+>/g, ''), work.date].filter(Boolean).join(', ');
   const nameEl = $('imp-bio-split-name');
