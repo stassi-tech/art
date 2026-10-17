@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v184';
+const APP_VERSION = 'v185';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -11766,11 +11766,21 @@ function impClearTimers() { impRunId++; impTimers.forEach(clearTimeout); impTime
 // utilisé pour enchaîner les segments de la référence avec un vrai silence entre eux (voir
 // impShowCurrent). Le filet de sécurité (setTimeout) couvre les navigateurs/voix où onend ne se
 // déclenche pas de façon fiable.
+// v185 (remarque de Stéphane : « la voix saute après "environnementaliste", juste là où j'ai fait un retour à la ligne ») : les voix en ligne
+// traitent un retour à la ligne comme un changement de paragraphe, et leur compteur de position peut alors se décaler ou repartir à zéro.
+// Pour la voix seulement (jamais pour l'affichage), chaque retour à la ligne est remplacé par UN espace ou UNE virgule : même nombre de
+// caractères, donc la correspondance texte affiché ↔ position de la voix ne change pas ; la pause vient de la ponctuation (point, virgule).
+function bioVoiceFlat(t) {
+  return String(t).replace(/\r/g, ' ').replace(/\n/g, (m, off, str) => {
+    let i = off - 1; while (i >= 0 && /[ \t\u00a0\n\r]/.test(str[i])) i--;
+    return i < 0 || /[.!?…:;,»"”)\]]/.test(str[i]) ? ' ' : ',';
+  });
+}
 function impSpeak(text, onEnd, force, opts) {
   // v129 : un clic sur un haut-parleur est une demande explicite d'écoute : il passe outre l'interrupteur son général.
   if ((!impAudioOn && !force) || !window.speechSynthesis) { if (onEnd) onEnd(); return; }
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(text));
+  const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(opts && opts.onProgress ? bioVoiceFlat(text) : text));
   u.lang = 'fr-FR'; u.rate = 0.72; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (impSelectedVoice) u.voice = impSelectedVoice;
   // v163 : suivi de la lecture (bio) — position de la voix dans le texte, pour faire défiler le texte et changer d'image.
