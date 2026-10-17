@@ -196,8 +196,8 @@ details summary{cursor:pointer;font-weight:600}
       <b>Synchronisation téléphone ⇄ ordinateur</b>
       <span class="st" id="syncState"></span>
       <div id="syncIn" style="display:flex;gap:6px;flex-wrap:wrap">
-        <input type="email" id="syncEmail" placeholder="e-mail du compte Mnemart" autocomplete="email" style="flex:1 1 150px;min-width:0">
-        <input type="password" id="syncPass" placeholder="mot de passe" autocomplete="current-password" style="flex:1 1 110px;min-width:0">
+        <input type="text" id="syncEmail" name="mn-sync-id" inputmode="email" placeholder="e-mail du compte Mnemart" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" style="flex:1 1 150px;min-width:0">
+        <input type="text" id="syncPass" name="mn-sync-cle" placeholder="mot de passe" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" style="flex:1 1 110px;min-width:0;-webkit-text-security:disc;text-security:disc">
         <button id="syncLogin">Se connecter</button>
       </div>
       <div id="syncOut" style="display:none"><button id="syncLogout">Se déconnecter</button></div>
@@ -829,6 +829,13 @@ $('openState').onchange = async (e)=>{
 };
 idbGet('dir').then(async h=>{ if (h) { dirHandle = h; const p = await dirPerm(false); if (p==='granted') { autosave(false); } else setSaveLabel('auth'); } else setSaveLabel('none'); }).catch(()=>setSaveLabel('none'));
 window.addEventListener('beforeunload', ()=>{ if (window.speechSynthesis) speechSynthesis.cancel(); });
+// Aucune proposition « enregistrer comme mot de passe » : tous les champs texte de l'atelier (y compris ceux créés plus
+// tard par l'affichage) sont marqués « ne pas mémoriser ». Les champs de connexion ci-dessus sont des champs texte
+// masqués par un style (et non de vrais champs « mot de passe »), pour que le navigateur ne les prenne pas pour un
+// formulaire de connexion à retenir.
+(function(){const fix=e=>{if(e.tagName==='INPUT'&&(e.type==='text'||e.type==='search')){e.setAttribute('autocomplete','off');e.setAttribute('data-lpignore','true');e.setAttribute('data-1p-ignore','');e.setAttribute('autocapitalize','off');e.setAttribute('spellcheck','false')}};
+const all=r=>r.querySelectorAll&&r.querySelectorAll('input[type=text],input[type=search]').forEach(fix);all(document);
+new MutationObserver(m=>m.forEach(x=>x.addedNodes.forEach(n=>{if(n.nodeType===1){fix(n);all(n)}}))).observe(document.body,{childList:true,subtree:true})})();
 // ===== Synchronisation entre appareils (v2) : compte Mnemart (Firebase) =====
 // Pourquoi : chaque navigateur garde sa propre mémoire (localStorage). On envoie donc l'état dans un document
 // privé du compte (users/<uid>/atelier/etat) et on FUSIONNE à l'arrivée au lieu d'écraser : chaque réglage porte

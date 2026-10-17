@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v170';
+const APP_VERSION = 'v171';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -11941,6 +11941,12 @@ function parseBioMarkup(text) {
     last = end; BIO_TAG_RE.lastIndex = end;
   }
   plain += src.slice(last);
+  // v171 (retour Stéphane : « les guillemets sont détachés, ils se retrouvent seuls sur une ligne ») : dans les textes,
+  // les guillemets français s'écrivent « avec une espace ordinaire » ; au passage à la ligne, le navigateur peut donc
+  // couper juste après « ou juste avant ». On remplace ces espaces par des espaces INSÉCABLES (même longueur de texte :
+  // les repères d'images et le défilement de la lecture ne bougent pas), comme le veut la typographie française.
+  // Même chose avant ; : ! ? (« Un mot ! » ne doit pas laisser le « ! » seul en début de ligne).
+  plain = plain.replace(/(«) /g, '$1\u00a0').replace(/ (»)/g, '\u00a0$1').replace(/ ([;:!?])(?=\s|$)/g, '\u00a0$1');
   return { plain, marks };
 }
 const bioAuto = { active: false, speaking: false, marks: [], plainLen: 0, spokenLen: 0, startT: 0, gotBoundary: false, frac: 0,
