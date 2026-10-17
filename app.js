@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v185';
+const APP_VERSION = 'v187';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -695,7 +695,7 @@ function initProfilePage() {
   if ($('pf-link-ambiance-field')) $('pf-link-ambiance-field').checked = localStorage.getItem('linkAmbianceToField') !== 'false';
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   $('pf-voice').innerHTML = voices.length
-    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    ? '<option value="">Automatique (voix de femme ou d’homme selon l’artiste)</option>' + voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
     : '<option value="">Voix par défaut du système</option>';
   let fieldDefaults = {};
   try { fieldDefaults = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) {}
@@ -1125,6 +1125,31 @@ document.querySelectorAll('.volume-bar').forEach((bar) => {
   });
 });
 renderVolumeBars();
+// v187 (« une voix de femme pour Vigée Le Brun, une voix d'homme pour Cole ») : on ne peut pas imposer une voix précise (chaque appareil a les siennes),
+// mais on peut demander « une voix de femme » ou « une voix d'homme » : le navigateur ne donne pas le sexe d'une voix, on le devine d'après le prénom
+// qui figure dans son nom (Denise, Hortense… / Rémy, Henri, Paul…). Le choix du joueur dans ses réglages passe toujours avant.
+const bioStrip = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const VOICE_FEMALE_RE = /\b(hortense|charline|julie|sylvie|denise|ariane|vivienne|eloise|amelie|audrey|aurelie|marie|celine|brigitte|claire|caroline|sophie|isabelle|catherine|nathalie|francoise|fabienne|josephine|elodie|lucie|chantal|virginie|sandrine)/;
+const VOICE_MALE_RE = /\b(paul|gerard|jean|antoine|thierry|henri|fabrice|rem[iy]|thomas|mathieu|nicolas|bruno|guillaume|olivier|pierre|daniel|maxime|alain|claude|julien|lucas)/;
+const FEMALE_FIRST_RE = /^(elisabeth|elizabeth|isabelle|isabella|marie|maria|mary|artemisia|sofonisba|rosalba|angelica|berthe|suzanne|paula|frida|georgia|lavinia|judith|clara|rosa|kathe|marguerite|margaret|louise|gabrielle|anna|anne|catharina|catherine|elisabetta|giovanna|barbara|dorothea|helen|helene|jeanne|sonia|tamara|leonora|remedios|niki|eva|emily|alice|amelie|charlotte|clemence|claudine|diane|francoise|genevieve|hannah|henriette|irene|josephine|julie|laure|leonie|lucie|madeleine|mathilde|nathalie|olga|pauline|rachel|sophie|therese|valentine|virginie|yvonne|agnes|aurelie|beatrice|bridget|carmen|cecilia|cecile|chiara|christina|cornelia|dora|edith|ellen|emma|esther|fanny|gwen|ida|jacqueline|katharina|kiki|leonor|lotte|lygia|marianne|marlene|martha|meret|michaela|nancy|natalia|orsola|rebecca|sarah|sheila|susanna|tina|ulrike|vanessa|vera)$/;
+function normalizeVoiceGender(raw) {
+  const t = bioStrip(raw).trim(); if (!t) return '';
+  if (/^(f|femme|feminin|feminine|femini|woman|female)/.test(t)) return 'femme';
+  if (/^(h|m|homme|masculin|man|male)/.test(t)) return 'homme';
+  return '';
+}
+function bioInferGender(prenom) {   // '' = pas de préférence (artiste sans prénom : « Le Greco », « Maître de… »)
+  const first = bioStrip(prenom).trim().split(/[\s\-’']+/)[0]; if (!first) return '';
+  return FEMALE_FIRST_RE.test(first) ? 'femme' : 'homme';
+}
+function pickVoiceByGender(g) {
+  if (!window.speechSynthesis || !g) return null;
+  const re = g === 'femme' ? VOICE_FEMALE_RE : VOICE_MALE_RE;
+  const cands = speechSynthesis.getVoices().filter((v) => /^fr/i.test(v.lang) && re.test(bioStrip(v.name)));
+  if (!cands.length) return null;
+  const score = (v) => { const n = bioStrip(v.name); return (/natural/.test(n) ? 3 : 0) + (/online/.test(n) ? 2 : 0) + (/multilingual/.test(n) ? 0.5 : 0) + (/fr-fr|france/.test(bioStrip(v.lang + ' ' + v.name)) ? 0.2 : 0); };
+  return cands.sort((a, b) => score(b) - score(a))[0];
+}
 function getGlobalVoice() {
   if (!window.speechSynthesis) return null;
   const prefs = getGlobalPrefs();
@@ -1137,7 +1162,7 @@ function populateGlobalVoiceSelect() {
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   const prefs = getGlobalPrefs();
   select.innerHTML = voices.length
-    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    ? '<option value="">Automatique (voix de femme ou d’homme selon l’artiste)</option>' + voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
     : '<option value="">Voix par défaut du système</option>';
 }
 speechSynthesis.onvoiceschanged = populateGlobalVoiceSelect;
@@ -2533,7 +2558,7 @@ const PRONUNCIATION_BY_VOICE = {
 function currentPronunciationOverrides() {
   try {
     const norm = (t) => String(t || '').toLowerCase().replace(/[()\-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-    let name = norm((getGlobalPrefs() || {}).voiceName);
+    let name = norm((getGlobalPrefs() || {}).voiceName) || norm(typeof impAutoVoice !== 'undefined' && impAutoVoice ? impAutoVoice.name : '');   // v187 : voix choisie automatiquement
     if (!name) {
       // Aucune voix choisie dans les réglages : sur un téléphone qui n'a que les deux voix françaises,
       // c'est l'une d'elles qui parle, donc on applique leurs réglages.
@@ -2541,7 +2566,7 @@ function currentPronunciationOverrides() {
       if (fr.length && fr.every((v) => PHONE_VOICE_KEYS.some((k) => norm(v.name).includes(k)))) return PHONE_PRONUNCIATION;
       return null;
     }
-    const hit = Object.keys(PRONUNCIATION_BY_VOICE).find((part) => name.includes(part));
+    const nameNA = bioStrip(name); const hit = Object.keys(PRONUNCIATION_BY_VOICE).find((part) => nameNA.includes(bioStrip(part)));   // v187 : sans tenir compte des accents (Rémy / Remy)
     return hit ? PRONUNCIATION_BY_VOICE[hit] : null;
   } catch (e) { return null; }
 }
@@ -2874,6 +2899,7 @@ function normaliseRows(rows) {
     // qui la fusionne dans masterRow sous "Légende de l'artiste", même mécanique que la photo
     // elle-même juste au-dessus (artistImage).
     let artistImageCaption = '';
+    let artistVoice = '';   // v187 : « femme » / « homme » (colonne facultative « Voix » du fichier maître)
     let workText = '';
     const masterRow = findArtistMasterRow(prenom, patronyme, surnomFr);
     if (masterRow) {
@@ -2894,6 +2920,7 @@ function normaliseRows(rows) {
       if (!nationalityKey && masterRow['Nationalité']) nationality = String(masterRow['Nationalité']).trim();
       if (!artistImageKey && masterRow["Image de l'artiste"]) artistImage = String(masterRow["Image de l'artiste"]).trim();
       if (masterRow["Légende de l'artiste"]) artistImageCaption = String(masterRow["Légende de l'artiste"]).trim();
+      { const vk = Object.keys(masterRow).find((k) => String(k).trim().toLowerCase() === 'voix'); if (vk) artistVoice = normalizeVoiceGender(masterRow[vk]); }
       if (masterRow['Bio']) bio = String(masterRow['Bio']).trim();
       // v129 (Stéphane : « pour chaque artiste de niveau 1, l'œuvre emblématique et un petit texte ») : le maître
       // porte, par artiste, le titre de son œuvre emblématique et le texte (à la première personne) qui la raconte.
@@ -2936,7 +2963,7 @@ function normaliseRows(rows) {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, artistImageCaption, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
+      artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
       row: rowIndex + 2
     };
   }).filter((question) => question && (question.image || question.artist || question.date || question.location || question.title));
@@ -11738,7 +11765,7 @@ function impSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20
 function impSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`imp-zone-${z}`)?.checked); }
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
-let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impFieldLabel = '';
+let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impAutoVoice = null, impFieldLabel = '';
 // v76 : horodatage (Date.now()) jusqu'auquel une bascule d'image de case (Lieu/Ensemble) est déjà
 // « réservée » par la précédente — garantit qu'on ne lance jamais un second fondu enchaîné avant que
 // le précédent soit terminé, quelle que soit la vitesse de la voix (remis à zéro à chaque nouvelle
@@ -11783,6 +11810,7 @@ function impSpeak(text, onEnd, force, opts) {
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(opts && opts.onProgress ? bioVoiceFlat(text) : text));
   u.lang = 'fr-FR'; u.rate = 0.72; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (impSelectedVoice) u.voice = impSelectedVoice;
+  if (opts && opts.onSpoken) opts.onSpoken(u.text);   // v186 : le texte réellement lu, pour l'aligner sur le texte affiché
   // v163 : suivi de la lecture (bio) — position de la voix dans le texte, pour faire défiler le texte et changer d'image.
   if (opts && opts.onProgress) {
     const spokenLen = u.text.length;
@@ -12178,7 +12206,7 @@ function impShowFlowImage(url, label) {
 // v181 (retour Stéphane : « à la fin, revenir par un balayage sur la photo de l'artiste, comme un cycle ») : seconde balise, [retour] (ou
 // [fin]), à poser avant la dernière phrase : l'écran se REFERME en un seul bloc (l'image du milieu est balayée, le texte et l'artiste
 // reprennent la place). Durée facultative, en secondes : [retour | 1,5] (1,2 s par défaut, comme le split). Sans effet hors bio à deux écrans.
-const BIO_TAG_RE = /\[\s*(?:image|img)\s*:\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]|\[\s*(?:retour|fin)\s*(?:[|:]\s*([^\]]*?)\s*)?\]/gi;
+const BIO_TAG_RE = /\[\s*(?:image|img)\s*:\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]|\[\s*(?:retour|fin)\s*(?:[|:]\s*([^\]]*?)\s*)?\]|\u21a9/gi;   // v186 : le signe ↩ (la pastille de l'atelier, parfois collée telle quelle dans le fichier maître) vaut aussi balise de retour
 const bioFirstImg = (marks) => (marks || []).find((mk) => !mk.end) || null;
 // v179 (retour Stéphane : « une petite table de montage : fondu au noir, fondu enchaîné, split de l'écran, avec des durées au choix ») :
 // une balise peut porter un 3e élément, l'effet d'entrée de l'image : [image: adresse | légende | noir 2] — « enchaîné 2,5 »
@@ -12463,6 +12491,7 @@ function bioFrame() {
   A.raf = requestAnimationFrame(bioFrame);
 }
 function bioAutoStop() {
+  if (bioAuto.voiceSwap) { impSelectedVoice = bioAuto.voiceSwap.prev; impAutoVoice = null; bioAuto.voiceSwap = null; }   // v187 : on rend la voix d'avant
   bioAuto.sid++; bioAuto.paused = false;
   bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
   clearTimeout(bioAuto.fadeTimer); clearTimeout(bioAuto.queueTimer); bioAuto.fid++; bioAuto.fading = false; bioAuto.pending = []; bioCapReset();
@@ -12501,6 +12530,36 @@ function bioSentenceStarts(plain) {
   while ((m = re.exec(plain))) { const p = m.index + m[0].length; if (p < plain.length) starts.push(p); }
   return starts;
 }
+// v186 (« la petite saute dans le texte », toujours au même endroit : juste avant « Je me suis installé à Catskill… mort en 1848 ») : la voix lit un
+// texte CORRIGÉ (« 1848 » devient « mil huit cent quarante-huit », « XIXe » devient « dix-neuvième »…), plus long que le texte affiché. Jusqu'à v185, la
+// position de la voix était convertie en position affichée par une simple proportion sur tout le texte : à chaque mot rallongé, le texte glissait
+// d'un coup de quelques caractères. Désormais on aligne mot à mot le texte affiché et le texte lu (les mots identiques servent de repères,
+// on interpole entre deux repères) : la position affichée suit la voix au mot près, sans à-coup.
+function bioWords(s) {
+  const out = []; const re = /[\p{L}\p{N}]+/gu; let m;
+  while ((m = re.exec(s))) out.push({ w: m[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), o: m.index });
+  return out;
+}
+function bioBuildMap(plain, spoken) {
+  try {
+    const P = bioWords(plain), S = bioWords(spoken); const n = P.length, m = S.length;
+    if (!n || !m || n * m > 9e6) return null;
+    const W = m + 1; const T = new Uint16Array((n + 1) * W);
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) T[i * W + j] = P[i].w === S[j].w ? T[(i + 1) * W + j + 1] + 1 : Math.max(T[(i + 1) * W + j], T[i * W + j + 1]);
+    const A = [[0, 0]]; let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (P[i].w === S[j].w) { A.push([S[j].o, P[i].o]); i++; j++; }
+      else if (T[(i + 1) * W + j] >= T[i * W + j + 1]) i++; else j++;
+    }
+    A.push([spoken.length, plain.length]);
+    return (ci) => {
+      let lo = 0, hi = A.length - 1;
+      if (ci <= A[0][0]) return A[0][1]; if (ci >= A[hi][0]) return A[hi][1];
+      while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (A[mid][0] <= ci) lo = mid; else hi = mid; }
+      const [s0, p0] = A[lo], [s1, p1] = A[hi]; return s1 > s0 ? p0 + ((ci - s0) * (p1 - p0)) / (s1 - s0) : p0;
+    };
+  } catch (e) { return null; }
+}
 function bioProgress(ci, spokenLen) {
   // v183 (retour Stéphane : « une petite saute dans le texte, et l'image Oxbow revient avant Yellowstone ») : la voix en ligne (Rémi)
   // envoie parfois une position aberrante (retour brutal en arrière, ou bond très en avant). On ne suit plus aveuglément :
@@ -12512,21 +12571,35 @@ function bioProgress(ci, spokenLen) {
     bioDbg('bond confirmé', last, '→', ci);
   }
   A.cand = null; A.lastCi = ci; A.lastCiT = performance.now();
-  A.gotBoundary = true; A.spokenLen = Math.max(1, spokenLen); A.frac = A.baseFrac + Math.min(1, ci / A.spokenLen) * (1 - A.baseFrac);
+  A.gotBoundary = true; A.spokenLen = Math.max(1, spokenLen);
+  A.frac = A.map ? Math.min(1, (A.mapBase + A.map(ci)) / Math.max(1, A.plainLen)) : A.baseFrac + Math.min(1, ci / A.spokenLen) * (1 - A.baseFrac);
   if (A.debug && (!A.lastLog || A.lastCiT - A.lastLog > 3000)) { A.lastLog = A.lastCiT; bioDbg('voix à', ci + '/' + spokenLen); }
+}
+function bioChooseVoice(work, isWork) {
+  const A = bioAuto; if (A.voiceSwap) { impSelectedVoice = A.voiceSwap.prev; impAutoVoice = null; A.voiceSwap = null; }
+  try {
+    if (isWork || !window.speechSynthesis) return;
+    if (getGlobalPrefs().voiceName && getGlobalVoice()) { bioDbg('voix : choix du joueur respecté'); return; }
+    const g = work.artistVoice || bioInferGender(work.prenom); if (!g) return;
+    const v = pickVoiceByGender(g);
+    bioDbg('voix demandée :', g, '→', v ? v.name : 'aucune voix de ce genre sur cet appareil (voix habituelle)');
+    if (!v) return;
+    A.voiceSwap = { prev: impSelectedVoice }; impSelectedVoice = v; impAutoVoice = v;
+  } catch (e) { /* ignoré : on garde la voix habituelle */ }
 }
 function bioSpeakFrom(offset) {
   const A = bioAuto; if (!A.parsed) return;
   const plain = A.parsed.plain; offset = Math.max(0, Math.min(plain.length - 1, offset));
   A.sid++; const sid = A.sid;
   A.baseFrac = offset / Math.max(1, plain.length);
-  A.pending = []; clearTimeout(A.queueTimer); A.fshow = A.baseFrac; A.lastCi = 0; A.cand = null; A.lastCiT = performance.now(); A.allowBack = true; A.t0 = A.t0 || performance.now(); bioDbg('lecture depuis', offset);
+  A.map = null; A.mapBase = offset; A.pending = []; clearTimeout(A.queueTimer); A.fshow = A.baseFrac; A.lastCi = 0; A.cand = null; A.lastCiT = performance.now(); A.allowBack = true; A.t0 = A.t0 || performance.now(); bioDbg('lecture depuis', offset);
   A.frac = A.baseFrac; A.gotBoundary = false; A.gotBoundaryOrSpoke = false; A.startT = performance.now();
   A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0;
   $('imp-bio-split')?.classList.add('bio-film');
   try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch (e) { /* ignoré */ }
   bioSyncButton();
   impSpeak(plain.slice(offset), undefined, A.force, {
+    onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = offset; bioAuto.map = bioBuildMap(plain.slice(offset), spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },
     onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
     onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioProgress(ci, spokenLen); },
     onStop: () => {
@@ -12573,7 +12646,7 @@ function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
   bioAutoStop();
   Object.assign(bioAuto, { marks: parsed.marks, plainLen: parsed.plain.length, spokenLen: Math.max(1, parsed.plain.length), frac: 0, gotBoundary: false,
     startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false, solo: false, soloOk: false,
-    pending: [], fshow: -1, lastT: 0, holdUntil: 0, lastCi: 0, cand: null, lastCiT: performance.now(), badEv: 0, allowBack: true, t0: performance.now(), log: [], debug: /[?&]debug=bio/.test(location.search) });
+    pending: [], fshow: -1, lastT: 0, holdUntil: 0, map: null, mapBase: 0, lastCi: 0, cand: null, lastCiT: performance.now(), badEv: 0, allowBack: true, t0: performance.now(), log: [], debug: /[?&]debug=bio/.test(location.search) });
   bioAuto.preload = [];
   parsed.marks.forEach((mk) => { if (mk.end) return; try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); bioAuto.preload.push(im); } catch (e) { /* ignoré */ } });
   bioDebugBox();
@@ -12654,9 +12727,10 @@ function openImpArtistBio(work, force, opts) {
   bioSyncButton();
   bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
   if (srcText) {
-    bioAuto.rate = 0.72;
+    bioAuto.rate = 0.72; bioChooseVoice(work, isWork);
     const sid = bioAuto.sid;
     impSpeak(parsedBio.plain, undefined, force, {
+      onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = 0; bioAuto.map = bioBuildMap(parsedBio.plain, spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },
       onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
       onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioProgress(ci, spokenLen); },
       onStop: () => {
