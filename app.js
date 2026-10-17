@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v181';
+const APP_VERSION = 'v182';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12520,6 +12520,9 @@ function openImpArtistBio(work, force, opts) {
   // musée sous la photo, absente si le fichier n'en fournit pas pour cet artiste.
   const captionEl = $('imp-bio-split-caption');
   if (captionEl) captionEl.textContent = work.artistImageCaption || '';
+  // v182 (retour Stéphane : « sous le nom de l'artiste, ses dates de naissance et de mort, visibles pendant tout le texte ») :
+  const datesEl = $('imp-bio-split-dates');
+  if (datesEl) { const dt = isWork ? '' : String(work.artistDates || '').trim().replace(/\s*[-–—]\s*/, '\u00a0–\u00a0'); datesEl.textContent = dt; datesEl.classList.toggle('hidden', !dt); }
   const nameEl = $('imp-bio-split-name');
   if (nameEl) nameEl.textContent = isWork ? `«\u00a0${work.title}\u00a0»` : formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
   const bioText = srcText || 'Aucune biographie n’est encore disponible pour cet artiste.';
@@ -12585,6 +12588,7 @@ function openImpWorkText(work) {
   const captionEl = $('imp-bio-split-caption');
   if (captionEl) captionEl.textContent = [formatArtistDisplayName(work).replace(/<[^>]+>/g, ''), work.date].filter(Boolean).join(', ');
   const nameEl = $('imp-bio-split-name');
+  { const de = $('imp-bio-split-dates'); if (de) { de.textContent = ''; de.classList.add('hidden'); } }
   if (nameEl) nameEl.textContent = `«\u00a0${work.title}\u00a0»`;
   const textEl = $('imp-bio-split-text');
   const plainWork = parseBioMarkup(work.workText).plain; // les balises [image: …] ne s'affichent ni ne se lisent
