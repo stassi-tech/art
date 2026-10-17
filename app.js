@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v182';
+const APP_VERSION = 'v183';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12225,7 +12225,7 @@ function parseBioMarkup(text) {
   return { plain, marks, ital };
 }
 const bioAuto = { active: false, speaking: false, marks: [], plainLen: 0, spokenLen: 0, startT: 0, gotBoundary: false, frac: 0,
-  pauseUntil: 0, raf: 0, rate: 0.72, curIdx: -2, baseRef: '', baseCap: '', nodes: [], shownRef: '', fading: false, pending: null, fadeTimer: 0, userMoved: false, dual: false, parsed: null, baseFrac: 0, paused: false, pausedAt: 0, ended: false, sid: 0, work: null, force: false };
+  pauseUntil: 0, raf: 0, rate: 0.72, curIdx: -2, baseRef: '', baseCap: '', nodes: [], shownRef: '', fading: false, pending: [], fid: 0, holdUntil: 0, fshow: -1, lastT: 0, fadeTimer: 0, userMoved: false, dual: false, parsed: null, baseFrac: 0, paused: false, pausedAt: 0, ended: false, sid: 0, work: null, force: false };
 function bioRender(textEl, parsed) {
   textEl.textContent = '';
   bioAuto.nodes = [];
@@ -12277,13 +12277,44 @@ function bioCapReset() {
   clearTimeout(bioAuto.capTimer); clearTimeout(bioAuto.capClean);
   ['imp-bio-slide-caption', 'imp-bio-slide-credit', 'imp-bio-split-caption', 'imp-bio-split-credit'].forEach((id) => { const el = $(id); if (el) { el.style.transition = ''; el.style.opacity = ''; } });
 }
-function bioShowImage(ref, caption, fx) {
+// v183 (retour Stéphane : « la balise Le Départ n'est pas lue en lecture normale, mais elle l'est avec les boutons avance/retour rapide ») :
+// jusqu'à v182, une seule image pouvait attendre pendant qu'une autre se fondait ; si deux balises arrivaient pendant un long fondu
+// (10 s), la plus ancienne était écrasée par la suivante : l'image « sautée » n'apparaissait jamais. Désormais les images attendent
+// dans une file (aucune n'est perdue) et la durée du fondu est raccourcie si la balise suivante arrive trop vite (voir bioAdaptMs).
+const BIO_MIN_SHOW_MS = 2200; // une image reste au moins ce temps entièrement visible avant qu'une suivante en attente ne la remplace
+function bioDbg(...a) { if (bioAuto.debug) { (bioAuto.log = bioAuto.log || []).push(Math.round(performance.now() - (bioAuto.t0 || 0)) + 'ms ' + a.join(' ')); if (bioAuto.log.length > 400) bioAuto.log.shift(); } }
+function bioCps() {
+  const A = bioAuto; let cps = 14 * ((A.rate || 0.72) / 0.72);
+  const el = (performance.now() - A.startT) / 1000;
+  if (A.gotBoundary && el > 4) { const m = ((A.frac - (A.baseFrac || 0)) * A.plainLen) / el; if (m > 4 && m < 60) cps = m; }
+  return cps;
+}
+function bioAdaptMs(mi, fxMs) {
+  const A = bioAuto; if (!A.speaking || mi == null || mi < 0 || !A.marks[mi]) return fxMs;
+  const mk = A.marks[mi]; const nextOff = A.marks[mi + 1] ? A.marks[mi + 1].offset : A.plainLen;
+  const from = Math.max(mk.offset, (A.fshow >= 0 ? A.fshow : A.frac) * A.plainLen);
+  const availMs = ((nextOff - from) / bioCps()) * 1000;
+  return Math.round(Math.max(700, Math.min(fxMs, availMs * 0.6)));
+}
+function bioNextPending() {
+  const A = bioAuto; if (!A.pending.length) return;
+  const wait = Math.max(0, A.holdUntil - performance.now());
+  clearTimeout(A.queueTimer);
+  A.queueTimer = setTimeout(() => {
+    if (A.fading || !A.pending.length) return;
+    const p = A.pending.shift(); bioDbg('file →', p.ref.slice(-30), 'restant', A.pending.length);
+    bioShowImage(p.ref, p.caption, p.fx, p.mi);
+  }, wait);
+}
+function bioShowImage(ref, caption, fx, mi) {
   const E = bioEls(); const img = E.img; const nx = E.nx; if (!img || !ref) return;
   const cap = E.cap;
   if (bioAuto.dual) img.classList.remove('hidden');
   if (bioAuto.shownRef === ref) { if (cap) cap.textContent = caption || ''; return; }
-  if (bioAuto.fading) { bioAuto.pending = { ref, caption, fx }; return; }
-  const fxType = (fx && fx.type) || 'fade'; const fxMs = fx && fx.ms != null ? fx.ms : BIO_FADE_MS;
+  if (bioAuto.fading) { if (!bioAuto.pending.some((p) => p.ref === ref)) bioAuto.pending.push({ ref, caption, fx, mi }); bioDbg('en attente', ref.slice(-30), 'file', bioAuto.pending.length); return; }
+  const fxType = (fx && fx.type) || 'fade'; const fxMs0 = fx && fx.ms != null ? fx.ms : BIO_FADE_MS;
+  const fxMs = fxType === 'cut' ? fxMs0 : bioAdaptMs(mi, fxMs0);
+  const fid = ++bioAuto.fid; bioDbg('affiche', ref.slice(-30), fxType, fxMs0 + '→' + fxMs + 'ms');
   if (fxType === 'cut' || (fxMs <= 0 && fxType === 'fade')) { // coupe : changement net
     img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); return;
   }
@@ -12293,12 +12324,12 @@ function bioShowImage(ref, caption, fx) {
     bioAuto.fadeTimer = setTimeout(() => {
       let done = false;
       const swap = () => {
-        if (done) return; done = true; img.onload = null; img.onerror = null;
+        if (done || fid !== bioAuto.fid) return; done = true; img.onload = null; img.onerror = null;
         if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); bioCapIn(E, half);
         void img.offsetWidth; img.classList.remove('bio-fading');
         bioAuto.fadeTimer = setTimeout(() => {
-          img.style.transition = ''; bioAuto.fading = false;
-          if (bioAuto.pending) { const p = bioAuto.pending; bioAuto.pending = null; bioShowImage(p.ref, p.caption, p.fx); }
+          if (fid !== bioAuto.fid) return;
+          img.style.transition = ''; bioAuto.fading = false; bioAuto.holdUntil = performance.now() + BIO_MIN_SHOW_MS; bioNextPending();
         }, half);
       };
       img.onload = swap; img.onerror = swap; img.src = src2; if (img.complete && img.naturalWidth) swap();
@@ -12308,16 +12339,19 @@ function bioShowImage(ref, caption, fx) {
   if (!nx) { img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); return; }
   bioAuto.fading = true; bioAuto.shownRef = ref;
   const src = imageSourceSized(ref, 900);
+  let finished = false;
   const finish = () => {
+    if (finished || fid !== bioAuto.fid) return; finished = true; img.onload = null; img.onerror = null;
     // la première image reprend la nouvelle, sans transition, puis on retire la seconde : aucun instant de vide
     img.style.transition = 'none'; nx.style.transition = 'none';
     img.classList.remove('bio-fading'); nx.classList.remove('bio-next-on'); nx.classList.add('hidden');
     void img.offsetWidth; img.style.transition = ''; nx.style.transition = '';
-    bioAuto.fading = false;
-    if (bioAuto.pending) { const p = bioAuto.pending; bioAuto.pending = null; bioShowImage(p.ref, p.caption, p.fx); }
+    bioAuto.fading = false; bioAuto.holdUntil = performance.now() + BIO_MIN_SHOW_MS; bioDbg('fondu terminé', ref.slice(-30));
+    bioNextPending();
   };
+  let ran = false; let retried = false;
   const run = () => {
-    if (!bioAuto.fading) return;
+    if (!bioAuto.fading || ran || fid !== bioAuto.fid) return; ran = true; nx.onload = null; nx.onerror = null;
     nx.style.left = img.offsetLeft + 'px'; nx.style.top = img.offsetTop + 'px'; nx.style.width = img.offsetWidth + 'px'; nx.style.height = img.offsetHeight + 'px';
     nx.classList.remove('hidden'); void nx.offsetWidth;
     img.style.transition = `opacity ${fxMs}ms ease`; nx.style.transition = `opacity ${fxMs}ms ease`; void nx.offsetWidth;
@@ -12329,15 +12363,18 @@ function bioShowImage(ref, caption, fx) {
       if (img.complete && img.naturalWidth) finish();
     }, fxMs);
   };
-  nx.onload = run; nx.onerror = run; nx.src = src;
-  if (nx.complete && nx.naturalWidth) { nx.onload = null; run(); }
+  // image introuvable à la taille demandée (Wikimedia refuse parfois une largeur non standard) : une seconde tentative, sans largeur
+  nx.onload = run;
+  nx.onerror = () => { if (!retried && /\?width=/.test(src)) { retried = true; bioDbg('échec chargement, 2e essai', ref.slice(-30)); nx.src = src.split('?')[0]; } else run(); };
+  nx.src = src;
+  if (nx.complete && nx.naturalWidth) run();
 }
 // v179 (retour Stéphane : « tant que je ne mets pas de balise, un seul bloc : la photo de l'artiste ; la première balise fait le split de
 // l'écran ») : dans une bio à deux écrans, l'artiste occupe d'abord tout l'espace image (classe bio-solo) ; à la première image, l'écran
 // se partage en deux (artiste | image) pendant que la 1re image apparaît en fondu, sur la durée réglée dans la balise (1,2 s par défaut).
 const BIO_SPLIT_MS = 1200;
 function bioCancelFade() {
-  bioCapReset(); clearTimeout(bioAuto.fadeTimer); bioAuto.fading = false; bioAuto.pending = null;
+  bioCapReset(); clearTimeout(bioAuto.fadeTimer); clearTimeout(bioAuto.queueTimer); bioAuto.fid++; bioAuto.fading = false; bioAuto.pending = [];
   ['imp-bio-split-portrait-next', 'imp-bio-slide-next'].forEach((id) => { const nx = $(id); if (nx) { nx.classList.remove('bio-next-on'); nx.classList.add('hidden'); nx.style.transition = ''; } });
 }
 function bioLeaveSolo(mk) {
@@ -12375,6 +12412,18 @@ function bioFrame() {
   if (A.speaking) {
     let f = A.frac;
     if (!A.gotBoundary && !A.paused && now - A.startT > 1500) f = Math.min(0.98, (A.baseFrac || 0) + Math.min(1, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen)) * (1 - (A.baseFrac || 0)));
+    // v183 : la position lue ne recule jamais et n'avance jamais d'un bloc. La voix signale sa position par à-coups (parfois
+    // plusieurs mots d'un coup) ; on lisse : avance régulière à la vitesse de la voix, rattrapage progressif si la voix est devant,
+    // et le repère ne dépasse jamais la voix de plus de ~12 caractères (pour ne pas annoncer une image trop tôt).
+    const dt = Math.min(0.1, Math.max(0, (now - (A.lastT || now)) / 1000)); A.lastT = now;
+    if (A.fshow < 0 || f < A.fshow - 0.05 || f < (A.baseFrac || 0) - 0.001 && A.fshow > (A.baseFrac || 0)) A.fshow = f;   // reprise ailleurs (avance/retour rapide) : on se cale
+    if (reading) {
+      const L = Math.max(1, A.plainLen); const adv = (bioCps() * dt) / L; const lead = 12 / L;
+      let fs = A.fshow + adv;
+      if (fs > f + lead) fs = Math.max(A.fshow, f + lead);
+      const gap = f - fs; if (gap > 0) fs += Math.min(gap, Math.max(gap * 0.12, (bioCps() * 2.5 * dt) / L));   // rattrapage doux
+      A.fshow = Math.min(0.999, Math.max(A.fshow, fs)); f = A.fshow;
+    } else f = Math.max(f, A.fshow);
     const readY = bioYForOffset(col, f * A.plainLen);
     if (reading) {
       if (maxScroll > 0) {
@@ -12390,9 +12439,11 @@ function bioFrame() {
   let idx = -1; const colTop = col.getBoundingClientRect().top - col.scrollTop;
   A.marks.forEach((mk, i) => { if (mk.el && mk.el.getBoundingClientRect().top - colTop <= lineY) idx = i; });
   if (idx !== A.curIdx) {
+    if (idx < A.curIdx) { A.pending = []; clearTimeout(A.queueTimer); }   // retour en arrière : les images en attente ne sont plus d'actualité
+    bioDbg('ligne de lecture : repère', idx, 'pos', Math.round(A.fshow * A.plainLen) + '/' + A.plainLen);
     A.curIdx = idx;
     if (idx >= 0 && A.marks[idx].end) { if (A.soloOk && !A.solo) bioEnterSolo(A.marks[idx].ms); }   // [retour] : l'écran se referme sur l'artiste
-    else if (idx >= 0) { if (A.solo) bioLeaveSolo(A.marks[idx]); else bioShowImage(A.marks[idx].ref, A.marks[idx].caption, A.marks[idx].fx); }
+    else if (idx >= 0) { if (A.solo) bioLeaveSolo(A.marks[idx]); else bioShowImage(A.marks[idx].ref, A.marks[idx].caption, A.marks[idx].fx, idx); }
     else if (A.soloOk) bioEnterSolo();
     else if (A.baseRef) bioShowImage(A.baseRef, A.baseCap);
   }
@@ -12401,7 +12452,7 @@ function bioFrame() {
 function bioAutoStop() {
   bioAuto.sid++; bioAuto.paused = false;
   bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
-  clearTimeout(bioAuto.fadeTimer); bioAuto.fading = false; bioAuto.pending = null; bioCapReset();
+  clearTimeout(bioAuto.fadeTimer); clearTimeout(bioAuto.queueTimer); bioAuto.fid++; bioAuto.fading = false; bioAuto.pending = []; bioCapReset();
   ['imp-bio-split-portrait-next', 'imp-bio-slide-next'].forEach((id) => { const nx = $(id); if (nx) { nx.classList.remove('bio-next-on'); nx.classList.add('hidden'); } });
   $('imp-bio-split-portrait')?.classList.remove('bio-fading'); $('imp-bio-slide')?.classList.remove('bio-fading');
 }
@@ -12442,6 +12493,7 @@ function bioSpeakFrom(offset) {
   const plain = A.parsed.plain; offset = Math.max(0, Math.min(plain.length - 1, offset));
   A.sid++; const sid = A.sid;
   A.baseFrac = offset / Math.max(1, plain.length);
+  A.pending = []; clearTimeout(A.queueTimer); A.fshow = A.baseFrac; A.t0 = A.t0 || performance.now(); bioDbg('lecture depuis', offset);
   A.frac = A.baseFrac; A.gotBoundary = false; A.gotBoundaryOrSpoke = false; A.startT = performance.now();
   A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0;
   $('imp-bio-split')?.classList.add('bio-film');
@@ -12476,11 +12528,28 @@ $('imp-bio-toggle')?.addEventListener('click', () => {
   bioSyncButton();
 });
 window.addEventListener('resize', () => { if (bioAuto.dual && !$('imp-bio-split')?.classList.contains('hidden')) bioSetPads(); });
+// v183 : journal de lecture (ouvrir l'application avec ?debug=bio à la fin de l'adresse) : une petite boîte noire affiche les derniers
+// événements du film (repère franchi, image affichée, mise en attente, fondu terminé) ; un clic dessus copie tout le journal.
+function bioDebugBox() {
+  let box = document.getElementById('bio-debug-box');
+  if (!bioAuto.debug) { if (box) box.remove(); return; }
+  if (!box) {
+    box = document.createElement('pre'); box.id = 'bio-debug-box';
+    box.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;max-width:46vw;max-height:38vh;overflow:auto;margin:0;padding:6px 8px;background:rgba(0,0,0,.82);color:#9f9;font:11px/1.35 monospace;border-radius:6px;cursor:copy;white-space:pre-wrap';
+    box.title = 'Cliquer pour copier le journal';
+    box.addEventListener('click', () => { const t = (bioAuto.log || []).join('\n'); try { navigator.clipboard.writeText(t); box.style.outline = '2px solid #9f9'; setTimeout(() => { box.style.outline = ''; }, 800); } catch (e) { /* ignoré */ } });
+    document.body.appendChild(box);
+    setInterval(() => { box.textContent = 'JOURNAL v' + APP_VERSION.slice(1) + ' (clic = copier)\n' + (bioAuto.log || []).slice(-14).join('\n'); box.scrollTop = box.scrollHeight; }, 400);
+  }
+}
 function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
   bioAutoStop();
   Object.assign(bioAuto, { marks: parsed.marks, plainLen: parsed.plain.length, spokenLen: Math.max(1, parsed.plain.length), frac: 0, gotBoundary: false,
-    startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false, solo: false, soloOk: false });
-  parsed.marks.forEach((mk) => { if (mk.end) return; try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); } catch (e) { /* ignoré */ } });
+    startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false, solo: false, soloOk: false,
+    pending: [], fshow: -1, lastT: 0, holdUntil: 0, t0: performance.now(), log: [], debug: /[?&]debug=bio/.test(location.search) });
+  bioAuto.preload = [];
+  parsed.marks.forEach((mk) => { if (mk.end) return; try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); bioAuto.preload.push(im); } catch (e) { /* ignoré */ } });
+  bioDebugBox();
   const col = bioAuto.dual ? $('imp-bio-scroll') : $('imp-bio-split')?.querySelector('.imp-bio-text-col'); if (col) col.scrollTop = 0;
   bioAuto.raf = requestAnimationFrame(bioFrame);
 }
