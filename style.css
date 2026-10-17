@@ -2710,3 +2710,11 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .imp-bio-split.bio-dual.bio-vert .imp-bio-slide-col { flex:0 0 34%; }
 
 .artist-civil{color:#6b6b6b;font-size:.92em;font-weight:normal;}
+
+/* v179 — bio à deux écrans : l'artiste seul (un seul bloc) tant qu'il n'y a pas d'image, puis SPLIT de l'écran à la 1re image
+   (durée réglée par --bio-split-ms, posée par bioLeaveSolo / bioEnterSolo) */
+.imp-bio-split.bio-dual .imp-bio-photo-col, .imp-bio-split.bio-dual .imp-bio-slide-col { transition: flex-basis var(--bio-split-ms,1200ms) ease, padding var(--bio-split-ms,1200ms) ease, opacity var(--bio-split-ms,1200ms) ease, border-width var(--bio-split-ms,1200ms) ease; }
+.imp-bio-split.bio-dual.bio-solo .imp-bio-photo-col { flex:0 0 71%; }
+.imp-bio-split.bio-dual.bio-solo .imp-bio-slide-col { flex:0 0 0%; padding-left:0; padding-right:0; border-left-width:0; border-right-width:0; opacity:0; overflow:hidden; pointer-events:none; }
+.imp-bio-split.bio-dual.bio-vert.bio-solo .imp-bio-photo-col { flex:0 0 63%; }
+.imp-bio-split.bio-dual.bio-vert.bio-solo .imp-bio-slide-col { flex:0 0 0%; padding:0; border-top-width:0; }

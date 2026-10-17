@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v178';
+const APP_VERSION = 'v179';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12166,6 +12166,21 @@ function impShowFlowImage(url, label) {
 // La balise n'est ni affichée ni lue. L'image change quand la lecture (ou le doigt) arrive à cet endroit.
 // ============================================================
 const BIO_TAG_RE = /\[\s*(?:image|img)\s*:\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]/gi;
+// v179 (retour Stéphane : « une petite table de montage : fondu au noir, fondu enchaîné, split de l'écran, avec des durées au choix ») :
+// une balise peut porter un 3e élément, l'effet d'entrée de l'image : [image: adresse | légende | noir 2] — « enchaîné 2,5 »
+// (fondu enchaîné, durée en secondes), « noir 1,6 » (l'image précédente s'éteint puis la nouvelle apparaît ; durée totale) ou « coupe »
+// (changement net). Sans effet : fondu enchaîné de 1,6 s, comme avant. Pour la 1re image d'une bio, la durée est celle du SPLIT de
+// l'écran (voir bioLeaveSolo). Une légende sans effet reconnu reste telle quelle.
+function bioParseFx(raw) {
+  raw = String(raw || '').trim(); if (!raw) return null;
+  const m = raw.match(/^(encha\S*|fondu\S*|noir|black|coupe|cut|fade|split)?\s*(\d+(?:[.,]\d+)?)?\s*s?$/i); if (!m || (!m[1] && !m[2])) return null;
+  const w = (m[1] || '').toLowerCase();
+  return { type: /^(noir|black)/.test(w) ? 'black' : /^(coupe|cut)/.test(w) ? 'cut' : 'fade', ms: m[2] ? Math.round(parseFloat(m[2].replace(',', '.')) * 1000) : null };
+}
+function bioSplitCapFx(raw) {
+  raw = String(raw || ''); const i = raw.lastIndexOf('|'); if (i < 0) return { caption: raw.trim(), fx: null };
+  const fx = bioParseFx(raw.slice(i + 1)); return fx ? { caption: raw.slice(0, i).trim(), fx } : { caption: raw.trim(), fx: null };
+}
 function parseBioMarkup(text) {
   const src = String(text || '');
   let plain = ''; const marks = []; let last = 0; let m;
@@ -12177,7 +12192,7 @@ function parseBioMarkup(text) {
     const before = plain.endsWith('\n') || plain === '';
     if (before && /^[ \t]*\n/.test(src.slice(end))) end += src.slice(end).match(/^[ \t]*\n/)[0].length;
     else end += src.slice(end).match(/^[ \t]*/)[0].length;
-    marks.push({ offset: plain.length, ref: m[1].trim(), caption: (m[2] || '').trim() });
+    const cf = bioSplitCapFx((m[2] || '').trim()); marks.push({ offset: plain.length, ref: m[1].trim(), caption: cf.caption, fx: cf.fx });
     last = end; BIO_TAG_RE.lastIndex = end;
   }
   plain += src.slice(last);
@@ -12244,12 +12259,34 @@ function bioEls() {
     ? { img: $('imp-bio-slide'), nx: $('imp-bio-slide-next'), cap: $('imp-bio-slide-caption'), link: 'imp-bio-slide-credit', txt: 'imp-bio-slide-credit-text' }
     : { img: $('imp-bio-split-portrait'), nx: $('imp-bio-split-portrait-next'), cap: $('imp-bio-split-caption'), link: 'imp-bio-split-credit', txt: 'imp-bio-split-credit-text' };
 }
-function bioShowImage(ref, caption) {
+function bioShowImage(ref, caption, fx) {
   const E = bioEls(); const img = E.img; const nx = E.nx; if (!img || !ref) return;
   const cap = E.cap;
   if (bioAuto.dual) img.classList.remove('hidden');
   if (bioAuto.shownRef === ref) { if (cap) cap.textContent = caption || ''; return; }
-  if (bioAuto.fading) { bioAuto.pending = { ref, caption }; return; }
+  if (bioAuto.fading) { bioAuto.pending = { ref, caption, fx }; return; }
+  const fxType = (fx && fx.type) || 'fade'; const fxMs = fx && fx.ms != null ? fx.ms : BIO_FADE_MS;
+  if (fxType === 'cut' || (fxMs <= 0 && fxType === 'fade')) { // coupe : changement net
+    img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); return;
+  }
+  if (fxType === 'black') { // fondu au noir : l'image s'éteint (1ʳᵉ moitié), puis la nouvelle apparaît (2ᵉ moitié)
+    const half = Math.max(0, Math.round(fxMs / 2)); const src2 = imageSourceSized(ref, 900);
+    bioAuto.fading = true; bioAuto.shownRef = ref; img.style.transition = `opacity ${half}ms ease`; img.classList.add('bio-fading');
+    bioAuto.fadeTimer = setTimeout(() => {
+      let done = false;
+      const swap = () => {
+        if (done) return; done = true; img.onload = null; img.onerror = null;
+        if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt);
+        void img.offsetWidth; img.classList.remove('bio-fading');
+        bioAuto.fadeTimer = setTimeout(() => {
+          img.style.transition = ''; bioAuto.fading = false;
+          if (bioAuto.pending) { const p = bioAuto.pending; bioAuto.pending = null; bioShowImage(p.ref, p.caption, p.fx); }
+        }, half);
+      };
+      img.onload = swap; img.onerror = swap; img.src = src2; if (img.complete && img.naturalWidth) swap();
+    }, half);
+    return;
+  }
   if (!nx) { img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); return; }
   bioAuto.fading = true; bioAuto.shownRef = ref;
   const src = imageSourceSized(ref, 900);
@@ -12259,21 +12296,52 @@ function bioShowImage(ref, caption) {
     img.classList.remove('bio-fading'); nx.classList.remove('bio-next-on'); nx.classList.add('hidden');
     void img.offsetWidth; img.style.transition = ''; nx.style.transition = '';
     bioAuto.fading = false;
-    if (bioAuto.pending) { const p = bioAuto.pending; bioAuto.pending = null; bioShowImage(p.ref, p.caption); }
+    if (bioAuto.pending) { const p = bioAuto.pending; bioAuto.pending = null; bioShowImage(p.ref, p.caption, p.fx); }
   };
   const run = () => {
     if (!bioAuto.fading) return;
     nx.style.left = img.offsetLeft + 'px'; nx.style.top = img.offsetTop + 'px'; nx.style.width = img.offsetWidth + 'px'; nx.style.height = img.offsetHeight + 'px';
     nx.classList.remove('hidden'); void nx.offsetWidth;
+    img.style.transition = `opacity ${fxMs}ms ease`; nx.style.transition = `opacity ${fxMs}ms ease`; void nx.offsetWidth;
     nx.classList.add('bio-next-on'); img.classList.add('bio-fading');
     if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt);
     bioAuto.fadeTimer = setTimeout(() => {
       img.onload = finish; img.onerror = finish; img.src = src;
       if (img.complete && img.naturalWidth) finish();
-    }, BIO_FADE_MS);
+    }, fxMs);
   };
   nx.onload = run; nx.onerror = run; nx.src = src;
   if (nx.complete && nx.naturalWidth) { nx.onload = null; run(); }
+}
+// v179 (retour Stéphane : « tant que je ne mets pas de balise, un seul bloc : la photo de l'artiste ; la première balise fait le split de
+// l'écran ») : dans une bio à deux écrans, l'artiste occupe d'abord tout l'espace image (classe bio-solo) ; à la première image, l'écran
+// se partage en deux (artiste | image) pendant que la 1re image apparaît en fondu, sur la durée réglée dans la balise (1,2 s par défaut).
+const BIO_SPLIT_MS = 1200;
+function bioCancelFade() {
+  clearTimeout(bioAuto.fadeTimer); bioAuto.fading = false; bioAuto.pending = null;
+  ['imp-bio-split-portrait-next', 'imp-bio-slide-next'].forEach((id) => { const nx = $(id); if (nx) { nx.classList.remove('bio-next-on'); nx.classList.add('hidden'); nx.style.transition = ''; } });
+}
+function bioLeaveSolo(mk) {
+  const A = bioAuto; const split = $('imp-bio-split'); const img = $('imp-bio-slide'); if (!split || !img) { A.solo = false; return; }
+  bioCancelFade();
+  const ms = mk.fx && mk.fx.ms != null ? mk.fx.ms : BIO_SPLIT_MS;
+  split.style.setProperty('--bio-split-ms', ms + 'ms');
+  img.style.transition = 'none'; img.classList.add('bio-fading'); img.classList.remove('hidden');
+  img.src = imageSourceSized(mk.ref, 900); A.shownRef = mk.ref;
+  const cap = $('imp-bio-slide-caption'); if (cap) cap.textContent = mk.caption || '';
+  showImpBioCredit(mk.ref, 'imp-bio-slide-credit', 'imp-bio-slide-credit-text');
+  void img.offsetWidth; img.style.transition = `opacity ${ms}ms ease`;
+  A.solo = false; split.classList.remove('bio-solo'); img.classList.remove('bio-fading');
+  clearTimeout(A.soloTimer); A.soloTimer = setTimeout(() => { img.style.transition = ''; }, ms + 50);
+}
+function bioEnterSolo() {
+  const A = bioAuto; const split = $('imp-bio-split'); const img = $('imp-bio-slide'); if (!split || !img) return;
+  bioCancelFade();
+  const first = A.marks[0]; const ms = first && first.fx && first.fx.ms != null ? first.fx.ms : BIO_SPLIT_MS;
+  split.style.setProperty('--bio-split-ms', ms + 'ms');
+  img.style.transition = `opacity ${ms}ms ease`; img.classList.add('bio-fading');
+  A.solo = true; A.shownRef = ''; split.classList.add('bio-solo');
+  clearTimeout(A.soloTimer); A.soloTimer = setTimeout(() => { img.style.transition = ''; }, ms + 50);
 }
 function bioFrame() {
   const A = bioAuto; const split = $('imp-bio-split');
@@ -12302,7 +12370,8 @@ function bioFrame() {
   A.marks.forEach((mk, i) => { if (mk.el && mk.el.getBoundingClientRect().top - colTop <= lineY) idx = i; });
   if (idx !== A.curIdx) {
     A.curIdx = idx;
-    if (idx >= 0) bioShowImage(A.marks[idx].ref, A.marks[idx].caption);
+    if (idx >= 0) { if (A.solo) bioLeaveSolo(A.marks[idx]); else bioShowImage(A.marks[idx].ref, A.marks[idx].caption, A.marks[idx].fx); }
+    else if (A.soloOk) bioEnterSolo();
     else if (A.baseRef) bioShowImage(A.baseRef, A.baseCap);
   }
   A.raf = requestAnimationFrame(bioFrame);
@@ -12388,7 +12457,7 @@ window.addEventListener('resize', () => { if (bioAuto.dual && !$('imp-bio-split'
 function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
   bioAutoStop();
   Object.assign(bioAuto, { marks: parsed.marks, plainLen: parsed.plain.length, spokenLen: Math.max(1, parsed.plain.length), frac: 0, gotBoundary: false,
-    startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false });
+    startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false, solo: false, soloOk: false });
   parsed.marks.forEach((mk) => { try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); } catch (e) { /* ignoré */ } });
   const col = bioAuto.dual ? $('imp-bio-scroll') : $('imp-bio-split')?.querySelector('.imp-bio-text-col'); if (col) col.scrollTop = 0;
   bioAuto.raf = requestAnimationFrame(bioFrame);
@@ -12445,19 +12514,22 @@ function openImpArtistBio(work, force, opts) {
   const willSpeak = !!srcText && (impAudioOn || !!force) && !!window.speechSynthesis;
   // v164 : en mode « deux écrans », l'image de l'œuvre est la première image de la colonne centrale
   let baseRef = work.artistImage, baseCap = work.artistImageCaption || '';
+  // v179 : bio à deux écrans avec portrait → l'artiste seul d'abord (« un seul bloc »), split à la 1re image
+  const solo = dual && !isWork && !!work.artistImage;
+  if (splitEl) { splitEl.classList.toggle('bio-solo', solo); splitEl.style.setProperty('--bio-split-ms', ((parsedBio.marks[0] && parsedBio.marks[0].fx && parsedBio.marks[0].fx.ms != null) ? parsedBio.marks[0].fx.ms : BIO_SPLIT_MS) + 'ms'); }
   if (dual) {
-    baseRef = work.image || (parsedBio.marks[0] && parsedBio.marks[0].ref) || ''; baseCap = work.image ? [work.title, work.date].filter(Boolean).join(', ') : '';
+    baseRef = solo ? '' : (work.image || (parsedBio.marks[0] && parsedBio.marks[0].ref) || ''); baseCap = (!solo && work.image) ? [work.title, work.date].filter(Boolean).join(', ') : '';
     const slide = $('imp-bio-slide'); const nxs = $('imp-bio-slide-next'); const scap = $('imp-bio-slide-caption');
     if (nxs) { nxs.classList.remove('bio-next-on'); nxs.classList.add('hidden'); }
     if (slide) { slide.classList.remove('bio-fading'); if (baseRef) { slide.src = imageSourceSized(baseRef, 900); slide.classList.remove('hidden'); } else slide.classList.add('hidden'); }
     if (scap) scap.textContent = baseCap;
     showImpBioCredit(baseRef, 'imp-bio-slide-credit', 'imp-bio-slide-credit-text');
-    splitEl.classList.toggle('bio-noslide', !baseRef);
+    splitEl.classList.toggle('bio-noslide', !baseRef && !solo);
     splitEl.classList.toggle('bio-film', willSpeak);
     bioSetPads();
   }
   if (textEl) bioAutoStart(parsedBio, baseRef, baseCap, willSpeak);
-  bioAuto.shownRef = baseRef || '';
+  bioAuto.shownRef = baseRef || ''; bioAuto.solo = solo; bioAuto.soloOk = solo;
   bioSyncButton();
   bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
   if (srcText) {
