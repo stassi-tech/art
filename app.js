@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v179';
+const APP_VERSION = 'v181';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12165,7 +12165,11 @@ function impShowFlowImage(url, label) {
 //     [image: lien Wikimedia Commons]            ou          [image: lien | légende affichée sous l'image]
 // La balise n'est ni affichée ni lue. L'image change quand la lecture (ou le doigt) arrive à cet endroit.
 // ============================================================
-const BIO_TAG_RE = /\[\s*(?:image|img)\s*:\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]/gi;
+// v181 (retour Stéphane : « à la fin, revenir par un balayage sur la photo de l'artiste, comme un cycle ») : seconde balise, [retour] (ou
+// [fin]), à poser avant la dernière phrase : l'écran se REFERME en un seul bloc (l'image du milieu est balayée, le texte et l'artiste
+// reprennent la place). Durée facultative, en secondes : [retour | 1,5] (1,2 s par défaut, comme le split). Sans effet hors bio à deux écrans.
+const BIO_TAG_RE = /\[\s*(?:image|img)\s*:\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]|\[\s*(?:retour|fin)\s*(?:[|:]\s*([^\]]*?)\s*)?\]/gi;
+const bioFirstImg = (marks) => (marks || []).find((mk) => !mk.end) || null;
 // v179 (retour Stéphane : « une petite table de montage : fondu au noir, fondu enchaîné, split de l'écran, avec des durées au choix ») :
 // une balise peut porter un 3e élément, l'effet d'entrée de l'image : [image: adresse | légende | noir 2] — « enchaîné 2,5 »
 // (fondu enchaîné, durée en secondes), « noir 1,6 » (l'image précédente s'éteint puis la nouvelle apparaît ; durée totale) ou « coupe »
@@ -12192,7 +12196,9 @@ function parseBioMarkup(text) {
     const before = plain.endsWith('\n') || plain === '';
     if (before && /^[ \t]*\n/.test(src.slice(end))) end += src.slice(end).match(/^[ \t]*\n/)[0].length;
     else end += src.slice(end).match(/^[ \t]*/)[0].length;
-    const cf = bioSplitCapFx((m[2] || '').trim()); marks.push({ offset: plain.length, ref: m[1].trim(), caption: cf.caption, fx: cf.fx });
+    if (m[1] === undefined) { // balise [retour] : l'écran redevient un seul bloc
+      const dm = String(m[3] || '').match(/(\d+(?:[.,]\d+)?)/); marks.push({ offset: plain.length, ref: '', caption: '', fx: null, end: true, ms: dm ? Math.round(parseFloat(dm[1].replace(',', '.')) * 1000) : null });
+    } else { const cf = bioSplitCapFx((m[2] || '').trim()); marks.push({ offset: plain.length, ref: m[1].trim(), caption: cf.caption, fx: cf.fx }); }
     last = end; BIO_TAG_RE.lastIndex = end;
   }
   plain += src.slice(last);
@@ -12259,6 +12265,18 @@ function bioEls() {
     ? { img: $('imp-bio-slide'), nx: $('imp-bio-slide-next'), cap: $('imp-bio-slide-caption'), link: 'imp-bio-slide-credit', txt: 'imp-bio-slide-credit-text' }
     : { img: $('imp-bio-split-portrait'), nx: $('imp-bio-split-portrait-next'), cap: $('imp-bio-split-caption'), link: 'imp-bio-split-credit', txt: 'imp-bio-split-credit-text' };
 }
+// v180 (retour Stéphane : « les légendes apparaissent avant l'image ») : la légende et le lien de crédits suivent le fondu de l'image :
+// ils s'éteignent pendant la 1ʳᵉ moitié, le texte change au milieu, puis ils réapparaissent pendant la 2ᵉ moitié.
+function bioCapEls(E) { return [E.cap, $(E.link)].filter(Boolean); }
+function bioCapOut(E, ms) { bioCapEls(E).forEach((el) => { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '0'; }); }
+function bioCapIn(E, ms) {
+  bioCapEls(E).forEach((el) => { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = ''; });
+  clearTimeout(bioAuto.capClean); bioAuto.capClean = setTimeout(() => bioCapEls(E).forEach((el) => { el.style.transition = ''; }), ms + 60);
+}
+function bioCapReset() {
+  clearTimeout(bioAuto.capTimer); clearTimeout(bioAuto.capClean);
+  ['imp-bio-slide-caption', 'imp-bio-slide-credit', 'imp-bio-split-caption', 'imp-bio-split-credit'].forEach((id) => { const el = $(id); if (el) { el.style.transition = ''; el.style.opacity = ''; } });
+}
 function bioShowImage(ref, caption, fx) {
   const E = bioEls(); const img = E.img; const nx = E.nx; if (!img || !ref) return;
   const cap = E.cap;
@@ -12271,12 +12289,12 @@ function bioShowImage(ref, caption, fx) {
   }
   if (fxType === 'black') { // fondu au noir : l'image s'éteint (1ʳᵉ moitié), puis la nouvelle apparaît (2ᵉ moitié)
     const half = Math.max(0, Math.round(fxMs / 2)); const src2 = imageSourceSized(ref, 900);
-    bioAuto.fading = true; bioAuto.shownRef = ref; img.style.transition = `opacity ${half}ms ease`; img.classList.add('bio-fading');
+    bioAuto.fading = true; bioAuto.shownRef = ref; img.style.transition = `opacity ${half}ms ease`; img.classList.add('bio-fading'); bioCapOut(E, half);
     bioAuto.fadeTimer = setTimeout(() => {
       let done = false;
       const swap = () => {
         if (done) return; done = true; img.onload = null; img.onerror = null;
-        if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt);
+        if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); bioCapIn(E, half);
         void img.offsetWidth; img.classList.remove('bio-fading');
         bioAuto.fadeTimer = setTimeout(() => {
           img.style.transition = ''; bioAuto.fading = false;
@@ -12304,7 +12322,8 @@ function bioShowImage(ref, caption, fx) {
     nx.classList.remove('hidden'); void nx.offsetWidth;
     img.style.transition = `opacity ${fxMs}ms ease`; nx.style.transition = `opacity ${fxMs}ms ease`; void nx.offsetWidth;
     nx.classList.add('bio-next-on'); img.classList.add('bio-fading');
-    if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt);
+    const halfC = Math.round(fxMs / 2); bioCapOut(E, halfC); clearTimeout(bioAuto.capTimer);
+    bioAuto.capTimer = setTimeout(() => { if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); bioCapIn(E, halfC); }, halfC);
     bioAuto.fadeTimer = setTimeout(() => {
       img.onload = finish; img.onerror = finish; img.src = src;
       if (img.complete && img.naturalWidth) finish();
@@ -12318,7 +12337,7 @@ function bioShowImage(ref, caption, fx) {
 // se partage en deux (artiste | image) pendant que la 1re image apparaît en fondu, sur la durée réglée dans la balise (1,2 s par défaut).
 const BIO_SPLIT_MS = 1200;
 function bioCancelFade() {
-  clearTimeout(bioAuto.fadeTimer); bioAuto.fading = false; bioAuto.pending = null;
+  bioCapReset(); clearTimeout(bioAuto.fadeTimer); bioAuto.fading = false; bioAuto.pending = null;
   ['imp-bio-split-portrait-next', 'imp-bio-slide-next'].forEach((id) => { const nx = $(id); if (nx) { nx.classList.remove('bio-next-on'); nx.classList.add('hidden'); nx.style.transition = ''; } });
 }
 function bioLeaveSolo(mk) {
@@ -12328,16 +12347,18 @@ function bioLeaveSolo(mk) {
   split.style.setProperty('--bio-split-ms', ms + 'ms');
   img.style.transition = 'none'; img.classList.add('bio-fading'); img.classList.remove('hidden');
   img.src = imageSourceSized(mk.ref, 900); A.shownRef = mk.ref;
-  const cap = $('imp-bio-slide-caption'); if (cap) cap.textContent = mk.caption || '';
+  const cap = $('imp-bio-slide-caption'); const capE = { cap, link: 'imp-bio-slide-credit' };
+  bioCapEls(capE).forEach((el) => { el.style.transition = 'none'; el.style.opacity = '0'; });
+  if (cap) cap.textContent = mk.caption || '';
   showImpBioCredit(mk.ref, 'imp-bio-slide-credit', 'imp-bio-slide-credit-text');
-  void img.offsetWidth; img.style.transition = `opacity ${ms}ms ease`;
+  void img.offsetWidth; bioCapIn(capE, ms); img.style.transition = `opacity ${ms}ms ease`;
   A.solo = false; split.classList.remove('bio-solo'); img.classList.remove('bio-fading');
   clearTimeout(A.soloTimer); A.soloTimer = setTimeout(() => { img.style.transition = ''; }, ms + 50);
 }
-function bioEnterSolo() {
+function bioEnterSolo(msIn) {
   const A = bioAuto; const split = $('imp-bio-split'); const img = $('imp-bio-slide'); if (!split || !img) return;
   bioCancelFade();
-  const first = A.marks[0]; const ms = first && first.fx && first.fx.ms != null ? first.fx.ms : BIO_SPLIT_MS;
+  const first = bioFirstImg(A.marks); const ms = msIn != null ? msIn : first && first.fx && first.fx.ms != null ? first.fx.ms : BIO_SPLIT_MS;
   split.style.setProperty('--bio-split-ms', ms + 'ms');
   img.style.transition = `opacity ${ms}ms ease`; img.classList.add('bio-fading');
   A.solo = true; A.shownRef = ''; split.classList.add('bio-solo');
@@ -12370,7 +12391,8 @@ function bioFrame() {
   A.marks.forEach((mk, i) => { if (mk.el && mk.el.getBoundingClientRect().top - colTop <= lineY) idx = i; });
   if (idx !== A.curIdx) {
     A.curIdx = idx;
-    if (idx >= 0) { if (A.solo) bioLeaveSolo(A.marks[idx]); else bioShowImage(A.marks[idx].ref, A.marks[idx].caption, A.marks[idx].fx); }
+    if (idx >= 0 && A.marks[idx].end) { if (A.soloOk && !A.solo) bioEnterSolo(A.marks[idx].ms); }   // [retour] : l'écran se referme sur l'artiste
+    else if (idx >= 0) { if (A.solo) bioLeaveSolo(A.marks[idx]); else bioShowImage(A.marks[idx].ref, A.marks[idx].caption, A.marks[idx].fx); }
     else if (A.soloOk) bioEnterSolo();
     else if (A.baseRef) bioShowImage(A.baseRef, A.baseCap);
   }
@@ -12379,7 +12401,7 @@ function bioFrame() {
 function bioAutoStop() {
   bioAuto.sid++; bioAuto.paused = false;
   bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
-  clearTimeout(bioAuto.fadeTimer); bioAuto.fading = false; bioAuto.pending = null;
+  clearTimeout(bioAuto.fadeTimer); bioAuto.fading = false; bioAuto.pending = null; bioCapReset();
   ['imp-bio-split-portrait-next', 'imp-bio-slide-next'].forEach((id) => { const nx = $(id); if (nx) { nx.classList.remove('bio-next-on'); nx.classList.add('hidden'); } });
   $('imp-bio-split-portrait')?.classList.remove('bio-fading'); $('imp-bio-slide')?.classList.remove('bio-fading');
 }
@@ -12458,7 +12480,7 @@ function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
   bioAutoStop();
   Object.assign(bioAuto, { marks: parsed.marks, plainLen: parsed.plain.length, spokenLen: Math.max(1, parsed.plain.length), frac: 0, gotBoundary: false,
     startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false, solo: false, soloOk: false });
-  parsed.marks.forEach((mk) => { try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); } catch (e) { /* ignoré */ } });
+  parsed.marks.forEach((mk) => { if (mk.end) return; try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); } catch (e) { /* ignoré */ } });
   const col = bioAuto.dual ? $('imp-bio-scroll') : $('imp-bio-split')?.querySelector('.imp-bio-text-col'); if (col) col.scrollTop = 0;
   bioAuto.raf = requestAnimationFrame(bioFrame);
 }
@@ -12516,9 +12538,9 @@ function openImpArtistBio(work, force, opts) {
   let baseRef = work.artistImage, baseCap = work.artistImageCaption || '';
   // v179 : bio à deux écrans avec portrait → l'artiste seul d'abord (« un seul bloc »), split à la 1re image
   const solo = dual && !isWork && !!work.artistImage;
-  if (splitEl) { splitEl.classList.toggle('bio-solo', solo); splitEl.style.setProperty('--bio-split-ms', ((parsedBio.marks[0] && parsedBio.marks[0].fx && parsedBio.marks[0].fx.ms != null) ? parsedBio.marks[0].fx.ms : BIO_SPLIT_MS) + 'ms'); }
+  if (splitEl) { splitEl.classList.toggle('bio-solo', solo); splitEl.style.setProperty('--bio-split-ms', ((bioFirstImg(parsedBio.marks) && bioFirstImg(parsedBio.marks).fx && bioFirstImg(parsedBio.marks).fx.ms != null) ? bioFirstImg(parsedBio.marks).fx.ms : BIO_SPLIT_MS) + 'ms'); }
   if (dual) {
-    baseRef = solo ? '' : (work.image || (parsedBio.marks[0] && parsedBio.marks[0].ref) || ''); baseCap = (!solo && work.image) ? [work.title, work.date].filter(Boolean).join(', ') : '';
+    baseRef = solo ? '' : (work.image || (bioFirstImg(parsedBio.marks) && bioFirstImg(parsedBio.marks).ref) || ''); baseCap = (!solo && work.image) ? [work.title, work.date].filter(Boolean).join(', ') : '';
     const slide = $('imp-bio-slide'); const nxs = $('imp-bio-slide-next'); const scap = $('imp-bio-slide-caption');
     if (nxs) { nxs.classList.remove('bio-next-on'); nxs.classList.add('hidden'); }
     if (slide) { slide.classList.remove('bio-fading'); if (baseRef) { slide.src = imageSourceSized(baseRef, 900); slide.classList.remove('hidden'); } else slide.classList.add('hidden'); }
