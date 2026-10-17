@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v176';
+const APP_VERSION = 'v178';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -2183,6 +2183,15 @@ const PRONUNCIATION_FIXES = {
   'venise': 'Venis',
   'vermeer': 'vermère',
   'vœu': 'veut',
+  // v177 (atelier de prononciation, export du 17 oct 15:21) : nouveaux mots communs.
+  'courtauld': 'courto',
+  'kunsthaus': 'kounsthaosse',
+  'neue': 'neuyeu',
+  'odilon': 'odilon',
+  'of art': 'artte',
+  'singer sargent': 'singer sargente',
+  'l\'avis': 'l\'avis',  // identité : sert de support aux écritures propres à certaines voix
+  'l’avis': 'l’avis',  // idem, apostrophe courbe
   // v175 (atelier de prononciation, export du 17 oct 14:45) : écritures communes à toutes les voix. La dernière écriture d'une
   // même clé l'emporte. Les mots sans écriture commune mais propres à certaines voix reçoivent ici leur forme d'origine (« lire tel quel »),
   // faute de quoi l'écriture propre à la voix ne s'appliquerait pas.
@@ -2307,7 +2316,7 @@ function deArtist(name) {
 // (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
 const PHONE_PRONUNCIATION = {
   // v175 : après l'atelier du 17 oct (14:45), les voix du smartphone n'ont plus que ces écritures propres ; tout le reste suit la table commune.
-  'schwerin': 'Schvéérinne', 'guidi': 'guidi', 'sœurs': 'seur', 'adam': 'Adant', 'bandini': 'bandini', 'carlyle': 'Carlyle', 'epsom': 'éppsom', 'titien': 'TItIEN', 'ursins': 'ursin', 'venise': 'Veunize',
+  'schwerin': 'Schvéérinne', 'guidi': 'guidi', 'sœurs': 'seur', 'adam': 'Adant', 'bandini': 'bandini', 'carlyle': 'Carlyle', 'epsom': 'éppsom', 'titien': 'TItIEN', 'ursins': 'ursin', 'venise': 'Veunize', 'odilon': '',
 };
 const PHONE_PRONUNCIATION_CA = { ...PHONE_PRONUNCIATION, 'titien': 'TItiEN' }; // seule différence entre « français France » et « français Canada »
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
@@ -2317,6 +2326,10 @@ const PRONUNCIATION_BY_VOICE = {
   // v175 : résultats de l'atelier de prononciation (17 oct 14:45), une table par voix, repérée par un morceau de son nom.
   // Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
+    'l\'avis': 'laavi',
+    'l’avis': 'laavi',
+    'odilon': 'odilont',
+    'singer sargent': 'sinn-guerr sargente',
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
     'benci': 'BéNtchi',
@@ -2352,6 +2365,10 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'weréfkine',
   },
   'julie': {
+    'l\'avis': 'laavi',
+    'l’avis': 'laavi',
+    'odilon': 'odilont',
+    'singer sargent': 'sinn-guerr sargente',
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
     'bolton': 'bôl-teune',
@@ -2369,6 +2386,10 @@ const PRONUNCIATION_BY_VOICE = {
     'venise': 'Venîz',
   },
   'paul': {
+    'l\'avis': 'laavi',
+    'l’avis': 'laavi',
+    'odilon': 'odilont',
+    'singer sargent': 'sinn-guerr sargente',
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
     'bolton': 'bôl-teun',
@@ -2478,6 +2499,7 @@ const PRONUNCIATION_BY_VOICE = {
     'venise': 'Venîz',
   },
   'vivienne': {
+    'odilon': 'odilont',
     'ca\'d\'oro': 'ka\'dôorro',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
@@ -11737,6 +11759,8 @@ let impRunId = 0;
 const IMP_GAP_BEFORE_LOCATION_MS = 600; // pause avant la lecture du Lieu (voir impSpeakSegment) — v176 : 800 → 600 (retour Stéphane : « un peu long entre la taille et le lieu »)
 // v174 (retour Stéphane : « entre la date et le matériau, une seconde de plus : ça s'enchaîne trop vite ») : silence avant le matériau
 const IMP_GAP_BEFORE_MATERIAL_MS = 1000;
+// v177 (retour Stéphane : « entre le titre et la date, tu rajoutes 0,3 s ») : silence avant la date
+const IMP_GAP_BEFORE_DATE_MS = 300;
 function impClearTimers() { impRunId++; impTimers.forEach(clearTimeout); impTimers = []; }
 // v66 (docx 29 sept, item 8) : onEnd optionnel, même mécanique que intrusSpeak/vfSpeak/famSpeak —
 // utilisé pour enchaîner les segments de la référence avec un vrai silence entre eux (voir
@@ -11910,10 +11934,20 @@ function impShowCurrent() {
     // l'un ni l'autre. Voir openImpArtistBio plus bas, et le rattachement du clic après l'affichage
     // du texte (boucle STAGGER, plus bas) puisque cet id n'existe qu'une fois le HTML injecté.
     { key: 'artist', label: 'Auteur', value: (() => {
-      const nameHtml = artistFlag(work.nationality) ? `${formatArtistDisplayName(work)} <span title="${escapeHtml(nationalityCountryName(work.nationality))}">${artistFlag(work.nationality)}</span>` : formatArtistDisplayName(work);
-      const nameBtn = (work.bio || work.artistImage) ? `<button type="button" class="imp-artist-name-button" id="imp-artist-name-button">${nameHtml}</button>` : nameHtml;
-      // v129 : petit haut-parleur derrière le nom (bio lue), uniquement s'il y a une bio.
-      return work.bio ? `${nameBtn} <button type="button" class="imp-speaker-btn" id="imp-speaker-bio" title="Écouter la biographie" aria-label="Écouter la biographie de l’artiste">🔊</button>` : nameBtn;
+      // v178 (retour Stéphane : « quand le nom est trop long, Jean-Auguste-Dominique Ingres, le drapeau et le haut-parleur se
+      // retrouvent dans le vide : il faut couper en deux lignes, Ingres en dessous ») : le dernier mot du nom, le drapeau et le
+      // haut-parleur forment un bloc insécable (espaces insécables) ; si le tout ne tient pas sur une ligne, c'est le bloc entier
+      // qui passe à la ligne, et non le drapeau ou le haut-parleur tout seuls. Le nom cliquable est un <span> (et non un <button>) :
+      // un bouton est toujours un bloc compact qui ne se coupe pas entre deux lignes.
+      const baseName = formatArtistDisplayName(work);
+      const flagHtml = artistFlag(work.nationality) ? `<span title="${escapeHtml(nationalityCountryName(work.nationality))}">${artistFlag(work.nationality)}</span>` : '';
+      // v129 : petit haut-parleur derrière le nom (bio lue), uniquement s'il y a une bio. Il est dans le bloc insécable (un clic dessus
+      // ne déclenche pas le clic du nom : stopPropagation dans l'écouteur plus bas).
+      const speakerHtml = work.bio ? `<button type="button" class="imp-speaker-btn" id="imp-speaker-bio" title="Écouter la biographie" aria-label="Écouter la biographie de l’artiste">🔊</button>` : '';
+      const tail = `${flagHtml ? `&nbsp;${flagHtml}` : ''}${speakerHtml ? `&nbsp;${speakerHtml}` : ''}`;
+      const lastWord = !baseName.includes('<') && baseName.match(/^(.*\S)\s+(\S+)$/);
+      const nameHtml = lastWord ? `${lastWord[1]} <span class="imp-nm-end">${lastWord[2]}${tail}</span>` : `${baseName}${tail}`;
+      return (work.bio || work.artistImage) ? `<span role="button" tabindex="0" class="imp-artist-name-button" id="imp-artist-name-button">${nameHtml}</span>` : nameHtml;
     })(), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>${work.workText ? ` <button type="button" class="imp-speaker-btn" id="imp-speaker-work" title="Écouter l’histoire de cette œuvre" aria-label="Écouter l’histoire de cette œuvre">🔊</button>` : ''}`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
@@ -11968,7 +12002,7 @@ function impShowCurrent() {
     // Ensemble n'existant plus, le Lieu démarre TOUJOURS son propre segment (2 s de silence avant lui,
     // et l'image du lieu n'apparaît qu'une fois ce segment commencé, donc jamais pendant qu'on lit
     // encore le titre ou les dimensions) — jusqu'ici il ne le faisait que juste après Matériau/Ensemble.
-    const startsNewSegment = f.key === 'cycle' || f.key === 'location' || (f.key === 'materiaux' && prev && prev.key === 'date');
+    const startsNewSegment = f.key === 'cycle' || f.key === 'location' || (f.key === 'materiaux' && prev && prev.key === 'date') || (f.key === 'date' && prev && prev.key === 'title');
     if (startsNewSegment && currentSpeechSegment.length) { speechSegments.push(currentSpeechSegment); currentSpeechSegment = []; }
     currentSpeechSegment.push(f);
   });
@@ -12019,7 +12053,7 @@ function impShowCurrent() {
     // n'est donc plus que de 0,8 s — juste de quoi laisser finir la voix et séparer nettement le lieu,
     // sans attente perceptible. Les autres coupures (Ensemble, s'il revenait) gardent 2 s.
     const nextSegment = speechSegments[i + 1];
-    const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : (nextSegment && nextSegment[0].key === 'materiaux' ? IMP_GAP_BEFORE_MATERIAL_MS : 2000);
+    const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : (nextSegment && nextSegment[0].key === 'materiaux' ? IMP_GAP_BEFORE_MATERIAL_MS : (nextSegment && nextSegment[0].key === 'date' ? IMP_GAP_BEFORE_DATE_MS : 2000));
     impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), gapMs)); });
   }
   // v128 (docx 9 oct, IMPREGNATION : « la voix doit donner la consigne sur la première page ; c'est bon pour
@@ -12045,7 +12079,7 @@ function impShowCurrent() {
         // v76 : le bouton nom-d'artiste cliquable (voir plus haut) est réinjecté à chaque œuvre avec
         // le reste du HTML de la rubrique — son écouteur de clic doit donc être rattaché à chaque
         // fois, l'ancien élément (et son écouteur) ayant disparu avec l'ancien innerHTML.
-        if (f.key === 'artist') { $('imp-artist-name-button')?.addEventListener('click', () => openImpArtistBio(work)); $('imp-speaker-bio')?.addEventListener('click', () => openImpArtistBio(work, true)); }
+        if (f.key === 'artist') { { const nb = $('imp-artist-name-button'); nb?.addEventListener('click', () => openImpArtistBio(work)); nb?.addEventListener('keydown', (e) => { if (e.target === nb && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openImpArtistBio(work); } }); } $('imp-speaker-bio')?.addEventListener('click', (e) => { e.stopPropagation(); openImpArtistBio(work, true); }); }
         if (f.key === 'title') { $('imp-speaker-work')?.addEventListener('click', () => openImpWorkText(work)); }
       }
     }, textDelay));
