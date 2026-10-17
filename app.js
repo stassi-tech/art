@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v172';
+const APP_VERSION = 'v175';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -2183,6 +2183,105 @@ const PRONUNCIATION_FIXES = {
   'venise': 'Venis',
   'vermeer': 'vermère',
   'vœu': 'veut',
+  // v175 (atelier de prononciation, export du 17 oct 14:45) : écritures communes à toutes les voix. La dernière écriture d'une
+  // même clé l'emporte. Les mots sans écriture commune mais propres à certaines voix reçoivent ici leur forme d'origine (« lire tel quel »),
+  // faute de quoi l'écriture propre à la voix ne s'appliquerait pas.
+  'adam': 'Adan',
+  'algardi': 'algardi',
+  'alyscamps': 'Aliscant',
+  'angelico': 'Anddgéliko',
+  'arcimboldo': 'archimmeboldo',
+  'atkins': 'atkiinnse',
+  'baccio': 'batchio',
+  'bandini': 'bândini',
+  'barocci': 'barottchi',
+  'benci': 'Béntchi',
+  'bernini': 'bêrnini',
+  'berruguete': 'bèrrouguété',
+  'boccioni': 'botchyoni',
+  'bocklin': 'beuklinne',
+  'borghese': 'borguêzze',
+  'buoninsegna': 'Bwonine-ségna',
+  'ca\'d\'oro': 'ka\'dôro',
+  'ca\'rezzonico': 'ka\'rrétzzonico',
+  'caceres': 'Cassérèsse',
+  'caliban': 'Calibant',
+  'campione': 'campionné',
+  'canaletto': 'kanâlétto',
+  'carle van loo': 'carle vaN lô',
+  'carlyle': 'CarlâÏlle',
+  'chassériau': 'Chassériau',
+  'cimabue': 'Tchimaboué',
+  'cione': 'tchiôné',
+  'cosmè': 'Kossmè',
+  'cumes': 'cûmes',
+  'damián forment': 'damianne formente',
+  'duccio': 'Doutchio',
+  'élément': 'élément',
+  'emmaüs': 'émmaüs',
+  'epsom': 'éppsomm',
+  'escorial': 'Esskôrial',
+  'fine': 'Faillne',
+  'firenze': 'Firennzé',
+  'flaxman': 'flaksmane',
+  'fountain': 'fonntaine',
+  'francesca': 'Frantchésska',
+  'gentile': 'djentilé',
+  'gentileschi': 'djentilésski',
+  'gibson': 'gibssone',
+  'giobbe': 'djiobbé',
+  'gismonda': 'DjismonDa',
+  'guglielmo': 'goulyélmo',
+  'haussmann': 'Hossmann',
+  'houston': 'Youston',
+  'iceberg': 'Iceberg',
+  'institute of arts': 'Institute of Artz',
+  'jacopo': 'djiacopo',
+  'jason': 'Jazont',
+  'jongkind': 'jonkinnd',
+  'juan de pareja': 'rouanne de paréra',
+  'kalf': 'kalfe',
+  'kirchner': 'kircheneur',
+  'lancashire': 'leng-kkasheur',
+  'leone': 'léonné',
+  'loggetta': 'lodjêta',
+  'marmion': 'Marmion',
+  'masaccio': 'mazatchio',
+  'mcneill': 'Macknil',
+  'menabuoi': 'Ménabu-oille',
+  'méphistophélès': 'méfistofélesse',
+  'metropolitan': 'métropolitanne',
+  'mochi': 'môki',
+  'mount': 'maount',
+  'orlov': 'orlof',
+  'oxbow': 'oxbo',
+  'pajarito': 'pararrito',
+  'pollaiolo': 'pollaïeuolo',
+  'pollux': 'Pollux',
+  'poyer': 'Pôyé',
+  'repin': 'Riépine',
+  'rijksmuseum': 'riksmûseom',
+  'rijn': 'riinne',
+  'salute': 'salouté',
+  'samson': 'sansont',
+  'santa croce': 'Santa Crotché',
+  'schifanoia': 'Skifanno-ya',
+  'strozzi': 'strozzi',
+  'tate britain': 'Téte Britenn',
+  'thomas ball': 'thomass boll',
+  'tino di camaino': 'tino di kamaï-no',
+  'titien': 'TISSIEN',
+  'tretiakov': 'tré-tiakof',
+  'ursins': 'ûrsin',
+  'vecchietta': 'Vékietta',
+  'venise': 'Venis',
+  'vermeer': 'vermère',
+  'vœu': 'veut',
+  'bolton': 'bolton',  // identité : sert de support aux écritures propres à certaines voix
+  'giusto di menabuoi': 'giusto di menabuoi',  // identité : sert de support aux écritures propres à certaines voix
+  'immobiles': 'immobiles',  // identité : sert de support aux écritures propres à certaines voix
+  'valmondois': 'valmondois',  // identité : sert de support aux écritures propres à certaines voix
+  'werefkin': 'werefkin',  // identité : sert de support aux écritures propres à certaines voix
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2207,149 +2306,205 @@ function deArtist(name) {
 // Voix du smartphone (« français France » et « français Canada »), réglées à l'oreille sur le téléphone
 // (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
 const PHONE_PRONUNCIATION = {
-  'alyscamps': 'Aliscant', 'baccio': 'battchio', 'caliban': 'Calibant', 'carle van loo': 'carle vane lô',
-  'carlyle': 'Carl-aïe-le', 'chassériau': 'Chassériau', 'fine': 'Faille-ne', 'firenze': 'Firéntzé',
-  'fountain': 'fountain', 'guglielmo': 'goulyélmo', 'iceberg': 'Iceberg', 'jongkind': 'djongkind',
-  'kirchner': 'kircheneur', 'menabuoi': 'Ménabuoïe', 'mount': 'maount', 'samson': 'sansont',
-  'schwerin': 'Schvéérinne', 'thomas ball': 'thomas bowl', 'venise': 'Veunize', 'vœu': 'veut',
-  'cumes': 'cumes', 'élément': 'élément', 'emmaüs': 'emmaüs', 'flaxman': 'flaxman', 'guidi': 'guidi',
-  'marmion': 'Mar-mion', 'pollux': 'Pollux', 'sœurs': 'seur',
-  // v168 : l'écriture commune de ces deux mots a changé (atelier du 16 oct 21:51, voix de l'ordinateur) ; les voix du
-  // smartphone gardent celle qui leur convenait jusqu'ici.
-  'adam': 'Adant', 'epsom': 'épsomm',
+  // v175 : après l'atelier du 17 oct (14:45), les voix du smartphone n'ont plus que ces écritures propres ; tout le reste suit la table commune.
+  'schwerin': 'Schvéérinne', 'guidi': 'guidi', 'sœurs': 'seur', 'adam': 'Adant', 'bandini': 'bandini', 'carlyle': 'Carlyle', 'epsom': 'éppsom', 'titien': 'TItIEN', 'ursins': 'ursin', 'venise': 'Veunize',
 };
+const PHONE_PRONUNCIATION_CA = { ...PHONE_PRONUNCIATION, 'titien': 'TItiEN' }; // seule différence entre « français France » et « français Canada »
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
 const PRONUNCIATION_BY_VOICE = {
   'français france': PHONE_PRONUNCIATION,
-  'français canada': PHONE_PRONUNCIATION,
-  // v168 : résultats de l'atelier de prononciation (16 oct 21:51), une table par voix, repérée par un morceau de son nom.
+  'français canada': PHONE_PRONUNCIATION_CA,
+  // v175 : résultats de l'atelier de prononciation (17 oct 14:45), une table par voix, repérée par un morceau de son nom.
   // Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
-  // Microsoft Hortense - French (France)
   'hortense': {
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
     'benci': 'BéNtchi',
+    'bolton': 'bôl-teun',
     'canaletto': 'kanâléto',
+    'élément': 'éléman',
     'epsom': 'épsomm',
-    'médicis': 'médississe',
+    'gentile': 'Génntilé',
+    'immobiles': 'imo-biles',
+    'lancashire': 'leng-kasheur',
     'medicis': 'médississe',
+    'médicis': 'médississe',
+    'pollux': 'Pollûkss',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
+    'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
   },
-  // Microsoft Charline Online (Natural) - French (Belgium)
   'charline': {
     'adam': 'Adant',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
+    'gentile': 'Génntilé',
     'giusto di menabuoi': 'djousto di ménabwoille',
     'jongkind': 'jonkinnde',
     'menabuoi': 'Ménabwo-y',
     'pollaiolo': '',
+    'schifanoia': 'Skifannôya',
     'tate britain': 'Tête Britenn',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venize',
     'werefkin': 'weréfkine',
   },
-  // Microsoft Julie - French (France)
   'julie': {
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
+    'bolton': 'bôl-teune',
     'canaletto': 'kanâléto',
     'carlyle': 'Carl-aïe-le',
+    'élément': 'éléman',
     'epsom': 'épsomm',
-    'médicis': 'médississe',
+    'gentile': 'Génntilé',
+    'immobiles': 'imo-biles',
     'medicis': 'médississe',
+    'médicis': 'médississe',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
+    'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
   },
-  // Microsoft Paul - French (France)
   'paul': {
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
+    'bolton': 'bôl-teun',
     'canaletto': 'kanâléto',
+    'élément': 'éléman',
     'epsom': 'épsomm',
-    'médicis': 'médississe',
+    'gentile': 'Génntilé',
+    'immobiles': 'imo-biles',
     'medicis': 'médississe',
+    'médicis': 'médississe',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
+    'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
   },
-  // Microsoft Gerard Online (Natural) - French (Belgium)
   'gerard': {
     'adam': 'Adant',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
+    'gentile': 'Génntilé',
+    'schifanoia': 'Skifannôya',
     'tate britain': 'Tétte Britenn',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
   },
-  // Microsoft Sylvie Online (Natural) - French (Canada)
   'sylvie': {
     'adam': 'Adant',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
+    'gentile': 'Génntilé',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
   },
-  // Microsoft Jean Online (Natural) - French (Canada)
   'jean': {
     'adam': 'Adant',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
+    'gentile': 'Génntilé',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
   },
-  // Microsoft Antoine Online (Natural) - French (Canada)
   'antoine': {
     'adam': 'Adant',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
+    'gentile': 'Génntilé',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
   },
-  // Microsoft Thierry Online (Natural) - French (Canada)
   'thierry': {
     'adam': 'Adant',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
+    'gentile': 'Génntilé',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
   },
-  // Microsoft Ariane Online (Natural) - French (Switzerland)
-  'ariane': {
-    'adam': 'Adant',
-    'emmaüs': 'émaüsse',
-    'epsom': 'épsomm',
-    'tate britain': 'Tétte Britenn',
-    'venise': 'Venîz',
-  },
-  // Microsoft Fabrice Online (Natural) - French (Switzerland)
-  'fabrice': {
-    'adam': 'Adant',
-    'emmaüs': 'émaüsse',
-    'epsom': 'épsomm',
-    'tate britain': 'Tétte Britenn',
-    'venise': 'Venîz',
-  },
-  // Microsoft Denise Online (Natural) - French (France)
   'denise': {
     'adam': 'Adant',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
+    'gentile': 'Génntilé',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
   },
-  // Microsoft Henri Online (Natural) - French (France)
   'henri': {
     'adam': 'Adant',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
+    'gentile': 'Génntilé',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
   },
-  // Microsoft Vivienne Multilingue Online (Natural) - French (France)
+  'ariane': {
+    'adam': 'Adant',
+    'élément': 'éléman',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'gentile': 'Génntilé',
+    'schifanoia': 'Skifannôya',
+    'tate britain': 'Tétte Britenn',
+    'tino di camaino': 'tino di kama-ï-no',
+    'venise': 'Venîz',
+  },
+  'fabrice': {
+    'adam': 'Adant',
+    'élément': 'éléman',
+    'emmaüs': 'émaüsse',
+    'epsom': 'épsomm',
+    'gentile': 'Génntilé',
+    'schifanoia': 'Skifannôya',
+    'tate britain': 'Tétte Britenn',
+    'tino di camaino': 'tino di kama-ï-no',
+    'venise': 'Venîz',
+  },
   'vivienne': {
     'ca\'d\'oro': 'ka\'dôorro',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
+    'gentile': 'Génntilé',
+    'immobiles': 'imo-biles',
+    'lancashire': 'lancashire',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
     'titien': 'TITIEN',
   },
-  // Microsoft Rémy Multilingue Online (Natural) - French (France)
   'rémy': {
     'ca\'d\'oro': 'ka\'dôorro',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
+    'gentile': 'Génntilé',
+    'immobiles': 'imo-biles',
+    'lancashire': 'lancashire',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
     'titien': 'TITIEN',
   },
-  // Microsoft Eloise Online (Natural) - French (France)
   'eloise': {
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
+    'gentile': 'Génntilé',
+    'schifanoia': 'Skifannôya',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
   },
 };
@@ -2585,6 +2740,7 @@ function normaliseRows(rows) {
     const villeKey = findColumn(row, ['ville', 'ville de creation', 'ville de conservation', 'lieu de conservation']);
     const lieuPrecisKey = findColumn(row, ['lieu precis', 'lieu precis de conservation']);
     const sousLieuKey = findColumn(row, ['sous lieu', 'sous lieu de conservation']);
+    const paysKey = findColumn(row, ['pays', 'pays de conservation', 'pays du lieu']); // v173 : colonne facultative, voir workCountryKey
     let location, ville = '';
     let lieuPrecisValue = ''; // v115 : nom du musée/lieu SANS le sous-lieu (salle, chapelle…), pour l'entrée « par musée » de la LISTE
     if (villeKey || lieuPrecisKey) {
@@ -2756,7 +2912,7 @@ function normaliseRows(rows) {
     if (isGhostHeaderRow) return null;
     return {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
-      date: String(row[dateKey] || '').trim(), location, ville, lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
+      date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
       artistImage, artistImageCaption, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
       row: rowIndex + 2
@@ -2948,6 +3104,47 @@ function countryNameFromFlag(ville) {
   if (!nat) return '';
   if (COUNTRY_NAMES[nat]) return COUNTRY_NAMES[nat];
   // Pays donné directement dans la valeur (« … (Autriche) ») : on retrouve le nom via le drapeau.
+  const emoji = NATIONALITY_FLAGS[nat];
+  const same = Object.keys(COUNTRY_NAMES).find((k) => NATIONALITY_FLAGS[k] === emoji);
+  return same ? COUNTRY_NAMES[same] : '';
+}
+// v173 (retour Stéphane : « Tolède, c'est Toledo aux États-Unis, pas Tolède en Espagne ; pareil pour Cambridge ») : certains
+// noms de villes existent dans plusieurs pays, et le drapeau ne se fiait qu'au nom de la ville. Il tient désormais compte,
+// dans l'ordre : 1) de la colonne facultative « Pays » du fichier (ex. « États-Unis »), qui l'emporte sur tout le reste ;
+// 2) d'une petite table d'exceptions (ville + nom du musée) pour les cas connus ; 3) du nom de l'État américain s'il figure
+// dans la ville (« Manchester (New Hampshire) ») ; 4) de la table des villes, comme avant.
+const PLACE_COUNTRY_OVERRIDES = {
+  'tolede|museum of art': 'americaine', 'tolede|toledo museum of art': 'americaine',
+  'cambridge|musees d art de harvard': 'americaine', 'cambridge|harvard square': 'americaine', 'cambridge|harvard art museums': 'americaine',
+  'worcester|art museum': 'americaine', 'worcester|worcester art museum': 'americaine',
+};
+const US_STATES_NORM = new Set(['alabama', 'alaska', 'arizona', 'arkansas', 'californie', 'california', 'caroline du nord', 'north carolina', 'caroline du sud', 'south carolina', 'colorado', 'connecticut', 'dakota du nord', 'dakota du sud', 'delaware', 'floride', 'florida', 'georgie', 'georgia', 'hawai', 'hawaii', 'idaho', 'illinois', 'indiana', 'iowa', 'kansas', 'kentucky', 'louisiane', 'louisiana', 'maine', 'maryland', 'massachusetts', 'michigan', 'minnesota', 'mississippi', 'missouri', 'montana', 'nebraska', 'nevada', 'new hampshire', 'new jersey', 'nouveau mexique', 'new mexico', 'new york state', 'ohio', 'oklahoma', 'oregon', 'pennsylvanie', 'pennsylvania', 'rhode island', 'tennessee', 'texas', 'utah', 'vermont', 'virginie', 'virginia', 'virginie occidentale', 'west virginia', 'washington state', 'wisconsin', 'wyoming']);
+function countryKeyFromPays(value) {
+  const v = keyName(value);
+  if (!v) return '';
+  if (COUNTRY_NAMES[v]) return v; // adjectif de nationalité donné tel quel (« americaine »)
+  const ALIASES = { 'usa': 'americaine', 'etats unis d amerique': 'americaine', 'etat unis': 'americaine', 'royaume uni': 'anglaise', 'angleterre': 'anglaise', 'grande bretagne': 'anglaise', 'ecosse': 'anglaise', 'pays de galles': 'anglaise' };
+  if (ALIASES[v]) return ALIASES[v];
+  return Object.keys(COUNTRY_NAMES).find((k) => keyName(COUNTRY_NAMES[k]) === v) || '';
+}
+function workCountryKey(work) {
+  if (!work) return '';
+  const byColumn = countryKeyFromPays(work.pays);
+  if (byColumn) return byColumn;
+  const ville = String(work.ville || '');
+  const lieu = keyName(work.lieuPrecis || '');
+  const override = PLACE_COUNTRY_OVERRIDES[keyName(ville) + '|' + lieu];
+  if (override) return override;
+  if (/harvard/.test(lieu) && keyName(ville) === 'cambridge') return 'americaine';
+  const parts = ville.split(/[,()\/]/).map(keyName).filter(Boolean);
+  if (parts.length > 1 && parts.slice(1).some((p) => US_STATES_NORM.has(p))) return 'americaine';
+  return cityCountryKey(ville);
+}
+function workFlag(work) { const nat = workCountryKey(work); return nat ? nationalityFlag(nat) : ''; }
+function workCountryName(work) {
+  const nat = workCountryKey(work);
+  if (!nat) return '';
+  if (COUNTRY_NAMES[nat]) return COUNTRY_NAMES[nat];
   const emoji = NATIONALITY_FLAGS[nat];
   const same = Object.keys(COUNTRY_NAMES).find((k) => NATIONALITY_FLAGS[k] === emoji);
   return same ? COUNTRY_NAMES[same] : '';
@@ -3349,8 +3546,8 @@ function formatArtistName(name) {
 function locationWithFlag(work) {
   const loc = escapeHtml(work?.location || '');
   if (!getGlobalPrefs().flagsLocations) return loc;
-  const flag = work ? cityFlag(work.ville) : '';
-  return flag ? `${loc} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${flag}</span>` : loc;
+  const flag = work ? workFlag(work) : '';
+  return flag ? `${loc} <span title="${escapeHtml(workCountryName(work))}">${flag}</span>` : loc;
 }
 function formatCorrectionValue(key, rawValue, work) {
   if (key === 'artist') return escapeHtml(formatArtistName(rawValue));
@@ -11538,6 +11735,8 @@ const impTimer = createTimer('topbar-timer');
 // déclenche plus jamais sa suite.
 let impRunId = 0;
 const IMP_GAP_BEFORE_LOCATION_MS = 800; // pause avant la lecture du Lieu (voir impSpeakSegment)
+// v174 (retour Stéphane : « entre la date et le matériau, une seconde de plus : ça s'enchaîne trop vite ») : silence avant le matériau
+const IMP_GAP_BEFORE_MATERIAL_MS = 1000;
 function impClearTimers() { impRunId++; impTimers.forEach(clearTimeout); impTimers = []; }
 // v66 (docx 29 sept, item 8) : onEnd optionnel, même mécanique que intrusSpeak/vfSpeak/famSpeak —
 // utilisé pour enchaîner les segments de la référence avec un vrai silence entre eux (voir
@@ -11742,7 +11941,7 @@ function impShowCurrent() {
     // où elle se trouve précisément, dans les deux sens (texte affiché, ordre des champs plus bas
     // pour la voix et pour le déroulé d'images) plutôt que l'inverse.
     { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: false /* v116 (docx 29 sept) : rubrique Ensemble retirée (écrite ET lue) ; remplacée à terme par un petit commentaire oral à la 1ʳᵉ personne */ },
-    { key: 'location', label: 'Lieu de conservation actuel', value: cityFlag(work.ville) ? `${escapeHtml(work.location)} <span title="${escapeHtml(countryNameFromFlag(work.ville))}">${cityFlag(work.ville)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
+    { key: 'location', label: 'Lieu de conservation actuel', value: workFlag(work) ? `${escapeHtml(work.location)} <span title="${escapeHtml(workCountryName(work))}">${workFlag(work)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
   ].filter((f) => f.on);
 
   $('imp-correction-details').innerHTML = fields.map((f) =>
@@ -11769,7 +11968,7 @@ function impShowCurrent() {
     // Ensemble n'existant plus, le Lieu démarre TOUJOURS son propre segment (2 s de silence avant lui,
     // et l'image du lieu n'apparaît qu'une fois ce segment commencé, donc jamais pendant qu'on lit
     // encore le titre ou les dimensions) — jusqu'ici il ne le faisait que juste après Matériau/Ensemble.
-    const startsNewSegment = f.key === 'cycle' || f.key === 'location';
+    const startsNewSegment = f.key === 'cycle' || f.key === 'location' || (f.key === 'materiaux' && prev && prev.key === 'date');
     if (startsNewSegment && currentSpeechSegment.length) { speechSegments.push(currentSpeechSegment); currentSpeechSegment = []; }
     currentSpeechSegment.push(f);
   });
@@ -11820,7 +12019,7 @@ function impShowCurrent() {
     // n'est donc plus que de 0,8 s — juste de quoi laisser finir la voix et séparer nettement le lieu,
     // sans attente perceptible. Les autres coupures (Ensemble, s'il revenait) gardent 2 s.
     const nextSegment = speechSegments[i + 1];
-    const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : 2000;
+    const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : (nextSegment && nextSegment[0].key === 'materiaux' ? IMP_GAP_BEFORE_MATERIAL_MS : 2000);
     impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), gapMs)); });
   }
   // v128 (docx 9 oct, IMPREGNATION : « la voix doit donner la consigne sur la première page ; c'est bon pour
@@ -11954,21 +12153,43 @@ function parseBioMarkup(text) {
   // les repères d'images et le défilement de la lecture ne bougent pas), comme le veut la typographie française.
   // Même chose avant ; : ! ? (« Un mot ! » ne doit pas laisser le « ! » seul en début de ligne).
   plain = plain.replace(/(«) /g, '$1\u00a0').replace(/ (»)/g, '\u00a0$1').replace(/ ([;:!?])(?=\s|$)/g, '\u00a0$1');
-  return { plain, marks };
+  // v173 (retour Stéphane : « mettre les titres des œuvres cités en italique, pour bien voir la différence entre un titre et la bio ») :
+  // dans les textes, *Titre* s'affiche en italique ; les étoiles ne s'affichent pas et ne sont pas lues. On les retire du texte
+  // en notant les passages concernés (ital) et en recalant les repères d'images, qui comptent les caractères.
+  const ital = []; const removed = [];
+  if (plain.includes('*')) {
+    let out = ''; let lastIdx = 0; let mm; const reI = /\*([^*\n]{1,300}?)\*/g;
+    while ((mm = reI.exec(plain))) {
+      out += plain.slice(lastIdx, mm.index); const st = out.length; out += mm[1]; ital.push([st, out.length]);
+      removed.push(mm.index, mm.index + mm[0].length - 1); lastIdx = mm.index + mm[0].length;
+    }
+    out += plain.slice(lastIdx);
+    marks.forEach((mk) => { mk.offset -= removed.filter((p) => p < mk.offset).length; });
+    plain = out.replace(/\*/g, '');
+  }
+  return { plain, marks, ital };
 }
 const bioAuto = { active: false, speaking: false, marks: [], plainLen: 0, spokenLen: 0, startT: 0, gotBoundary: false, frac: 0,
   pauseUntil: 0, raf: 0, rate: 0.72, curIdx: -2, baseRef: '', baseCap: '', nodes: [], shownRef: '', fading: false, pending: null, fadeTimer: 0, userMoved: false, dual: false, parsed: null, baseFrac: 0, paused: false, pausedAt: 0, ended: false, sid: 0, work: null, force: false };
 function bioRender(textEl, parsed) {
   textEl.textContent = '';
   bioAuto.nodes = [];
-  let pos = 0;
-  const addText = (str) => { if (!str) return; const n = document.createTextNode(str); textEl.appendChild(n); bioAuto.nodes.push({ node: n, start: pos, end: pos + str.length }); pos += str.length; };
-  let cursor = 0;
-  parsed.marks.forEach((mk) => {
-    addText(parsed.plain.slice(cursor, mk.offset)); cursor = mk.offset;
-    const sp = document.createElement('span'); sp.className = 'imp-bio-mark'; sp.setAttribute('aria-hidden', 'true'); textEl.appendChild(sp); mk.el = sp;
-  });
-  addText(parsed.plain.slice(cursor));
+  // v173 : passages en italique (titres d'œuvres, voir parseBioMarkup) — le texte est découpé aux repères d'images ET aux limites d'italique
+  const ital = parsed.ital || [];
+  const isItal = (p) => ital.some(([a, b]) => p >= a && p < b);
+  const cuts = new Set([0, parsed.plain.length]);
+  parsed.marks.forEach((mk) => cuts.add(mk.offset)); ital.forEach(([a, b]) => { cuts.add(a); cuts.add(b); });
+  const pts = [...cuts].filter((p) => p >= 0 && p <= parsed.plain.length).sort((a, b) => a - b);
+  const markAt = new Map(); parsed.marks.forEach((mk) => { const k = Math.max(0, Math.min(parsed.plain.length, mk.offset)); if (!markAt.has(k)) markAt.set(k, []); markAt.get(k).push(mk); });
+  const placeMarks = (pos) => (markAt.get(pos) || []).forEach((mk) => { const sp = document.createElement('span'); sp.className = 'imp-bio-mark'; sp.setAttribute('aria-hidden', 'true'); textEl.appendChild(sp); mk.el = sp; });
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i]; placeMarks(a);
+    const b = pts[i + 1]; if (b === undefined) break;
+    const str = parsed.plain.slice(a, b); if (!str) continue;
+    const n = document.createTextNode(str);
+    if (isItal(a)) { const em = document.createElement('em'); em.className = 'imp-bio-title'; em.appendChild(n); textEl.appendChild(em); } else textEl.appendChild(n);
+    bioAuto.nodes.push({ node: n, start: a, end: b });
+  }
 }
 // position verticale (dans le contenu défilant) d'un caractère du texte
 function bioYForOffset(col, off) {
