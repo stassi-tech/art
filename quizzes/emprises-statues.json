@@ -1,0 +1,145 @@
+{
+ "version": 1,
+ "statues": [
+  {
+   "key": "a_faun_teased_by_children_by_bernini.jpg",
+   "titre": "Le Faune poursuivi par des amours",
+   "largeur_px": 960,
+   "hauteur_px": 1344,
+   "x0": 0.222,
+   "y0": 0.0631,
+   "x1": 0.8081,
+   "y1": 0.991
+  },
+  {
+   "key": "apollo_and_daphne_by_bernini_-_galleria_borghese_-_rome,_italy_-_dsc04587.jpg",
+   "titre": "Apollon et Daphné",
+   "largeur_px": 1280,
+   "hauteur_px": 1920,
+   "x0": 0.1601,
+   "y0": 0.0581,
+   "x1": 0.7918,
+   "y1": 0.8922
+  },
+  {
+   "key": "the_rape_of_proserpina_(rome).jpg",
+   "titre": "Le Rapt de Proserpine",
+   "largeur_px": 960,
+   "hauteur_px": 1549,
+   "x0": 0.1711,
+   "y0": 0.0521,
+   "x1": 0.9436,
+   "y1": 0.9846
+  },
+  {
+   "key": "giovanni_lorenzo_bernini-neptune_and_triton-victoria_and_albert_museum.jpg",
+   "titre": "Neptune et Triton",
+   "largeur_px": 960,
+   "hauteur_px": 1280,
+   "x0": 0.2409,
+   "y0": 0.0107,
+   "x1": 0.8144,
+   "y1": 0.9408
+  },
+  {
+   "key": "bernini's_david_02.jpg",
+   "titre": "David",
+   "largeur_px": 960,
+   "hauteur_px": 1440,
+   "x0": 0.1779,
+   "y0": 0.0509,
+   "x1": 0.9181,
+   "y1": 0.8839
+  },
+  {
+   "key": "gian_lorenzo_bernini,_ritratto_del_cardinale_scipione_borghese,_1632_ca,_cclxv_01.jpg",
+   "titre": "Buste de Scipione Borghese",
+   "largeur_px": 960,
+   "hauteur_px": 1336,
+   "x0": 0.038,
+   "y0": 0.0154,
+   "x1": 0.9719,
+   "y1": 0.7879
+  },
+  {
+   "key": "gianlorenzo_bernini,_ritratto_di_costanza_bonarelli,_1637-38,_03.jpg",
+   "titre": "Buste de Costanza Bonarelli",
+   "largeur_px": 960,
+   "hauteur_px": 1841,
+   "x0": 0.0773,
+   "y0": 0.0332,
+   "x1": 0.9455,
+   "y1": 0.7879
+  },
+  {
+   "key": "gian_lorenzo_bernini,_ritratto_del_cardinale_richelieu,_1641.jpg",
+   "titre": "Buste du cardinal de Richelieu",
+   "largeur_px": 960,
+   "hauteur_px": 1256,
+   "x0": 0.038,
+   "y0": 0.0201,
+   "x1": 0.9651,
+   "y1": 0.769
+  },
+  {
+   "key": "museo_borghese,_sala_del_gladiatore,_g.l._bernini,_verità_svelata,_1645-52,_02.jpg",
+   "titre": "La Vérité dévoilée par le Temps",
+   "largeur_px": 960,
+   "hauteur_px": 1881,
+   "x0": 0.0372,
+   "y0": 0.0178,
+   "x1": 0.9581,
+   "y1": 0.9834
+  },
+  {
+   "key": "gian_lorenzo_bernini,_busto_di_francesco_i_d'este,_1650-51,_02.jpg",
+   "titre": "Buste de Francesco Ier d'Este",
+   "largeur_px": 960,
+   "hauteur_px": 1158,
+   "x0": 0.0451,
+   "y0": 0.0462,
+   "x1": 0.9692,
+   "y1": 0.7476
+  },
+  {
+   "key": "angel_with_the_crown_of_thorns_by_bernini.jpg",
+   "titre": "Ange à la couronne d'épines",
+   "largeur_px": 960,
+   "hauteur_px": 1369,
+   "x0": 0.2416,
+   "y0": 0.0711,
+   "x1": 0.9814,
+   "y1": 0.9242
+  },
+  {
+   "key": "angel_with_the_superscription_by_bernini.jpg",
+   "titre": "Ange au cartouche",
+   "largeur_px": 960,
+   "hauteur_px": 1344,
+   "x0": 0.1811,
+   "y0": 0.1055,
+   "x1": 0.8372,
+   "y1": 0.9111
+  },
+  {
+   "key": "bust_of_jesus_christ_by_gianlorenzo_bernini.jpg",
+   "titre": "Buste du Sauveur",
+   "largeur_px": 1280,
+   "hauteur_px": 1295,
+   "x0": 0.0408,
+   "y0": 0.032,
+   "x1": 0.9269,
+   "y1": 0.9206
+  },
+  {
+   "key": "napoli_s_martino_pietro_bernini_carità_di_s_martino_1050007.jpg",
+   "titre": "Saint Martin et le mendiant",
+   "largeur_px": 960,
+   "hauteur_px": 1280,
+   "x0": 0.0845,
+   "y0": 0.0545,
+   "x1": 0.8949,
+   "y1": 0.8637
+  }
+ ]
+}
