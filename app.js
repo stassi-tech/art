@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v175';
+const APP_VERSION = 'v176';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -11734,7 +11734,7 @@ const impTimer = createTimer('topbar-timer');
 // (changement d'œuvre, pause, ouverture de la bio) : une phrase lancée sous un ancien numéro ne
 // déclenche plus jamais sa suite.
 let impRunId = 0;
-const IMP_GAP_BEFORE_LOCATION_MS = 800; // pause avant la lecture du Lieu (voir impSpeakSegment)
+const IMP_GAP_BEFORE_LOCATION_MS = 600; // pause avant la lecture du Lieu (voir impSpeakSegment) — v176 : 800 → 600 (retour Stéphane : « un peu long entre la taille et le lieu »)
 // v174 (retour Stéphane : « entre la date et le matériau, une seconde de plus : ça s'enchaîne trop vite ») : silence avant le matériau
 const IMP_GAP_BEFORE_MATERIAL_MS = 1000;
 function impClearTimers() { impRunId++; impTimers.forEach(clearTimeout); impTimers = []; }
