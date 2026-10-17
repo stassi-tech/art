@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v183';
+const APP_VERSION = 'v184';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12284,9 +12284,10 @@ function bioCapReset() {
 const BIO_MIN_SHOW_MS = 2200; // une image reste au moins ce temps entièrement visible avant qu'une suivante en attente ne la remplace
 function bioDbg(...a) { if (bioAuto.debug) { (bioAuto.log = bioAuto.log || []).push(Math.round(performance.now() - (bioAuto.t0 || 0)) + 'ms ' + a.join(' ')); if (bioAuto.log.length > 400) bioAuto.log.shift(); } }
 function bioCps() {
-  const A = bioAuto; let cps = 14 * ((A.rate || 0.72) / 0.72);
-  const el = (performance.now() - A.startT) / 1000;
-  if (A.gotBoundary && el > 4) { const m = ((A.frac - (A.baseFrac || 0)) * A.plainLen) / el; if (m > 4 && m < 60) cps = m; }
+  const A = bioAuto; let cps = A.cpsLast || 14 * ((A.rate || 0.72) / 0.72);
+  const now = performance.now(); const el = (now - A.startT) / 1000;
+  // vitesse mesurée sur les positions fiables de la voix ; si la voix ne donne plus de position fiable, on garde la dernière vitesse connue
+  if (A.gotBoundary && el > 4 && now - (A.lastCiT || now) < 2500) { const m = ((A.frac - (A.baseFrac || 0)) * A.plainLen) / el; if (m > 4 && m < 60) { cps = m; A.cpsLast = m; } }
   return cps;
 }
 function bioAdaptMs(mi, fxMs) {
@@ -12416,9 +12417,9 @@ function bioFrame() {
     // plusieurs mots d'un coup) ; on lisse : avance régulière à la vitesse de la voix, rattrapage progressif si la voix est devant,
     // et le repère ne dépasse jamais la voix de plus de ~12 caractères (pour ne pas annoncer une image trop tôt).
     const dt = Math.min(0.1, Math.max(0, (now - (A.lastT || now)) / 1000)); A.lastT = now;
-    if (A.fshow < 0 || f < A.fshow - 0.05 || f < (A.baseFrac || 0) - 0.001 && A.fshow > (A.baseFrac || 0)) A.fshow = f;   // reprise ailleurs (avance/retour rapide) : on se cale
+    if (A.fshow < 0) A.fshow = f;   // (avance/retour rapide : bioSpeakFrom recale fshow lui-même)
     if (reading) {
-      const L = Math.max(1, A.plainLen); const adv = (bioCps() * dt) / L; const lead = 12 / L;
+      const L = Math.max(1, A.plainLen); const adv = (bioCps() * dt) / L; const stale = A.gotBoundary && now - (A.lastCiT || now) > 2500; const lead = stale ? 1 : 12 / L;   // voix muette >2,5 s : on avance à l'estime
       let fs = A.fshow + adv;
       if (fs > f + lead) fs = Math.max(A.fshow, f + lead);
       const gap = f - fs; if (gap > 0) fs += Math.min(gap, Math.max(gap * 0.12, (bioCps() * 2.5 * dt) / L));   // rattrapage doux
@@ -12438,6 +12439,8 @@ function bioFrame() {
   if (!A.speaking && !A.userMoved && A.gotBoundaryOrSpoke) { A.raf = requestAnimationFrame(bioFrame); return; }
   let idx = -1; const colTop = col.getBoundingClientRect().top - col.scrollTop;
   A.marks.forEach((mk, i) => { if (mk.el && mk.el.getBoundingClientRect().top - colTop <= lineY) idx = i; });
+  // pendant la lecture, l'image ne revient jamais en arrière toute seule (seuls ◀◀ ou un défilement manuel le permettent)
+  if (A.allowBack) A.allowBack = false; else if (reading && A.curIdx >= -1 && idx < A.curIdx) { bioDbg('recul de repère refusé', idx, '<', A.curIdx); idx = A.curIdx; }
   if (idx !== A.curIdx) {
     if (idx < A.curIdx) { A.pending = []; clearTimeout(A.queueTimer); }   // retour en arrière : les images en attente ne sont plus d'actualité
     bioDbg('ligne de lecture : repère', idx, 'pos', Math.round(A.fshow * A.plainLen) + '/' + A.plainLen);
@@ -12488,12 +12491,26 @@ function bioSentenceStarts(plain) {
   while ((m = re.exec(plain))) { const p = m.index + m[0].length; if (p < plain.length) starts.push(p); }
   return starts;
 }
+function bioProgress(ci, spokenLen) {
+  // v183 (retour Stéphane : « une petite saute dans le texte, et l'image Oxbow revient avant Yellowstone ») : la voix en ligne (Rémi)
+  // envoie parfois une position aberrante (retour brutal en arrière, ou bond très en avant). On ne suit plus aveuglément :
+  // une position qui recule est ignorée, un bond énorme n'est accepté que si l'événement suivant le confirme. Tout est noté au journal.
+  const A = bioAuto; const last = A.lastCi || 0;
+  if (ci < last - 3) { A.badEv = (A.badEv || 0) + 1; bioDbg('position ignorée (recul)', ci, 'après', last); return; }
+  if (ci - last > Math.max(250, 0.12 * spokenLen)) {
+    if (!(A.cand != null && ci >= A.cand - 5 && ci <= A.cand + 250)) { A.cand = ci; bioDbg('bond suspect, attente de confirmation', last, '→', ci); return; }
+    bioDbg('bond confirmé', last, '→', ci);
+  }
+  A.cand = null; A.lastCi = ci; A.lastCiT = performance.now();
+  A.gotBoundary = true; A.spokenLen = Math.max(1, spokenLen); A.frac = A.baseFrac + Math.min(1, ci / A.spokenLen) * (1 - A.baseFrac);
+  if (A.debug && (!A.lastLog || A.lastCiT - A.lastLog > 3000)) { A.lastLog = A.lastCiT; bioDbg('voix à', ci + '/' + spokenLen); }
+}
 function bioSpeakFrom(offset) {
   const A = bioAuto; if (!A.parsed) return;
   const plain = A.parsed.plain; offset = Math.max(0, Math.min(plain.length - 1, offset));
   A.sid++; const sid = A.sid;
   A.baseFrac = offset / Math.max(1, plain.length);
-  A.pending = []; clearTimeout(A.queueTimer); A.fshow = A.baseFrac; A.t0 = A.t0 || performance.now(); bioDbg('lecture depuis', offset);
+  A.pending = []; clearTimeout(A.queueTimer); A.fshow = A.baseFrac; A.lastCi = 0; A.cand = null; A.lastCiT = performance.now(); A.allowBack = true; A.t0 = A.t0 || performance.now(); bioDbg('lecture depuis', offset);
   A.frac = A.baseFrac; A.gotBoundary = false; A.gotBoundaryOrSpoke = false; A.startT = performance.now();
   A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0;
   $('imp-bio-split')?.classList.add('bio-film');
@@ -12501,7 +12518,7 @@ function bioSpeakFrom(offset) {
   bioSyncButton();
   impSpeak(plain.slice(offset), undefined, A.force, {
     onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
-    onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundary = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.frac = bioAuto.baseFrac + Math.min(1, ci / bioAuto.spokenLen) * (1 - bioAuto.baseFrac); },
+    onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioProgress(ci, spokenLen); },
     onStop: () => {
       if (sid !== bioAuto.sid) return;
       bioAuto.speaking = false;
@@ -12546,7 +12563,7 @@ function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
   bioAutoStop();
   Object.assign(bioAuto, { marks: parsed.marks, plainLen: parsed.plain.length, spokenLen: Math.max(1, parsed.plain.length), frac: 0, gotBoundary: false,
     startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false, solo: false, soloOk: false,
-    pending: [], fshow: -1, lastT: 0, holdUntil: 0, t0: performance.now(), log: [], debug: /[?&]debug=bio/.test(location.search) });
+    pending: [], fshow: -1, lastT: 0, holdUntil: 0, lastCi: 0, cand: null, lastCiT: performance.now(), badEv: 0, allowBack: true, t0: performance.now(), log: [], debug: /[?&]debug=bio/.test(location.search) });
   bioAuto.preload = [];
   parsed.marks.forEach((mk) => { if (mk.end) return; try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); bioAuto.preload.push(im); } catch (e) { /* ignoré */ } });
   bioDebugBox();
@@ -12631,7 +12648,7 @@ function openImpArtistBio(work, force, opts) {
     const sid = bioAuto.sid;
     impSpeak(parsedBio.plain, undefined, force, {
       onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
-      onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundary = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.frac = Math.min(1, ci / bioAuto.spokenLen); },
+      onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioProgress(ci, spokenLen); },
       onStop: () => {
         if (sid !== bioAuto.sid) return;
         bioAuto.speaking = false;
