@@ -119,6 +119,16 @@ details summary{cursor:pointer;font-weight:600}
 
 .vpauto{display:flex;gap:8px;margin:8px 0 2px}
 .vpauto .big{flex:1}
+#chainBox{margin:8px 0 10px}
+.chainrow{display:flex;gap:8px;align-items:stretch}.chainrow .big{flex:1}
+#chainStop{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:700;min-width:110px;line-height:1.1}
+#chainStop small{display:block;font-weight:400;font-size:.7rem;opacity:.9}
+#chainStop:disabled{background:#e3b5af;border-color:#e3b5af;opacity:1}
+.chainrow2{margin:4px 0 0}.chainrow2 .link:disabled{opacity:.4}
+.chaincount{margin:8px 0 4px;font-size:.95rem;font-weight:600;color:var(--ink,#222)}
+.chaincount small{font-weight:400;color:var(--muted)}
+.chainbar{height:8px;background:#e8e4dc;border-radius:6px;overflow:hidden}
+#chainBarIn{height:100%;width:0;background:var(--ok,#3b8f5a);transition:width .4s}
 .vpauto .stopb{background:var(--bad);color:#fff;border-color:var(--bad);font-weight:700;min-width:96px}
 .vpauto .stopb:disabled{background:#e3b5af;border-color:#e3b5af;opacity:1}
 .vr.cur{background:var(--cur);outline:2px solid #e0b800}
@@ -174,7 +184,12 @@ details summary{cursor:pointer;font-weight:600}
     <p class="sub">Choisissez une voix : elle lit toute la liste. Quand un mot est mal dit, appuyez sur <b>Stop</b> (ou sur la barre Espace). Ce mot s'ouvre alors ici pour être corrigé.</p>
     <div class="novoice" id="novoice">Aucune voix française n'est disponible dans ce navigateur pour le moment (réessayez dans quelques secondes, ou utilisez Chrome / Edge).</div>
 
-    <button class="big" id="chainBtn" title="Lit, voix après voix, uniquement les mots pas encore écoutés avec chaque voix. Stop dès qu'un mot est mal dit : la lecture s'arrête, vous réglez le mot, puis vous relancez."></button>
+    <div id="chainBox">
+      <div class="chainrow"><button class="big" id="chainBtn" title="Lit, voix après voix, uniquement les mots pas encore écoutés avec chaque voix. Stop dès qu'un mot est mal dit : la lecture s'arrête, vous réglez le mot, puis vous relancez."></button><button class="stopb" id="chainStop" disabled title="Arrête la lecture : le mot en cours est noté « mal dit » (comme la barre d'espace)">⏹ STOP<small>mot mal dit</small></button></div>
+      <div class="chainrow2"><button class="link" id="chainPause" disabled title="Arrête l'enchaînement sans rien noter (pour s'arrêter pour la journée)">⏸ Arrêter sans rien noter</button></div>
+      <div class="chaincount" id="chainCount"></div>
+      <div class="chainbar"><div id="chainBarIn"></div></div>
+    </div>
     <div class="voices" id="voices"></div>
     <button class="stop" id="stop" disabled>⏹ STOP — ce mot est mal dit</button>
     <div class="msg" id="msg"></div>
@@ -352,7 +367,7 @@ function readNext(){
     if (chain) { const nv = nextVoiceToRead(); if (nv !== undefined) { setMsg('Voix suivante : ' + shortName(nv || 'voix par défaut') + '…'); setTimeout(()=>{ if (chain) startReading(nv, true); }, 900); } else { chain = false; setMsg('✔ Toutes les voix ont lu tous leurs mots restants.'); renderAll(); } }
     return;
   }
-  const k = keys[R.idx]; R.cur = k; save(); renderList(); scrollTo(k);
+  const k = keys[R.idx]; R.cur = k; save(); renderList(); renderChainBtn(); scrollTo(k);
   const tok = R.token; let done = false;
   const next = ()=>{ if (done || !reading || reading.token!==tok) return; done = true; clearTimers(); timers.push(setTimeout(()=>{ if (reading && reading.token===tok) { reading.idx++; readNext(); } }, S.gap*1000)); };
   utter(said(k,P), R.voice, next);
@@ -398,10 +413,19 @@ $('toastU').onclick = ()=>{ if (undo) undo(); $('toast').classList.remove('on');
 function scrollTo(k){ const el = $('list').querySelector(`[data-k="${CSS.escape(k)}"]`); if (el) el.scrollIntoView({block:'nearest'}); }
 function renderChainBtn(){
   const b = $('chainBtn'); if (!b) return;
-  const vs = chainVoices(), left = vs.reduce((a,n)=>a+remainingFor(n),0), nv = vs.filter(n=>remainingFor(n)>0).length;
+  const vs = chainVoices(), keys = listKeys().filter(k=>!S.removed[k]);
+  const left = vs.reduce((a,n)=>a+remainingFor(n),0), nv = vs.filter(n=>remainingFor(n)>0).length, total = vs.length * keys.length;
   b.disabled = !window.speechSynthesis || !left || !!reading;
-  b.textContent = left ? `▶ Enchaîner les voix : ${left} mot(s) restant(s) à écouter (${nv} voix)` : '✔ Rien à écouter : toutes les voix ont tout lu';
+  b.textContent = left ? (chain && reading ? '… enchaînement en cours' : '▶ Enchaîner les voix : lire les mots restants') : '✔ Rien à écouter : toutes les voix ont tout lu';
+  $('chainStop').disabled = !reading; $('chainPause').disabled = !reading;
+  const fmt = (n)=> n.toLocaleString('fr-FR');
+  let txt = left ? `Il reste <b>${fmt(left)}</b> mot${left>1?'s':''} à écouter <small>(${nv} voix concernée${nv>1?'s':''}${total?` · ${fmt(total-left)} déjà validés sur ${fmt(total)}`:''})</small>` : '✔ Tout est écouté avec toutes les voix de cet appareil.';
+  if (reading) { const r = remainingFor(reading.voice); txt += `<br><small>Voix en cours : <b>${esc(shortName(reading.voice||'voix par défaut'))}</b> — encore ${fmt(r)} mot${r>1?'s':''} pour elle</small>`; }
+  $('chainCount').innerHTML = txt;
+  $('chainBarIn').style.width = total ? Math.round((total-left)/total*100)+'%' : '0%';
 }
+$('chainStop').onclick = ()=>stopReading(true);
+$('chainPause').onclick = ()=>stopReading(false);
 $('chainBtn').onclick = ()=>{ const n = nextVoiceToRead(); if (n === undefined) return; startReading(n, false); chain = true; };
 function renderVoices(){
   renderChainBtn();
