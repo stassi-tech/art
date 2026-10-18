@@ -174,6 +174,7 @@ details summary{cursor:pointer;font-weight:600}
     <p class="sub">Choisissez une voix : elle lit toute la liste. Quand un mot est mal dit, appuyez sur <b>Stop</b> (ou sur la barre Espace). Ce mot s'ouvre alors ici pour être corrigé.</p>
     <div class="novoice" id="novoice">Aucune voix française n'est disponible dans ce navigateur pour le moment (réessayez dans quelques secondes, ou utilisez Chrome / Edge).</div>
 
+    <button class="big" id="chainBtn" title="Lit, voix après voix, uniquement les mots pas encore écoutés avec chaque voix. Stop dès qu'un mot est mal dit : la lecture s'arrête, vous réglez le mot, puis vous relancez."></button>
     <div class="voices" id="voices"></div>
     <button class="stop" id="stop" disabled>⏹ STOP — ce mot est mal dit</button>
     <div class="msg" id="msg"></div>
@@ -323,10 +324,14 @@ function speakOnce(text){
 
 // ---- lecture de toute la liste ----
 let reading = null, timers = [];
+// v3 : « Enchaîner les voix » — lit, voix après voix (voix déjà commencées sur cet appareil), seulement les mots pas encore écoutés.
+function remainingFor(n){ const P = prof(n||'_'), keys = listKeys(); return keys.filter(k=>!P.st[k] && !S.removed[k]).length; }
+function chainVoices(){ return allVoiceNames().filter(n=>voiceUsed(n)); }
+function nextVoiceToRead(){ return chainVoices().find(n=>remainingFor(n)>0); }
 function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
-function startReading(voiceName){
+function startReading(voiceName, fromChain){
   if (!window.speechSynthesis) return;
-  stopReading(false); speechSynthesis.cancel();
+  stopReading._keep = !!fromChain; stopReading(false); stopReading._keep = false; speechSynthesis.cancel();
   S.voice = voiceName; save();
   const keys = listKeys(), P = prof(voiceName);
   const start = keys.findIndex(k=>!P.st[k]);
@@ -342,14 +347,20 @@ function readNext(){
   if (R.cur) { if (!P.st[R.cur]) P.st[R.cur] = 'ok'; R.prev = R.cur; }
   // saute les mots déjà traités
   while (R.idx < keys.length && (P.st[keys[R.idx]] || S.removed[keys[R.idx]])) R.idx++;
-  if (R.idx >= keys.length) { reading = null; save(); setMsg('Lecture terminée. Les mots que vous n\'avez pas arrêtés sont marqués « bon » pour cette voix.'); renderAll(); return; }
+  if (R.idx >= keys.length) {
+    reading = null; save(); setMsg('Lecture terminée. Les mots que vous n\'avez pas arrêtés sont marqués « bon » pour cette voix.'); renderAll();
+    if (chain) { const nv = nextVoiceToRead(); if (nv !== undefined) { setMsg('Voix suivante : ' + shortName(nv || 'voix par défaut') + '…'); setTimeout(()=>{ if (chain) startReading(nv, true); }, 900); } else { chain = false; setMsg('✔ Toutes les voix ont lu tous leurs mots restants.'); renderAll(); } }
+    return;
+  }
   const k = keys[R.idx]; R.cur = k; save(); renderList(); scrollTo(k);
   const tok = R.token; let done = false;
   const next = ()=>{ if (done || !reading || reading.token!==tok) return; done = true; clearTimers(); timers.push(setTimeout(()=>{ if (reading && reading.token===tok) { reading.idx++; readNext(); } }, S.gap*1000)); };
   utter(said(k,P), R.voice, next);
   timers.push(setTimeout(next, 3500 + said(k,P).length*250)); // sécurité si la voix ne signale pas la fin
 }
+let chain = false;
 function stopReading(mark){
+  if (!stopReading._keep) chain = false;   // v3 : tout arrêt manuel coupe l'enchaînement des voix
   if (!reading) return;
   const R = reading; clearTimers(); reading = null; if (window.speechSynthesis) speechSynthesis.cancel();
   if (mark && R.cur) {
@@ -385,7 +396,15 @@ $('toastU').onclick = ()=>{ if (undo) undo(); $('toast').classList.remove('on');
 
 // ---- affichage ----
 function scrollTo(k){ const el = $('list').querySelector(`[data-k="${CSS.escape(k)}"]`); if (el) el.scrollIntoView({block:'nearest'}); }
+function renderChainBtn(){
+  const b = $('chainBtn'); if (!b) return;
+  const vs = chainVoices(), left = vs.reduce((a,n)=>a+remainingFor(n),0), nv = vs.filter(n=>remainingFor(n)>0).length;
+  b.disabled = !window.speechSynthesis || !left || !!reading;
+  b.textContent = left ? `▶ Enchaîner les voix : ${left} mot(s) restant(s) à écouter (${nv} voix)` : '✔ Rien à écouter : toutes les voix ont tout lu';
+}
+$('chainBtn').onclick = ()=>{ const n = nextVoiceToRead(); if (n === undefined) return; startReading(n, false); chain = true; };
 function renderVoices(){
+  renderChainBtn();
   const box = $('voices'); const keys = listKeys();
   const names = voices.length ? voices.map(v=>v.name) : [''];
   box.innerHTML = names.map(n=>{
