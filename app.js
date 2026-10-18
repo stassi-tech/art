@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v194';
+const APP_VERSION = 'v195';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -11046,9 +11046,8 @@ function renderSavedConfigsInto(wrapId, listId, saved) {
 function renderSavedGuidedConfigsList() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
-  // Les configurations enregistrées ne se retrouvent plus que dans Mon compte — plus sur les
-  // pages de menus elles-mêmes, pour ne garder qu'un seul endroit où les chercher.
-  renderSavedConfigsInto('account-saved-configs-section', 'account-saved-configs-list', saved);
+  // Les configurations enregistrées ne s'affichent plus sur la page des scores : on les retrouve
+  // uniquement dans la page « Mes configurations enregistrées » (Mon compte).
 }
 // Si le parcours guidé (ou une configuration enregistrée rechargée) a limité la partie à certains
 // jeux seulement, on ne montre que ceux-là sur la page d'accueil des exercices — pas la peine de
