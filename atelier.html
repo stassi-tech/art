@@ -170,7 +170,7 @@ details summary{cursor:pointer;font-weight:600}
   </aside>
 
   <main>
-    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v2</small></h1>
+    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v3</small></h1>
     <p class="sub">Choisissez une voix : elle lit toute la liste. Quand un mot est mal dit, appuyez sur <b>Stop</b> (ou sur la barre Espace). Ce mot s'ouvre alors ici pour être corrigé.</p>
     <div class="novoice" id="novoice">Aucune voix française n'est disponible dans ce navigateur pour le moment (réessayez dans quelques secondes, ou utilisez Chrome / Edge).</div>
 
@@ -257,10 +257,10 @@ const STORE_KEY = 'atelierPron_v3';
 const $ = (id)=>document.getElementById(id);
 const esc = (s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BASEMAP = {}; BASE.forEach(([k,v])=>{ BASEMAP[k]=v; });
-let S = { rate:0.85, gap:1.2, voice:'', sel:'', words:[], v:{}, view:'all', removed:{}, shared:{}, sharedDone:false, applyAll:true };
+let S = { rate:0.85, gap:1.2, voice:'', sel:'', words:[], v:{}, view:'all', removed:{}, shared:{}, locked:{}, sharedDone:false, applyAll:true };
 try { Object.assign(S, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch(e) {}
 let dirHandle = null, saveT = null, askedAuth = false;
-function save(){ try { stampChanges(); } catch(e) {} try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e) {} clearTimeout(saveT); saveT = setTimeout(()=>autosave(false), 600); try { schedulePush(); } catch(e) {} }
+function save(){ try { const r = restoreLocked(); if (r.length) toast('🔒 « '+r[0]+' »'+(r.length>1?' et '+(r.length-1)+' autre(s)':'')+' : validé par toutes les voix, donc verrouillé. Pour le modifier : « Déverrouiller » dans le panneau de droite.'); autoLock(); } catch(e) {} try { stampChanges(); } catch(e) {} try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e) {} clearTimeout(saveT); saveT = setTimeout(()=>autosave(false), 600); try { schedulePush(); } catch(e) {} }
 // reprise de la version précédente de l'atelier
 try {
   if (!localStorage.getItem(STORE_KEY)) {
@@ -404,7 +404,7 @@ function renderVoices(){
 }
 function allvBadge(k){
   const V = voiceStatus(k); if (!V.total) return '';
-  if (V.full) return '<span class="allv full" title="Ce mot a été écouté et validé avec toutes les voix testées">✔ toutes les voix</span>';
+  if (V.full) return isLocked(k) ? '<span class="allv full" title="Validé avec toutes les voix : verrouillé, rien ne peut le défaire (bouton « Déverrouiller » à droite pour le modifier)">🔒 toutes les voix</span>' : '<span class="allv full" title="Ce mot a été écouté et validé avec toutes les voix testées">✔ toutes les voix</span>';
   if (V.bad) return `<span class="allv badv" title="Au moins une voix dit mal ce mot">✖ ${V.bad} voix</span>`;
   if (V.ok) return `<span class="allv part" title="Validé avec ${V.ok} voix sur ${V.total}">${V.ok}/${V.total} voix</span>`;
   return '';
@@ -483,7 +483,47 @@ function renderFix(){
 }
 
 // ---- panneau « voix par voix » ----
-const testedVoices = ()=> allVoiceNames().filter(voiceUsed);
+// v3 : « toutes les voix » = toutes les voix déjà utilisées dans l'atelier, sur n'importe quel appareil (profils synchronisés),
+// et plus seulement celles que CET appareil connaît — sinon le compteur change selon l'ordinateur / le téléphone / le navigateur.
+const testedVoices = ()=> Object.keys(S.v).filter(n=>n!=='_' && voiceUsed(n));
+// ---- v3 : verrou « validé pour toutes les voix » ----
+// Quand un mot est bon pour TOUTES les voix déjà utilisées (au moins LOCK_MIN_VOICES), on en prend une photo (états + écritures)
+// et on la fait respecter : plus aucune action (✔ recliqué par erreur, « Recommencer », fusion venue du téléphone, nouvelle écriture…)
+// ne peut la défaire. Seul le bouton « Déverrouiller » (panneau de droite) l'ouvre ; il se reverrouille tout seul ensuite.
+const LOCK_MIN_VOICES = 8;
+const isLocked = (k)=> !!S.locked && !!S.locked[k] && S.locked[k] !== '0';
+function lockSnap(k){
+  const snap = { st:{}, val:{}, sh:(S.shared[k]||'') };
+  testedVoices().forEach(n=>{ const P = prof(n); snap.st[n] = P.st[k]; if (Object.prototype.hasOwnProperty.call(P.val,k)) snap.val[n] = P.val[k]; });
+  return JSON.stringify(snap);
+}
+function restoreLocked(){
+  const out = [];
+  Object.keys(S.locked||{}).forEach(k=>{
+    const raw = S.locked[k]; if (!raw || raw==='0') return;
+    let snap; try { snap = JSON.parse(raw); } catch(e){ return; }
+    let ch = false;
+    Object.keys(snap.st||{}).forEach(n=>{
+      const P = prof(n);
+      if (P.st[k] !== snap.st[n]) { P.st[k] = snap.st[n]; ch = true; }
+      if (Object.prototype.hasOwnProperty.call(snap.val||{}, n)) { if (P.val[k] !== snap.val[n]) { P.val[k] = snap.val[n]; ch = true; } }
+      else if (Object.prototype.hasOwnProperty.call(P.val, k)) { delete P.val[k]; ch = true; }
+    });
+    if ((S.shared[k]||'') !== (snap.sh||'')) { if (snap.sh) S.shared[k] = snap.sh; else delete S.shared[k]; ch = true; }
+    if (S.removed[k]) { /* mot retiré volontairement de la liste : on respecte */ }
+    if (ch) out.push(k);
+  });
+  return out;
+}
+function autoLock(){
+  const names = testedVoices(); if (names.length < LOCK_MIN_VOICES) return;
+  S.locked = S.locked || {};
+  listKeys().forEach(k=>{
+    const V = voiceStatus(k);
+    if (V.full) { if (!(k in S.locked)) S.locked[k] = lockSnap(k); }
+    else if (S.locked[k] === '0') delete S.locked[k];   // le mot a été modifié après déverrouillage : il pourra se reverrouiller
+  });
+}
 function voiceStatus(k){
   const names = testedVoices(); let ok = 0, bad = 0;
   names.forEach(n=>{ const st = prof(n).st[k]; if (st==='bad') bad++; else if (st==='ok'||st==='fixed') ok++; });
@@ -527,10 +567,21 @@ function renderTries(){
     return `<span class="try" data-t="${esc(x.t)}"><button class="tu" title="Mettre cette écriture dans la voix choisie">${esc(x.t)}</button><small>${x.lab?esc(x.lab)+(users.length?' · ':''):''}${esc(users.join(', '))}</small>${x.lab?'':'<button class="tx" title="Retirer de la liste">✕</button>'}</span>`;
   }).join('') : '<span class="help" style="color:var(--muted)">Rien d\'essayé pour l\'instant.</span>');
 }
+function lockButtonHtml(k){
+  if (isLocked(k)) return ' <button class="link" data-lock="open" data-k="'+esc(k)+'" title="Ce mot est validé par toutes les voix et verrouillé. Cliquez pour pouvoir le modifier.">🔒 Verrouillé · Déverrouiller</button>';
+  if (voiceStatus(k).full && testedVoices().length >= LOCK_MIN_VOICES) return ' <button class="link" data-lock="close" data-k="'+esc(k)+'" title="Verrouiller de nouveau ce mot (validé par toutes les voix).">🔓 Reverrouiller</button>';
+  return '';
+}
+$('vpWord').addEventListener('click', e=>{
+  const b = e.target.closest && e.target.closest('[data-lock]'); if (!b) return;
+  const k = b.dataset.k;
+  if (b.dataset.lock === 'open') { S.locked[k] = '0'; save(); renderAll(); toast('🔓 « '+k+' » déverrouillé : vous pouvez le modifier'); }
+  else { delete S.locked[k]; save(); renderAll(); toast('🔒 « '+k+' » verrouillé'); }
+});
 function renderPanel(){
   const k = RS(), box = $('vpRows'); $('vpAll').checked = !!S.vpAll;
   if (!k || !listKeys().includes(k)) { $('vpWord').textContent = ''; $('vpTries').innerHTML = ''; box.innerHTML = '<div class="hint">Cliquez sur un mot dans la liste de gauche : toutes les voix et leurs écritures s\'afficheront ici.</div>'; return; }
-  $('vpWord').innerHTML = esc(k) + (k!==S.sel ? ' <small style="font-weight:400;color:var(--muted)">· mot qu\'on vient de régler : à essayer avec toutes les voix</small>' : ''); renderTries(); cpFill();
+  $('vpWord').innerHTML = esc(k) + (k!==S.sel ? ' <small style="font-weight:400;color:var(--muted)">· mot qu\'on vient de régler : à essayer avec toutes les voix</small>' : '') + lockButtonHtml(k); renderTries(); cpFill();
   const list = shownVoices();
   if (!list.length) { box.innerHTML = '<div class="help">Aucune voix testée pour le moment : lancez une lecture avec ▶ à gauche, ou cochez « Afficher aussi les voix jamais testées ».</div>'; return; }
   box.innerHTML = list.map(n=>{
@@ -827,8 +878,19 @@ $('pickDir').onclick = async ()=>{
 document.addEventListener('click', ()=>{ if (dirHandle && !askedAuth) { askedAuth = true; autosave(true); } }, true);
 $('openState').onchange = async (e)=>{
   const f = e.target.files[0]; if (!f) return;
-  try { const o = JSON.parse(await f.text()); if (!o || typeof o!=='object' || !o.v) throw 0; stopReading(false); S = Object.assign({ rate:0.85, gap:1.2, voice:'', sel:'', words:[], v:{}, view:'all', removed:{}, shared:{}, sharedDone:false, applyAll:true }, o); prevFlat = {}; save(); renderAll(); toast('Sauvegarde ouverte'); }
-  catch(err){ toast('Ce fichier n\'est pas une sauvegarde de l\'atelier'); }
+  try {
+    const o = JSON.parse(await f.text()); if (!o || typeof o!=='object' || !o.v) throw 0;
+    // v3 : une ancienne sauvegarde ne REMPLACE plus l'état actuel (ce qui pouvait faire « revenir en arrière » tous les appareils
+    // synchronisés) : on n'y prend que ce qui manque ici ; rien de ce qui est déjà validé ou écrit n'est touché.
+    if (!confirm('Ouvrir cette sauvegarde ? Elle sera AJOUTÉE à l\'état actuel : seuls les mots, écritures et validations qui manquent ici sont repris, rien n\'est remplacé.')) { e.target.value=''; return; }
+    stopReading(false); let n = 0;
+    (o.words||[]).forEach(w=>{ if (!S.words.includes(w)) { S.words.push(w); n++; } });
+    Object.keys(o.shared||{}).forEach(k=>{ if (o.shared[k] && !S.shared[k]) { S.shared[k] = o.shared[k]; n++; } });
+    Object.keys(o.removed||{}).forEach(k=>{ if (o.removed[k] && !(k in S.removed)) { S.removed[k] = true; n++; } });
+    Object.keys(o.v||{}).forEach(name=>{ const P = prof(name), src = o.v[name]||{};
+      ['val','st','note'].forEach(t=>Object.keys(src[t]||{}).forEach(k=>{ if (!Object.prototype.hasOwnProperty.call(P[t],k) && src[t][k]!==undefined) { P[t][k] = src[t][k]; n++; } })); });
+    save(); renderAll(); toast('Sauvegarde ajoutée : '+n+' élément(s) repris');
+  } catch(err){ toast('Ce fichier n\'est pas une sauvegarde de l\'atelier'); }
   e.target.value = '';
 };
 idbGet('dir').then(async h=>{ if (h) { dirHandle = h; const p = await dirPerm(false); if (p==='granted') { autosave(false); } else setSaveLabel('auth'); } else setSaveLabel('none'); }).catch(()=>setSaveLabel('none'));
@@ -853,16 +915,18 @@ function flatS(o){
   (o.words||[]).forEach(w=>{ f['w'+SEP+w] = 1; });
   Object.keys(o.removed||{}).forEach(k=>{ if (o.removed[k]) f['r'+SEP+k] = 1; });
   Object.keys(o.shared||{}).forEach(k=>{ if (o.shared[k]) f['s'+SEP+k] = o.shared[k]; });
+  Object.keys(o.locked||{}).forEach(k=>{ if (o.locked[k]) f['l'+SEP+k] = o.locked[k]; });
   Object.keys(o.v||{}).forEach(n=>{ const P = o.v[n] || {}; ['val','st','note'].forEach(t=>Object.keys(P[t]||{}).forEach(k=>{ if (P[t][k] !== undefined) f[t+SEP+n+SEP+k] = P[t][k]; })); });
   return f;
 }
 function buildS(f, mt){
-  const o = { words:[], removed:{}, shared:{}, v:{}, mt };
+  const o = { words:[], removed:{}, shared:{}, locked:{}, v:{}, mt };
   Object.keys(f).forEach(key=>{
     const p = key.split(SEP), t = p[0];
     if (t==='w') o.words.push(p[1]);
     else if (t==='r') o.removed[p[1]] = true;
     else if (t==='s') o.shared[p[1]] = f[key];
+    else if (t==='l') o.locked[p[1]] = f[key];
     else { const n = p[1], k = p.slice(2).join(SEP); const P = o.v[n] || (o.v[n] = { val:{}, st:{}, note:{} }); P[t][k] = f[key]; }
   });
   return o;
@@ -880,15 +944,17 @@ function mergeInto(remote){
     if (tl > tr) val = a; else if (tr > tl) val = b;
     else if (a === undefined) val = b; else if (b === undefined) val = a;
     else val = JSON.stringify(a) >= JSON.stringify(b) ? a : b;   // égalité parfaite : choix déterministe, les deux appareils convergent
+    if (val === undefined && k.charAt(0)==='l' && k.charAt(1)===SEP && a && a!=='0') val = a;   // v3 : jamais de suppression de verrou par fusion
     if (val !== undefined) out[k] = val;
     if (tl || tr) mtOut[k] = Math.max(tl, tr);
   });
   const before = JSON.stringify(fl), m = buildS(out, mtOut);
-  S.words = m.words; S.removed = m.removed; S.shared = m.shared; S.v = m.v; S.mt = m.mt; S.sharedDone = true;
+  S.words = m.words; S.removed = m.removed; S.shared = m.shared; S.locked = m.locked; S.v = m.v; S.mt = m.mt; S.sharedDone = true;
+  const fixed = restoreLocked().length;   // v3 : un mot verrouillé ne peut pas être défait par une fusion venue d'un autre appareil
   prevFlat = flatS(S);
-  return JSON.stringify(prevFlat) !== before;
+  return fixed > 0 || JSON.stringify(prevFlat) !== before;
 }
-const payload = ()=> JSON.stringify({ words:S.words, removed:S.removed, shared:S.shared, v:S.v, mt:S.mt||{} });
+const payload = ()=> JSON.stringify({ words:S.words, removed:S.removed, shared:S.shared, locked:S.locked||{}, v:S.v, mt:S.mt||{} });
 let fbAuth = null, fbDb = null, syncRef = null, syncUnsub = null, lastPushed = '', pushT = null, syncUser = null;
 function setSyncLabel(kind, extra){
   const el = $('syncState'); if (!el) return; el.className = 'st';
@@ -914,6 +980,7 @@ async function pushNow(){
 function schedulePush(){ clearTimeout(pushT); pushT = setTimeout(pushNow, 900); }
 function applyRemote(json){
   let remote; try { remote = JSON.parse(json); } catch(e){ return; }
+  try { const t = +localStorage.getItem(STORE_KEY+'_sauvegardeT')||0; if (Date.now()-t > 30*60*1000) { localStorage.setItem(STORE_KEY+'_sauvegarde', JSON.stringify(S)); localStorage.setItem(STORE_KEY+'_sauvegardeT', String(Date.now())); } } catch(e){}   // v3 : copie de secours (au plus une toutes les 30 min) avant de fusionner
   const changed = mergeInto(remote);
   try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e){}
   if (changed) { renderAll(); toast('Essais mis à jour depuis votre autre appareil'); }
@@ -950,6 +1017,7 @@ function initSync(){
   };
   $('syncLogout').onclick = ()=>fbAuth.signOut();
 }
+try { restoreLocked(); autoLock(); } catch(e){}
 initSync();
 loadVoices(); setTimeout(loadVoices, 600); phraseUpdate();
 </script>
