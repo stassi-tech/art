@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v197';
+const APP_VERSION = 'v198';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -1972,6 +1972,9 @@ const PRONUNCIATION_FIXES = {
   'poyer': 'Pôyé', // v152 (atelier 16 oct)
   'chœur': 'keur',
   'adam': 'Adant', // v128 : « Adam = dan, comme une dent » — la finale « -ant » est un « an » sûr (« Adan » restait lu « adane »)
+  // v198 : « Kunsthaus » / « Kunsthalle » doivent passer AVANT le préfixe générique « kunst* », sinon celui-ci les transformait en premier et leur écriture validée ne s'appliquait jamais
+  'kunsthaus': 'kounsthaosse',
+  'kunsthalle': 'kounst-halleu',
   'kunst*': 'kounst',
   // v116 (docx 29 sept, tableau PRONONCIATION) : réécritures phonétiques ajoutées d'après les
   // indications de Stéphane (les noms déjà présents plus haut — Sœurs, Adam, Kunst…, Rijn… — n'ont pas
@@ -2355,6 +2358,13 @@ const PRONUNCIATION_FIXES = {
   'kröller-müller': 'kröller-müller',  // identité : sert de support aux écritures propres à certaines voix
   'pan': 'pan',  // identité : sert de support aux écritures propres à certaines voix
   'yale': 'yale',  // identité : sert de support aux écritures propres à certaines voix
+  // atelier 19 oct 00:08 : nouveaux mots (écriture commune à toutes les voix)
+  'jungle': 'junngle',
+  'kunsthalle': 'kounst-halleu',
+  'lembachhaus': 'lemmbak-haousse',
+  'munch': 'münk',
+  'slevogt': 'sléfokt',
+  'beckmann': 'beckmann',  // identité : sert de support aux écritures propres à certaines voix
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2390,6 +2400,11 @@ const PRONUNCIATION_BY_VOICE = {
   // v175 : résultats de l'atelier de prononciation (17 oct 14:45), une table par voix, repérée par un morceau de son nom.
   // Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
+    // atelier 19 oct 00:08
+    'beckmann': 'béck-manne',
+    'lembachhaus': 'lemmbake-haousse',
+    'munch': 'mun-ke',
+    'slevogt': 'sléfoktt',
     // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
@@ -2421,6 +2436,8 @@ const PRONUNCIATION_BY_VOICE = {
     'yale': 'yèle',
   },
   'charline': {
+    // atelier 19 oct 00:08
+    'munch': 'mun-ke',
     // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
@@ -2440,6 +2457,11 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'julie': {
+    // atelier 19 oct 00:08
+    'beckmann': 'béck-manne',
+    'lembachhaus': 'lemmbake-haousse',
+    'munch': 'mun-ke',
+    'slevogt': 'sléfoktt',
     // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
@@ -2469,6 +2491,11 @@ const PRONUNCIATION_BY_VOICE = {
     'yale': 'yèle',
   },
   'paul': {
+    // atelier 19 oct 00:08
+    'beckmann': 'béck-manne',
+    'lembachhaus': 'lemmbake-haousse',
+    'munch': 'mun-ke',
+    'slevogt': 'sléfoktt',
     // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
@@ -2497,6 +2524,8 @@ const PRONUNCIATION_BY_VOICE = {
     'yale': 'yèle',
   },
   'gerard': {
+    // atelier 19 oct 00:08
+    'munch': 'münke',
     // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
@@ -2551,6 +2580,8 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'thierry': {
+    // atelier 19 oct 00:08
+    'munch': 'mûnn-ke',
     // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
@@ -2619,6 +2650,7 @@ const PRONUNCIATION_BY_VOICE = {
     'tate britain': 'Tétte Britenn',
   },
   'vivienne': {
+    'pollaiuolo': 'pollaiuolo', // v198 : évite que « pollaiolo » → « pollaiuolo » soit retransformé par l'entrée commune « pollaiuolo »
     'gellée': 'ge llée', // = « gellee » de l'atelier (variante accentuée du texte)
     // atelier 18 oct 16:13 (rapport complet)
     'ca\'d\'oro': 'ka\'dôorro',
@@ -2645,6 +2677,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'rémy': {
+    'pollaiuolo': 'pollaiuolo', // v198 : évite que « pollaiolo » → « pollaiuolo » soit retransformé par l'entrée commune « pollaiuolo »
     'gellée': 'gellée', // = « gellee » de l'atelier (variante accentuée du texte)
     // atelier 18 oct 16:13 (rapport complet)
     'ca\'d\'oro': 'ka\'dôorro',
