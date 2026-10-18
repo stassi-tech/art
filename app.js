@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v196';
+const APP_VERSION = 'v197';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -13905,29 +13905,21 @@ function buildProgressReport(docs, userName) {
   // --- Conseils personnalisés (bienveillants) ---
   const advice = [];
   const TIPS = {
-    artist: 'Associez chaque artiste à une image mentale (un tableau célèbre, un style) plutôt que d’apprendre le nom seul.',
-    title: 'Pour les titres, retenez le sujet de l’œuvre avec vos propres mots : le titre exact se rattache ensuite plus facilement.',
-    date: 'Pour les dates, rattachez chaque œuvre à une période ou à un mouvement (la dizaine d’années suffit) : l’exercice « Chronologie » est fait pour cela.',
-    location: 'Pour les lieux, retenez le musée avec sa ville et imaginez-vous dans la salle : les exercices « Famille » et « Reconstitution » aident à fixer ces liens.',
+    artist: 'associez chaque artiste à une image mentale.',
+    title: 'retenez le sujet de l’œuvre avec vos propres mots.',
+    date: 'rattachez chaque œuvre à une période (essayez « Chronologie »).',
+    location: 'retenez le musée avec sa ville (essayez « Famille »).',
   };
   const weakRub = rubrics.length >= 2 ? rubrics[rubrics.length - 1] : null;
-  if (weakRub && weakRub.pct < 85) advice.push(`La rubrique « ${weakRub.label} » est celle où vous avez le plus de marge (${weakRub.pct} % de réussite). ${TIPS[weakRub.key]}`);
+  if (weakRub && weakRub.pct < 85) advice.push(`Rubrique « ${weakRub.label} » (${weakRub.pct} %) : ${TIPS[weakRub.key]}`);
   const weakCentury = byCentury.length >= 2 ? byCentury[0] : null;
-  if (weakCentury && weakCentury.avg < 85) advice.push(`Le ${weakCentury.key} siècle est celui où vous réussissez le moins (${weakCentury.avg} % en moyenne, sur ${weakCentury.count} séances). Une ou deux séances ciblées sur cette période vous feraient progresser rapidement.`);
+  if (weakCentury && weakCentury.avg < 85) advice.push(`Le ${weakCentury.key} siècle (${weakCentury.avg} %) : une ou deux séances ciblées feraient progresser vite.`);
   const weakEx = byExercise.length >= 2 ? byExercise[0] : null;
-  if (weakEx && weakEx.avg < 85) advice.push(`Parmi les exercices, « ${weakEx.key} » est celui qui vous résiste le plus (${weakEx.avg} %) : c’est le bon candidat pour votre prochain entraînement.`);
+  if (weakEx && weakEx.avg < 85) advice.push(`Exercice « ${weakEx.key} » (${weakEx.avg} %) : bon candidat pour votre prochain entraînement.`);
   if (recentCount === 0) advice.push('Vous n’avez pas joué depuis plus de deux semaines : une séance courte de 5 questions suffit pour reprendre le fil.');
   if (!advice.length) advice.push('Vos résultats sont très homogènes : c’est le moment de passer au niveau supérieur ou d’explorer un siècle que vous avez moins pratiqué.');
   if (!quiz.length && train.length) advice.push('Pensez aussi à essayer les quiz : ils testent l’ensemble (artiste, titre, date, lieu) et complètent bien les exercices.');
   if (quiz.length && !train.length) advice.push('Pensez aussi à essayer les exercices d’entraînement (Chronologie, Famille, Intrus…) : ils travaillent la mémoire autrement que le quiz.');
-
-  const tips = [
-    ['Changez d’ambiance', 'Chaque séance peut se dérouler dans une ambiance différente — Salon Renoir, Ermitage Rococo, Romantique Pitti, Galerie Renaissance, Château de Versailles, Pure Wedgwood, Bauhaus, Space Age… Associer un siècle à une ambiance est un excellent appui pour la mémoire : n’hésitez pas à en essayer plusieurs.'],
-    ['La voix', 'Laissez la voix sur « automatique » : l’application lit les consignes et les œuvres à voix haute, et l’écoute aide à mémoriser. Vous pouvez aussi choisir une voix qui vous plaît dans les réglages de « Mon compte ».'],
-    ['Vos configurations', 'Vous avez trouvé la séance qui vous convient (siècles, nombre de questions, ambiance) ? Enregistrez-la sous un nom : vous la relancerez en un clic depuis « Mes configurations enregistrées ».'],
-    ['Montez en niveau', 'Les niveaux 1, 2 et 3 présentent des œuvres de plus en plus difficiles. Quand vous dépassez 90 % régulièrement, passez au niveau suivant.'],
-    ['Peu, mais souvent', 'Dix minutes trois ou quatre fois par semaine valent mieux qu’une longue séance isolée : la mémoire se construit dans la répétition.'],
-  ];
 
   const trendHtml = progressRows.map((r) => `
     <div class="rp-card">
@@ -13939,29 +13931,76 @@ function buildProgressReport(docs, userName) {
 
   const section = (title, body) => body ? `<section class="rp-section"><h3>${title}</h3>${body}</section>` : '';
   const hello = userName ? esc(userName) : 'Bravo';
+  const rubHtml = rubrics.length ? rubrics.map((r) => rowHtml(r.label, r.pct)).join('') : '';
+  const cenHtml = byCentury.length ? byCentury.slice().sort((a, b) => parseInt(a.key) - parseInt(b.key)).map((r) => rowHtml(r.key + ' siècle', r.avg)).join('') : '';
+  const exHtml = byExercise.length ? byExercise.slice().reverse().map((r) => rowHtml(r.key, r.avg)).join('') : '';
+  const col = (title, html) => html ? `<div class="rp-col"><h3>${title}</h3>${html}</div>` : '';
+  const twoCols = col('Par rubrique (quiz)', rubHtml) + col('Par siècle', cenHtml);
   return `
-    <div class="rp-header">
-      <div class="rp-eyebrow">MNEMART</div>
-      <h2>Bilan de progression</h2>
-      <div class="rp-name">${userName ? 'décerné à <strong>' + esc(userName) + '</strong>' : ''}</div>
-      <div class="rp-period">du ${esc(fmtDate(first))} au ${esc(fmtDate(last))}</div>
-    </div>
-    <p class="rp-intro">${esc(intro)}</p>
-    <div class="rp-figures">
-      <div><strong>${docs.length}</strong><span>séances</span></div>
-      <div><strong>${activeDays}</strong><span>jours de pratique</span></div>
-      <div><strong>${totalQuestions}</strong><span>questions travaillées</span></div>
-      <div><strong>${esc(reportDuration(totalTime))}</strong><span>passées à vous exercer</span></div>
-    </div>
-    ${section('Vos résultats', `<div class="rp-cards">${trendHtml}</div>`)}
-    ${section('Ce que vous maîtrisez le mieux', rubrics.length ? rubrics.map((r) => rowHtml(r.label, r.pct)).join('') + '<p class="rp-note">Réussite par rubrique, sur l’ensemble de vos quiz.</p>' : '')}
-    ${section('Par siècle', byCentury.length ? byCentury.slice().sort((a, b) => parseInt(a.key) - parseInt(b.key)).map((r) => rowHtml(r.key + ' siècle', r.avg, r.count + ' séances')).join('') : '')}
-    ${section('Par art', byArt.length >= 2 ? byArt.map((r) => rowHtml(r.key, r.avg, r.count + ' séances')).join('') : '')}
-    ${section('Par exercice d’entraînement', byExercise.length ? byExercise.slice().reverse().map((r) => rowHtml(r.key, r.avg, r.count + ' séances')).join('') : '')}
-    ${section('Pour aller plus loin', '<ul class="rp-list">' + advice.map((a) => `<li>${esc(a)}</li>`).join('') + '</ul>')}
-    ${section('Quelques conseils pour profiter de l’application', '<ul class="rp-list rp-tips">' + tips.map(([t, x]) => `<li><strong>${esc(t)}.</strong> ${esc(x)}</li>`).join('') + '</ul>')}
-    <p class="rp-closing">${hello}, continuez à regarder, à nommer, à situer : chaque séance affine votre œil. À très bientôt dans les salles du musée !</p>
-    <p class="rp-foot">Bilan établi le ${esc(fmtDate(new Date()))} d’après les scores enregistrés dans votre compte.</p>`;
+    <div class="rp-frame"></div>
+    ${reportCorners()}
+    <div class="rp-inner">
+      <div class="rp-header">
+        ${reportEmblem()}
+        <div class="rp-eyebrow">MNEMART</div>
+        <h2>Bilan de progression</h2>
+        <div class="rp-decor"><span></span><i>❖</i><span></span></div>
+        <div class="rp-award">${userName ? 'est décerné avec félicitations à' : 'est décerné avec félicitations'}</div>
+        ${userName ? `<div class="rp-name">${esc(userName)}</div>` : ''}
+        <div class="rp-period">du ${esc(fmtDate(first))} au ${esc(fmtDate(last))}</div>
+      </div>
+      <p class="rp-intro">${esc(intro)}</p>
+      <div class="rp-figures">
+        <div><strong>${docs.length}</strong><span>séances</span></div>
+        <div><strong>${activeDays}</strong><span>jours de pratique</span></div>
+        <div><strong>${totalQuestions}</strong><span>questions travaillées</span></div>
+        <div><strong>${esc(reportDuration(totalTime))}</strong><span>passées à vous exercer</span></div>
+      </div>
+      <div class="rp-cards">${trendHtml}</div>
+      ${twoCols ? `<div class="rp-cols">${twoCols}</div>` : ''}
+      ${exHtml ? `<section class="rp-section"><h3>Exercices d’entraînement</h3><div class="rp-lines-2">${exHtml}</div></section>` : ''}
+      ${advice.length ? `<section class="rp-section rp-next"><h3>Votre prochain défi</h3><ul class="rp-list">${advice.slice(0, 3).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></section>` : ''}
+      <p class="rp-closing">${hello}, continuez à regarder, à nommer, à situer : chaque séance affine votre œil.</p>
+      <div class="rp-bottom">
+        <span class="rp-foot">Établi le ${esc(fmtDate(new Date()))}<br>d’après les scores de votre compte</span>
+        ${reportSeal()}
+        <span class="rp-foot rp-sign">Le musée imaginaire<br><strong>MNEMART</strong></span>
+      </div>
+    </div>`;
+}
+// Décor du diplôme : médaillon à laurier, coins ornés, sceau doré (tout en SVG, sans image externe).
+function reportEmblem() {
+  const leaves = [];
+  for (let i = 0; i < 10; i++) {
+    const th = 105 + i * (150 / 9); // arc gauche : du bas vers le haut en passant par la gauche
+    const rad = th * Math.PI / 180;
+    const x = 60 + 45 * Math.cos(rad), y = 60 + 45 * Math.sin(rad);
+    const rot = th + (i % 2 ? 28 : -28);
+    leaves.push(`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="3" ry="7.5" transform="rotate(${rot.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="url(#rpg)"/>`);
+    leaves.push(`<ellipse cx="${(120 - x).toFixed(1)}" cy="${y.toFixed(1)}" rx="3" ry="7.5" transform="rotate(${(-rot).toFixed(0)} ${(120 - x).toFixed(1)} ${y.toFixed(1)})" fill="url(#rpg)"/>`);
+  }
+  return `<svg class="rp-emblem" viewBox="0 0 120 120" aria-hidden="true">
+    <defs><linearGradient id="rpg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e6c978"/><stop offset=".5" stop-color="#b08d4c"/><stop offset="1" stop-color="#7a5c35"/></linearGradient></defs>
+    ${leaves.join('')}
+    <circle cx="60" cy="60" r="31" fill="#fffaf0" stroke="url(#rpg)" stroke-width="3"/>
+    <circle cx="60" cy="60" r="26" fill="none" stroke="#c9a85c" stroke-width=".8"/>
+    <rect x="42" y="45" width="36" height="30" rx="1.5" fill="none" stroke="url(#rpg)" stroke-width="2.2"/>
+    <rect x="46" y="49" width="28" height="22" fill="#f6efe0" stroke="#c9a85c" stroke-width=".6"/>
+    <text x="60" y="67" text-anchor="middle" font-family="Georgia,serif" font-size="20" font-weight="700" fill="#7a5c35">M</text>
+  </svg>`;
+}
+function reportCorners() {
+  const c = `<svg viewBox="0 0 60 60" aria-hidden="true"><path d="M2 58 V2 H58" fill="none" stroke="#b08d4c" stroke-width="2.2"/><path d="M9 58 V9 H58" fill="none" stroke="#d9c08a" stroke-width="1"/><path d="M2 2 C20 6 28 14 30 30 C14 28 6 20 2 2 Z" fill="#b08d4c" opacity=".85"/><circle cx="36" cy="36" r="2.4" fill="#b08d4c"/></svg>`;
+  return ['tl', 'tr', 'bl', 'br'].map((p) => `<span class="rp-corner rp-${p}">${c}</span>`).join('');
+}
+function reportSeal() {
+  return `<svg class="rp-seal" viewBox="0 0 80 80" aria-hidden="true">
+    <defs><radialGradient id="rps" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#f0d98f"/><stop offset=".6" stop-color="#b08d4c"/><stop offset="1" stop-color="#7a5c35"/></radialGradient></defs>
+    <path d="M26 56 L18 78 L30 72 L36 78 L40 58 Z" fill="#8a5449"/><path d="M54 56 L62 78 L50 72 L44 78 L40 58 Z" fill="#a8665a"/>
+    <path d="M40 4 l5 5 7-2 3 7 7 2-1 7 6 4-4 6 3 7-7 3-1 7-7-1-5 6-5-5-7 1-1-7-7-3 3-7-4-6 6-4-1-7 7-2 3-7 7 2z" fill="url(#rps)" transform="translate(0,2) scale(1)"/>
+    <circle cx="40" cy="38" r="19" fill="none" stroke="#fff3cf" stroke-width="1.2" opacity=".8"/>
+    <text x="40" y="46" text-anchor="middle" font-family="Georgia,serif" font-size="24" font-weight="700" fill="#fff3cf">M</text>
+  </svg>`;
 }
 async function openProgressReport() {
   const overlay = $('report-overlay'), sheet = $('report-sheet');
