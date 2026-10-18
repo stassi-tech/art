@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=289" />
+    <link rel="stylesheet" href="style.css?v=292" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -563,6 +563,13 @@
             <summary style="cursor:pointer;font-family:Arial,sans-serif;font-weight:700;color:var(--muted);">3. Se limiter à des artistes précis (facultatif)</summary>
             <div id="qc-artists-slot" style="margin-top:8px;"></div>
           </details>
+          <!-- v188/v190 (retour Stéphane) : 3e encadré beige en bas de la page des choix, comme les deux premiers — il reprend la phrase
+               « Pour cette session vous avez choisi de vous exercer sur… » (qui ne figure plus sur la page des exercices) quand des
+               artistes sont choisis, avec « Tout effacer » pour vider ce choix d'artistes. -->
+          <div id="qc-artists-box" class="hidden">
+            <div class="config-table qc-artists-chosen" id="qc-artists-chosen"></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-artists">Tout effacer</button></div>
+          </div>
           <div id="qc-overrides" class="hidden"></div>
           <div class="setup-action-bar">
             <div class="setup-action-row">
@@ -1417,6 +1424,8 @@
             <h3 id="exercise-results-title" style="margin-top:0;"></h3>
             <p id="exercise-results-score" style="font-size:1.6rem;font-weight:700;color:var(--accent);margin:10px 0;"></p>
             <p id="exercise-results-message" style="font-family:Georgia,serif;"></p>
+            <!-- v189 (retour Stéphane) : rappel que les scores sont gardés dans le compte ; le logo du compte sert de lien. -->
+            <p class="results-account-note" style="font-family:Georgia,serif;font-size:.9rem;margin:10px 0 14px;">Vous pouvez retrouver tous vos scores dans votre compte. <button type="button" id="exercise-results-account" class="results-account-link" aria-label="Mon compte" title="Mon compte">👤</button></p>
             <div class="modal-actions">
               <button type="button" class="primary-button" id="exercise-results-close" style="width:100%;">Retour aux exercices →</button>
             </div>
@@ -2167,6 +2176,6 @@
     <!-- v154 (Stéphane : « les crédits dans une fenêtre pop-up refermable, pas une grande fenêtre ») :
          fenêtre flottante affichée par-dessus l'exercice quand on clique sur « Crédits et licence de
          l'image ». Remplie par openCreditPopup (app.js) à partir de l'API Wikimedia Commons. -->
-    <script src="app.js?v=413"></script>
+    <script src="app.js?v=418"></script>
   </body>
 </html>

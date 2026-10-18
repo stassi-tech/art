@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v186';
+const APP_VERSION = 'v191';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -695,7 +695,7 @@ function initProfilePage() {
   if ($('pf-link-ambiance-field')) $('pf-link-ambiance-field').checked = localStorage.getItem('linkAmbianceToField') !== 'false';
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   $('pf-voice').innerHTML = voices.length
-    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    ? '<option value="">Automatique (voix de femme ou d’homme selon l’artiste)</option>' + voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
     : '<option value="">Voix par défaut du système</option>';
   let fieldDefaults = {};
   try { fieldDefaults = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) {}
@@ -971,6 +971,7 @@ function toggleArtistSelection(name) {
   updateExerciseSummaries();
   updateProfileMenuBadges();
   populateArtistSuggestions(); // rafraîchit la liste pour montrer la coche à jour
+  renderQuickArtistsBox();
 }
 $('pf-artists-clear')?.addEventListener('click', () => {
   if (quickDraft) quickDraft.artist = { artists: [] };
@@ -978,6 +979,7 @@ $('pf-artists-clear')?.addEventListener('click', () => {
   updateExerciseSummaries();
   updateProfileMenuBadges();
   populateArtistSuggestions();
+  renderQuickArtistsBox();
 });
 $('profile-menu-artists')?.addEventListener('click', populateArtistSuggestions);
 // « Aller au choix suivant » : simple raccourci qui clique le bouton de menu correspondant, pour
@@ -1125,6 +1127,31 @@ document.querySelectorAll('.volume-bar').forEach((bar) => {
   });
 });
 renderVolumeBars();
+// v187 (« une voix de femme pour Vigée Le Brun, une voix d'homme pour Cole ») : on ne peut pas imposer une voix précise (chaque appareil a les siennes),
+// mais on peut demander « une voix de femme » ou « une voix d'homme » : le navigateur ne donne pas le sexe d'une voix, on le devine d'après le prénom
+// qui figure dans son nom (Denise, Hortense… / Rémy, Henri, Paul…). Le choix du joueur dans ses réglages passe toujours avant.
+const bioStrip = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const VOICE_FEMALE_RE = /\b(hortense|charline|julie|sylvie|denise|ariane|vivienne|eloise|amelie|audrey|aurelie|marie|celine|brigitte|claire|caroline|sophie|isabelle|catherine|nathalie|francoise|fabienne|josephine|elodie|lucie|chantal|virginie|sandrine)/;
+const VOICE_MALE_RE = /\b(paul|gerard|jean|antoine|thierry|henri|fabrice|rem[iy]|thomas|mathieu|nicolas|bruno|guillaume|olivier|pierre|daniel|maxime|alain|claude|julien|lucas)/;
+const FEMALE_FIRST_RE = /^(elisabeth|elizabeth|isabelle|isabella|marie|maria|mary|artemisia|sofonisba|rosalba|angelica|berthe|suzanne|paula|frida|georgia|lavinia|judith|clara|rosa|kathe|marguerite|margaret|louise|gabrielle|anna|anne|catharina|catherine|elisabetta|giovanna|barbara|dorothea|helen|helene|jeanne|sonia|tamara|leonora|remedios|niki|eva|emily|alice|amelie|charlotte|clemence|claudine|diane|francoise|genevieve|hannah|henriette|irene|josephine|julie|laure|leonie|lucie|madeleine|mathilde|nathalie|olga|pauline|rachel|sophie|therese|valentine|virginie|yvonne|agnes|aurelie|beatrice|bridget|carmen|cecilia|cecile|chiara|christina|cornelia|dora|edith|ellen|emma|esther|fanny|gwen|ida|jacqueline|katharina|kiki|leonor|lotte|lygia|marianne|marlene|martha|meret|michaela|nancy|natalia|orsola|rebecca|sarah|sheila|susanna|tina|ulrike|vanessa|vera)$/;
+function normalizeVoiceGender(raw) {
+  const t = bioStrip(raw).trim(); if (!t) return '';
+  if (/^(f|femme|feminin|feminine|femini|woman|female)/.test(t)) return 'femme';
+  if (/^(h|m|homme|masculin|man|male)/.test(t)) return 'homme';
+  return '';
+}
+function bioInferGender(prenom) {   // '' = pas de préférence (artiste sans prénom : « Le Greco », « Maître de… »)
+  const first = bioStrip(prenom).trim().split(/[\s\-’']+/)[0]; if (!first) return '';
+  return FEMALE_FIRST_RE.test(first) ? 'femme' : 'homme';
+}
+function pickVoiceByGender(g) {
+  if (!window.speechSynthesis || !g) return null;
+  const re = g === 'femme' ? VOICE_FEMALE_RE : VOICE_MALE_RE;
+  const cands = speechSynthesis.getVoices().filter((v) => /^fr/i.test(v.lang) && re.test(bioStrip(v.name)));
+  if (!cands.length) return null;
+  const score = (v) => { const n = bioStrip(v.name); return (/natural/.test(n) ? 3 : 0) + (/online/.test(n) ? 2 : 0) + (/multilingual/.test(n) ? 0.5 : 0) + (/fr-fr|france/.test(bioStrip(v.lang + ' ' + v.name)) ? 0.2 : 0); };
+  return cands.sort((a, b) => score(b) - score(a))[0];
+}
 function getGlobalVoice() {
   if (!window.speechSynthesis) return null;
   const prefs = getGlobalPrefs();
@@ -1137,7 +1164,7 @@ function populateGlobalVoiceSelect() {
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   const prefs = getGlobalPrefs();
   select.innerHTML = voices.length
-    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    ? '<option value="">Automatique (voix de femme ou d’homme selon l’artiste)</option>' + voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
     : '<option value="">Voix par défaut du système</option>';
 }
 speechSynthesis.onvoiceschanged = populateGlobalVoiceSelect;
@@ -1246,6 +1273,11 @@ function showExerciseResultsModal(exerciseName, correct, total, closeTarget) {
   $('exercise-results-message').textContent = encouragingMessage(percent);
   openModal('modal-exercise-results');
 }
+// v189 : le logo du compte, dans la fenêtre de fin d'exercice, ouvre « Mon compte » (ou la connexion si le joueur n'est pas connecté).
+$('exercise-results-account')?.addEventListener('click', () => {
+  closeModal('modal-exercise-results');
+  $('global-account-button')?.click();
+});
 $('exercise-results-close')?.addEventListener('click', () => {
   closeModal('modal-exercise-results');
   showPanel(exerciseResultsCloseTarget);
@@ -2189,7 +2221,8 @@ const PRONUNCIATION_FIXES = {
   'neue': 'neuyeu',
   'odilon': 'odilon',
   'of art': 'artte',
-  'singer sargent': 'singer sargente',
+  'singer sargent': 'sinngger sargente', // atelier 18 oct 08:26 (avant : 'singer sargente' ; les voix qui préfèrent l'ancienne écriture l'ont dans leur propre table)
+  'edward burne-jones': 'Edward BeURNE-Jones', // atelier 18 oct 08:26
   'l\'avis': 'l\'avis',  // identité : sert de support aux écritures propres à certaines voix
   'l’avis': 'l’avis',  // idem, apostrophe courbe
   // v175 (atelier de prononciation, export du 17 oct 14:45) : écritures communes à toutes les voix. La dernière écriture d'une
@@ -2316,7 +2349,7 @@ function deArtist(name) {
 // (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
 const PHONE_PRONUNCIATION = {
   // v175 : après l'atelier du 17 oct (14:45), les voix du smartphone n'ont plus que ces écritures propres ; tout le reste suit la table commune.
-  'schwerin': 'Schvéérinne', 'guidi': 'guidi', 'sœurs': 'seur', 'adam': 'Adant', 'bandini': 'bandini', 'carlyle': 'Carlyle', 'epsom': 'éppsom', 'titien': 'TItIEN', 'ursins': 'ursin', 'venise': 'Veunize', 'odilon': '',
+  'schwerin': 'Schvéérinne', 'guidi': 'guidi', 'sœurs': 'seur', 'adam': 'Adant', 'bandini': 'bandini', 'carlyle': 'Carlyle', 'epsom': 'éppsom', 'titien': 'TItIEN', 'ursins': 'ursin', 'venise': 'Veunize', 'odilon': '', 'thomas ball': 'thomass bowll',
 };
 const PHONE_PRONUNCIATION_CA = { ...PHONE_PRONUNCIATION, 'titien': 'TItiEN' }; // seule différence entre « français France » et « français Canada »
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
@@ -2347,6 +2380,9 @@ const PRONUNCIATION_BY_VOICE = {
     'tino di camaino': 'tino di kama-ï-no',
     'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-Jônnsse', // atelier 18 oct 08:26
+    'kröller-müller': 'kreulerr-müller', // atelier 18 oct 08:26
+    'pan': 'pans', // atelier 18 oct 08:26
   },
   'charline': {
     'adam': 'Adant',
@@ -2363,6 +2399,8 @@ const PRONUNCIATION_BY_VOICE = {
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venize',
     'werefkin': 'weréfkine',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'julie': {
     'l\'avis': 'laavi',
@@ -2384,6 +2422,9 @@ const PRONUNCIATION_BY_VOICE = {
     'tino di camaino': 'tino di kama-ï-no',
     'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-Jônnsse', // atelier 18 oct 08:26
+    'kröller-müller': 'kreulerr-müller', // atelier 18 oct 08:26
+    'pan': 'pans', // atelier 18 oct 08:26
   },
   'paul': {
     'l\'avis': 'laavi',
@@ -2404,6 +2445,9 @@ const PRONUNCIATION_BY_VOICE = {
     'tino di camaino': 'tino di kama-ï-no',
     'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-Jônnsse', // atelier 18 oct 08:26
+    'kröller-müller': 'kreulerr-müller', // atelier 18 oct 08:26
+    'pan': 'pans', // atelier 18 oct 08:26
   },
   'gerard': {
     'adam': 'Adant',
@@ -2415,6 +2459,8 @@ const PRONUNCIATION_BY_VOICE = {
     'tate britain': 'Tétte Britenn',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'sylvie': {
     'adam': 'Adant',
@@ -2425,6 +2471,8 @@ const PRONUNCIATION_BY_VOICE = {
     'schifanoia': 'Skifannôya',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'jean': {
     'adam': 'Adant',
@@ -2435,6 +2483,8 @@ const PRONUNCIATION_BY_VOICE = {
     'schifanoia': 'Skifannôya',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'antoine': {
     'adam': 'Adant',
@@ -2445,6 +2495,8 @@ const PRONUNCIATION_BY_VOICE = {
     'schifanoia': 'Skifannôya',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'thierry': {
     'adam': 'Adant',
@@ -2455,6 +2507,8 @@ const PRONUNCIATION_BY_VOICE = {
     'schifanoia': 'Skifannôya',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'denise': {
     'adam': 'Adant',
@@ -2465,6 +2519,8 @@ const PRONUNCIATION_BY_VOICE = {
     'schifanoia': 'Skifannôya',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'henri': {
     'adam': 'Adant',
@@ -2475,6 +2531,8 @@ const PRONUNCIATION_BY_VOICE = {
     'schifanoia': 'Skifannôya',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'ariane': {
     'adam': 'Adant',
@@ -2486,6 +2544,8 @@ const PRONUNCIATION_BY_VOICE = {
     'tate britain': 'Tétte Britenn',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'fabrice': {
     'adam': 'Adant',
@@ -2497,6 +2557,8 @@ const PRONUNCIATION_BY_VOICE = {
     'tate britain': 'Tétte Britenn',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'vivienne': {
     'odilon': 'odilont',
@@ -2509,6 +2571,8 @@ const PRONUNCIATION_BY_VOICE = {
     'schifanoia': 'Skifannôya',
     'tino di camaino': 'tino di kama-ï-no',
     'titien': 'TITIEN',
+    'edward burne-jones': 'Edward burne-jones', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'rémy': {
     'ca\'d\'oro': 'ka\'dôorro',
@@ -2520,6 +2584,8 @@ const PRONUNCIATION_BY_VOICE = {
     'schifanoia': 'Skifannôya',
     'tino di camaino': 'tino di kama-ï-no',
     'titien': 'TITIEN',
+    'edward burne-jones': 'Edward burne-jones', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'eloise': {
     'élément': 'éléman',
@@ -2528,12 +2594,14 @@ const PRONUNCIATION_BY_VOICE = {
     'schifanoia': 'Skifannôya',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
+    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
+    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
 };
 function currentPronunciationOverrides() {
   try {
     const norm = (t) => String(t || '').toLowerCase().replace(/[()\-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-    let name = norm((getGlobalPrefs() || {}).voiceName);
+    let name = norm((getGlobalPrefs() || {}).voiceName) || norm(typeof impAutoVoice !== 'undefined' && impAutoVoice ? impAutoVoice.name : '');   // v187 : voix choisie automatiquement
     if (!name) {
       // Aucune voix choisie dans les réglages : sur un téléphone qui n'a que les deux voix françaises,
       // c'est l'une d'elles qui parle, donc on applique leurs réglages.
@@ -2541,7 +2609,7 @@ function currentPronunciationOverrides() {
       if (fr.length && fr.every((v) => PHONE_VOICE_KEYS.some((k) => norm(v.name).includes(k)))) return PHONE_PRONUNCIATION;
       return null;
     }
-    const hit = Object.keys(PRONUNCIATION_BY_VOICE).find((part) => name.includes(part));
+    const nameNA = bioStrip(name); const hit = Object.keys(PRONUNCIATION_BY_VOICE).find((part) => nameNA.includes(bioStrip(part)));   // v187 : sans tenir compte des accents (Rémy / Remy)
     return hit ? PRONUNCIATION_BY_VOICE[hit] : null;
   } catch (e) { return null; }
 }
@@ -2608,9 +2676,14 @@ function fixSpeechPronunciation(text) {
     const isComma = sep.includes(',');
     if (y2 <= y1 || (isComma && y2 - y1 !== 1)) return m;
     const p = (prep || '').toLowerCase();
+    // v188 (retour Stéphane, Drouais « peint en 1763-1764 » : « ça fait sec ») : à l'oral on ne répète pas le siècle de la 2e année :
+    // « en dix-sept cent soixante-trois et soixante-quatre », « entre dix-sept cent soixante-trois et soixante-six ».
+    // (Si le siècle change, ou si la 2e année est de la forme « dix-huit cent un », on garde la forme complète.)
+    const y2w = (Math.floor(y1 / 100) === Math.floor(y2 / 100) && y1 >= 1100 && y2 < 2000 && y2 % 100 >= 10) ? frBelow100(y2 % 100) : frYearInWords(y2);
     if (p === 'de' || p === 'du' || p === 'depuis') return `${prep} ${y1} à ${y2}`;
-    if (p === 'vers' || p === 'environ' || p === 'autour de') return `${prep} ${y1} ou ${y2}`;
-    return `entre ${y1} et ${y2}`;
+    if (p === 'vers' || p === 'environ' || p === 'autour de') return `${prep} ${frYearInWords(y1)} ou ${y2w}`;
+    if (y2 === y1 + 1 && p !== 'entre') return `${p === 'en' ? prep + ' ' : ''}${frYearInWords(y1)} et ${y2w}`;
+    return `entre ${frYearInWords(y1)} et ${y2w}`;
   });
   out = out.replace(/(?<![\p{L}\p{N}])(?<!\d[.,])(1\d{3}|20\d{2})(?![\p{L}\p{N}])(?![.,]\d)/gu, (m, y) => frYearInWords(Number(y)));
   out = out.replace(new RegExp(`${NB}[A-ZÀ-Ý]{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
@@ -2874,6 +2947,7 @@ function normaliseRows(rows) {
     // qui la fusionne dans masterRow sous "Légende de l'artiste", même mécanique que la photo
     // elle-même juste au-dessus (artistImage).
     let artistImageCaption = '';
+    let artistVoice = '';   // v187 : « femme » / « homme » (colonne facultative « Voix » du fichier maître)
     let workText = '';
     const masterRow = findArtistMasterRow(prenom, patronyme, surnomFr);
     if (masterRow) {
@@ -2894,6 +2968,7 @@ function normaliseRows(rows) {
       if (!nationalityKey && masterRow['Nationalité']) nationality = String(masterRow['Nationalité']).trim();
       if (!artistImageKey && masterRow["Image de l'artiste"]) artistImage = String(masterRow["Image de l'artiste"]).trim();
       if (masterRow["Légende de l'artiste"]) artistImageCaption = String(masterRow["Légende de l'artiste"]).trim();
+      { const vk = Object.keys(masterRow).find((k) => String(k).trim().toLowerCase() === 'voix'); if (vk) artistVoice = normalizeVoiceGender(masterRow[vk]); }
       if (masterRow['Bio']) bio = String(masterRow['Bio']).trim();
       // v129 (Stéphane : « pour chaque artiste de niveau 1, l'œuvre emblématique et un petit texte ») : le maître
       // porte, par artiste, le titre de son œuvre emblématique et le texte (à la première personne) qui la raconte.
@@ -2936,7 +3011,7 @@ function normaliseRows(rows) {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, artistImageCaption, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
+      artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
       row: rowIndex + 2
     };
   }).filter((question) => question && (question.image || question.artist || question.date || question.location || question.title));
@@ -8171,6 +8246,16 @@ $('artist-list-search')?.addEventListener('input', (e) => {
   clearTimeout(artistListSearchDebounceTimer);
   artistListSearchDebounceTimer = setTimeout(() => { artistListSearchTerm = value; renderCurrentListMode(); }, 200);
 });
+// v189 : met en majuscules les mots « nom » d'un patronyme, en laissant les particules et épithètes telles quelles.
+function upperPatronymeCore(p) {
+  const KEEP = /^(af|da|de|del|della|di|du|van|von|der|den|le|la|of|ten|ter|jeune|ancien|l['’]ancien|l['’]aîné|l['’]aine|père|fils|[dl]['’]|de['’]|dell['’])$/i;
+  return String(p).split(/(\s+)/).map((w) => {
+    if (!w.trim() || KEEP.test(w)) return w;
+    const m = w.match(/^(d|l|de|dell)(['’])(.+)$/i);   // d'Antonio → d'ANTONIO
+    if (m) return m[1] + m[2] + m[3].toLocaleUpperCase('fr-FR');
+    return w.toLocaleUpperCase('fr-FR');
+  }).join('');
+}
 async function loadArtistListIfNeeded() {
   if (artistListLoaded) return true;
   try {
@@ -8241,6 +8326,12 @@ async function loadArtistListIfNeeded() {
     // v132 : les artistes qui n'ont QUE des œuvres du 14e (siècle mis de côté) restent dans artistListRows
     // (les jointures nom/surnom/nationalité des fichiers d'œuvres en ont encore besoin) mais sont
     // marqués : ils ne sont plus listés ni comptés (voir listedArtistRows).
+    // v189 (retour Stéphane : quelques patronymes sont restés en minuscules/capitalisés dans le fichier maître — « Minne »,
+    // « Woolner », « Rosso », « Lutero », « Gaudier-Brzeska ») : on met le NOM en majuscules à la lecture, sans toucher aux
+    // particules (af, da, de, van, von…) ni aux épithètes (L'Ancien, le Jeune), qui restent comme dans le fichier.
+    rows.forEach((r) => {
+      if (typeof r['Patronyme'] === 'string') r['Patronyme'] = upperPatronymeCore(r['Patronyme']);
+    });
     rows.forEach((r) => {
       const sc = String(r['Siècle(s)'] || '').split(',').map((x) => x.trim()).filter(Boolean);
       r._retired = !!(sc.length && sc.every((x) => RETIRED_CENTURIES.includes(x)));
@@ -8296,6 +8387,15 @@ async function augmentArtistListFromQuizFiles() {
   found.forEach((entry, key) => {
     let master = masterByKey.get(key);
     if (!master) { for (const alt of entry.alt) { if (masterByKey.has(alt)) { master = masterByKey.get(alt); break; } } }
+    // v188 (retour Stéphane : « la LISTE comporte 504 noms, il y en a 4 de trop ») : les fichiers d'œuvres écrivent « Pieter BRUEGEL »,
+    // « Jean COUSIN », « Lucas CRANACH », « Hans HOLBEIN », alors que le maître les nomme « BRUEGEL L'ANCIEN », « COUSIN L'ANCIEN »,
+    // « CRANACH L'ANCIEN », « HOLBEIN le JEUNE » : ils étaient ajoutés une 2e fois. On rattache désormais un nom d'œuvre au maître quand
+    // celui-ci est ce même nom suivi d'un qualificatif (L'ANCIEN, le JEUNE…) — « l'ancien » l'emporte s'il y a le choix, sinon il faut
+    // qu'il n'y ait qu'un seul candidat.
+    if (!master) {
+      const cands = artistListRows.filter((row) => { const nk = artistRowNameKeys(row).nameKey; return nk && nk.startsWith(key + ' ') && /^(l ancien|le jeune|le vieux|l aine|le pere|le fils)$/.test(nk.slice(key.length + 1)); });
+      master = cands.find((row) => /l ancien$/.test(artistRowNameKeys(row).nameKey)) || (cands.length === 1 ? cands[0] : null) || undefined;
+    }
     if (master) {
       const have = (col) => new Set(String(master[col] || '').split(',').map((v) => keyName(v)).filter(Boolean));
       const haveArts = have('Art(s)'); const haveCenturies = have('Siècle(s)');
@@ -8357,6 +8457,13 @@ async function fetchWorksForArtistRow(row) {
   // (bug réel repéré : plus aucun artiste ne renvoyait la moindre œuvre, la case étant désormais
   // toujours vide) — on fixe donc directement le filtre à la peinture, sans dépendre d'une colonne
   // qui n'existe plus dans le fichier.
+  // v188 : les fichiers d'œuvres peuvent écrire « Pieter BRUEGEL » là où le maître écrit « BRUEGEL L'ANCIEN » (idem COUSIN, CRANACH, HOLBEIN le JEUNE) :
+  // on retrouve alors les œuvres sous le nom sans qualificatif — pour « l'ancien », ou si l'artiste est seul de son nom.
+  const EPITHET = /^(.*) (l ancien|le jeune|le vieux|l aine|le pere|le fils)$/;
+  let shortKey = '';
+  { const mm = keyName(artistName).match(EPITHET);
+    if (mm) { const sibs = listedArtistRows().filter((r2) => { const k2 = keyName([r2['Prénom'], r2['Patronyme']].filter(Boolean).join(' ')); const m2 = k2.match(EPITHET); return m2 && m2[1] === mm[1]; });
+      if (mm[2] === 'l ancien' || sibs.length === 1) shortKey = mm[1]; } }
   const arts = ['peinture'];
   const centuriesOfArtist = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   const works = [];
@@ -8364,7 +8471,7 @@ async function fetchWorksForArtistRow(row) {
     for (const century of expandMergedCenturies(art, centuriesOfArtist)) {
       try {
         const rows = await fetchQuizRows(art, century);
-        rows.filter((w) => keyName(w.artist) === keyName(artistName)).forEach((w) => { w.artCategory = art; works.push(w); });
+        rows.filter((w) => { const wk = keyName(w.artist); return wk === keyName(artistName) || (shortKey && wk === shortKey); }).forEach((w) => { w.artCategory = art; works.push(w); });
       } catch (e) { /* fichier absent, ignoré */ }
     }
   }
@@ -10866,7 +10973,7 @@ function applyGamesFilterToHub() {
   });
   const nameNote = $('training-hub-config-name');
   if (nameNote) {
-    nameNote.textContent = guidedModeActive ? buildTrainingHubConfigSentence() : '';
+    nameNote.textContent = ''; // v190 : la phrase récapitulative est maintenant en bas de la page des choix (3e encadré)
   }
   // Bouton d'enregistrement direct : utile si le joueur n'a pas déjà enregistré sa configuration
   // à l'étape précédente — inutile en revanche s'il vient de recharger une config déjà nommée.
@@ -11089,6 +11196,7 @@ function prepareQuickConfig() {
   renderExerciseOverrides();
   updateQuickIntro();
   renderQuickOverrides();
+  renderQuickArtistsBox();
 }
 // v146 (retour Stéphane : « au départ il n'enregistre rien ; en quittant la session, un écran propose de donner un nom ») :
 // valider la page 2 écrit TOUJOURS le choix à deux endroits — la session en cours (sessionStorage) et la mémoire de
@@ -11165,6 +11273,14 @@ function resetPanelContentToDefaults(panelId) {
     if (CONTENT_FIELD_RE.test(el.id) || CONTENT_RUB_RE.test(el.id)) el.checked = el.defaultChecked;
   });
   $(panelId)?.querySelectorAll('input[type="radio"][name$="count"]').forEach((el) => { el.checked = el.defaultChecked; });
+}
+// v188 : 3e encadré (artistes choisis) de la page « Mes choix de configuration » : visible seulement s'il y a au moins un artiste.
+function renderQuickArtistsBox() {
+  const box = $('qc-artists-box'); const list = $('qc-artists-chosen'); if (!box || !list) return;
+  const names = readGlobalArtistDefaults().artists || [];
+  box.classList.toggle('hidden', !names.length);
+  // v190 : la phrase récapitulative (art, siècle, rubriques, artistes, nombre de questions) vit ici, plus sur la page des exercices.
+  list.textContent = names.length ? buildTrainingHubConfigSentence() : '';
 }
 function renderQuickOverrides() {
   const box = $('qc-overrides'); if (!box) return;
@@ -11327,6 +11443,10 @@ function quitSession() {
     document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level, input[name="pf-count"]').forEach((el) => { el.checked = false; });
     if ($('pf-count-custom')) $('pf-count-custom').value = '';
     populateArtistSuggestions();
+  });
+  $('qc-clear-artists')?.addEventListener('click', () => {
+    if (quickDraft) quickDraft.artist = { artists: [] }; else localStorage.removeItem('globalArtistDefaults');
+    updateExerciseSummaries(); updateProfileMenuBadges(); populateArtistSuggestions(); renderQuickArtistsBox();
   });
   $('qc-artists-details')?.addEventListener('toggle', () => { if ($('qc-artists-details').open) populateArtistSuggestions(); });
   $('training-hub-edit-general')?.addEventListener('click', () => showPanel('quick-config'));
@@ -11738,7 +11858,7 @@ function impSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20
 function impSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`imp-zone-${z}`)?.checked); }
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
-let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impFieldLabel = '';
+let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impAutoVoice = null, impFieldLabel = '';
 // v76 : horodatage (Date.now()) jusqu'auquel une bascule d'image de case (Lieu/Ensemble) est déjà
 // « réservée » par la précédente — garantit qu'on ne lance jamais un second fondu enchaîné avant que
 // le précédent soit terminé, quelle que soit la vitesse de la voix (remis à zéro à chaque nouvelle
@@ -12464,6 +12584,7 @@ function bioFrame() {
   A.raf = requestAnimationFrame(bioFrame);
 }
 function bioAutoStop() {
+  if (bioAuto.voiceSwap) { impSelectedVoice = bioAuto.voiceSwap.prev; impAutoVoice = null; bioAuto.voiceSwap = null; }   // v187 : on rend la voix d'avant
   bioAuto.sid++; bioAuto.paused = false;
   bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
   clearTimeout(bioAuto.fadeTimer); clearTimeout(bioAuto.queueTimer); bioAuto.fid++; bioAuto.fading = false; bioAuto.pending = []; bioCapReset();
@@ -12546,6 +12667,18 @@ function bioProgress(ci, spokenLen) {
   A.gotBoundary = true; A.spokenLen = Math.max(1, spokenLen);
   A.frac = A.map ? Math.min(1, (A.mapBase + A.map(ci)) / Math.max(1, A.plainLen)) : A.baseFrac + Math.min(1, ci / A.spokenLen) * (1 - A.baseFrac);
   if (A.debug && (!A.lastLog || A.lastCiT - A.lastLog > 3000)) { A.lastLog = A.lastCiT; bioDbg('voix à', ci + '/' + spokenLen); }
+}
+function bioChooseVoice(work, isWork) {
+  const A = bioAuto; if (A.voiceSwap) { impSelectedVoice = A.voiceSwap.prev; impAutoVoice = null; A.voiceSwap = null; }
+  try {
+    if (isWork || !window.speechSynthesis) return;
+    if (getGlobalPrefs().voiceName && getGlobalVoice()) { bioDbg('voix : choix du joueur respecté'); return; }
+    const g = work.artistVoice || bioInferGender(work.prenom); if (!g) return;
+    const v = pickVoiceByGender(g);
+    bioDbg('voix demandée :', g, '→', v ? v.name : 'aucune voix de ce genre sur cet appareil (voix habituelle)');
+    if (!v) return;
+    A.voiceSwap = { prev: impSelectedVoice }; impSelectedVoice = v; impAutoVoice = v;
+  } catch (e) { /* ignoré : on garde la voix habituelle */ }
 }
 function bioSpeakFrom(offset) {
   const A = bioAuto; if (!A.parsed) return;
@@ -12687,7 +12820,7 @@ function openImpArtistBio(work, force, opts) {
   bioSyncButton();
   bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
   if (srcText) {
-    bioAuto.rate = 0.72;
+    bioAuto.rate = 0.72; bioChooseVoice(work, isWork);
     const sid = bioAuto.sid;
     impSpeak(parsedBio.plain, undefined, force, {
       onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = 0; bioAuto.map = bioBuildMap(parsedBio.plain, spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },
