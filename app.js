@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v191';
+const APP_VERSION = 'v192';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -328,14 +328,33 @@ async function saveCurrentScore() {
       timeSpent: quizTimer.stop(),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    if (statusEl) { statusEl.textContent = 'Score enregistré automatiquement sur votre compte.'; statusEl.classList.remove('hidden'); }
+    if (statusEl) {
+      statusEl.textContent = 'Score enregistré automatiquement sur votre compte. Vous le retrouverez dans vos scores de quiz : ';
+      const link = document.createElement('button');
+      link.type = 'button'; link.className = 'results-account-link'; link.textContent = '👤';
+      link.title = 'Mes scores de quiz'; link.setAttribute('aria-label', 'Mes scores de quiz');
+      link.addEventListener('click', () => openAccountScores('quiz'));
+      statusEl.appendChild(link);
+      statusEl.classList.remove('hidden');
+    }
   } catch (error) {
     if (statusEl) { statusEl.textContent = "Le score n'a pas pu être enregistré automatiquement."; statusEl.classList.remove('hidden'); }
   }
 }
 
 // --- Page « Mon compte » : historique complet, groupé par type de quiz, avec évolution ---
-let accountScoreFilter = 'quiz'; // 'quiz' | 'entrainement' — bascule via les 2 boutons de la page compte
+let accountScoreFilter = 'quiz';
+// v192 (retour Stéphane) : depuis la fin d'un exercice ou d'un quiz, le logo 👤 ouvre directement l'historique des scores du
+// BON type (« entrainement » après un exercice, « quiz » après un quiz) au lieu de laisser le joueur choisir entre les deux onglets.
+// Sans compte connecté, on garde le comportement habituel du bouton « Mon compte » (invitation à se connecter).
+function openAccountScores(filter) {
+  if (!currentUser) { $('global-account-button')?.click(); return; }
+  accountScoreFilter = filter === 'entrainement' ? 'entrainement' : 'quiz';
+  $('account-scores-training-button')?.classList.toggle('inactive', accountScoreFilter !== 'entrainement');
+  $('account-scores-quiz-button')?.classList.toggle('inactive', accountScoreFilter !== 'quiz');
+  showPanel('account');
+  loadAccountPage();
+} // 'quiz' | 'entrainement' — bascule via les 2 boutons de la page compte
 async function fetchScoreLevelGroups() {
   if (!firebaseReady || !currentUser) return null;
   const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores')
@@ -1276,7 +1295,7 @@ function showExerciseResultsModal(exerciseName, correct, total, closeTarget) {
 // v189 : le logo du compte, dans la fenêtre de fin d'exercice, ouvre « Mon compte » (ou la connexion si le joueur n'est pas connecté).
 $('exercise-results-account')?.addEventListener('click', () => {
   closeModal('modal-exercise-results');
-  $('global-account-button')?.click();
+  openAccountScores('entrainement');
 });
 $('exercise-results-close')?.addEventListener('click', () => {
   closeModal('modal-exercise-results');
