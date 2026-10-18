@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v192';
+const APP_VERSION = 'v193';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -3756,9 +3756,37 @@ function formatDimensionsPlainText(work) {
 // l'écrit, lui, ne garde l'unité que sur la dernière dimension renseignée — retour réel (« les cm
 // ont bien disparu à l'écrit mais la voix continue à le dire pour la hauteur »). On réutilise donc
 // dimensionEntries pour rester cohérent avec l'écrit plutôt que de dupliquer sa propre règle.
+// v193 (retour Stéphane : « l'Escalier doré… c'est tout en 8000, 250 : la voix ne pourrait-elle pas dire 8 mètres plutôt que
+// 800 centimètres ? ») : à l'ORAL seulement (l'écrit et le fichier Excel ne changent pas), une dimension en centimètres de
+// 100 ou plus est dite en mètres : 200 → « 2 mètres », 550 → « 5 mètres 50 », 8000 → « 80 mètres ».
+// Sous 100 cm, on reste en centimètres. Renvoie { text, meters } pour une valeur brute du fichier (avec ou sans unité).
+function spokenDimensionValue(raw) {
+  let v = String(raw || '').trim();
+  const approx = /^c[.,]\s*/i.test(v);
+  if (approx) v = v.replace(/^c[.,]\s*/i, '').trim();
+  const unitMatch = v.match(/\b(cm|mm|m)\b/i);
+  const unit = unitMatch ? unitMatch[1].toLowerCase() : 'cm';
+  const numMatch = v.match(/\d[\d\s]*(?:[.,]\d+)?/);
+  const n = numMatch ? parseFloat(numMatch[0].replace(/\s/g, '').replace(',', '.')) : NaN;
+  const note = v.replace(numMatch ? numMatch[0] : '', '').replace(/\b(cm|mm|m)\b/i, '').replace(/\s+/g, ' ').trim(); // ex. « (diamètre) »
+  const tail = (approx ? ' environ' : '') + (note ? ` ${note}` : '');
+  if (unit === 'cm' && Number.isFinite(n) && n >= 100) {
+    const m = Math.floor(n / 100);
+    const rest = Math.round(n - m * 100);
+    return { meters: true, text: `${m} mètre${m > 1 ? 's' : ''}${rest ? ` ${rest}` : ''}${tail}` };
+  }
+  const unitWord = { cm: 'centimètres', mm: 'millimètres', m: 'mètres' }[unit];
+  return { meters: false, unit, text: `${Number.isFinite(n) ? numMatch[0].trim() : v} ${unitWord}${tail}`, bare: Number.isFinite(n) ? `${numMatch[0].trim()}${tail}` : v };
+}
 function spokenDimensionsPhrase(work) {
   const labels = { h: 'hauteur', l: 'longueur', p: 'profondeur' };
-  const parts = dimensionEntries(work).map((d) => `${d.text.replace(/\bcm\b/i, 'centimètres')} de ${labels[d.key]}`);
+  const raw = [
+    { key: 'h', value: work.hauteur }, { key: 'l', value: work.longueur }, { key: 'p', value: work.profondeur },
+  ].filter((d) => d.value).map((d) => ({ key: d.key, ...spokenDimensionValue(d.value) }));
+  // Dès qu'une dimension est dite en mètres, chacune dit son unité (sinon « 2 mètres de hauteur, 50 de longueur » prêterait à confusion) ;
+  // sinon règle d'avant : l'unité n'est dite que sur la dernière.
+  const anyMeters = raw.some((d) => d.meters || (d.unit && d.unit !== 'cm'));
+  const parts = raw.map((d, i) => `${anyMeters || i === raw.length - 1 ? d.text : (d.bare ?? d.text)} de ${labels[d.key]}`);
   if (!parts.length) return '';
   if (parts.length === 1) return `de ${parts[0]}`;
   return `de ${parts.slice(0, -1).join(', ')}, et ${parts[parts.length - 1]}`;
