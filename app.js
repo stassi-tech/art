@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v195';
+const APP_VERSION = 'v196';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -561,7 +561,7 @@ function downloadAccountTable() {
   const stamp = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(workbook, `mes-scores-quiz-art-${stamp}.xlsx`);
 }
-$('account-page-download-button')?.addEventListener('click', downloadAccountTable);
+$('account-page-download-button')?.addEventListener('click', openProgressReport);
 async function deleteScore(docId) {
   if (!firebaseReady || !currentUser || !docId) return;
   try {
@@ -13810,22 +13810,183 @@ $('restart-full-button').addEventListener('click', () => {
   state.currentScoreSaved = false;
   showPanel('quiz'); renderQuestion();
 });
-$('view-my-results-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
-$('download-my-report-button')?.addEventListener('click', async () => {
-  const button = $('download-my-report-button');
-  const originalText = button.textContent;
-  button.disabled = true; button.textContent = 'Préparation du fichier…';
+// ============================================================
+// v195 — « Mon bilan de progression » : remplace l'ancien fichier Excel par une page synthétique,
+// bienveillante, imprimable / enregistrable en PDF (retour Stéphane). Elle lit tous les scores du
+// joueur (quiz + exercices d'entraînement), calcule ses progrès, ses points forts et ce qu'il
+// reste à travailler, puis rappelle quelques conseils d'utilisation de l'application.
+// ============================================================
+async function fetchAllScoresForReport() {
+  if (!firebaseReady || !currentUser) return null;
+  const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores').orderBy('createdAt', 'asc').get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+    .filter((d) => d.createdAt && typeof d.createdAt.toDate === 'function' && Number.isFinite(d.percent))
+    .map((d) => ({ ...d, type: d.type || 'quiz', date: d.createdAt.toDate() }));
+}
+function reportAvg(list) { return list.length ? list.reduce((s, d) => s + d.percent, 0) / list.length : 0; }
+function reportGroup(docs, keyFn, minCount) {
+  const map = new Map();
+  docs.forEach((d) => { const k = keyFn(d); if (!k) return; if (!map.has(k)) map.set(k, []); map.get(k).push(d); });
+  return Array.from(map.entries()).filter(([, l]) => l.length >= minCount)
+    .map(([k, l]) => ({ key: k, count: l.length, avg: Math.round(reportAvg(l)) }))
+    .sort((a, b) => a.avg - b.avg);
+}
+function reportDuration(seconds) {
+  const s = Math.round(seconds || 0);
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  return `${h} h ${String(m % 60).padStart(2, '0')}`;
+}
+function buildProgressReport(docs, userName) {
+  const esc = escapeHtml;
+  const fmtDate = (d) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const quiz = docs.filter((d) => d.type === 'quiz');
+  const train = docs.filter((d) => d.type === 'entrainement');
+  const first = docs[0].date, last = docs[docs.length - 1].date;
+  const spanDays = Math.max(1, Math.round((last - first) / 86400000) + 1);
+  const spanText = spanDays < 14 ? `${spanDays} jour${spanDays > 1 ? 's' : ''}`
+    : spanDays < 60 ? `${Math.round(spanDays / 7)} semaines`
+    : `${Math.round(spanDays / 30.4)} mois`;
+  const activeDays = new Set(docs.map((d) => d.date.toDateString())).size;
+  const totalQuestions = docs.reduce((s, d) => s + (d.questionCount || d.possible || 0), 0);
+  const totalTime = docs.reduce((s, d) => s + (d.timeSpent || 0), 0);
+  const recentCount = docs.filter((d) => (new Date() - d.date) < 14 * 86400000).length;
+
+  // --- Progrès : moyenne des premières séances comparée à celle des dernières ---
+  const progressRows = [];
+  const progressOf = (list, label) => {
+    if (!list.length) return;
+    const avgAll = Math.round(reportAvg(list));
+    if (list.length >= 6) {
+      const k = Math.min(5, Math.floor(list.length / 2));
+      const early = Math.round(reportAvg(list.slice(0, k)));
+      const recent = Math.round(reportAvg(list.slice(-k)));
+      progressRows.push({ label, count: list.length, avgAll, early, recent, diff: recent - early, hasTrend: true });
+    } else {
+      progressRows.push({ label, count: list.length, avgAll, hasTrend: false });
+    }
+  };
+  progressOf(quiz, 'Quiz');
+  progressOf(train, 'Exercices d’entraînement');
+
+  // --- Rubriques (quiz) ---
+  const RUB = { artist: 'Artiste', title: 'Titre de l’œuvre', date: 'Date de création', location: 'Lieu de conservation' };
+  const rubTotals = {};
+  quiz.forEach((d) => Object.entries(d.perField || {}).forEach(([k, v]) => {
+    if (!RUB[k]) return;
+    rubTotals[k] = rubTotals[k] || { c: 0, p: 0 };
+    rubTotals[k].c += v.correct || 0; rubTotals[k].p += v.possible || 0;
+  }));
+  const rubrics = Object.entries(rubTotals).filter(([, v]) => v.p >= 10)
+    .map(([k, v]) => ({ key: k, label: RUB[k], pct: Math.round((v.c / v.p) * 100), n: v.p }))
+    .sort((a, b) => b.pct - a.pct);
+
+  // --- Par siècle, par art, par exercice ---
+  const single = (arr) => (Array.isArray(arr) && arr.length === 1 ? arr[0] : '');
+  const byCentury = reportGroup(docs, (d) => single(d.quizCenturies), 3);
+  const byArt = reportGroup(docs, (d) => single(d.quizArts), 3);
+  const byExercise = reportGroup(train, (d) => d.exerciseName || d.quizLabel, 2);
+
+  const bar = (pct) => `<span class="rp-bar"><span style="width:${Math.max(2, Math.min(100, pct))}%"></span></span>`;
+  const rowHtml = (label, pct, extra) => `<div class="rp-line"><span class="rp-line-label">${esc(label)}</span>${bar(pct)}<span class="rp-line-pct">${pct} %</span>${extra ? `<span class="rp-line-extra">${esc(extra)}</span>` : ''}</div>`;
+
+  // --- Mot d'encouragement ---
+  const best = progressRows.find((r) => r.hasTrend && r.diff >= 5);
+  const slipping = progressRows.find((r) => r.hasTrend && r.diff <= -5);
+  let intro;
+  if (best) intro = `En ${spanText}, vos résultats aux ${best.label === 'Quiz' ? 'quiz' : 'exercices'} sont passés de ${best.early} % à ${best.recent} % : c’est une vraie progression, et elle est le fruit de votre régularité. Bravo !`;
+  else if (docs.length >= 6 && progressRows.some((r) => r.hasTrend && Math.abs(r.diff) < 5 && r.recent >= 80)) intro = `Depuis ${spanText}, vous maintenez un très bon niveau de façon constante : la mémoire de l’œil se consolide à force de régularité. Continuez dans ce sens !`;
+  else if (docs.length < 6) intro = `Vous avez commencé : c’est le plus important. Quelques séances de plus et ce bilan pourra vous montrer précisément vos progrès.`;
+  else intro = `Depuis ${spanText}, vous avez fait ${docs.length} séances : l’essentiel est de continuer à vous exercer, les progrès viennent avec la répétition. Voici où vous en êtes.`;
+  if (slipping && best == null && docs.length >= 6) intro += ' Vos derniers scores sont un peu plus bas que les premiers : rien d’inquiétant, les œuvres deviennent aussi plus difficiles à mesure que vous avancez.';
+
+  // --- Conseils personnalisés (bienveillants) ---
+  const advice = [];
+  const TIPS = {
+    artist: 'Associez chaque artiste à une image mentale (un tableau célèbre, un style) plutôt que d’apprendre le nom seul.',
+    title: 'Pour les titres, retenez le sujet de l’œuvre avec vos propres mots : le titre exact se rattache ensuite plus facilement.',
+    date: 'Pour les dates, rattachez chaque œuvre à une période ou à un mouvement (la dizaine d’années suffit) : l’exercice « Chronologie » est fait pour cela.',
+    location: 'Pour les lieux, retenez le musée avec sa ville et imaginez-vous dans la salle : les exercices « Famille » et « Reconstitution » aident à fixer ces liens.',
+  };
+  const weakRub = rubrics.length >= 2 ? rubrics[rubrics.length - 1] : null;
+  if (weakRub && weakRub.pct < 85) advice.push(`La rubrique « ${weakRub.label} » est celle où vous avez le plus de marge (${weakRub.pct} % de réussite). ${TIPS[weakRub.key]}`);
+  const weakCentury = byCentury.length >= 2 ? byCentury[0] : null;
+  if (weakCentury && weakCentury.avg < 85) advice.push(`Le ${weakCentury.key} siècle est celui où vous réussissez le moins (${weakCentury.avg} % en moyenne, sur ${weakCentury.count} séances). Une ou deux séances ciblées sur cette période vous feraient progresser rapidement.`);
+  const weakEx = byExercise.length >= 2 ? byExercise[0] : null;
+  if (weakEx && weakEx.avg < 85) advice.push(`Parmi les exercices, « ${weakEx.key} » est celui qui vous résiste le plus (${weakEx.avg} %) : c’est le bon candidat pour votre prochain entraînement.`);
+  if (recentCount === 0) advice.push('Vous n’avez pas joué depuis plus de deux semaines : une séance courte de 5 questions suffit pour reprendre le fil.');
+  if (!advice.length) advice.push('Vos résultats sont très homogènes : c’est le moment de passer au niveau supérieur ou d’explorer un siècle que vous avez moins pratiqué.');
+  if (!quiz.length && train.length) advice.push('Pensez aussi à essayer les quiz : ils testent l’ensemble (artiste, titre, date, lieu) et complètent bien les exercices.');
+  if (quiz.length && !train.length) advice.push('Pensez aussi à essayer les exercices d’entraînement (Chronologie, Famille, Intrus…) : ils travaillent la mémoire autrement que le quiz.');
+
+  const tips = [
+    ['Changez d’ambiance', 'Chaque séance peut se dérouler dans une ambiance différente — Salon Renoir, Ermitage Rococo, Romantique Pitti, Galerie Renaissance, Château de Versailles, Pure Wedgwood, Bauhaus, Space Age… Associer un siècle à une ambiance est un excellent appui pour la mémoire : n’hésitez pas à en essayer plusieurs.'],
+    ['La voix', 'Laissez la voix sur « automatique » : l’application lit les consignes et les œuvres à voix haute, et l’écoute aide à mémoriser. Vous pouvez aussi choisir une voix qui vous plaît dans les réglages de « Mon compte ».'],
+    ['Vos configurations', 'Vous avez trouvé la séance qui vous convient (siècles, nombre de questions, ambiance) ? Enregistrez-la sous un nom : vous la relancerez en un clic depuis « Mes configurations enregistrées ».'],
+    ['Montez en niveau', 'Les niveaux 1, 2 et 3 présentent des œuvres de plus en plus difficiles. Quand vous dépassez 90 % régulièrement, passez au niveau suivant.'],
+    ['Peu, mais souvent', 'Dix minutes trois ou quatre fois par semaine valent mieux qu’une longue séance isolée : la mémoire se construit dans la répétition.'],
+  ];
+
+  const trendHtml = progressRows.map((r) => `
+    <div class="rp-card">
+      <div class="rp-card-title">${esc(r.label)}</div>
+      <div class="rp-card-big">${r.avgAll} %</div>
+      <div class="rp-card-sub">moyenne sur ${r.count} séance${r.count > 1 ? 's' : ''}</div>
+      ${r.hasTrend ? `<div class="rp-card-trend ${r.diff > 0 ? 'up' : r.diff < 0 ? 'down' : ''}">${r.diff > 0 ? '▲ +' + r.diff : r.diff < 0 ? '▼ ' + r.diff : '= stable'} pts<br><span>${r.early} % au début → ${r.recent} % récemment</span></div>` : ''}
+    </div>`).join('');
+
+  const section = (title, body) => body ? `<section class="rp-section"><h3>${title}</h3>${body}</section>` : '';
+  const hello = userName ? esc(userName) : 'Bravo';
+  return `
+    <div class="rp-header">
+      <div class="rp-eyebrow">MNEMART</div>
+      <h2>Bilan de progression</h2>
+      <div class="rp-name">${userName ? 'décerné à <strong>' + esc(userName) + '</strong>' : ''}</div>
+      <div class="rp-period">du ${esc(fmtDate(first))} au ${esc(fmtDate(last))}</div>
+    </div>
+    <p class="rp-intro">${esc(intro)}</p>
+    <div class="rp-figures">
+      <div><strong>${docs.length}</strong><span>séances</span></div>
+      <div><strong>${activeDays}</strong><span>jours de pratique</span></div>
+      <div><strong>${totalQuestions}</strong><span>questions travaillées</span></div>
+      <div><strong>${esc(reportDuration(totalTime))}</strong><span>passées à vous exercer</span></div>
+    </div>
+    ${section('Vos résultats', `<div class="rp-cards">${trendHtml}</div>`)}
+    ${section('Ce que vous maîtrisez le mieux', rubrics.length ? rubrics.map((r) => rowHtml(r.label, r.pct)).join('') + '<p class="rp-note">Réussite par rubrique, sur l’ensemble de vos quiz.</p>' : '')}
+    ${section('Par siècle', byCentury.length ? byCentury.slice().sort((a, b) => parseInt(a.key) - parseInt(b.key)).map((r) => rowHtml(r.key + ' siècle', r.avg, r.count + ' séances')).join('') : '')}
+    ${section('Par art', byArt.length >= 2 ? byArt.map((r) => rowHtml(r.key, r.avg, r.count + ' séances')).join('') : '')}
+    ${section('Par exercice d’entraînement', byExercise.length ? byExercise.slice().reverse().map((r) => rowHtml(r.key, r.avg, r.count + ' séances')).join('') : '')}
+    ${section('Pour aller plus loin', '<ul class="rp-list">' + advice.map((a) => `<li>${esc(a)}</li>`).join('') + '</ul>')}
+    ${section('Quelques conseils pour profiter de l’application', '<ul class="rp-list rp-tips">' + tips.map(([t, x]) => `<li><strong>${esc(t)}.</strong> ${esc(x)}</li>`).join('') + '</ul>')}
+    <p class="rp-closing">${hello}, continuez à regarder, à nommer, à situer : chaque séance affine votre œil. À très bientôt dans les salles du musée !</p>
+    <p class="rp-foot">Bilan établi le ${esc(fmtDate(new Date()))} d’après les scores enregistrés dans votre compte.</p>`;
+}
+async function openProgressReport() {
+  const overlay = $('report-overlay'), sheet = $('report-sheet');
+  if (!overlay || !sheet) return;
+  if (!firebaseReady || !currentUser) { $('global-account-button')?.click(); return; }
+  sheet.innerHTML = '<p class="rp-loading">Préparation de votre bilan…</p>';
+  overlay.classList.remove('hidden');
   try {
-    if (!lastAccountLevelGroups) await fetchScoreLevelGroups();
-    if (!lastAccountLevelGroups || !lastAccountLevelGroups.size) {
-      alert('Aucun score enregistré pour le moment. Terminez un quiz pour commencer votre historique.');
+    const docs = await fetchAllScoresForReport();
+    if (!docs || !docs.length) {
+      sheet.innerHTML = '<p class="rp-loading">Aucun score enregistré pour le moment. Terminez un quiz ou un exercice pour commencer votre historique : votre bilan apparaîtra ici.</p>';
       return;
     }
-    downloadAccountTable();
-  } finally {
-    button.disabled = false; button.textContent = originalText;
+    const name = (currentUser.displayName || '').trim();
+    sheet.innerHTML = buildProgressReport(docs, name);
+  } catch (e) {
+    sheet.innerHTML = '<p class="rp-loading">Impossible de préparer le bilan pour le moment. Réessayez dans un instant.</p>';
   }
-});
+}
+$('report-close')?.addEventListener('click', () => $('report-overlay')?.classList.add('hidden'));
+$('report-print')?.addEventListener('click', () => window.print());
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') $('report-overlay')?.classList.add('hidden'); });
+
+$('view-my-results-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+$('download-my-report-button')?.addEventListener('click', openProgressReport);
 
 // Touche Entrée : clique le bouton d'action principal actuellement visible (Valider, Suivant,
 // Commencer…), pour avancer d'écran en écran sans toucher la souris. On laisse le clavier ouvrir

@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=292" />
+    <link rel="stylesheet" href="style.css?v=293" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -1980,7 +1980,7 @@
           </div>
           <div class="export-actions">
             <button id="view-my-results-button" class="secondary-button hidden" type="button">Voir mes résultats</button>
-            <button id="download-my-report-button" class="secondary-button hidden" type="button">Télécharger mon bilan</button>
+            <button id="download-my-report-button" class="secondary-button hidden" type="button">Mon bilan de progression</button>
           </div>
         </section>
 
@@ -2157,7 +2157,7 @@
           <div class="training-exercise-grid" style="grid-template-columns:repeat(3,1fr);max-width:640px;margin:0 auto 20px;">
             <button type="button" class="home-mode-button score-filter-btn inactive" id="account-scores-training-button">Scores d'entraînement</button>
             <button type="button" class="home-mode-button score-filter-btn" id="account-scores-quiz-button">Scores de quiz</button>
-            <button type="button" id="account-page-download-button" class="home-mode-button hidden">Télécharger mon bilan</button>
+            <button type="button" id="account-page-download-button" class="home-mode-button hidden">Mon bilan de progression</button>
           </div>
           <div class="account-page-actions">
             <button type="button" id="account-resume-exercise-button" class="primary-button hidden">↩ Revenir à l'exercice en cours</button>
@@ -2171,6 +2171,14 @@
     <!-- v154 (Stéphane : « les crédits dans une fenêtre pop-up refermable, pas une grande fenêtre ») :
          fenêtre flottante affichée par-dessus l'exercice quand on clique sur « Crédits et licence de
          l'image ». Remplie par openCreditPopup (app.js) à partir de l'API Wikimedia Commons. -->
-    <script src="app.js?v=422"></script>
+    <!-- v196 : bilan de progression (page imprimable / PDF), ouvert par les boutons « Mon bilan de progression ». -->
+    <div id="report-overlay" class="report-overlay hidden">
+      <div class="report-toolbar no-print">
+        <button type="button" id="report-print" class="primary-button">Imprimer / Enregistrer en PDF</button>
+        <button type="button" id="report-close" class="secondary-button">Fermer</button>
+      </div>
+      <div id="report-sheet" class="report-sheet"></div>
+    </div>
+    <script src="app.js?v=423"></script>
   </body>
 </html>
