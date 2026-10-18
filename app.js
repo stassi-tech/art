@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v193';
+const APP_VERSION = 'v194';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -2343,6 +2343,18 @@ const PRONUNCIATION_FIXES = {
   'immobiles': 'immobiles',  // identité : sert de support aux écritures propres à certaines voix
   'valmondois': 'valmondois',  // identité : sert de support aux écritures propres à certaines voix
   'werefkin': 'werefkin',  // identité : sert de support aux écritures propres à certaines voix
+  // atelier 18 oct 16:13 : corrections de la table commune
+  'menabuoi': 'Ménabwo-y',
+  'tino di camaino': 'tino di kama-i-no',
+  'werefkin': 'véréfkine',
+  'houston': 'Youstonne',
+  // variantes accentuées (celles du texte) : l'atelier n'a gardé que la variante sans accent, on lui applique la même écriture validée
+  'böcklin': 'beuklinne',
+  'cáceres': 'Cassérèsse',
+  'juan': 'juan',  // identité : sert de support aux écritures propres à certaines voix
+  'kröller-müller': 'kröller-müller',  // identité : sert de support aux écritures propres à certaines voix
+  'pan': 'pan',  // identité : sert de support aux écritures propres à certaines voix
+  'yale': 'yale',  // identité : sert de support aux écritures propres à certaines voix
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2368,7 +2380,7 @@ function deArtist(name) {
 // (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
 const PHONE_PRONUNCIATION = {
   // v175 : après l'atelier du 17 oct (14:45), les voix du smartphone n'ont plus que ces écritures propres ; tout le reste suit la table commune.
-  'schwerin': 'Schvéérinne', 'guidi': 'guidi', 'sœurs': 'seur', 'adam': 'Adant', 'bandini': 'bandini', 'carlyle': 'Carlyle', 'epsom': 'éppsom', 'titien': 'TItIEN', 'ursins': 'ursin', 'venise': 'Veunize', 'odilon': '', 'thomas ball': 'thomass bowll',
+  'schwerin': 'Schvéérinne', 'guidi': 'guidi', 'sœurs': 'seur', 'adam': 'Adant', 'bandini': 'bandini', 'carlyle': 'Carlyle', 'epsom': 'éppsom', 'titien': 'TItIEN', 'ursins': 'ursin', 'venise': 'Veunize', 'odilon': '', 'thomas ball': 'thomass bowll', 'menabuoi': 'Ménaboy', 'tino di camaino': 'tino di kamaï-no', // atelier 18 oct 16:13
 };
 const PHONE_PRONUNCIATION_CA = { ...PHONE_PRONUNCIATION, 'titien': 'TItiEN' }; // seule différence entre « français France » et « français Canada »
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
@@ -2378,243 +2390,294 @@ const PRONUNCIATION_BY_VOICE = {
   // v175 : résultats de l'atelier de prononciation (17 oct 14:45), une table par voix, repérée par un morceau de son nom.
   // Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
-    'l\'avis': 'laavi',
-    'l’avis': 'laavi',
-    'odilon': 'odilont',
-    'singer sargent': 'sinn-guerr sargente',
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
     'benci': 'BéNtchi',
     'bolton': 'bôl-teun',
     'canaletto': 'kanâléto',
+    'edward burne-jones': 'Edward BeURNE-Jônnsse',
     'élément': 'éléman',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'immobiles': 'imo-biles',
+    'juan': 'ruanne',
+    'kröller-müller': 'kreulerr-müller',
+    'l\'avis': 'laavi',
+    'l’avis': 'laavi',
     'lancashire': 'leng-kasheur',
     'medicis': 'médississe',
     'médicis': 'médississe',
+    'menabuoi': 'Ménabwo-ylle',
+    'odilon': 'odilont',
+    'pan': 'pans',
     'pollux': 'Pollûkss',
     'schifanoia': 'Skifannôya',
+    'singer sargent': 'sinn-guerr sargente',
     'tino di camaino': 'tino di kama-ï-no',
     'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-Jônnsse', // atelier 18 oct 08:26
-    'kröller-müller': 'kreulerr-müller', // atelier 18 oct 08:26
-    'pan': 'pans', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
+    'yale': 'yèle',
   },
   'charline': {
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'giusto di menabuoi': 'djousto di ménabwoille',
     'jongkind': 'jonkinnde',
-    'menabuoi': 'Ménabwo-y',
+    'menabuoi': 'Ménabwo-ylle',
     'pollaiolo': '',
     'schifanoia': 'Skifannôya',
+    'singer sargent': 'singer sargente',
     'tate britain': 'Tête Britenn',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venize',
-    'werefkin': 'weréfkine',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
   },
   'julie': {
-    'l\'avis': 'laavi',
-    'l’avis': 'laavi',
-    'odilon': 'odilont',
-    'singer sargent': 'sinn-guerr sargente',
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
     'bolton': 'bôl-teune',
     'canaletto': 'kanâléto',
     'carlyle': 'Carl-aïe-le',
+    'edward burne-jones': 'Edward BeURNE-Jônnsse',
     'élément': 'éléman',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'immobiles': 'imo-biles',
+    'juan': 'ruanne',
+    'kröller-müller': 'kreulerr-müller',
+    'l\'avis': 'laavi',
+    'l’avis': 'laavi',
     'medicis': 'médississe',
     'médicis': 'médississe',
+    'menabuoi': 'Ménabwo-ylle',
+    'odilon': 'odilont',
+    'pan': 'pans',
     'schifanoia': 'Skifannôya',
+    'singer sargent': 'sinn-guerr sargente',
     'tino di camaino': 'tino di kama-ï-no',
     'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-Jônnsse', // atelier 18 oct 08:26
-    'kröller-müller': 'kreulerr-müller', // atelier 18 oct 08:26
-    'pan': 'pans', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
+    'yale': 'yèle',
   },
   'paul': {
-    'l\'avis': 'laavi',
-    'l’avis': 'laavi',
-    'odilon': 'odilont',
-    'singer sargent': 'sinn-guerr sargente',
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
     'bolton': 'bôl-teun',
     'canaletto': 'kanâléto',
+    'edward burne-jones': 'Edward BeURNE-Jônnsse',
     'élément': 'éléman',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'immobiles': 'imo-biles',
+    'juan': 'ruanne',
+    'kröller-müller': 'kreulerr-müller',
+    'l\'avis': 'laavi',
+    'l’avis': 'laavi',
     'medicis': 'médississe',
     'médicis': 'médississe',
+    'menabuoi': 'Ménabwo-ylle',
+    'odilon': 'odilont',
+    'pan': 'pans',
     'schifanoia': 'Skifannôya',
+    'singer sargent': 'sinn-guerr sargente',
     'tino di camaino': 'tino di kama-ï-no',
     'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-Jônnsse', // atelier 18 oct 08:26
-    'kröller-müller': 'kreulerr-müller', // atelier 18 oct 08:26
-    'pan': 'pans', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
+    'yale': 'yèle',
   },
   'gerard': {
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
+    'singer sargent': 'singer sargente',
+    'venise': 'Venîz',
+    'werefkin': 'vérefkine',
     'tate britain': 'Tétte Britenn',
     'tino di camaino': 'tino di kama-ï-no',
-    'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
   },
   'sylvie': {
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
   },
   'jean': {
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
   },
   'antoine': {
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
   },
   'thierry': {
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
   },
   'denise': {
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
   },
   'henri': {
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
   },
   'ariane': {
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'tate britain': 'Tétte Britenn',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
+    'tate britain': 'Tétte Britenn',
   },
   'fabrice': {
+    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'tate britain': 'Tétte Britenn',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
+    'menabuoi': 'Ménabwui',
+    'tate britain': 'Tétte Britenn',
   },
   'vivienne': {
-    'odilon': 'odilont',
+    'gellée': 'ge llée', // = « gellee » de l'atelier (variante accentuée du texte)
+    // atelier 18 oct 16:13 (rapport complet)
     'ca\'d\'oro': 'ka\'dôorro',
+    'clésinger': 'clésin-jey',
+    'edward burne-jones': 'Edward burne-jones',
+    'edwin': 'Edwin',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
-    'gentile': 'Génntilé',
+    'gellee': 'ge llée',
+    'gentile': 'Génnti-léy',
+    'giobbe': 'djobey',
     'immobiles': 'imo-biles',
+    'jason': 'Jazon',
     'lancashire': 'lancashire',
+    'menabuoi': 'Ménabwui',
+    'michelozzo': 'meekélotso',
+    'odilon': 'odilont',
+    'phryné': 'Freeney',
+    'poisson': 'Poisson',
+    'pollaiolo': 'pollaiuolo',
     'schifanoia': 'Skifannôya',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'titien': 'TITIEN',
-    'edward burne-jones': 'Edward burne-jones', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
   },
   'rémy': {
+    'gellée': 'gellée', // = « gellee » de l'atelier (variante accentuée du texte)
+    // atelier 18 oct 16:13 (rapport complet)
     'ca\'d\'oro': 'ka\'dôorro',
+    'clésinger': 'clésin-jey',
+    'edward burne-jones': 'Edward burne-jones',
+    'edwin': 'Edwin',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
-    'gentile': 'Génntilé',
+    'gellee': 'gellée',
+    'gentile': 'Génnti-léy',
+    'giobbe': 'giobbé',
     'immobiles': 'imo-biles',
     'lancashire': 'lancashire',
+    'menabuoi': 'Ménabwui',
+    'michelozzo': 'meekélotso',
+    'phryné': 'Freeney',
+    'poisson': 'Poisson',
+    'pollaiolo': 'pollaiuolo',
     'schifanoia': 'Skifannôya',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'titien': 'TITIEN',
-    'edward burne-jones': 'Edward burne-jones', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
   },
   'eloise': {
+    // atelier 18 oct 16:13 (rapport complet)
+    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'tino di camaino': 'tino di kama-ï-no',
+    'singer sargent': 'singer sargente',
     'venise': 'Venîz',
-    'edward burne-jones': 'Edward BeURNE-JôNtze', // atelier 18 oct 08:26
-    'singer sargent': 'singer sargente', // atelier 18 oct 08:26
+    'werefkin': 'vérefkine',
   },
 };
 function currentPronunciationOverrides() {
