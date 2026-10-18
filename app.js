@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v187';
+const APP_VERSION = 'v186';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -695,7 +695,7 @@ function initProfilePage() {
   if ($('pf-link-ambiance-field')) $('pf-link-ambiance-field').checked = localStorage.getItem('linkAmbianceToField') !== 'false';
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   $('pf-voice').innerHTML = voices.length
-    ? '<option value="">Automatique (voix de femme ou d’homme selon l’artiste)</option>' + voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
     : '<option value="">Voix par défaut du système</option>';
   let fieldDefaults = {};
   try { fieldDefaults = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) {}
@@ -1125,31 +1125,6 @@ document.querySelectorAll('.volume-bar').forEach((bar) => {
   });
 });
 renderVolumeBars();
-// v187 (« une voix de femme pour Vigée Le Brun, une voix d'homme pour Cole ») : on ne peut pas imposer une voix précise (chaque appareil a les siennes),
-// mais on peut demander « une voix de femme » ou « une voix d'homme » : le navigateur ne donne pas le sexe d'une voix, on le devine d'après le prénom
-// qui figure dans son nom (Denise, Hortense… / Rémy, Henri, Paul…). Le choix du joueur dans ses réglages passe toujours avant.
-const bioStrip = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-const VOICE_FEMALE_RE = /\b(hortense|charline|julie|sylvie|denise|ariane|vivienne|eloise|amelie|audrey|aurelie|marie|celine|brigitte|claire|caroline|sophie|isabelle|catherine|nathalie|francoise|fabienne|josephine|elodie|lucie|chantal|virginie|sandrine)/;
-const VOICE_MALE_RE = /\b(paul|gerard|jean|antoine|thierry|henri|fabrice|rem[iy]|thomas|mathieu|nicolas|bruno|guillaume|olivier|pierre|daniel|maxime|alain|claude|julien|lucas)/;
-const FEMALE_FIRST_RE = /^(elisabeth|elizabeth|isabelle|isabella|marie|maria|mary|artemisia|sofonisba|rosalba|angelica|berthe|suzanne|paula|frida|georgia|lavinia|judith|clara|rosa|kathe|marguerite|margaret|louise|gabrielle|anna|anne|catharina|catherine|elisabetta|giovanna|barbara|dorothea|helen|helene|jeanne|sonia|tamara|leonora|remedios|niki|eva|emily|alice|amelie|charlotte|clemence|claudine|diane|francoise|genevieve|hannah|henriette|irene|josephine|julie|laure|leonie|lucie|madeleine|mathilde|nathalie|olga|pauline|rachel|sophie|therese|valentine|virginie|yvonne|agnes|aurelie|beatrice|bridget|carmen|cecilia|cecile|chiara|christina|cornelia|dora|edith|ellen|emma|esther|fanny|gwen|ida|jacqueline|katharina|kiki|leonor|lotte|lygia|marianne|marlene|martha|meret|michaela|nancy|natalia|orsola|rebecca|sarah|sheila|susanna|tina|ulrike|vanessa|vera)$/;
-function normalizeVoiceGender(raw) {
-  const t = bioStrip(raw).trim(); if (!t) return '';
-  if (/^(f|femme|feminin|feminine|femini|woman|female)/.test(t)) return 'femme';
-  if (/^(h|m|homme|masculin|man|male)/.test(t)) return 'homme';
-  return '';
-}
-function bioInferGender(prenom) {   // '' = pas de préférence (artiste sans prénom : « Le Greco », « Maître de… »)
-  const first = bioStrip(prenom).trim().split(/[\s\-’']+/)[0]; if (!first) return '';
-  return FEMALE_FIRST_RE.test(first) ? 'femme' : 'homme';
-}
-function pickVoiceByGender(g) {
-  if (!window.speechSynthesis || !g) return null;
-  const re = g === 'femme' ? VOICE_FEMALE_RE : VOICE_MALE_RE;
-  const cands = speechSynthesis.getVoices().filter((v) => /^fr/i.test(v.lang) && re.test(bioStrip(v.name)));
-  if (!cands.length) return null;
-  const score = (v) => { const n = bioStrip(v.name); return (/natural/.test(n) ? 3 : 0) + (/online/.test(n) ? 2 : 0) + (/multilingual/.test(n) ? 0.5 : 0) + (/fr-fr|france/.test(bioStrip(v.lang + ' ' + v.name)) ? 0.2 : 0); };
-  return cands.sort((a, b) => score(b) - score(a))[0];
-}
 function getGlobalVoice() {
   if (!window.speechSynthesis) return null;
   const prefs = getGlobalPrefs();
@@ -1162,7 +1137,7 @@ function populateGlobalVoiceSelect() {
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   const prefs = getGlobalPrefs();
   select.innerHTML = voices.length
-    ? '<option value="">Automatique (voix de femme ou d’homme selon l’artiste)</option>' + voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
     : '<option value="">Voix par défaut du système</option>';
 }
 speechSynthesis.onvoiceschanged = populateGlobalVoiceSelect;
@@ -2558,7 +2533,7 @@ const PRONUNCIATION_BY_VOICE = {
 function currentPronunciationOverrides() {
   try {
     const norm = (t) => String(t || '').toLowerCase().replace(/[()\-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-    let name = norm((getGlobalPrefs() || {}).voiceName) || norm(typeof impAutoVoice !== 'undefined' && impAutoVoice ? impAutoVoice.name : '');   // v187 : voix choisie automatiquement
+    let name = norm((getGlobalPrefs() || {}).voiceName);
     if (!name) {
       // Aucune voix choisie dans les réglages : sur un téléphone qui n'a que les deux voix françaises,
       // c'est l'une d'elles qui parle, donc on applique leurs réglages.
@@ -2566,7 +2541,7 @@ function currentPronunciationOverrides() {
       if (fr.length && fr.every((v) => PHONE_VOICE_KEYS.some((k) => norm(v.name).includes(k)))) return PHONE_PRONUNCIATION;
       return null;
     }
-    const nameNA = bioStrip(name); const hit = Object.keys(PRONUNCIATION_BY_VOICE).find((part) => nameNA.includes(bioStrip(part)));   // v187 : sans tenir compte des accents (Rémy / Remy)
+    const hit = Object.keys(PRONUNCIATION_BY_VOICE).find((part) => name.includes(part));
     return hit ? PRONUNCIATION_BY_VOICE[hit] : null;
   } catch (e) { return null; }
 }
@@ -2899,7 +2874,6 @@ function normaliseRows(rows) {
     // qui la fusionne dans masterRow sous "Légende de l'artiste", même mécanique que la photo
     // elle-même juste au-dessus (artistImage).
     let artistImageCaption = '';
-    let artistVoice = '';   // v187 : « femme » / « homme » (colonne facultative « Voix » du fichier maître)
     let workText = '';
     const masterRow = findArtistMasterRow(prenom, patronyme, surnomFr);
     if (masterRow) {
@@ -2920,7 +2894,6 @@ function normaliseRows(rows) {
       if (!nationalityKey && masterRow['Nationalité']) nationality = String(masterRow['Nationalité']).trim();
       if (!artistImageKey && masterRow["Image de l'artiste"]) artistImage = String(masterRow["Image de l'artiste"]).trim();
       if (masterRow["Légende de l'artiste"]) artistImageCaption = String(masterRow["Légende de l'artiste"]).trim();
-      { const vk = Object.keys(masterRow).find((k) => String(k).trim().toLowerCase() === 'voix'); if (vk) artistVoice = normalizeVoiceGender(masterRow[vk]); }
       if (masterRow['Bio']) bio = String(masterRow['Bio']).trim();
       // v129 (Stéphane : « pour chaque artiste de niveau 1, l'œuvre emblématique et un petit texte ») : le maître
       // porte, par artiste, le titre de son œuvre emblématique et le texte (à la première personne) qui la raconte.
@@ -2963,7 +2936,7 @@ function normaliseRows(rows) {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
+      artistImage, artistImageCaption, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
       row: rowIndex + 2
     };
   }).filter((question) => question && (question.image || question.artist || question.date || question.location || question.title));
@@ -11765,7 +11738,7 @@ function impSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20
 function impSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`imp-zone-${z}`)?.checked); }
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
-let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impAutoVoice = null, impFieldLabel = '';
+let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impFieldLabel = '';
 // v76 : horodatage (Date.now()) jusqu'auquel une bascule d'image de case (Lieu/Ensemble) est déjà
 // « réservée » par la précédente — garantit qu'on ne lance jamais un second fondu enchaîné avant que
 // le précédent soit terminé, quelle que soit la vitesse de la voix (remis à zéro à chaque nouvelle
@@ -12491,7 +12464,6 @@ function bioFrame() {
   A.raf = requestAnimationFrame(bioFrame);
 }
 function bioAutoStop() {
-  if (bioAuto.voiceSwap) { impSelectedVoice = bioAuto.voiceSwap.prev; impAutoVoice = null; bioAuto.voiceSwap = null; }   // v187 : on rend la voix d'avant
   bioAuto.sid++; bioAuto.paused = false;
   bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
   clearTimeout(bioAuto.fadeTimer); clearTimeout(bioAuto.queueTimer); bioAuto.fid++; bioAuto.fading = false; bioAuto.pending = []; bioCapReset();
@@ -12574,18 +12546,6 @@ function bioProgress(ci, spokenLen) {
   A.gotBoundary = true; A.spokenLen = Math.max(1, spokenLen);
   A.frac = A.map ? Math.min(1, (A.mapBase + A.map(ci)) / Math.max(1, A.plainLen)) : A.baseFrac + Math.min(1, ci / A.spokenLen) * (1 - A.baseFrac);
   if (A.debug && (!A.lastLog || A.lastCiT - A.lastLog > 3000)) { A.lastLog = A.lastCiT; bioDbg('voix à', ci + '/' + spokenLen); }
-}
-function bioChooseVoice(work, isWork) {
-  const A = bioAuto; if (A.voiceSwap) { impSelectedVoice = A.voiceSwap.prev; impAutoVoice = null; A.voiceSwap = null; }
-  try {
-    if (isWork || !window.speechSynthesis) return;
-    if (getGlobalPrefs().voiceName && getGlobalVoice()) { bioDbg('voix : choix du joueur respecté'); return; }
-    const g = work.artistVoice || bioInferGender(work.prenom); if (!g) return;
-    const v = pickVoiceByGender(g);
-    bioDbg('voix demandée :', g, '→', v ? v.name : 'aucune voix de ce genre sur cet appareil (voix habituelle)');
-    if (!v) return;
-    A.voiceSwap = { prev: impSelectedVoice }; impSelectedVoice = v; impAutoVoice = v;
-  } catch (e) { /* ignoré : on garde la voix habituelle */ }
 }
 function bioSpeakFrom(offset) {
   const A = bioAuto; if (!A.parsed) return;
@@ -12727,7 +12687,7 @@ function openImpArtistBio(work, force, opts) {
   bioSyncButton();
   bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
   if (srcText) {
-    bioAuto.rate = 0.72; bioChooseVoice(work, isWork);
+    bioAuto.rate = 0.72;
     const sid = bioAuto.sid;
     impSpeak(parsedBio.plain, undefined, force, {
       onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = 0; bioAuto.map = bioBuildMap(parsedBio.plain, spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },
