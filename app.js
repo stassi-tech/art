@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v198';
+const APP_VERSION = 'v199';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12685,7 +12685,10 @@ function bioFrame() {
   let lineY = col.scrollTop + col.clientHeight * lineF;
   if (A.speaking) {
     let f = A.frac;
-    if (!A.gotBoundary && !A.paused && now - A.startT > 1500) f = Math.min(0.98, (A.baseFrac || 0) + Math.min(1, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen)) * (1 - (A.baseFrac || 0)));
+    if (A.chunked) {
+      // v199 (mobile) : lecture par morceaux — sans position fournie par la voix, on estime d'après la vitesse MESURÉE sur les morceaux déjà lus
+      if (!A.gotBoundary && !A.paused && A.ck) f = (A.ck.start + Math.min(A.ck.len * 0.98, Math.max(0, (now - A.ck.t0) / 1000) * (A.cpsEst || 13))) / Math.max(1, A.plainLen);
+    } else if (!A.gotBoundary && !A.paused && now - A.startT > 1500) f = Math.min(0.98, (A.baseFrac || 0) + Math.min(1, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen)) * (1 - (A.baseFrac || 0)));
     // v183 : la position lue ne recule jamais et n'avance jamais d'un bloc. La voix signale sa position par à-coups (parfois
     // plusieurs mots d'un coup) ; on lisse : avance régulière à la vitesse de la voix, rattrapage progressif si la voix est devant,
     // et le repère ne dépasse jamais la voix de plus de ~12 caractères (pour ne pas annoncer une image trop tôt).
@@ -12822,6 +12825,61 @@ function bioChooseVoice(work, isWork) {
     A.voiceSwap = { prev: impSelectedVoice }; impSelectedVoice = v; impAutoVoice = v;
   } catch (e) { /* ignoré : on garde la voix habituelle */ }
 }
+// v199 (retour Stéphane sur mobile : « le texte est fini et on arrive seulement à l'image de Danaé ») : sur téléphone, la voix ne signale en général pas
+// sa position (pas d'événement « boundary ») ; l'application estimait alors la lecture à vitesse fixe, trop lente par rapport à la voix, et l'écart
+// s'accumulait tout au long du texte. Désormais, sur mobile, le texte est lu PAR MORCEAUX, découpés exactement aux balises d'images : chaque morceau
+// est une phrase de voix à part, et c'est le DÉBUT de ce morceau (signalé de façon fiable par la voix) qui déclenche l'image. L'écart ne peut donc plus
+// s'accumuler : il est remis à zéro à chaque balise. Entre deux balises, la position est estimée d'après la vitesse réellement mesurée sur les morceaux précédents.
+let bioCpsLearned = 0;
+function bioWantChunks() {
+  try {
+    const q = location.search; if (/[?&]bio=chunk/.test(q)) return true; if (/[?&]bio=single/.test(q)) return false;
+    const ua = navigator.userAgent || '';
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || ((navigator.maxTouchPoints || 0) > 0 && window.innerWidth < 1100);
+  } catch (e) { return false; }
+}
+function bioMakeChunks(plain, offset, marks) {
+  const cuts = new Set([offset, plain.length]);
+  (marks || []).forEach((mk) => { if (mk.offset > offset && mk.offset < plain.length) cuts.add(mk.offset); });
+  const starts = bioSentenceStarts(plain); let pts = [...cuts].sort((a, b) => a - b); const out = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    let a = pts[i]; const b = pts[i + 1];
+    while (b - a > 700) { let c = -1; for (const s of starts) { if (s > a + 200 && s <= a + 700) c = s; } if (c < 0) break; out.push([a, c]); a = c; }
+    if (plain.slice(a, b).trim()) out.push([a, b]);
+  }
+  return out;
+}
+function bioSpeakChunks(plain, offset, sid) {
+  const A = bioAuto;
+  if ((!impAudioOn && !A.force) || !window.speechSynthesis) return;
+  const chunks = bioMakeChunks(plain, offset, A.marks); if (!chunks.length) return;
+  A.cpsEst = A.cpsEst || bioCpsLearned || 13; A.cpsLast = A.cpsEst;
+  const L = Math.max(1, plain.length); const vol = getGlobalPrefs().speechVolume ?? 1;
+  try { speechSynthesis.cancel(); } catch (e) { /* ignoré */ }
+  chunks.forEach(([a, b], i) => {
+    const raw = plain.slice(a, b); const spoken = fixSpeechPronunciation(bioVoiceFlat(raw)); const last = i === chunks.length - 1;
+    const u = new SpeechSynthesisUtterance(spoken); u.lang = 'fr-FR'; u.rate = 0.72; u.volume = vol; if (impSelectedVoice) u.voice = impSelectedVoice;
+    const map = bioBuildMap(raw, spoken);
+    u.onstart = () => {
+      if (sid !== bioAuto.sid) return; const now = performance.now();
+      A.gotBoundaryOrSpoke = true; A.speaking = true; A.rate = u.rate; A.ck = { start: a, len: b - a, t0: now, idx: i };
+      A.baseFrac = a / L; A.startT = now; A.gotBoundary = false; A.lastCi = 0; A.cand = null; A.lastCiT = now; A.mapBase = a; A.map = map; A.spokenLen = Math.max(1, spoken.length);
+      A.frac = a / L; A.fshow = Math.max(A.fshow >= 0 ? A.fshow : 0, a / L); A.cpsLast = A.cpsEst;
+      bioDbg('morceau', i + 1 + '/' + chunks.length, 'début à', a, 'vitesse estimée', A.cpsEst.toFixed(1));
+    };
+    u.onboundary = (ev) => { if (sid !== bioAuto.sid || !A.ck || A.ck.idx !== i) return; if (typeof ev.charIndex === 'number') bioProgress(ev.charIndex, spoken.length); };
+    const done = (ok) => {
+      if (sid !== bioAuto.sid) return;
+      if (ok && A.ck && A.ck.idx === i && !A.ck.paused) {
+        const dur = (performance.now() - A.ck.t0) / 1000;
+        if (dur > 2 && b - a > 30) { const m = Math.max(6, Math.min(30, (b - a) / dur)); A.cpsEst = i === 0 && !bioCpsLearned ? m : A.cpsEst * 0.4 + m * 0.6; bioCpsLearned = A.cpsEst; bioDbg('morceau', i + 1, 'lu en', dur.toFixed(1) + 's →', m.toFixed(1), 'car/s'); }
+      }
+      if (last) { A.speaking = false; if (A.dual && A.willSpeak) { A.ended = true; A.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); } }
+    };
+    u.onend = () => done(true); u.onerror = () => done(false);
+    speechSynthesis.speak(u);
+  });
+}
 function bioSpeakFrom(offset) {
   const A = bioAuto; if (!A.parsed) return;
   const plain = A.parsed.plain; offset = Math.max(0, Math.min(plain.length - 1, offset));
@@ -12833,6 +12891,7 @@ function bioSpeakFrom(offset) {
   $('imp-bio-split')?.classList.add('bio-film');
   try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch (e) { /* ignoré */ }
   bioSyncButton();
+  if (A.chunked) { A.ck = null; bioSpeakChunks(plain, offset, sid); return; }
   impSpeak(plain.slice(offset), undefined, A.force, {
     onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = offset; bioAuto.map = bioBuildMap(plain.slice(offset), spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },
     onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
@@ -12847,7 +12906,7 @@ function bioSpeakFrom(offset) {
 function bioSeek(dir) {
   const A = bioAuto; if (!A.dual || !A.parsed) return;
   const starts = bioSentenceStarts(A.parsed.plain);
-  const cur = A.ended ? A.parsed.plain.length : A.frac * A.parsed.plain.length;
+  const cur = A.ended ? A.parsed.plain.length : (A.chunked ? Math.max(0, A.fshow) : A.frac) * A.parsed.plain.length;
   let target;
   if (dir < 0) { target = 0; for (const s of starts) { if (s < cur - 45) target = s; else break; } }
   else { target = starts.find((s) => s > cur + 1); if (target === undefined) return; }
@@ -12859,7 +12918,7 @@ $('imp-bio-toggle')?.addEventListener('click', () => {
   const A = bioAuto; if (!A.dual) return;
   if (A.ended) { if (A.work) openImpArtistBio(A.work, A.force, { work: A.isWork }); return; }
   if (!A.paused) { A.paused = true; A.pausedAt = performance.now(); try { speechSynthesis.pause(); } catch (e) { /* ignoré */ } }
-  else { A.paused = false; A.startT += performance.now() - A.pausedAt; try { speechSynthesis.resume(); } catch (e) { /* ignoré */ } }
+  else { A.paused = false; A.startT += performance.now() - A.pausedAt; if (A.ck) { A.ck.t0 += performance.now() - A.pausedAt; A.ck.paused = true; } try { speechSynthesis.resume(); } catch (e) { /* ignoré */ } }
   bioSyncButton();
 });
 window.addEventListener('resize', () => { if (bioAuto.dual && !$('imp-bio-split')?.classList.contains('hidden')) bioSetPads(); });
@@ -12963,6 +13022,8 @@ function openImpArtistBio(work, force, opts) {
   bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
   if (srcText) {
     bioAuto.rate = 0.72; bioChooseVoice(work, isWork);
+    bioAuto.chunked = dual && bioWantChunks(); bioAuto.ck = null;
+    if (bioAuto.chunked) { if (willSpeak) bioSpeakFrom(0); return; }
     const sid = bioAuto.sid;
     impSpeak(parsedBio.plain, undefined, force, {
       onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = 0; bioAuto.map = bioBuildMap(parsedBio.plain, spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },

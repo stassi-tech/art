@@ -2804,3 +2804,9 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
   .report-toolbar, .no-print { display:none !important; }
   .report-sheet { box-shadow:none; width:210mm; height:296mm; min-height:0; max-width:none; margin:0; overflow:hidden; page-break-after:avoid; break-inside:avoid; }
 }
+
+/* v199 — Bio sur mobile (écran vertical) : plus de cohabitation entre la photo de l'artiste et les images.
+   L'artiste occupe la place seul au début ; dès la 1re balise d'image il s'efface et l'image prend exactement sa place ;
+   à la balise [retour] (ou en fin de bio) l'image s'efface et l'artiste revient. (transitions : durée --bio-split-ms, déjà en place) */
+.imp-bio-split.bio-dual.bio-vert:not(.bio-solo):not(.bio-noslide) .imp-bio-photo-col { flex:0 0 0%; padding:0; opacity:0; overflow:hidden; pointer-events:none; border-width:0; }
+.imp-bio-split.bio-dual.bio-vert:not(.bio-solo):not(.bio-noslide) .imp-bio-slide-col { flex:0 0 63%; border-top-width:0; }
