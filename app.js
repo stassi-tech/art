@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v199';
+const APP_VERSION = 'v201';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -2760,11 +2760,23 @@ function frYearInWords(y) {
   const head = y >= 2000 ? 'deux mille' : 'mille';
   return head + (r ? ' ' + frBelow1000(r) : '');
 }
+// v200 : chiffres romains lus à voix haute (voir fixSpeechPronunciation)
+const FR_REGNAL = /^(Louis|Charles|Henri|Philippe|François|Jean|Pierre|Alexandre|Napoléon|Guillaume|Frédéric|Édouard|Georges|Léon|Pie|Paul|Clément|Urbain|Jules|Sixte|Grégoire|Benoît|Innocent|Boniface|Nicolas|Ferdinand|Maximilien|Rodolphe|Joseph|Léopold|Ivan|Catherine|Élisabeth|Victor|Louise|Marie|Jacques|Alphonse|Charles-Quint)$/u;
+function frOrdinal(n) {
+  if (n === 1) return 'premier';
+  let w = frBelow100(n);
+  if (/ et un$/.test(w)) return w + 'ième';
+  if (w.endsWith('cinq')) return w + 'uième';
+  if (w.endsWith('neuf')) return w.slice(0, -1) + 'vième';
+  if (w.endsWith('e')) return w.slice(0, -1) + 'ième';
+  return w + 'ième';
+}
 function fixSpeechPronunciation(text) {
   // Le texte entre parenthèses (ex. un nom de musée alternatif) reste utile à l'écran mais
   // alourdit la lecture à voix haute : on le retire ici, avant toute autre correction, pour que
   // ça s'applique partout où l'on parle, sans avoir à y penser exercice par exercice.
-  let out = String(text || '').replace(/\s*\([^)]*\)/g, '');
+  // v200 : un chiffre romain entre parenthèses fait partie du titre (« La Danse (II) ») : on garde le numéro, on retire les parenthèses
+  let out = String(text || '').replace(/\s*\(([IVX]{1,6})\)/g, ' $1').replace(/\s*\([^)]*\)/g, '');
   // v80 (retour Stéphane, docx 29 sept, QUIZ : « la voix à l'énoncé de la consigne dit deux fois
   // micro ») : la consigne du Quiz ("...dictez-la avec le micro 🎤...") contient l'emoji 🎤 juste
   // après le mot "micro" — certaines voix de synthèse (notamment les voix Windows/SAPI) énoncent
@@ -2801,6 +2813,30 @@ function fixSpeechPronunciation(text) {
     return `entre ${frYearInWords(y1)} et ${y2w}`;
   });
   out = out.replace(/(?<![\p{L}\p{N}])(?<!\d[.,])(1\d{3}|20\d{2})(?![\p{L}\p{N}])(?![.,]\d)/gu, (m, y) => frYearInWords(Number(y)));
+  // v200 (retour Stéphane : « l'application ne sait pas lire I comme le 1 en chiffre romain ; je ne peux pas le corriger dans l'atelier ») :
+  // les chiffres romains (« Tableau I », « Composition II », « Louis XIV », « Charles Ier », « XIXe siècle ») sont lus comme des nombres.
+  // Fait ici, et non dans la table de prononciation de l'atelier : cette table ne distingue pas majuscules et minuscules, donc « I » y
+  // désignerait aussi tous les « i ». Ici, seules les MAJUSCULES comptent, et il faut un mot juste avant (« Adele I », « Tableau II »).
+  out = out.replace(/(?<![\p{L}\p{N}])(X{1,3}(?:IX|IV|V?I{0,3})|IX|IV|V?I{1,3}|V|X)(er|ère|re|ème|e)?(?![\p{L}\p{N}])/gu, (m, rom, suf, off, str) => {
+    const val = { I: 1, V: 5, X: 10 }; let n = 0;
+    for (let i = 0; i < rom.length; i++) { const a = val[rom[i]], b = val[rom[i + 1]] || 0; n += a < b ? -a : a; }
+    if (n < 1 || n > 39) return m;
+    const prev = (str.slice(0, off).match(/([\p{L}'’-]+)\s+$/u) || [])[1];
+    const ord = !!suf && suf !== 'er' && suf !== 're' && suf !== 'ère';
+    const nextSiecle = /^\s+siècles?(?![\p{L}])/iu.test(str.slice(off + m.length));
+    if (!suf && !prev && !nextSiecle) return m;   // sans mot avant (ni « siècle » après) : on ne touche pas (début de phrase, initiale…)
+    if (!suf && (rom === 'V' || rom === 'X') && !nextSiecle && !FR_REGNAL.test(prev || '')) return m;   // V ou X isolés : seulement après un nom de souverain/pape
+    if (suf === 'er' || suf === 're' || suf === 'ère') return n === 1 ? (suf === 'er' ? 'premier' : 'première') : m;
+    if (ord || nextSiecle) return frOrdinal(n);
+    return n === 1 ? 'un' : frBelow100(n);
+  });
+  // v201 (retour Stéphane, voix du téléphone : « J'en veux pluS (le s se prononce) / je n'en veux plus (le s ne se prononce pas dans une négation simple) ») :
+  // « plus » de négation (ne… plus, plus rien / jamais / personne…, plus de) se dit [plu] : on l'écrit « plu » pour la voix, qui n'a plus de « s » à lire.
+  // « plus » positif (« j'en veux plus », « en plus », « de plus ») reste inchangé : le s se prononce. Écrit ici et non dans l'atelier,
+  // car la table de l'atelier ne sait pas distinguer les deux emplois d'un même mot.
+  const PLU = (w) => (w[0] === 'P' ? 'Plu' : 'plu');
+  out = out.replace(/(?<![\p{L}\p{N}])((?:ne|n['’])\s*(?:[\p{L}'’-]+\s+){0,4}?)(plus)(?![\p{L}\p{N}])/giu, (m, head, w) => (/(^|\s)non\s+$/iu.test(head) ? m : head + PLU(w)));
+  out = out.replace(/(?<![\p{L}\p{N}])(plus)(?=\s+(?:(?:rien|jamais|personne|aucune?|nulle?|guère)(?![\p{L}\p{N}])|d['’]|de\s))/giu, (m, w) => PLU(w));
   out = out.replace(new RegExp(`${NB}[A-ZÀ-Ý]{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
   Object.entries(NATIONALITY_AWARE_FIXES).forEach(([wrong, { exceptFor, otherwise }]) => {
     if (exceptFor.test(currentSpeechNationality)) return; // nationalité exceptée : on ne touche pas
