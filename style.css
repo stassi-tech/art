@@ -2810,3 +2810,26 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
    à la balise [retour] (ou en fin de bio) l'image s'efface et l'artiste revient. (transitions : durée --bio-split-ms, déjà en place) */
 .imp-bio-split.bio-dual.bio-vert:not(.bio-solo):not(.bio-noslide) .imp-bio-photo-col { flex:0 0 0%; padding:0; opacity:0; overflow:hidden; pointer-events:none; border-width:0; }
 .imp-bio-split.bio-dual.bio-vert:not(.bio-solo):not(.bio-noslide) .imp-bio-slide-col { flex:0 0 63%; border-top-width:0; }
+
+/* v202 (retour Stéphane, iPhone 16 Plus : « les loupes se mettent au-dessus des images, d'où confusion avec le clic de sélection ») :
+   la loupe est accrochée au coin haut-gauche de la CASE, alors que l'image est centrée dans la case et de hauteur variable — la loupe
+   recouvrait donc le coin de l'image (ou flottait loin au-dessus). Chaque case réserve maintenant une bande de 34 px en haut, réservée à
+   la loupe : l'image (et sa zone tactile) commence toujours en dessous, jamais sous la loupe. Intrus et Chronologie (Famille n'était pas concernée). */
+.intrus-image-choice { padding-top:36px; }
+.chrono-source-item { padding-top:34px; }
+@media (max-width:700px) {
+  .intrus-image-choices { gap:8px; }
+  .intrus-image-choice { padding:2px 2px 4px; padding-top:36px; }
+  #intrus-quiz-grid.intrus-image-layout #intrus-prompt-card { padding:12px 10px; }
+}
+
+/* v203 (essai) — Intrus sur téléphone DEBOUT et HAUT : les trois images sont empilées (chacune plus large), la référence à retrouver passe AU-DESSUS ;
+   la loupe occupe une gouttière à gauche de chaque image (jamais sous elle). Les petits écrans (hauteur < 800 px) gardent les trois colonnes. */
+@media (max-width:700px) and (min-height:800px) and (orientation:portrait) {
+  #intrus-quiz-grid.intrus-image-layout { display:flex; flex-direction:column; }
+  #intrus-quiz-grid.intrus-image-layout .answer-card { order:-1; }
+  #intrus-quiz-grid.intrus-image-layout .intrus-image-choices { grid-template-columns:1fr; gap:6px; height:auto; }
+  #intrus-quiz-grid.intrus-image-layout .intrus-image-choice { padding:2px 2px 2px 46px; }
+  #intrus-quiz-grid.intrus-image-layout .intrus-image-choice.loupe-solo-active { padding:40px 4px 4px; }
+  #intrus-quiz-grid.intrus-image-layout #intrus-prompt-card .intrus-image-choice:not(.loupe-solo-active) img { max-height:19vh !important; max-width:100% !important; width:100%; }
+}
