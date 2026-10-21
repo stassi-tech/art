@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v215';
+const APP_VERSION = 'v216';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -2367,6 +2367,11 @@ const PRONUNCIATION_FIXES = {
   'munch': 'münk',
   'slevogt': 'sléfokt',
   'beckmann': 'beckmann',  // identité : sert de support aux écritures propres à certaines voix
+  // v216 (atelier de prononciation, export du 21 oct 21:36) : nouveaux mots, écritures communes à toutes les voix.
+  'bellano': 'béllano',
+  'fiesole': 'fiésole',
+  'gattamelata': 'gattamélata',
+  'signoria': 'signorilla',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2402,6 +2407,11 @@ const PRONUNCIATION_BY_VOICE = {
   // v175 : résultats de l'atelier de prononciation (17 oct 14:45), une table par voix, repérée par un morceau de son nom.
   // Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
+    // atelier 21 oct 21:36
+    'bellano': 'bélano',
+    'cavalli': 'ka va li',
+    'donatello': 'dona-télo',
+    'linden': 'lyn-den',
     // atelier 19 oct 00:08
     'beckmann': 'béck-manne',
     'lembachhaus': 'lemmbake-haousse',
@@ -2459,6 +2469,12 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'julie': {
+    // atelier 21 oct 21:36
+    'bellano': 'bélano',
+    'cavalli': 'ka va li',
+    'donatello': 'dona-télo',
+    'fiesole': 'fié-sole',
+    'linden': 'lyn-den',
     // atelier 19 oct 00:08
     'beckmann': 'béck-manne',
     'lembachhaus': 'lemmbake-haousse',
@@ -2493,6 +2509,11 @@ const PRONUNCIATION_BY_VOICE = {
     'yale': 'yèle',
   },
   'paul': {
+    // atelier 21 oct 21:36
+    'bellano': 'bélano',
+    'cavalli': 'ka va li',
+    'donatello': 'dona-télo',
+    'linden': 'lyn-den',
     // atelier 19 oct 00:08
     'beckmann': 'béck-manne',
     'lembachhaus': 'lemmbake-haousse',
@@ -2679,6 +2700,8 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'rémy': {
+    // atelier 21 oct 21:36
+    'fiesole': 'fiésolé',
     'pollaiuolo': 'pollaiuolo', // v198 : évite que « pollaiolo » → « pollaiuolo » soit retransformé par l'entrée commune « pollaiuolo »
     'gellée': 'gellée', // = « gellee » de l'atelier (variante accentuée du texte)
     // atelier 18 oct 16:13 (rapport complet)
