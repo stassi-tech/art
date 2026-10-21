@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v209';
+const APP_VERSION = 'v210';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -3024,6 +3024,11 @@ function normaliseRows(rows) {
       title = stripQuotes(row[legacyTitleKey]);
     }
 
+    // v210 : colonne facultative « Artiste associé » (œuvre conçue ou signée à plusieurs : frères Lombardo, élève qui achève l'œuvre
+    // du maître…). Plusieurs noms possibles, séparés par des points-virgules (« Prénom NOM »). L'artiste principal reste celui des
+    // colonnes Prénom/Patronyme ; les associés sont affichés avec lui, acceptés comme réponse et retrouvés par les filtres d'artistes.
+    const associatesKey = findColumn(row, ['artiste associe', 'artistes associes', 'co auteur', 'coauteur']);
+    const associates = associatesKey ? String(row[associatesKey] || '').split(/\s*;\s*/).map((n) => n.trim()).filter(Boolean) : [];
     const materialsKey = findColumn(row, ['materiaux et technique', 'materiaux', 'technique', 'materials', 'materiau']);
     const materials = materialsKey ? String(row[materialsKey] || '').trim() : '';
     const natureKey = findColumn(row, ['nature de l objet', 'nature objet', 'nature']);
@@ -3170,7 +3175,7 @@ function normaliseRows(rows) {
     return {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
-      artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
+      associates, artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
       artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
       row: rowIndex + 2
     };
@@ -3506,7 +3511,7 @@ function acceptableValues(question, key) {
   // ou langue d'origine), titre français ou langue d'origine. Les autres rubriques n'ont qu'une
   // seule valeur attendue.
   if (key === 'artist') {
-    return [question.artist, question.surnomFr, question.surnomOrig].filter(Boolean);
+    return [question.artist, ...associateNames(question), question.surnomFr, question.surnomOrig].filter(Boolean);
   }
   if (key === 'title') {
     return [question.title, question.titleOriginal].filter(Boolean);
@@ -3812,7 +3817,23 @@ function formatCorrectionValue(key, rawValue, work) {
   if (key === 'location') return locationWithFlag(work);
   return escapeHtml(rawValue);
 }
+// v210 : artistes associés d'une œuvre (voir la colonne « Artiste associé »).
+function associateNames(work) { return Array.isArray(work?.associates) ? work.associates : []; }
+function joinNamesFr(list) { return list.length <= 1 ? (list[0] || '') : `${list.slice(0, -1).join(', ')} et ${list[list.length - 1]}`; }
+function artistWithAssociates(work) { return joinNamesFr([work?.artist, ...associateNames(work)].filter(Boolean)); }
+// Noms (normalisés) sous lesquels une œuvre est retrouvée : l'artiste principal et ses associés.
+function workArtistKeys(w) { return [keyName(w?.artist), ...associateNames(w).map((n) => keyName(n))].filter(Boolean); }
+// Version parlée : « Prénom Nom, dit Surnom » puis les associés (« … et Jean Bologne »).
+function spokenArtistFull(work, withSurnom) {
+  const main = withSurnom && work?.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : (work?.artist || '');
+  return joinNamesFr([main, ...associateNames(work)].filter(Boolean));
+}
 function formatArtistDisplayName(work) {
+  const main = formatMainArtistDisplayName(work);
+  const assoc = associateNames(work);
+  return assoc.length ? `${main} et ${assoc.map((n) => escapeHtml(formatArtistName(n))).join(' et ')}` : main;
+}
+function formatMainArtistDisplayName(work) {
   // Prénom NOM (nom de famille en majuscules) ; si un surnom (français) existe, on l'ajoute
   // en italique entre guillemets : « Prénom NOM, dit "Surnom" ». Pour les mononymes sans nom
   // civil connu (Donatello, Masaccio...), seul le surnom s'affiche, sans virgule ni "dit".
@@ -4003,14 +4024,14 @@ function spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, 
 // exemple ») : nom civil puis surnom (« El Greco, dit Le Greco »), comme dans Imprégnation et
 // Reconstitution ; sans surnom, le nom seul.
 function spokenArtistWithSurnom(work) {
-  return work?.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : (work?.artist || '');
+  return spokenArtistFull(work, true);
 }
 function spokenFullReference(work, extraFields = null, withSurnom = false) {
   const on = (key) => !extraFields || extraFields.includes(key);
   const dimsPhrase = on('dimensions') ? spokenDimensionsPhrase(work) : '';
   const matDims = [on('materiaux') ? (work.materialsPhrase || work.materials) : '', dimsPhrase].filter(Boolean).join(' ');
   const parts = [
-    `${withSurnom && work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist}, «\u00a0${work.title}\u00a0»${on('date') ? `, ${work.date}` : ''}.`,
+    `${spokenArtistFull(work, withSurnom)}, «\u00a0${work.title}\u00a0»${on('date') ? `, ${work.date}` : ''}.`,
     matDims ? `${matDims}.` : '',
     (on('location') && work.location) ? `${work.location}.` : '',
   ].filter(Boolean);
@@ -4440,7 +4461,7 @@ function openGalleryWorkLoupe(work) {
   const img = $('gallery-proto-loupe-solo-img');
   if (img) img.src = imageSourceSized(work.image, 1000);
   const cartel = $('gallery-proto-loupe-solo-cartel');
-  if (cartel) cartel.textContent = `${work.artist || ''} — « ${work.title || 'Sans titre'} »${work.date ? `, ${work.date}` : ''}`;
+  if (cartel) cartel.textContent = `${artistWithAssociates(work)} — « ${work.title || 'Sans titre'} »${work.date ? `, ${work.date}` : ''}`;
   galleryWorkLoupe?.setLevel(1);
 }
 function setLightboxScaleData(work) {
@@ -5792,7 +5813,7 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
       cartel.addEventListener('click', (event) => { event.stopPropagation(); openLoupe(); });
       const artistLine = document.createElement('div');
       artistLine.className = 'gallery-proto-work-cartel-artist';
-      artistLine.textContent = work.artist || '';
+      artistLine.textContent = artistWithAssociates(work);
       const titleLine = document.createElement('div');
       titleLine.className = 'gallery-proto-work-cartel-title';
       titleLine.textContent = `« ${work.title || 'Sans titre'} »${work.date ? `, ${work.date}` : ''}`;
@@ -7261,7 +7282,7 @@ function enterFocusView(work, hCm, note, cartelWork) {
   const cartelEl = $('scale-focus-cartel');
   if (cartelEl) {
     if (cartelWork) {
-      cartelEl.textContent = `${cartelWork.artist || ''} — « ${cartelWork.title || 'Sans titre'} »${cartelWork.date ? `, ${cartelWork.date}` : ''}`;
+      cartelEl.textContent = `${artistWithAssociates(cartelWork)} — « ${cartelWork.title || 'Sans titre'} »${cartelWork.date ? `, ${cartelWork.date}` : ''}`;
       cartelEl.classList.remove('hidden');
     } else {
       cartelEl.classList.add('hidden');
@@ -7795,7 +7816,7 @@ async function openArtistWorksPage(idx) {
   const surnomKey = row['Surnom'] ? keyName(row['Surnom']) : '';
   const works = allRows
     .filter((w) => w.title || w.image) // v124 : une ligne qui ne porte encore que le nom de l'artiste (ni titre ni image) n'est pas une œuvre à afficher
-    .filter((w) => { const wKey = keyName(w.artist); return wKey === keyName(artistName) || (surnomKey && wKey === surnomKey); })
+    .filter((w) => workArtistKeys(w).some((wKey) => wKey === keyName(artistName) || (surnomKey && wKey === surnomKey)))
     .sort((a, b) => {
       const yearA = yearsOf(a.date)[0]; const yearB = yearsOf(b.date)[0];
       if (yearA == null && yearB == null) return 0;
@@ -8659,7 +8680,7 @@ async function fetchWorksForArtistRow(row) {
     for (const century of expandMergedCenturies(art, centuriesOfArtist)) {
       try {
         const rows = await fetchQuizRows(art, century);
-        rows.filter((w) => { const wk = keyName(w.artist); return wk === keyName(artistName) || (shortKey && wk === shortKey); }).forEach((w) => { w.artCategory = art; works.push(w); });
+        rows.filter((w) => workArtistKeys(w).some((wk) => wk === keyName(artistName) || (shortKey && wk === shortKey))).forEach((w) => { w.artCategory = art; works.push(w); });
       } catch (e) { /* fichier absent, ignoré */ }
     }
   }
@@ -10033,7 +10054,7 @@ function vfFieldValue(row, key) {
   // row.surnomFr, alors que toutes les autres épreuves passent par formatArtistDisplayName(work),
   // qui l'ajoute. Même convention ici, aussi bien pour la référence affichée à l'écran que pour
   // celle révélée en correction.
-  if (key === 'artist') return row.surnomFr ? `${row.artist}, dit ${row.surnomFr}` : (row.artist || '');
+  if (key === 'artist') return spokenArtistFull(row, true);
   return row[key] || '';
 }
 // Bug réel signalé par Stéphane (« Vous n'avez pas vu que l'artiste n'était pas jean de bologne,
@@ -11110,7 +11131,7 @@ async function objectsBasePool(ignoreArtists) {
   if (r.levels?.length) { const lv = rows.filter((w) => r.levels.includes(String(w.niveau || 1))); if (lv.length) rows = lv; }
   if (f.zones?.length) rows = rows.filter((w) => { const z = zoneOfNationality(w.nationality); return !z || f.zones.includes(z); });
   const names = ignoreArtists ? [] : (ga.artists || []).map((n) => keyName(n)).filter(Boolean);
-  if (names.length) rows = rows.filter((w) => names.some((a) => keyName(w.artist).includes(a) || a.includes(keyName(w.artist))));
+  if (names.length) rows = rows.filter((w) => workArtistKeys(w).some((k) => names.some((a) => k.includes(a) || a.includes(k))));
   objBasePoolCache = { key, rows };
   return rows;
 }
@@ -11120,7 +11141,7 @@ async function filterArtistRowsByObjects(rows) {
   const ga = readGlobalArtistDefaults();
   if (!objectsActive(ga.objects)) return rows;
   const pool = await objectsBasePool(true);
-  const keys = [...new Set(pool.filter((r) => objMatches(r, ga.objects)).map((r) => keyName(r.artist)).filter(Boolean))];
+  const keys = [...new Set(pool.filter((r) => objMatches(r, ga.objects)).flatMap((r) => workArtistKeys(r)))];
   const set = new Set(keys);
   return rows.filter((row) => {
     const k = keyName([row['Prénom'], row['Patronyme']].filter(Boolean).join(' '));
@@ -11217,7 +11238,7 @@ function filterPoolByGlobalArtists(pool, fallbackPool) {
   const artists = (ga.artists || []).map((n) => keyName(n)).filter(Boolean);
   const objects = objectsActive(ga.objects) ? ga.objects : null;
   if (!artists.length && !objects) return pool;
-  const matches = (r) => (!artists.length || artists.some((a) => keyName(r.artist).includes(a) || a.includes(keyName(r.artist)))) && (!objects || objMatches(r, objects));
+  const matches = (r) => (!artists.length || workArtistKeys(r).some((k) => artists.some((a) => k.includes(a) || a.includes(k)))) && (!objects || objMatches(r, objects));
   const filtered = pool.filter(matches);
   if (filtered.length) return filtered;
   if (fallbackPool) {
@@ -12539,7 +12560,7 @@ function impShowCurrent() {
       const lastWord = !baseName.includes('<') && baseName.match(/^(.*\S)\s+(\S+)$/);
       const nameHtml = lastWord ? `${lastWord[1]} <span class="imp-nm-end">${lastWord[2]}${tail}</span>` : `${baseName}${tail}`;
       return (work.bio || work.artistImage) ? `<span role="button" tabindex="0" class="imp-artist-name-button" id="imp-artist-name-button">${nameHtml}</span>` : nameHtml;
-    })(), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
+    })(), spoken: spokenArtistFull(work, true), on: fieldOn('artist') },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>${work.workText ? ` <button type="button" class="imp-speaker-btn" id="imp-speaker-work" title="Écouter l’histoire de cette œuvre" aria-label="Écouter l’histoire de cette œuvre">🔊</button>` : ''}`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
     { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
