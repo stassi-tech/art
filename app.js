@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v213';
+const APP_VERSION = 'v214';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -3951,7 +3951,42 @@ function spokenDimensionValue(raw) {
   const unitWord = { cm: 'centimètres', mm: 'millimètres', m: 'mètres' }[unit];
   return { meters: false, unit, text: `${Number.isFinite(n) ? numMatch[0].trim() : v} ${unitWord}${tail}`, bare: Number.isFinite(n) ? `${numMatch[0].trim()}${tail}` : v };
 }
+// v214 (retour Stéphane : « pour tous les monuments, quand la voix donne la dimension, elle commence par "Le monument a une hauteur de
+// 4,50 m pour la statue, etc." et ne s'enchaîne pas avec le matériau ; on peut mettre un point à la fin des matériaux ») :
+// un monument = hauteur donnée par partie (« 395 pour la statue, 400 pour le socle ») ou nature qui commence par « Monument ».
+// Pour lui, la voix dit une phrase complète et distincte : « Le monument a une hauteur de 3 mètres 95 pour la statue, 4 mètres pour
+// le socle, une longueur de 3 mètres 80, et une profondeur de 1 mètre 45. », et la phrase des matériaux se termine par un point.
+const DIM_BY_PART_RE = /\bpour\s+(la|le|les|l['’])\s*\S|\((statue|socle|piédestal|piedestal|cheval|groupe)/i;
+function isMonumentWork(work) {
+  if (!work) return false;
+  return DIM_BY_PART_RE.test(String(work.hauteur || '')) || /^monument/.test(keyName(work.nature || ''));
+}
+function matPhrase(work) {
+  const t = (work && (work.materialsPhrase || work.materials)) || '';
+  return t && isMonumentWork(work) && !/[.!?…]\s*$/.test(t) ? `${t}.` : t;
+}
+function spokenMonumentDimensions(work) {
+  const spokenSeg = (seg) => {
+    const m = String(seg).trim().match(/^((?:c[.,]\s*)?\d[\d\s]*(?:[.,]\d+)?\s*(?:cm|mm|m)?)\b\s*(.*)$/i);
+    if (!m) return String(seg).trim();
+    // « 300 (statue) » → « pour la statue » ; « 50 pour le socle (anciennement 300) » → « …, anciennement 3 mètres »
+    const part = { statue: 'la statue', socle: 'le socle', 'piédestal': 'le piédestal', piedestal: 'le piédestal', cheval: 'le cheval', groupe: 'le groupe' };
+    const restRaw = m[2].replace(/^\(\s*(statue|socle|piédestal|piedestal|cheval|groupe)\s*\)$/i, (_, w) => `pour ${part[w.toLowerCase()]}`);
+    const rest = restRaw.replace(/\d[\d\s]*(?:[.,]\d+)?\s*(?:cm|mm|m)?\b/gi, (x) => spokenDimensionValue(x).text).replace(/\s*\(\s*/g, ', ').replace(/\s*\)/g, '').replace(/\s+/g, ' ').trim();
+    return `${spokenDimensionValue(m[1].trim()).text}${rest ? ` ${rest}` : ''}`;
+  };
+  const labels = { h: 'une hauteur', l: 'une longueur', p: 'une profondeur' };
+  const parts = [{ key: 'h', value: work.hauteur }, { key: 'l', value: work.longueur }, { key: 'p', value: work.profondeur }]
+    .filter((d) => String(d.value || '').trim())
+    .map((d) => {
+      const segs = String(d.value).split(/\s*,\s*|\s+et\s+(?=\d)|(?<=\))\s+(?=\d)/).filter((x) => x.trim());
+      return `${labels[d.key]} de ${segs.map(spokenSeg).join(', ')}`;
+    });
+  if (!parts.length) return '';
+  return `Le monument a ${parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')}, et ${parts[parts.length - 1]}`}`;
+}
 function spokenDimensionsPhrase(work) {
+  if (isMonumentWork(work)) { const mono = spokenMonumentDimensions(work); if (mono) return mono; }
   const labels = { h: 'hauteur', l: 'longueur', p: 'profondeur' };
   const raw = [
     { key: 'h', value: work.hauteur }, { key: 'l', value: work.longueur }, { key: 'p', value: work.profondeur },
@@ -4040,7 +4075,8 @@ function spokenArtistWithSurnom(work) {
 function spokenFullReference(work, extraFields = null, withSurnom = false) {
   const on = (key) => !extraFields || extraFields.includes(key);
   const dimsPhrase = on('dimensions') ? spokenDimensionsPhrase(work) : '';
-  const matDims = [on('materiaux') ? (work.materialsPhrase || work.materials) : '', dimsPhrase].filter(Boolean).join(' ');
+  const dimsAreSentence = /^Le monument a /.test(dimsPhrase);
+  const matDims = dimsAreSentence ? [on('materiaux') ? matPhrase(work).replace(/\.\s*$/, '') : '', dimsPhrase].filter(Boolean).join('. ') : [on('materiaux') ? matPhrase(work).replace(/\.\s*$/, '') : '', dimsPhrase].filter(Boolean).join(' ');
   const parts = [
     `${spokenArtistFull(work, withSurnom)}, «\u00a0${work.title}\u00a0»${on('date') ? `, ${work.date}` : ''}.`,
     matDims ? `${matDims}.` : '',
@@ -4076,7 +4112,7 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     // Matériaux/technique et dimensions : toujours purement informatifs, jamais quizzés, affichés
     // juste après la ligne « date de création ».
     if (key === 'date') {
-      if (displayedWork.materials) html += correctionInfoRow('Nature et matériau de l’œuvre', displayedWork.materialsPhrase || displayedWork.materials);
+      if (displayedWork.materials) html += correctionInfoRow('Nature et matériau de l’œuvre', matPhrase(displayedWork));
       const dims = formatDimensionsDisplay(displayedWork);
       if (dims) {
         html += `<div class="correction-item correction-extra">
@@ -10059,7 +10095,7 @@ function spokenReconWrong(work, extraFields) {
 }
 function vfFieldValue(row, key) {
   if (key === 'dimensions') return formatDimensionsPlainText(row) || [row.hauteur, row.longueur].filter(Boolean).join(' × ');
-  if (key === 'materials') return row.materialsPhrase || row.materials || '';
+  if (key === 'materials') return matPhrase(row) || '';
   // Retour de Stéphane (22/09) : le surnom d'un artiste (« dit LE CARAVAGE ») avait disparu de
   // Vrai/Faux — cette rubrique utilisait le nom civil brut (row.artist) sans jamais consulter
   // row.surnomFr, alors que toutes les autres épreuves passent par formatArtistDisplayName(work),
@@ -10740,7 +10776,7 @@ function reconRefreshCorrectionDetails() {
   // conservation ») : ces deux rubriques s'affichent désormais toujours à l'écran, sans dépendre
   // des rubriques choisies pour la correction (qui ne conditionnent plus que Matériau/Dimensions).
   detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Nature et matériau de l’œuvre</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
+  if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Nature et matériau de l’œuvre</span><span class="correction-value">${escapeHtml(matPhrase(q.correct))}</span>`);
   if ((showFullCorrection || reconExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
   detailsParts.push(`<span class="correction-label">Lieu de conservation actuel</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   el.innerHTML = detailsParts.join('');
@@ -12635,7 +12671,7 @@ function impShowCurrent() {
     })(), spoken: spokenArtistFull(work, true), on: fieldOn('artist') },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>${work.workText ? ` <button type="button" class="imp-speaker-btn" id="imp-speaker-work" title="Écouter l’histoire de cette œuvre" aria-label="Écouter l’histoire de cette œuvre">🔊</button>` : ''}`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
-    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: `${escapeHtml(work.materialsPhrase || work.materials)}${natureTopicButtons(work)}`, spoken: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
+    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: `${escapeHtml(matPhrase(work))}${natureTopicButtons(work)}`, spoken: matPhrase(work), on: fieldOn('materiaux') && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },
     // Nouvelle rubrique demandée par Stéphane : quand l'œuvre appartient à un ensemble plus vaste
     // (un cycle de fresques, un manuscrit...), le texte qui le décrit (déjà récupéré dans
@@ -13822,7 +13858,7 @@ function intrusRefreshCorrectionDetails() {
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>«\u00a0${escapeHtml(q.correct.title)}\u00a0»</em></span>`);
   if (showFullCorrection || intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if ((showFullCorrection || intrusExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Nature et matériau de l’œuvre</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
+  if ((showFullCorrection || intrusExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Nature et matériau de l’œuvre</span><span class="correction-value">${escapeHtml(matPhrase(q.correct))}</span>`);
   if ((showFullCorrection || intrusExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
   if (showFullCorrection || intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu de conservation actuel</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
