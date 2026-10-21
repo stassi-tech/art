@@ -2845,3 +2845,12 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 /* v211 : haut-parleurs « Natures et techniques » sur la ligne nature et matériau — plusieurs sujets possibles : on écrit leur nom dans le bouton */
 .imp-topic-btn { white-space:normal; text-align:left; }
 .imp-topic-btn small { font-size:.85em; margin-left:.15em; }
+
+/* v217 : rideau noir du film (page titre au début, fondu au noir à la fin) */
+.imp-bio-curtain { position:absolute; inset:0; z-index:6; background:#000; opacity:0; pointer-events:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; text-align:center; transition:opacity var(--cu-ms,1400ms) ease; border-radius:6px; }
+.imp-bio-curtain.on { opacity:1; pointer-events:auto; }
+.imp-bio-curtain-title { font-family:Georgia,"Times New Roman",serif; font-size:clamp(1.5rem,4.2vw,2.8rem); line-height:1.2; color:#fff; letter-spacing:.01em; }
+.imp-bio-curtain-sub { font-family:Georgia,"Times New Roman",serif; font-style:italic; font-size:clamp(1rem,2.2vw,1.5rem); color:#c9c9c9; }
+.imp-bio-curtain-sub:empty { display:none; }
+#imp-bio-split-close { z-index:8; }
+.imp-bio-split.bio-dual .imp-bio-controls { position:relative; z-index:7; }

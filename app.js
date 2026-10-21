@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v216';
+const APP_VERSION = 'v217';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12960,8 +12960,21 @@ function bioSplitCapFx(raw) {
   raw = String(raw || ''); const i = raw.lastIndexOf('|'); if (i < 0) return { caption: raw.trim(), fx: null };
   const fx = bioParseFx(raw.slice(i + 1)); return fx ? { caption: raw.slice(0, i).trim(), fx } : { caption: raw.trim(), fx: null };
 }
+// v217 (retour Stéphane : « une page titre, et un effet de sortie du film, un fondu au noir par exemple ») : deux balises de plus, ni affichées ni lues.
+//   [titre: Titre | Sous-titre | 4]  → au tout début, une page noire avec le titre (et le sous-titre) en blanc, 4 s par défaut, qui s'efface en fondu quand la voix démarre.
+//   [sortie: noir 2]  (ou [sortie: coupe])  → à la fin de la lecture, l'écran s'éteint en fondu au noir (1,5 s par défaut) ; « coupe » = noir net.
+const BIO_TITLE_RE = /\[\s*titre\s*[:|]\s*([^\]]*?)\s*\]\s*/i;
+const BIO_EXIT_RE = /\s*\[\s*sortie\s*(?:[:|]\s*([^\]]*?)\s*)?\]\s*/i;
+function bioParseTitle(raw) {
+  const parts = String(raw || '').split('|').map((x) => x.trim()); let ms = null;
+  if (parts.length > 1) { const dm = parts[parts.length - 1].match(/^(\d+(?:[.,]\d+)?)\s*s?$/i); if (dm) { ms = Math.round(parseFloat(dm[1].replace(',', '.')) * 1000); parts.pop(); } }
+  return parts[0] ? { text: parts[0], sub: parts.slice(1).join(' — '), ms } : null;
+}
+function bioParseExit(raw) { const fx = bioParseFx(raw); return { type: fx && fx.type === 'cut' ? 'cut' : 'black', ms: fx && fx.ms != null ? fx.ms : null }; }
 function parseBioMarkup(text) {
-  const src = String(text || '');
+  let src = String(text || ''); let title = null, exit = null;
+  src = src.replace(BIO_TITLE_RE, (m0, g) => { if (!title) title = bioParseTitle(g); return ''; });
+  src = src.replace(BIO_EXIT_RE, (m0, g) => { if (!exit) exit = bioParseExit(g); return '\n'; }).replace(/\s+$/, exit ? '' : '$&');
   let plain = ''; const marks = []; let last = 0; let m;
   BIO_TAG_RE.lastIndex = 0;
   while ((m = BIO_TAG_RE.exec(src))) {
@@ -12997,7 +13010,30 @@ function parseBioMarkup(text) {
     marks.forEach((mk) => { mk.offset -= removed.filter((p) => p < mk.offset).length; });
     plain = out.replace(/\*/g, '');
   }
-  return { plain, marks, ital };
+  return { plain, marks, ital, title, exit };
+}
+// v217 : le rideau noir (page titre au début, fondu au noir à la fin)
+const bioCur = { launch: 0, fade: 0, exit: 0 };
+function bioCurtainHide() {
+  clearTimeout(bioCur.launch); clearTimeout(bioCur.fade); clearTimeout(bioCur.exit);
+  const c = $('imp-bio-curtain'); if (!c) return; c.style.transition = 'none'; c.classList.remove('on'); void c.offsetWidth; c.style.transition = '';
+}
+function bioCurtainTitle(title) { // affiche la page titre aussitôt ; renvoie la durée d'affichage (ms) avant que le film démarre
+  const c = $('imp-bio-curtain'); if (!c || !title) return 0;
+  bioCurtainHide(); const ms = title.ms != null ? title.ms : 4000;
+  $('imp-bio-curtain-title').textContent = title.text; $('imp-bio-curtain-sub').textContent = title.sub || '';
+  c.style.transition = 'none'; c.classList.add('on'); void c.offsetWidth; c.style.transition = '';
+  bioCur.fade = setTimeout(() => { c.style.setProperty('--cu-ms', '1400ms'); c.classList.remove('on'); }, ms);
+  return ms;
+}
+function bioFilmExit() { // appelé quand la lecture est finie : fondu au noir (ou coupe) si le texte porte [sortie]
+  const ex = bioAuto.parsed && bioAuto.parsed.exit; const c = $('imp-bio-curtain'); if (!ex || !c) return;
+  clearTimeout(bioCur.exit);
+  bioCur.exit = setTimeout(() => {
+    $('imp-bio-curtain-title').textContent = ''; $('imp-bio-curtain-sub').textContent = '';
+    if (ex.type === 'cut') { c.style.transition = 'none'; c.classList.add('on'); void c.offsetWidth; c.style.transition = ''; }
+    else { c.style.setProperty('--cu-ms', (ex.ms != null ? ex.ms : 1500) + 'ms'); c.classList.add('on'); }
+  }, 700);
 }
 const bioAuto = { active: false, speaking: false, marks: [], plainLen: 0, spokenLen: 0, startT: 0, gotBoundary: false, frac: 0,
   pauseUntil: 0, raf: 0, rate: 0.72, curIdx: -2, baseRef: '', baseCap: '', nodes: [], shownRef: '', fading: false, pending: [], fid: 0, holdUntil: 0, fshow: -1, lastT: 0, fadeTimer: 0, userMoved: false, dual: false, parsed: null, baseFrac: 0, paused: false, pausedAt: 0, ended: false, sid: 0, work: null, force: false };
@@ -13376,7 +13412,7 @@ function bioSpeakChunks(plain, offset, sid) {
         const dur = (performance.now() - A.ck.t0) / 1000;
         if (dur > 2 && b - a > 30) { const m = Math.max(6, Math.min(30, (b - a) / dur)); A.cpsEst = i === 0 && !bioCpsLearned ? m : A.cpsEst * 0.4 + m * 0.6; bioCpsLearned = A.cpsEst; bioDbg('morceau', i + 1, 'lu en', dur.toFixed(1) + 's →', m.toFixed(1), 'car/s'); }
       }
-      if (last) { A.speaking = false; if (A.dual && A.willSpeak) { A.ended = true; A.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); } }
+      if (last) { A.speaking = false; if (A.dual && A.willSpeak) { A.ended = true; A.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); } }
     };
     u.onend = () => done(true); u.onerror = () => done(false);
     speechSynthesis.speak(u);
@@ -13389,7 +13425,7 @@ function bioSpeakFrom(offset) {
   A.baseFrac = offset / Math.max(1, plain.length);
   A.map = null; A.mapBase = offset; A.pending = []; clearTimeout(A.queueTimer); A.fshow = A.baseFrac; A.lastCi = 0; A.cand = null; A.lastCiT = performance.now(); A.allowBack = true; A.t0 = A.t0 || performance.now(); bioDbg('lecture depuis', offset);
   A.frac = A.baseFrac; A.gotBoundary = false; A.gotBoundaryOrSpoke = false; A.startT = performance.now();
-  A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0;
+  A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0; bioCurtainHide();
   $('imp-bio-split')?.classList.add('bio-film');
   try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch (e) { /* ignoré */ }
   bioSyncButton();
@@ -13401,7 +13437,7 @@ function bioSpeakFrom(offset) {
     onStop: () => {
       if (sid !== bioAuto.sid) return;
       bioAuto.speaking = false;
-      if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); }
+      if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); }
     },
   });
 }
@@ -13518,32 +13554,37 @@ function openImpArtistBio(work, force, opts) {
     splitEl.classList.toggle('bio-film', willSpeak);
     bioSetPads();
   }
-  if (textEl) bioAutoStart(parsedBio, baseRef, baseCap, willSpeak);
-  bioAuto.shownRef = baseRef || ''; bioAuto.solo = solo; bioAuto.soloOk = solo;
-  bioSyncButton();
-  bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
-  if (srcText) {
-    bioAuto.rate = 0.72; bioChooseVoice(work, isWork);
-    bioAuto.chunked = dual && bioWantChunks(); bioAuto.ck = null;
-    if (bioAuto.chunked) { if (willSpeak) bioSpeakFrom(0); return; }
-    const sid = bioAuto.sid;
-    impSpeak(parsedBio.plain, undefined, force, {
-      onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = 0; bioAuto.map = bioBuildMap(parsedBio.plain, spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },
-      onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
-      onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioProgress(ci, spokenLen); },
-      onStop: () => {
-        if (sid !== bioAuto.sid) return;
-        bioAuto.speaking = false;
-        if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); }
-      },
-    });
-  }
+  const launch = () => {
+    if (textEl) bioAutoStart(parsedBio, baseRef, baseCap, willSpeak);
+    bioAuto.shownRef = baseRef || ''; bioAuto.solo = solo; bioAuto.soloOk = solo;
+    bioSyncButton();
+    bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
+    if (srcText) {
+      bioAuto.rate = 0.72; bioChooseVoice(work, isWork);
+      bioAuto.chunked = dual && bioWantChunks(); bioAuto.ck = null;
+      if (bioAuto.chunked) { if (willSpeak) bioSpeakFrom(0); return; }
+      const sid = bioAuto.sid;
+      impSpeak(parsedBio.plain, undefined, force, {
+        onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = 0; bioAuto.map = bioBuildMap(parsedBio.plain, spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },
+        onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
+        onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioProgress(ci, spokenLen); },
+        onStop: () => {
+          if (sid !== bioAuto.sid) return;
+          bioAuto.speaking = false;
+          if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); }
+        },
+      });
+    }
+  };
+  bioCurtainHide();
+  const titleMs = bioCurtainTitle(parsedBio.title);
+  if (titleMs) { bioAutoStop(); try { speechSynthesis.cancel(); } catch (e) { /* ignoré */ } bioCur.launch = setTimeout(launch, titleMs); } else launch();
 }
 // v129 : même écran partagé que la bio, mais avec l'image de l'œuvre à gauche et son texte (première personne) à droite.
 function openImpWorkText(work, topicLabel) {
   if (bioWantMode()) { openImpArtistBio(work, true, { work: true, topic: topicLabel || '' }); return; }
   impClearTimers();
-  bioAutoStop();
+  bioAutoStop(); bioCurtainHide();
   bioAuto.dual = false; bioSyncButton();
   $('imp-bio-split')?.classList.remove('bio-dual', 'bio-vert', 'bio-film', 'bio-noslide');
   const padT = $('imp-bio-pad-top'), padB = $('imp-bio-pad-bot'); if (padT) padT.style.height = ''; if (padB) padB.style.height = '';
@@ -13566,7 +13607,7 @@ function openImpWorkText(work, topicLabel) {
   impSpeak(plainWork, undefined, true);
 }
 function closeImpArtistBio() {
-  bioAutoStop();
+  bioAutoStop(); bioCurtainHide();
   $('imp-bio-split')?.classList.add('hidden');
   $('imp-quiz-grid')?.classList.remove('imp-bio-open');
   speechSynthesis.cancel();
