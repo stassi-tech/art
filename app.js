@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v214';
+const APP_VERSION = 'v215';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12479,6 +12479,7 @@ function impSpeak(text, onEnd, force, opts) {
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(opts && opts.onProgress ? bioVoiceFlat(text) : text));
   u.lang = 'fr-FR'; u.rate = 0.72; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (impSelectedVoice) u.voice = impSelectedVoice;
+  if (opts && opts.onBoundary) { const spokenLenB = u.text.length; u.onboundary = (ev) => { if (typeof ev.charIndex === 'number') opts.onBoundary(ev.charIndex, spokenLenB); }; }   // v215 : position de la voix (déroulé d'images d'Imprégnation)
   if (opts && opts.onSpoken) opts.onSpoken(u.text);   // v186 : le texte réellement lu, pour l'aligner sur le texte affiché
   // v163 : suivi de la lecture (bio) — position de la voix dans le texte, pour faire défiler le texte et changer d'image.
   if (opts && opts.onProgress) {
@@ -12727,6 +12728,16 @@ function impShowCurrent() {
     currentSpeechSegment.push(f);
   });
   if (currentSpeechSegment.length) speechSegments.push(currentSpeechSegment);
+  // v215 : plan des images de lieu — sous-lieu sur « Nature et matériau », lieu sur « Dimensions » (ou, à défaut, sur « Lieu de conservation »).
+  // Si la rubrique voulue n'est pas affichée, l'image prend la suivante de sa liste ; sous-lieu toujours avant lieu.
+  const stageImgPlan = [];
+  [[work.subLocationImage, ['materiaux', 'dimensions', 'location']], [work.locationImage, ['dimensions', 'location']]].forEach(([url, keys]) => {
+    if (!url) return;
+    for (const key of keys) {
+      const seg = speechSegments.findIndex((sg) => sg.some((f) => f.key === key));
+      if (seg >= 0) { stageImgPlan.push({ url, seg, key }); break; }
+    }
+  });
   // v76 (retour Stéphane 29/09 : « le commentaire arrive après l'image, ça devrait être l'inverse —
   // la voix doit d'abord lire le commentaire, l'image n'apparaît que 3-4 secondes après, doucement »)
   // : la bascule d'image (Lieu/Ensemble) ne dépend plus du tout du rythme STAGGER du texte affiché —
@@ -12756,16 +12767,36 @@ function impShowCurrent() {
     // v149 : pour le Lieu, on enchaîne l'image du lieu puis celle du sous-lieu (si les deux existent ; une seule
     // suffit à s'afficher), et on n'affiche AUCUN badge « Lieu de conservation » par-dessus (« pour une place
     // publique, c'est bizarre : on ne met rien, le texte des références suffit »). Le badge reste pour le cycle.
-    const flowImages = flowField?.key === 'location' ? [work.locationImage, work.subLocationImage].filter(Boolean) : flowField?.key === 'cycle' ? [work.cycleImage].filter(Boolean) : [];
+    const flowImages = flowField?.key === 'cycle' ? [work.cycleImage].filter(Boolean) : [];
+    const estimatedSegDurMs = Math.max(1200, (text.length / 10) * 1000) + 400;
+    const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
     if (flowImages.length) {
-      const estimatedSegDurMs = Math.max(1200, (text.length / 10) * 1000) + 400;
-      const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
-      const badge = flowField.key === 'location' ? '' : flowField.label;
+      const badge = flowField.label;
       flowImages.forEach((url, k) => {
         // 2e image : après le fondu enchaîné de la 1re (2 s) + ~3 s d'affichage
         impTimers.push(setTimeout(() => impShowFlowImage(url, badge), flowDelayMs + k * 5000));
       });
     }
+    // v215 (retour Stéphane : « au départ, sur auteur, titre, date, l'image de l'œuvre ; sur nature et matériau, l'image du sous-lieu ; sur
+    // dimensions et lieu de conservation, l'image du lieu — comme un zoom arrière : les images à égalité de temps, pas toutes à la fin ») :
+    // le plan (stageImgPlan, plus haut) dit pour chaque image de lieu la rubrique qui la déclenche. En début de segment : même délai
+    // qu'avant (la voix passe d'abord) ; au milieu d'un segment (les dimensions, lues à la suite du matériau) : dès que la voix y arrive.
+    const myRunStage = impRunId;
+    const planHere = stageImgPlan.filter((pl) => pl.seg === i);
+    const startImgs = planHere.filter((pl) => segment.findIndex((f) => f.key === pl.key) <= 0);
+    startImgs.forEach((pl, k) => impTimers.push(setTimeout(() => impShowFlowImage(pl.url, ''), flowDelayMs + k * 5000)));
+    var midStageOpts = null;
+    planHere.filter((pl) => !startImgs.includes(pl)).forEach((pl) => {
+      const idx = segment.findIndex((f) => f.key === pl.key);
+      const off = segment.slice(0, idx).reduce((n, f) => n + String(f.spoken || f.value || '').length + 3, 0);
+      const frac = off / Math.max(1, text.length);
+      let fired = false; let sawBoundary = false;
+      const fire = () => { if (fired || myRunStage !== impRunId) return; fired = true; impTimers.push(setTimeout(() => impShowFlowImage(pl.url, ''), 700)); };
+      const prev = midStageOpts && midStageOpts.onBoundary;
+      midStageOpts = { onBoundary: (ci, len) => { if (prev) prev(ci, len); sawBoundary = true; if (ci / Math.max(1, len) >= frac) fire(); } };
+      // sans événements de position (certaines voix) : estimation à ~10 caractères par seconde
+      impTimers.push(setTimeout(() => { if (!sawBoundary) fire(); }, Math.round((text.length / 10) * 1000 * frac) + 300));
+    });
     // v120 (retour Stéphane : « trop de marge entre la dernière rubrique et le lieu de conservation, surtout
     // s'il n'y a plus Ensemble ; on revient à ce qui était, un tout petit peu plus ») : avant v116, le
     // Lieu se lisait d'une traite à la suite des dimensions (aucune pause). v116 y avait mis les 2 s de
@@ -12774,7 +12805,7 @@ function impShowCurrent() {
     // sans attente perceptible. Les autres coupures (Ensemble, s'il revenait) gardent 2 s.
     const nextSegment = speechSegments[i + 1];
     const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : (nextSegment && nextSegment[0].key === 'materiaux' ? IMP_GAP_BEFORE_MATERIAL_MS : (nextSegment && nextSegment[0].key === 'date' ? IMP_GAP_BEFORE_DATE_MS : 2000));
-    impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), gapMs)); });
+    impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), gapMs)); }, false, midStageOpts);
   }
   // v128 (docx 9 oct, IMPREGNATION : « la voix doit donner la consigne sur la première page ; c'est bon pour
   // les autres jeux ») : comme dans Intrus & co., la consigne écrite (#imp-instruction) est lue UNE fois,
