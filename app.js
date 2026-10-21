@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v208';
+const APP_VERSION = 'v209';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -3027,7 +3027,13 @@ function normaliseRows(rows) {
     const materialsKey = findColumn(row, ['materiaux et technique', 'materiaux', 'technique', 'materials', 'materiau']);
     const materials = materialsKey ? String(row[materialsKey] || '').trim() : '';
     const natureKey = findColumn(row, ['nature de l objet', 'nature objet', 'nature']);
-    const nature = natureKey ? String(row[natureKey] || '').trim() : '';
+    // v209 : la colonne « Nature de l'objet » peut porter, après un point, une précision (ex. « Monument équestre avec ronde-bosse.
+    // L'artiste a conçu la base. ») : la nature proprement dite reste ce qui précède le point (classement, voix, « en bronze »…),
+    // la précision est ajoutée à la fin de la phrase « Nature et matériau » (écran et voix).
+    const natureFull = natureKey ? String(row[natureKey] || '').trim() : '';
+    const natureSplit = natureFull.match(/^(.*?)\.\s+(\S.*)$/);
+    const nature = natureSplit ? natureSplit[1].trim() : natureFull.replace(/\.\s*$/, '');
+    const natureNote = natureSplit ? natureSplit[2].trim().replace(/\.?$/, '.') : '';
     // Phrase combinée pour le texte et la voix : « Monument funéraire en marbre » plutôt que
     // « sculpture » ou le matériau seul — se rabat sur ce qui est disponible si l'un manque.
     // v122 (question de Stéphane : remplir aussi « Nature de l'objet » pour les peintures, avec « Tableau »
@@ -3050,7 +3056,8 @@ function normaliseRows(rows) {
     // retable, y compris « Panneau de retable »), la nature et le matériau se séparent par une virgule.
     const natureTakesComma = /(triptyque|diptyque|polyptyque|polyptique|retable)/.test(keyName(nature));
     const materialsLower = materials ? `${materials.charAt(0).toLowerCase()}${materials.slice(1)}` : '';
-    const materialsPhrase = nature && materials && !natureIsPaintingGenre && !materialsRepeatNature ? `${nature}${natureTakesComma ? ',' : ' en'} ${materialsLower}` : ((natureIsPaintingGenre || materialsRepeatNature) && materials ? materials : (nature || materials));
+    let materialsPhrase = nature && materials && !natureIsPaintingGenre && !materialsRepeatNature ? `${nature}${natureTakesComma ? ',' : ' en'} ${materialsLower}` : ((natureIsPaintingGenre || materialsRepeatNature) && materials ? materials : (nature || materials));
+    if (natureNote && materialsPhrase) materialsPhrase = `${materialsPhrase}. ${natureNote}`;
 
     // --- Dimensions : nouvelle structure Hauteur/Longueur/Profondeur si présente, sinon ancienne
     // colonne unique « dimensions » (repliée dans hauteur/longueur via une expression régulière).
