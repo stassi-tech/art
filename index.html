@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=298" />
+    <link rel="stylesheet" href="style.css?v=299" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -459,6 +459,20 @@
             <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="europe_nord" /><span>Europe du Nord</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-zone" value="amerique" /><span>Amérique</span></label>
             <p class="gc-note"><em>Si rien n'est coché, toutes les zones sont sélectionnées automatiquement.</em></p>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-objects" style="margin-top:10px;">Continuer →</button>
+          </div>
+
+          <!-- v204 : étape facultative — se limiter à des natures d'objets précises (mêmes menus en cascade que sur la page des choix). -->
+          <div id="gc-step-objects" class="gc-step hidden">
+            <p class="config-table-col-title">Voulez-vous vous limiter à des natures d'objets précises ? (facultatif)</p>
+            <label class="rubrique-option"><input type="radio" name="gc-want-objects" value="no" checked /><span>Non</span></label>
+            <label class="rubrique-option"><input type="radio" name="gc-want-objects" value="yes" /><span>Oui</span></label>
+            <div id="gc-objects-panel" class="hidden" style="margin-top:8px;">
+              <p class="modal-hint" style="margin:0 0 8px;text-align:left;">Choisissez d'abord Peinture ou Sculpture, puis affinez. Le nombre entre parenthèses est le nombre d'œuvres disponibles.</p>
+              <div id="gc-objects-menus" class="qc-objects-menus"></div>
+              <p id="gc-objects-count" class="hint qc-objects-count"></p>
+              <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="gc-clear-objects">Tout effacer</button></div>
+            </div>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-level" style="margin-top:10px;">Continuer →</button>
           </div>
 
@@ -570,15 +584,15 @@
           <div id="qc-rubriques-slot"></div>
           <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-rubriques">Tout effacer</button></div>
           <details id="qc-artists-details" style="margin:14px 0 4px;">
-            <summary style="cursor:pointer;font-family:Arial,sans-serif;font-weight:700;color:var(--muted);">3. Se limiter à des artistes précis (facultatif)</summary>
+            <summary style="cursor:pointer;font-family:Arial,sans-serif;font-weight:700;color:var(--muted);">Se limiter à des artistes précis (facultatif)</summary>
             <div id="qc-artists-slot" style="margin-top:8px;"></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-artists">Tout effacer</button></div>
           </details>
           <!-- v188/v190 (retour Stéphane) : 3e encadré beige en bas de la page des choix, comme les deux premiers — il reprend la phrase
                « Pour cette session vous avez choisi de vous exercer sur… » (qui ne figure plus sur la page des exercices) quand des
                artistes sont choisis, avec « Tout effacer » pour vider ce choix d'artistes. -->
           <div id="qc-artists-box" class="hidden">
             <div class="config-table qc-artists-chosen" id="qc-artists-chosen"></div>
-            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-artists">Tout effacer</button></div>
           </div>
           <div id="qc-overrides" class="hidden"></div>
           <div class="setup-action-bar">
@@ -677,6 +691,7 @@
                accessible seulement depuis Mon compte. Même lien répété sur les 7 exercices, voir le
                gestionnaire commun sur .setup-artists-link dans app.js (data-return-panel permet de
                revenir précisément ici après le choix, via returnToExercisePanel). -->
+          <p class="modal-hint" style="margin-top:6px;">Pour limiter ce jeu à certaines natures d'objets (tableau isolé, triptyque, fresque, bronze, monument funéraire…), utilisez <button type="button" class="link-label setup-objects-link" id="imp-setup-objects-link" data-return-panel="impregnation-setup">Mes choix de natures d'objets →</button>.</p>
           <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="imp-setup-artists-link" data-return-panel="impregnation-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
@@ -839,6 +854,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour limiter ce jeu à certaines natures d'objets (tableau isolé, triptyque, fresque, bronze, monument funéraire…), utilisez <button type="button" class="link-label setup-objects-link" id="intrus-setup-objects-link" data-return-panel="intrus-setup">Mes choix de natures d'objets →</button>.</p>
           <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="intrus-setup-artists-link" data-return-panel="intrus-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
@@ -945,6 +961,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour limiter ce jeu à certaines natures d'objets (tableau isolé, triptyque, fresque, bronze, monument funéraire…), utilisez <button type="button" class="link-label setup-objects-link" id="recon-setup-objects-link" data-return-panel="reconstitution-setup">Mes choix de natures d'objets →</button>.</p>
           <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="recon-setup-artists-link" data-return-panel="reconstitution-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
@@ -1055,6 +1072,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour limiter ce jeu à certaines natures d'objets (tableau isolé, triptyque, fresque, bronze, monument funéraire…), utilisez <button type="button" class="link-label setup-objects-link" id="vf-setup-objects-link" data-return-panel="vraifaux-setup">Mes choix de natures d'objets →</button>.</p>
           <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="vf-setup-artists-link" data-return-panel="vraifaux-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
@@ -1159,6 +1177,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour limiter ce jeu à certaines natures d'objets (tableau isolé, triptyque, fresque, bronze, monument funéraire…), utilisez <button type="button" class="link-label setup-objects-link" id="fam-setup-objects-link" data-return-panel="famille-setup">Mes choix de natures d'objets →</button>.</p>
           <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="fam-setup-artists-link" data-return-panel="famille-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
@@ -1277,6 +1296,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones. Plusieurs siècles nécessaires pour un vrai classement.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour limiter ce jeu à certaines natures d'objets (tableau isolé, triptyque, fresque, bronze, monument funéraire…), utilisez <button type="button" class="link-label setup-objects-link" id="chrono-setup-objects-link" data-return-panel="chrono-setup">Mes choix de natures d'objets →</button>.</p>
           <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="chrono-setup-artists-link" data-return-panel="chrono-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
@@ -1382,6 +1402,7 @@
               <p class="modal-hint" style="margin-bottom:0;">Rien coché = toutes zones. Cocher plusieurs siècles les mélange aléatoirement.</p>
             </div>
           </div>
+          <p class="modal-hint" style="margin-top:6px;">Pour limiter ce jeu à certaines natures d'objets (tableau isolé, triptyque, fresque, bronze, monument funéraire…), utilisez <button type="button" class="link-label setup-objects-link" id="quiz-setup-objects-link" data-return-panel="quiz-setup">Mes choix de natures d'objets →</button>.</p>
           <p class="modal-hint" style="margin-top:6px;">Pour consacrer ce jeu à un artiste précis plutôt qu'à un choix d'art/siècle/zone, utilisez <button type="button" class="link-label setup-artists-link" id="quiz-setup-artists-link" data-return-panel="quiz-setup">Mes choix d'artiste →</button>.</p>
 
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
@@ -2189,6 +2210,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script src="app.js?v=431"></script>
+    <script src="app.js?v=432"></script>
   </body>
 </html>
