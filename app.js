@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v207';
+const APP_VERSION = 'v208';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -10991,7 +10991,9 @@ const OBJ_PE_SUPPORTS = [['toile', 'Toile'], ['bois', 'Bois (panneau)'], ['papie
 const OBJ_PE_TECHS = [['huile', 'Huile'], ['detrempe', 'Détrempe, tempera'], ['aquarelle', 'Aquarelle'], ['pastel', 'Pastel'], ['gouache', 'Gouache'], ['dessin', 'Dessin, encre, estampe'], ['fresque', 'Fresque'], ['autre', 'Autre technique']];
 const OBJ_SC_NATURES = [['ronde', 'Ronde-bosse (statue, buste…)'], ['groupe', 'Groupe ou ensemble en ronde-bosse'], ['relief', 'Bas-relief, haut-relief'], ['funeraire', 'Monument funéraire'], ['monument', 'Monument (non funéraire)'], ['liturgique', 'Mobilier ou objet liturgique'], ['architecture', 'Élément architectural ou décoratif'], ['autre', 'Autre (objet d\'art…)']];
 const OBJ_SC_MATS = [['marbre', 'Marbre (et albâtre)'], ['bronze', 'Bronze'], ['bois', 'Bois'], ['pierre', 'Pierre (granit, grès…)'], ['terre', 'Terre cuite, céramique'], ['stuc', 'Stuc, plâtre'], ['cire', 'Cire'], ['metaux', 'Autres métaux (plomb, argent, cuivre…)'], ['associes', 'Matériaux associés (marbre et bronze…)'], ['autre', 'Autre matériau']];
-const OBJ_SC_MONUMENTS = [['fontaine', 'Fontaine'], ['memorial', 'Mémorial, hommage'], ['equestre', 'Statue ou monument équestre']];
+const OBJ_SC_MONUMENTS = [['fontaine', 'Fontaine'], ['memorial', 'Mémorial, hommage'], ['equestre', 'Statue ou monument équestre'], ['decoratif', 'Monument purement décoratif']];
+// Monuments purement décoratifs (ni fontaine, ni hommage, ni équestre) : repérés par leur titre — liste à compléter au besoin.
+const OBJ_DECO_TITLES = ['colosse de l apennin', 'elephant de la minerve'];
 const OBJ_MIN_WORKS = 12; // en dessous, les jeux manquent de choix de réponses : on prévient
 function objectsActive(f) { return !!(f && f.art); }
 function objClassify(r) {
@@ -11006,7 +11008,9 @@ function objClassify(r) {
     // (le monument entier ou la seule ronde-bosse qui le surmonte : la fiche précisera lequel). Sinon, un monument est une fontaine
     // (mot dans le titre) ou, par défaut, un mémorial / hommage.
     else if (/equestre/.test(`${keyName(r.title || '')} ${nat}`)) { o.nature = 'monument'; o.sub = 'equestre'; }
-    else if (/^monument|edicule/.test(nat)) { o.nature = 'monument'; o.sub = /fontaine/.test(keyName(r.title || '')) ? 'fontaine' : 'memorial'; }
+    // Même principe pour les fontaines : le mot « fontaine » (en mot entier : pas « Fontainebleau ») dans le titre ou la nature suffit.
+    else if (/\bfontaines?\b/.test(`${keyName(r.title || '')} ${nat}`)) { o.nature = 'monument'; o.sub = 'fontaine'; }
+    else if (/^monument|edicule/.test(nat)) { o.nature = 'monument'; const tk = keyName(r.title || ''); o.sub = OBJ_DECO_TITLES.some((d) => tk.includes(d)) ? 'decoratif' : 'memorial'; }
     else if (/architectur|decoratif/.test(nat)) o.nature = 'architecture';
     else if (/relief/.test(nat) && !/ronde|groupe/.test(nat)) o.nature = 'relief';
     else if (/ronde|statue|buste|groupe|modele|ensemble/.test(nat)) o.nature = /groupe|ensemble/.test(nat) ? 'groupe' : 'ronde';
