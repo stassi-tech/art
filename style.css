@@ -2841,3 +2841,7 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .qc-objects-count { text-align: left; margin: 10px 0 4px; font-family: Arial, sans-serif; font-size: .9rem; }
 .qc-objects-warn { color: var(--wrong); font-weight: 700; }
 @media (max-width: 520px) { .qc-obj-row { grid-template-columns: 1fr; gap: 3px; } }
+
+/* v211 : haut-parleurs « Natures et techniques » sur la ligne nature et matériau — plusieurs sujets possibles : on écrit leur nom dans le bouton */
+.imp-topic-btn { white-space:normal; text-align:left; }
+.imp-topic-btn small { font-size:.85em; margin-left:.15em; }

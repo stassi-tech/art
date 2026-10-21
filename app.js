@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v210';
+const APP_VERSION = 'v211';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -8419,7 +8419,7 @@ $('artist-list-refresh')?.addEventListener('click', async () => {
   quizRowsCache.clear(); quizRowsResolvedCache.clear(); quizFileCache.clear();
   titleSearchIndex = null; titleSearchIndexCacheSize = -1;
   museumIndexRows = null; cityViewKey = null;
-  artistListLoaded = false; artistListAutoDone = false;
+  artistListLoaded = false; artistListAutoDone = false; natureTextsPromise = null; NATURE_TEXTS = null;
   DATA_CACHE_BUST = Date.now();
   const ok = await loadArtistListComplete();
   if (!ok) { status.textContent = "L'actualisation a échoué (connexion internet ?)."; return; }
@@ -11083,6 +11083,66 @@ function objClassify(r) {
   r._obj = o;
   return o;
 }
+
+// ============================================================
+// v211 (retour Stéphane : « dans la nature on voit monument équestre : il faut un petit haut-parleur qui amène à ce texte ») : textes
+// « Natures et techniques » — l'évolution d'un matériau, d'une technique, d'une nature d'objet ou d'un genre à travers les siècles.
+// Écrits dans l'onglet « Natures et techniques » de l'atelier de textes, publiés dans quizzes/textes-natures-techniques.xlsx (colonnes
+// Identifiant, Sujet, Texte, Statut ; seules les lignes « Terminé » sont lues). Les identifiants sont ceux du menu « Se limiter à des
+// natures d'objets précis » : pe.nature.* / pe.support.* / pe.tech.* (peinture) et sc.nature.* / sc.sub.* / sc.mat.* (sculpture).
+// Dans l'Imprégnation, sur la ligne « Nature et matériau de l'œuvre », un haut-parleur apparaît pour chaque sujet de l'œuvre qui a un texte.
+// ============================================================
+let NATURE_TEXTS = null; let natureTextsPromise = null;
+function ensureNatureTexts() {
+  if (natureTextsPromise) return natureTextsPromise;
+  natureTextsPromise = (async () => {
+    const map = new Map();
+    try {
+      if (!window.XLSX) { natureTextsPromise = null; return map; }
+      const response = await fetch(`quizzes/textes-natures-techniques.xlsx?v=${DATA_CACHE_BUST}`);
+      if (!response.ok) throw new Error('fichier absent');
+      const book = XLSX.read(await response.arrayBuffer(), { type: 'array' });
+      const sheet = book.Sheets['Natures et techniques'] || book.Sheets[book.SheetNames[0]];
+      XLSX.utils.sheet_to_json(sheet, { defval: '' }).forEach((row) => {
+        const id = String(row['Identifiant'] || '').trim(); const text = String(row['Texte'] || '').trim(); if (!id || !text) return;
+        const st = String(row['Statut'] === undefined ? '' : row['Statut']).trim(); if (st && !/^termin/i.test(st)) return;   // brouillon : pas publié
+        map.set(id, { label: String(row['Sujet'] || '').trim() || id, text });
+      });
+    } catch (e) { /* fichier absent ou illisible : aucun texte, aucune erreur */ }
+    NATURE_TEXTS = map; return map;
+  })();
+  return natureTextsPromise;
+}
+// Sujets d'une œuvre (du plus précis au plus général) qui ont un texte : le type de monument, la nature, puis le matériau (sculpture)
+// ou la nature, les supports et les techniques (peinture). Les rubriques « autre » n'ont jamais de texte.
+function natureTopicIds(work) {
+  if (!NATURE_TEXTS || !NATURE_TEXTS.size) return [];
+  const o = objClassify(work); const ids = [];
+  if (work.art === 'sculpture') {
+    if (o.nature === 'monument' && o.sub) ids.push(`sc.sub.${o.sub}`);
+    if (o.nature && o.nature !== 'autre') ids.push(`sc.nature.${o.nature}`);
+    if (o.mat && o.mat !== 'autre') ids.push(`sc.mat.${o.mat}`);
+  } else {
+    if (o.nature) ids.push(`pe.nature.${o.nature}`);
+    o.supports.forEach((x) => { if (x !== 'autre') ids.push(`pe.support.${x}`); });
+    o.techs.forEach((x) => { if (x !== 'autre') ids.push(`pe.tech.${x}`); });
+  }
+  return ids.filter((id) => NATURE_TEXTS.has(id));
+}
+function natureTopicButtons(work) {
+  const ids = natureTopicIds(work); if (!ids.length) return '';
+  return ids.map((id) => {
+    const lab = escapeHtml(NATURE_TEXTS.get(id).label);
+    return `<button type="button" class="imp-speaker-btn imp-topic-btn" data-topic="${escapeHtml(id)}" title="Écouter l’histoire : ${lab}" aria-label="Écouter l’histoire : ${lab}">🔊${ids.length > 1 ? ` <small>${lab}</small>` : ''}</button>`;
+  }).join('');
+}
+// Même écran « film » que la bio et le texte de l'œuvre, sans portrait : un faux « work » dont le texte est celui du sujet.
+function openImpTopicText(work, id) {
+  const t = NATURE_TEXTS && NATURE_TEXTS.get(id); if (!t) return;
+  const first = bioFirstImg(parseBioMarkup(t.text).marks);
+  const pseudo = { ...work, workText: t.text, bio: '', artistImage: '', artistImageCaption: '', image: bioWantMode() && first ? '' : (first ? first.ref : ''), title: t.label, date: '', topicLabel: t.label };
+  if (bioWantMode()) openImpArtistBio(pseudo, true, { work: true, topic: t.label }); else openImpWorkText(pseudo, t.label);
+}
 function objMatches(r, f, skip) {
   if (!objectsActive(f)) return true;
   if (r.art !== f.art) return false;
@@ -12422,6 +12482,7 @@ $('imp-start-button')?.addEventListener('click', async () => {
   try {
     const zones = impSelectedZones();
     let allRows = [];
+    await ensureNatureTexts();   // v211 : textes « Natures et techniques » (haut-parleurs sur la ligne nature et matériau)
     for (const art of arts) {
       for (const century of centuries) {
         try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
@@ -12563,7 +12624,7 @@ function impShowCurrent() {
     })(), spoken: spokenArtistFull(work, true), on: fieldOn('artist') },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>${work.workText ? ` <button type="button" class="imp-speaker-btn" id="imp-speaker-work" title="Écouter l’histoire de cette œuvre" aria-label="Écouter l’histoire de cette œuvre">🔊</button>` : ''}`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
-    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
+    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: `${escapeHtml(work.materialsPhrase || work.materials)}${natureTopicButtons(work)}`, spoken: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },
     // Nouvelle rubrique demandée par Stéphane : quand l'œuvre appartient à un ensemble plus vaste
     // (un cycle de fresques, un manuscrit...), le texte qui le décrit (déjà récupéré dans
@@ -12686,13 +12747,14 @@ function impShowCurrent() {
     impTimers.push(setTimeout(() => {
       const el = $(`imp-val-${f.key}`);
       if (el) {
-        if (f.key === 'dimensions' || f.key === 'title' || f.key === 'artist' || f.key === 'location') el.innerHTML = f.value; else el.textContent = f.value;
+        if (f.key === 'dimensions' || f.key === 'title' || f.key === 'artist' || f.key === 'location' || f.key === 'materiaux') el.innerHTML = f.value; else el.textContent = f.value;
         el.classList.add('written');
         // v76 : le bouton nom-d'artiste cliquable (voir plus haut) est réinjecté à chaque œuvre avec
         // le reste du HTML de la rubrique — son écouteur de clic doit donc être rattaché à chaque
         // fois, l'ancien élément (et son écouteur) ayant disparu avec l'ancien innerHTML.
         if (f.key === 'artist') { { const nb = $('imp-artist-name-button'); nb?.addEventListener('click', () => openImpArtistBio(work)); nb?.addEventListener('keydown', (e) => { if (e.target === nb && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openImpArtistBio(work); } }); } $('imp-speaker-bio')?.addEventListener('click', (e) => { e.stopPropagation(); openImpArtistBio(work, true); }); }
         if (f.key === 'title') { $('imp-speaker-work')?.addEventListener('click', () => openImpWorkText(work)); }
+        if (f.key === 'materiaux') { el.querySelectorAll('.imp-topic-btn').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); openImpTopicText(work, b.dataset.topic); })); }
       }
     }, textDelay));
   });
@@ -13255,7 +13317,7 @@ $('imp-bio-back')?.addEventListener('click', () => bioSeek(-1));
 $('imp-bio-fwd')?.addEventListener('click', () => bioSeek(1));
 $('imp-bio-toggle')?.addEventListener('click', () => {
   const A = bioAuto; if (!A.dual) return;
-  if (A.ended) { if (A.work) openImpArtistBio(A.work, A.force, { work: A.isWork }); return; }
+  if (A.ended) { if (A.work) openImpArtistBio(A.work, A.force, { work: A.isWork, topic: A.topic }); return; }
   if (!A.paused) { A.paused = true; A.pausedAt = performance.now(); try { speechSynthesis.pause(); } catch (e) { /* ignoré */ } }
   else { A.paused = false; A.startT += performance.now() - A.pausedAt; if (A.ck) { A.ck.t0 += performance.now() - A.pausedAt; A.ck.paused = true; } try { speechSynthesis.resume(); } catch (e) { /* ignoré */ } }
   bioSyncButton();
@@ -13307,7 +13369,7 @@ function openImpArtistBio(work, force, opts) {
   impClearTimers();
   // v165 : le texte de l'œuvre (première personne) passe par le même écran « film » que la bio : opts.work = true
   const isWork = !!(opts && opts.work); const srcText = isWork ? (work.workText || '') : (work.bio || '');
-  bioAuto.isWork = isWork;
+  bioAuto.isWork = isWork; bioAuto.topic = (opts && opts.topic) || '';   // v211 : texte « Natures et techniques » (sans portrait ni guillemets)
   const splitEl = $('imp-bio-split');
   const mode = bioWantMode(); const dual = !!mode;
   bioAuto.vert = mode === 'v'; bioAuto.dual = dual; bioAuto.work = work; bioAuto.force = !!force; bioAuto.artistRef = work.artistImage || '';
@@ -13326,7 +13388,7 @@ function openImpArtistBio(work, force, opts) {
   const datesEl = $('imp-bio-split-dates');
   if (datesEl) { const dt = isWork ? '' : String(work.artistDates || '').trim().replace(/\s*[-–—]\s*/, '\u00a0–\u00a0'); datesEl.textContent = dt; datesEl.classList.toggle('hidden', !dt); }
   const nameEl = $('imp-bio-split-name');
-  if (nameEl) nameEl.textContent = isWork ? `«\u00a0${work.title}\u00a0»` : formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
+  if (nameEl) nameEl.textContent = bioAuto.topic ? bioAuto.topic : isWork ? `«\u00a0${work.title}\u00a0»` : formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
   const bioText = srcText || 'Aucune biographie n’est encore disponible pour cet artiste.';
   const textEl = $('imp-bio-split-text');
   const parsedBio = parseBioMarkup(bioText);
@@ -13377,8 +13439,8 @@ function openImpArtistBio(work, force, opts) {
   }
 }
 // v129 : même écran partagé que la bio, mais avec l'image de l'œuvre à gauche et son texte (première personne) à droite.
-function openImpWorkText(work) {
-  if (bioWantMode()) { openImpArtistBio(work, true, { work: true }); return; }
+function openImpWorkText(work, topicLabel) {
+  if (bioWantMode()) { openImpArtistBio(work, true, { work: true, topic: topicLabel || '' }); return; }
   impClearTimers();
   bioAutoStop();
   bioAuto.dual = false; bioSyncButton();
@@ -13391,10 +13453,10 @@ function openImpWorkText(work) {
   }
   showImpBioCredit(work.image);
   const captionEl = $('imp-bio-split-caption');
-  if (captionEl) captionEl.textContent = [formatArtistDisplayName(work).replace(/<[^>]+>/g, ''), work.date].filter(Boolean).join(', ');
+  if (captionEl) captionEl.textContent = topicLabel ? '' : [formatArtistDisplayName(work).replace(/<[^>]+>/g, ''), work.date].filter(Boolean).join(', ');
   const nameEl = $('imp-bio-split-name');
   { const de = $('imp-bio-split-dates'); if (de) { de.textContent = ''; de.classList.add('hidden'); } }
-  if (nameEl) nameEl.textContent = `«\u00a0${work.title}\u00a0»`;
+  if (nameEl) nameEl.textContent = topicLabel ? topicLabel : `«\u00a0${work.title}\u00a0»`;
   const textEl = $('imp-bio-split-text');
   const plainWork = parseBioMarkup(work.workText).plain; // les balises [image: …] ne s'affichent ni ne se lisent
   if (textEl) textEl.textContent = plainWork;
