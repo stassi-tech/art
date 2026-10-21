@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v205';
+const APP_VERSION = 'v206';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12339,6 +12339,15 @@ function impSpeak(text, onEnd, force, opts) {
   speechSynthesis.speak(u);
 }
 
+// Ordre d'Imprégnation : chronologique (voir le commentaire au lancement). Fonction pure, réutilisable pour le futur
+// parcours commenté (diapositives d'évolution d'un type d'objet).
+function impChronologicalOrder(rows) {
+  const keyOf = (w) => { const y = yearsOf(w.date); return { start: y.length ? y[0] : Infinity, end: y.length ? y[y.length - 1] : Infinity }; };
+  return rows.map((w) => ({ w, k: keyOf(w) })).sort((a, b) =>
+    (a.k.start - b.k.start || 0) || (a.k.end - b.k.end || 0)
+    || keyName(a.w.artist).localeCompare(keyName(b.w.artist), 'fr') || keyName(a.w.title).localeCompare(keyName(b.w.title), 'fr')
+  ).map((x) => x.w);
+}
 $('imp-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('imp', 'impregnation-setup-panel');
   saveLastSelection('impregnation-setup-panel');
@@ -12372,8 +12381,11 @@ $('imp-start-button')?.addEventListener('click', async () => {
     // qui est justement le cas quand des artistes sont choisis : bug réel repéré, le filtre
     // ne s'appliquait alors jamais).
     pool = filterPoolByGlobalArtists(pool, allRows);
-    // Mélange, sans limitation de nombre : tout l'échantillon correspondant au choix.
-    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    // v206 (Stéphane : « imprégnation, quel que soit le choix, on range les œuvres par ordre chronologique — pour voir
+    // l'évolution, et pour y rattacher plus tard un petit texte à diapositives sur l'histoire d'un type d'objet ») :
+    // plus de mélange. Tri par première année de la date (« 1480-1488 » → 1480), puis année de fin, puis nom d'artiste et
+    // titre pour que l'ordre soit toujours le même à choix égal. Les œuvres sans année exploitable passent à la fin.
+    pool = impChronologicalOrder(pool);
     // v133 (Stéphane : « pour Imprégnation, ne s'imprégner que d'œuvres avec commentaire ») : case « Uniquement
     // les œuvres commentées ». Une œuvre est « commentée » quand le maître (colonnes Œuvre emblématique + Texte
     // de l'œuvre) lui attache un texte à la première personne, lu par son haut-parleur — c'est la propriété
