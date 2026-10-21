@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=297" />
+    <link rel="stylesheet" href="style.css?v=298" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -556,6 +556,16 @@
           <p class="config-section-title">1. Choisissez vos champs</p>
           <div id="qc-fields-slot"></div>
           <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-fields">Tout effacer</button></div>
+          <!-- v204 : limiter les jeux à certaines natures d'objets (Peinture/Sculpture, puis nature, support, technique ou matériau). Facultatif. -->
+          <details id="qc-objects-details" style="margin:14px 0 4px;">
+            <summary id="qc-objects-summary" style="cursor:pointer;font-family:Arial,sans-serif;font-weight:700;color:var(--muted);">Se limiter à des natures d'objets précis (facultatif)</summary>
+            <div style="margin-top:8px;">
+              <p class="modal-hint" style="margin:0 0 8px;text-align:left;">Les menus se suivent : choisissez d'abord Peinture ou Sculpture, puis affinez. Le nombre entre parenthèses est le nombre d'œuvres disponibles, compte tenu de vos choix de champs, de niveaux et d'artistes.</p>
+              <div id="qc-objects-menus" class="qc-objects-menus"></div>
+              <p id="qc-objects-count" class="hint qc-objects-count"></p>
+              <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-objects">Tout effacer</button></div>
+            </div>
+          </details>
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div id="qc-rubriques-slot"></div>
           <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-rubriques">Tout effacer</button></div>
@@ -2179,6 +2189,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script src="app.js?v=430"></script>
+    <script src="app.js?v=431"></script>
   </body>
 </html>

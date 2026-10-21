@@ -2833,3 +2833,11 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
   #intrus-quiz-grid.intrus-image-layout .intrus-image-choice.loupe-solo-active { padding:40px 4px 4px; }
   #intrus-quiz-grid.intrus-image-layout #intrus-prompt-card .intrus-image-choice:not(.loupe-solo-active) img { max-height:19vh !important; max-width:100% !important; width:100%; }
 }
+
+/* v204 — bloc « Se limiter à des natures d'objets précis » (page des choix) */
+.qc-objects-menus { display: flex; flex-direction: column; gap: 8px; }
+.qc-obj-row { display: grid; grid-template-columns: 9.5rem 1fr; align-items: center; gap: 8px; font-family: Arial, sans-serif; font-size: .92rem; }
+.qc-obj-row select { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font: inherit; background: var(--card, #fff); color: inherit; }
+.qc-objects-count { text-align: left; margin: 10px 0 4px; font-family: Arial, sans-serif; font-size: .9rem; }
+.qc-objects-warn { color: var(--wrong); font-weight: 700; }
+@media (max-width: 520px) { .qc-obj-row { grid-template-columns: 1fr; gap: 3px; } }

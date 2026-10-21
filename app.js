@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v203';
+const APP_VERSION = 'v204';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -940,6 +940,7 @@ async function populateArtistSuggestions() {
   const list = $('pf-artist-clickable-list');
   const status = $('pf-artist-list-status');
   if (!list) return;
+  refreshObjectsBlockSoon(); // v204 : le champ, le niveau ou les artistes ont changé -> les effectifs du bloc « natures d'objets » aussi
   status.textContent = 'Chargement de la liste des artistes…';
   const ok = await loadArtistListComplete();
   if (!ok) {
@@ -985,16 +986,14 @@ function toggleArtistSelection(name) {
   sessionStorage.setItem('hasConfiguredThisSession', 'true');
   const current = readGlobalArtistDefaults().artists || [];
   const next = current.includes(name) ? current.filter((n) => n !== name) : [...current, name];
-  if (quickDraft) quickDraft.artist = { artists: next };
-  else localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: next, remember: true }));
+  writeGlobalArtistNames(next);
   updateExerciseSummaries();
   updateProfileMenuBadges();
   populateArtistSuggestions(); // rafraîchit la liste pour montrer la coche à jour
   renderQuickArtistsBox();
 }
 $('pf-artists-clear')?.addEventListener('click', () => {
-  if (quickDraft) quickDraft.artist = { artists: [] };
-  else localStorage.removeItem('globalArtistDefaults');
+  writeGlobalArtistNames([]);
   updateExerciseSummaries();
   updateProfileMenuBadges();
   populateArtistSuggestions();
@@ -10968,10 +10967,207 @@ function readGlobalArtistDefaults() {
 // précis (ex. aucune œuvre de niveau 3 chez Monet/Gauguin/Manet réunis), on se rabat sur
 // l'ensemble de leurs œuvres tous niveaux confondus plutôt que de ne rien pouvoir lancer — bug
 // réel repéré : le jeu refusait de démarrer sans que la cause (niveau incompatible) soit claire.
+// =====================================================================================================
+// v204 — « Se limiter à des natures d'objets précis » (page des choix, sous « 1. Choisissez vos champs »).
+// Menus déroulants successifs : Peinture/Sculpture, puis — pour la peinture — nature, support, technique ;
+// — pour la sculpture — nature, matériau. Les colonnes « Nature de l'objet » et « Matériaux et technique »
+// des fichiers sont en texte libre : on les range ici dans des catégories fixes, par mots-clés (voir
+// objClassify). Le choix est rangé dans le réglage « artistes » (propriété objects) : il se mémorise,
+// s'enregistre et se recharge avec lui, et s'applique à tous les jeux via filterPoolByGlobalArtists.
+// =====================================================================================================
+const OBJ_PE_NATURES = [['isole', 'Tableau isolé'], ['ensemble', 'Ensemble de tableaux (retable, triptyque…)'], ['deco', 'Peinture décorative (fresque, plafond…)']];
+const OBJ_PE_SUPPORTS = [['toile', 'Toile'], ['bois', 'Bois (panneau)'], ['papier', 'Papier, parchemin'], ['carton', 'Carton'], ['mur', 'Surface murale'], ['autre', 'Autres supports (cuivre, pierre, verre…)']];
+const OBJ_PE_TECHS = [['huile', 'Huile'], ['detrempe', 'Détrempe, tempera'], ['aquarelle', 'Aquarelle'], ['pastel', 'Pastel'], ['gouache', 'Gouache'], ['dessin', 'Dessin, encre, estampe'], ['fresque', 'Fresque'], ['autre', 'Autre technique']];
+const OBJ_SC_NATURES = [['ronde', 'Ronde-bosse (statue, buste…)'], ['groupe', 'Groupe ou ensemble en ronde-bosse'], ['relief', 'Bas-relief, haut-relief'], ['funeraire', 'Monument funéraire'], ['monument', 'Monument (non funéraire)'], ['liturgique', 'Mobilier ou objet liturgique'], ['architecture', 'Élément architectural ou décoratif'], ['autre', 'Autre (objet d\'art…)']];
+const OBJ_SC_MATS = [['marbre', 'Marbre (et albâtre)'], ['bronze', 'Bronze'], ['bois', 'Bois'], ['pierre', 'Pierre (granit, grès…)'], ['terre', 'Terre cuite, céramique'], ['stuc', 'Stuc, plâtre'], ['cire', 'Cire'], ['metaux', 'Autres métaux (plomb, argent, cuivre…)'], ['associes', 'Matériaux associés (marbre et bronze…)'], ['autre', 'Autre matériau']];
+const OBJ_MIN_WORKS = 12; // en dessous, les jeux manquent de choix de réponses : on prévient
+function objectsActive(f) { return !!(f && f.art); }
+function objClassify(r) {
+  if (r._obj) return r._obj;
+  const nat = keyName(r.nature || '');
+  const mat = keyName(r.materials || '');
+  const o = { nature: '', supports: new Set(), techs: new Set(), mat: '' };
+  if (r.art === 'sculpture') {
+    if (/funeraire|gisant/.test(nat)) o.nature = 'funeraire';
+    else if (/liturgique/.test(nat)) o.nature = 'liturgique';
+    else if (/^monument|edicule/.test(nat)) o.nature = 'monument';
+    else if (/architectur|decoratif/.test(nat)) o.nature = 'architecture';
+    else if (/relief/.test(nat) && !/ronde|groupe/.test(nat)) o.nature = 'relief';
+    else if (/ronde|statue|buste|groupe|modele|ensemble/.test(nat)) o.nature = /groupe|ensemble/.test(nat) ? 'groupe' : 'ronde';
+    else o.nature = 'autre';
+    const fam = new Set();
+    if (/\b(marbre|albatre)\b/.test(mat)) fam.add('marbre');
+    if (/\bbronze/.test(mat)) fam.add('bronze');
+    if (/\b(bois|noyer|chene|ebene|buis|tilleul|acajou|cedre|poirier)\b/.test(mat)) fam.add('bois');
+    if (/\b(pierre|pierres|granit|granite|gres|travertin|pietra|roche|calcaire|porphyre|basalte|schiste|brique|onyx)\b/.test(mat)) fam.add('pierre');
+    if (/\b(terre|ceramique|faience|porcelaine|biscuit|argile)\b/.test(mat)) fam.add('terre');
+    if (/\b(stuc|platre)\b/.test(mat)) fam.add('stuc');
+    if (/\bcire\b/.test(mat)) fam.add('cire');
+    if (/\b(plomb|argent|cuivre|etain|laiton|fer|or|fonte|zinc|aluminium|acier)\b/.test(mat)) fam.add('metaux');
+    if (/\b(ivoire|beton|verre|resine|ebonite)\b/.test(mat)) fam.add('autre');
+    o.mat = fam.size > 1 ? 'associes' : (fam.size === 1 ? [...fam][0] : 'autre');
+  } else {
+    // Nature : ensemble d'éléments, décor lié à un lieu, ou tableau isolé (cas général, y compris dessins, aquarelles…).
+    if (/fresque|plafond/.test(nat)) o.nature = 'deco';
+    else if (/(retable|triptyque|polyptyque|polyptique|diptyque|volet|predelle|panneau de|ensemble de)/.test(nat)) o.nature = 'ensemble';
+    else o.nature = 'isole';
+    // Support (un tableau peut en cumuler plusieurs : « toile marouflée sur bois »).
+    if (/\b(toile|lin|soie|gaze|rupfen|canevas|jute|coton|tissu|drap)\b/.test(mat)) o.supports.add('toile');
+    if (/\b(bois|panneau|peuplier|chene|noyer|sapin|pin|tilleul|chataignier|acajou|contreplaque|isorel|agglomere|cedre|ebene)\b/.test(mat)) o.supports.add('bois');
+    if (/\b(papier|velin|parchemin|calque)\b/.test(mat)) o.supports.add('papier');
+    if (/\bcarton/.test(mat)) o.supports.add('carton');
+    if (/\b(fresques?|mur|murale?|enduit|intonaco|plafond|voute|coupole|crepi|platre)\b/.test(mat) || /^fresque/.test(nat)) o.supports.add('mur');
+    if (/\b(cuivre|metal|zinc|ardoise|pierre|verre|email|marbre|albatre|porcelaine|ceramique|ivoire|etain|laiton|fer|aluminium|plexiglas|plaque|lapis|vitrail)\b/.test(mat)) o.supports.add('autre');
+    // Technique.
+    if (/\bhuile/.test(mat)) o.techs.add('huile');
+    if (/(detrempe|tempera|a la colle|\boeuf\b|caseine|leimfarbe)/.test(mat)) o.techs.add('detrempe');
+    if (/aquarell/.test(mat) || /^aquarell/.test(nat)) o.techs.add('aquarelle');
+    if (/\bpastels?\b/.test(mat)) o.techs.add('pastel');
+    if (/gouache/.test(mat)) o.techs.add('gouache');
+    if (/\b(dessin|graphite|crayons?|encre|fusain|sanguine|plume|lavis|pierre noire|craie|monotype|gravure|estampe|eau forte|lithographie|burin|pointe seche|aquatinte|xylographie)\b/.test(mat) || /^(dessin|estampe)/.test(nat)) o.techs.add('dessin');
+    if (/(fresque|fresco|secco)/.test(mat) || /^fresque/.test(nat)) o.techs.add('fresque');
+    if (/(acryli|email|enlumin|mosaique|vitrail|cire|encaustique|vinyl|laque|alkyde|glycero|collage)/.test(mat) || /^(enlumin|email)/.test(nat)) o.techs.add('autre');
+    if (!o.techs.size) o.techs.add('autre');
+    // Pastel, aquarelle, gouache, dessin… sans support précisé : c'est du papier.
+    if (!o.supports.size && ['pastel', 'aquarelle', 'gouache', 'dessin'].some((t) => o.techs.has(t))) o.supports.add('papier');
+    if (!o.supports.size) o.supports.add('autre');
+  }
+  r._obj = o;
+  return o;
+}
+function objMatches(r, f, skip) {
+  if (!objectsActive(f)) return true;
+  if (r.art !== f.art) return false;
+  const c = objClassify(r);
+  if (skip !== 'nature' && f.nature && c.nature !== f.nature) return false;
+  if (f.art === 'peinture') {
+    if (skip !== 'support' && f.support && !c.supports.has(f.support)) return false;
+    if (skip !== 'tech' && f.tech && !c.techs.has(f.tech)) return false;
+  } else if (skip !== 'mat' && f.mat && c.mat !== f.mat) return false;
+  return true;
+}
+function objLabelOf(list, key) { const e = list.find((x) => x[0] === key); return e ? e[1] : ''; }
+// Phrase courte du choix : « Peinture · Ensemble de tableaux · Bois · Huile ».
+function describeObjectsFilter(f, skipArt) {
+  if (!objectsActive(f)) return '';
+  const short = (s) => s.replace(/\s*\(.*\)/, '');
+  const parts = skipArt ? [] : [f.art === 'peinture' ? 'Peinture' : 'Sculpture'];
+  if (f.art === 'peinture') {
+    if (f.nature) parts.push(short(objLabelOf(OBJ_PE_NATURES, f.nature)));
+    if (f.support) parts.push(short(objLabelOf(OBJ_PE_SUPPORTS, f.support)));
+    if (f.tech) parts.push(short(objLabelOf(OBJ_PE_TECHS, f.tech)));
+  } else {
+    if (f.nature) parts.push(short(objLabelOf(OBJ_SC_NATURES, f.nature)));
+    if (f.mat) parts.push(short(objLabelOf(OBJ_SC_MATS, f.mat)));
+  }
+  return parts.join(' · ');
+}
+// Œuvres du champ en vigueur (art, siècles, zones, niveaux, artistes) — l'ensemble sur lequel s'appuient les effectifs.
+let objBasePoolCache = { key: '', rows: null };
+async function objectsBasePool() {
+  const f = readGlobalFieldDefaults(); const r = readGlobalRubriqueDefaults(); const ga = readGlobalArtistDefaults();
+  const key = JSON.stringify([f.arts, f.centuries, f.zones, r.levels, ga.artists]);
+  if (objBasePoolCache.key === key && objBasePoolCache.rows) return objBasePoolCache.rows;
+  const arts = f.arts?.length ? f.arts : ['peinture', 'sculpture'];
+  const centuries = f.centuries?.length ? f.centuries : ['15e', '16e', '17e', '18e', '19e', '20e'];
+  let rows = [];
+  for (const art of arts) {
+    for (const century of centuries) {
+      try { rows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+    }
+  }
+  if (r.levels?.length) { const lv = rows.filter((w) => r.levels.includes(String(w.niveau || 1))); if (lv.length) rows = lv; }
+  if (f.zones?.length) rows = rows.filter((w) => { const z = zoneOfNationality(w.nationality); return !z || f.zones.includes(z); });
+  const names = (ga.artists || []).map((n) => keyName(n)).filter(Boolean);
+  if (names.length) rows = rows.filter((w) => names.some((a) => keyName(w.artist).includes(a) || a.includes(keyName(w.artist))));
+  objBasePoolCache = { key, rows };
+  return rows;
+}
+let objRenderToken = 0;
+async function renderObjectsBlock() {
+  const host = $('qc-objects-menus'); if (!host) return;
+  const token = ++objRenderToken;
+  const countEl = $('qc-objects-count');
+  if (countEl) { countEl.textContent = 'Chargement des œuvres…'; countEl.className = 'hint qc-objects-count'; }
+  const pool = await objectsBasePool();
+  if (token !== objRenderToken) return; // un rafraîchissement plus récent a pris le relais
+  const fieldArts = readGlobalFieldDefaults().arts || [];
+  let f = { ...(readGlobalArtistDefaults().objects || {}) };
+  if (f.art && fieldArts.length && !fieldArts.includes(f.art)) f = {}; // le champ exclut maintenant cet art
+  const lists = f.art === 'peinture'
+    ? [['nature', 'Nature', OBJ_PE_NATURES], ['support', 'Support', OBJ_PE_SUPPORTS], ['tech', 'Technique', OBJ_PE_TECHS]]
+    : (f.art === 'sculpture' ? [['nature', 'Nature', OBJ_SC_NATURES], ['mat', 'Matériau', OBJ_SC_MATS]] : []);
+  // Effectif d'une option = nombre d'œuvres qui la respectent en plus de tous les AUTRES choix déjà faits.
+  const countFor = (menu, key) => {
+    const probe = { ...f, [menu]: key };
+    return pool.filter((r) => objMatches(r, probe)).length;
+  };
+  // Un choix devenu impossible (0 œuvre) à cause d'un autre menu modifié est abandonné.
+  lists.forEach(([menu]) => { if (f[menu] && !countFor(menu, f[menu])) f[menu] = ''; });
+  const artCounts = { peinture: pool.filter((r) => r.art === 'peinture').length, sculpture: pool.filter((r) => r.art === 'sculpture').length };
+  const allowed = ['peinture', 'sculpture'].filter((a) => (!fieldArts.length || fieldArts.includes(a)) && artCounts[a] > 0);
+  const artLabel = { peinture: 'Peinture', sculpture: 'Sculpture' };
+  let html = `<label class="qc-obj-row"><span>Peinture ou sculpture</span><select id="qc-obj-art"><option value="">Pas de limitation</option>${allowed.map((a) => `<option value="${a}" ${f.art === a ? 'selected' : ''}>${artLabel[a]} (${artCounts[a]})</option>`).join('')}</select></label>`;
+  lists.forEach(([menu, title, list]) => {
+    const all = pool.filter((r) => objMatches(r, f, menu)).length;
+    html += `<label class="qc-obj-row"><span>${title}</span><select class="qc-obj-menu" data-menu="${menu}"><option value="">Toutes (${all})</option>${list.map(([k, lab]) => {
+      const n = countFor(menu, k);
+      return `<option value="${k}" ${f[menu] === k ? 'selected' : ''} ${n ? '' : 'disabled'}>${escapeHtml(lab)} (${n})</option>`;
+    }).join('')}</select></label>`;
+  });
+  host.innerHTML = html;
+  const total = objectsActive(f) ? pool.filter((r) => objMatches(r, f)).length : pool.length;
+  if (countEl) {
+    if (!objectsActive(f)) { countEl.textContent = `Aucune limitation : ${total} œuvres dans votre champ actuel. Choisissez d'abord Peinture ou Sculpture pour affiner.`; countEl.className = 'hint qc-objects-count'; }
+    else if (!total) { countEl.textContent = 'Aucune œuvre ne correspond à cette combinaison.'; countEl.className = 'hint qc-objects-count qc-objects-warn'; }
+    else if (total < OBJ_MIN_WORKS) { countEl.textContent = `${total} œuvre${total > 1 ? 's' : ''} seulement : c'est peu pour que les jeux offrent de vrais choix de réponses (il en faut idéalement ${OBJ_MIN_WORKS} ou plus). Élargissez un menu si possible.`; countEl.className = 'hint qc-objects-count qc-objects-warn'; }
+    else { countEl.textContent = `${total} œuvres correspondent à ce choix.`; countEl.className = 'hint qc-objects-count'; }
+  }
+  const save = (next) => {
+    const clean = next.art ? { art: next.art, nature: next.nature || '', ...(next.art === 'peinture' ? { support: next.support || '', tech: next.tech || '' } : { mat: next.mat || '' }) } : null;
+    setObjectsFilter(clean);
+    renderObjectsBlock();
+    renderQuickArtistsBox(); updateExerciseSummaries();
+  };
+  $('qc-obj-art')?.addEventListener('change', (e) => save({ art: e.target.value })); // changer d'art repart d'une page blanche
+  host.querySelectorAll('.qc-obj-menu').forEach((sel) => sel.addEventListener('change', () => save({ ...f, [sel.dataset.menu]: sel.value })));
+  // Le réglage enregistré peut avoir été corrigé ci-dessus (choix devenu impossible) : on le remet d'équerre.
+  const stored = readGlobalArtistDefaults().objects || null;
+  if (JSON.stringify(stored || {}) !== JSON.stringify(objectsActive(f) ? f : {}) && (stored || objectsActive(f))) {
+    if (!objectsActive(f)) setObjectsFilter(null); else setObjectsFilter(f);
+  }
+  const sum = $('qc-objects-summary');
+  if (sum) sum.textContent = objectsActive(f) ? `Se limiter à des natures d'objets précis : ${describeObjectsFilter(f)}` : "Se limiter à des natures d'objets précis (facultatif)";
+}
+function setObjectsFilter(objects) {
+  if (quickDraft) { quickDraft.artist = { ...quickDraft.artist, objects: objects || null }; }
+  else {
+    const a = readGlobalArtistDefaults();
+    const artists = a.artists || [];
+    if (!objects && !artists.length) localStorage.removeItem('globalArtistDefaults');
+    else localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists, objects: objects || null, remember: true }));
+  }
+}
+// Met à jour le seul volet « artistes » du réglage, sans perdre le choix d'objets qui l'accompagne.
+function writeGlobalArtistNames(next) {
+  if (quickDraft) { quickDraft.artist = { ...quickDraft.artist, artists: next }; return; }
+  const a = readGlobalArtistDefaults();
+  const objects = objectsActive(a.objects) ? a.objects : null;
+  if (!next.length && !objects) localStorage.removeItem('globalArtistDefaults');
+  else localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: next, objects, remember: true }));
+}
+function refreshObjectsBlockSoon() {
+  const d = $('qc-objects-details');
+  if (d && d.open) renderObjectsBlock();
+  const sum = $('qc-objects-summary');
+  if (sum && !(d && d.open)) { const f = readGlobalArtistDefaults().objects; sum.textContent = objectsActive(f) ? `Se limiter à des natures d'objets précis : ${describeObjectsFilter(f)}` : "Se limiter à des natures d'objets précis (facultatif)"; }
+}
 function filterPoolByGlobalArtists(pool, fallbackPool) {
-  const artists = (readGlobalArtistDefaults().artists || []).map((n) => keyName(n)).filter(Boolean);
-  if (!artists.length) return pool;
-  const matches = (r) => artists.some((a) => keyName(r.artist).includes(a) || a.includes(keyName(r.artist)));
+  const ga = readGlobalArtistDefaults();
+  const artists = (ga.artists || []).map((n) => keyName(n)).filter(Boolean);
+  const objects = objectsActive(ga.objects) ? ga.objects : null;
+  if (!artists.length && !objects) return pool;
+  const matches = (r) => (!artists.length || artists.some((a) => keyName(r.artist).includes(a) || a.includes(keyName(r.artist)))) && (!objects || objMatches(r, objects));
   const filtered = pool.filter(matches);
   if (filtered.length) return filtered;
   if (fallbackPool) {
@@ -11002,8 +11198,9 @@ function buildExerciseSummary(prefix) {
   const gr = readGlobalRubriqueDefaults();
   const hasGlobalField = gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length);
   const hasGlobalArtists = ga.remember && ga.artists?.length;
+  const hasGlobalObjects = ga.remember && objectsActive(ga.objects);
   const hasGlobalRubrique = gr.remember && (gr.rubriques?.length || gr.levels?.length);
-  if (hasGlobalField || hasGlobalArtists || hasGlobalRubrique) {
+  if (hasGlobalField || hasGlobalArtists || hasGlobalObjects || hasGlobalRubrique) {
     // Le choix d'artiste(s) affine le champ plutôt que de le remplacer — les deux s'affichent
     // ensemble s'ils sont actifs tous les deux, pour qu'on voie bien qu'ils se combinent.
     const artLabel = (gf.arts || []).map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
@@ -11014,8 +11211,9 @@ function buildExerciseSummary(prefix) {
       const extra = ga.artists.length > 2 ? ` +${ga.artists.length - 2}` : '';
       artistPart = `${shown}${extra}`;
     }
+    const objectsPart = hasGlobalObjects ? (describeObjectsFilter(ga.objects, hasGlobalField && (gf.arts || []).includes(ga.objects.art)) || (gf.arts || []).includes(ga.objects.art) && '') : '';
     const levelPart = gr.levels?.length ? ' N' + gr.levels.join('+') : '';
-    return `🌐 ${[fieldPart, artistPart].filter(Boolean).join(' · ')}${levelPart}`;
+    return `🌐 ${[fieldPart, artistPart, objectsPart].filter(Boolean).join(' · ')}${levelPart}`;
   }
   return '';
 }
@@ -11063,6 +11261,7 @@ function summarizeSavedConfig(cfg) {
   if (gf.centuries?.length) parts.push(gf.centuries.join('+'));
   if (gf.zones?.length) parts.push(`${gf.zones.length} zone(s)`);
   if (ga.artists?.length) parts.push(ga.artists.slice(0, 2).join(', ') + (ga.artists.length > 2 ? ` +${ga.artists.length - 2}` : ''));
+  if (objectsActive(ga.objects)) parts.push(describeObjectsFilter(ga.objects));
   if (gr.levels?.length) parts.push('N' + gr.levels.join('+'));
   if (gr.count) parts.push(`${gr.count} questions`);
   parts.push(cfg.allGames ? 'tous les jeux' : `${(cfg.games || []).length} jeu(x)`);
@@ -11346,7 +11545,7 @@ function hasGeneralChoice() {
   const gf = readGlobalFieldDefaults(); const gr = readGlobalRubriqueDefaults(); const ga = readGlobalArtistDefaults();
   return !!((gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length))
     || (gr.remember && (gr.rubriques?.length || gr.levels?.length || gr.count))
-    || (ga.remember && ga.artists?.length));
+    || (ga.remember && (ga.artists?.length || objectsActive(ga.objects))));
 }
 function prepareQuickConfig() {
   quickDraft = null; // les lecteurs renvoient alors le réglage réellement en vigueur (session, sinon enregistré)
@@ -11354,7 +11553,7 @@ function prepareQuickConfig() {
   quickDraft = {
     field: { arts: [...(f.arts || [])], centuries: [...(f.centuries || [])], zones: [...(f.zones || [])] },
     rubrique: { rubriques: [...(r.rubriques || [])], levels: [...(r.levels || [])], count: r.count || '' },
-    artist: { artists: [...(a.artists || [])] },
+    artist: { artists: [...(a.artists || [])], objects: objectsActive(a.objects) ? { ...a.objects } : null },
   };
   const d = quickDraft;
   document.querySelectorAll('.pf-field-art').forEach((el) => { el.checked = d.field.arts.includes(el.value); });
@@ -11371,6 +11570,7 @@ function prepareQuickConfig() {
     else { if ($('pf-count-custom')) $('pf-count-custom').value = c; const cu = document.querySelector('input[name="pf-count"][value="custom"]'); if (cu) cu.checked = true; }
   }
   if ($('qc-artists-details')?.open) populateArtistSuggestions();
+  { const od = $('qc-objects-details'); if (od) { if (objectsActive(d.artist.objects)) od.open = true; if (od.open) renderObjectsBlock(); else refreshObjectsBlockSoon(); } }
   renderExerciseOverrides();
   updateQuickIntro();
   renderQuickOverrides();
@@ -11399,7 +11599,7 @@ function commitQuickConfig() {
   } catch (e) { /* session indisponible : le réglage reste tout de même mémorisé sur l'appareil */ }
   localStorage.setItem('globalFieldDefaults', JSON.stringify(field));
   localStorage.setItem('globalRubriqueDefaults', JSON.stringify(rubrique));
-  if (artist.artists.length) localStorage.setItem('globalArtistDefaults', JSON.stringify(artist));
+  if (artist.artists.length || objectsActive(artist.objects)) localStorage.setItem('globalArtistDefaults', JSON.stringify(artist));
   else localStorage.removeItem('globalArtistDefaults');
   localStorage.removeItem('globalGamesDefaults');
   let loadedName = '';
@@ -11455,10 +11655,12 @@ function resetPanelContentToDefaults(panelId) {
 // v188 : 3e encadré (artistes choisis) de la page « Mes choix de configuration » : visible seulement s'il y a au moins un artiste.
 function renderQuickArtistsBox() {
   const box = $('qc-artists-box'); const list = $('qc-artists-chosen'); if (!box || !list) return;
-  const names = readGlobalArtistDefaults().artists || [];
-  box.classList.toggle('hidden', !names.length);
+  const ga0 = readGlobalArtistDefaults();
+  const names = ga0.artists || [];
+  const hasObj = objectsActive(ga0.objects);
+  box.classList.toggle('hidden', !names.length && !hasObj);
   // v190 : la phrase récapitulative (art, siècle, rubriques, artistes, nombre de questions) vit ici, plus sur la page des exercices.
-  list.textContent = names.length ? buildTrainingHubConfigSentence() : '';
+  list.textContent = (names.length || hasObj) ? buildTrainingHubConfigSentence() : '';
 }
 function renderQuickOverrides() {
   const box = $('qc-overrides'); if (!box) return;
@@ -11483,7 +11685,7 @@ function renderQuickOverrides() {
 function hasSavedLastConfig() {
   let gf = {}, gr = {}, ga = {};
   try { gf = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); gr = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); ga = JSON.parse(localStorage.getItem('globalArtistDefaults') || '{}'); } catch (e) { /* ignoré */ }
-  if (gf.arts?.length || gf.centuries?.length || gf.zones?.length || gr.rubriques?.length || gr.levels?.length || gr.count || ga.artists?.length) return true;
+  if (gf.arts?.length || gf.centuries?.length || gf.zones?.length || gr.rubriques?.length || gr.levels?.length || gr.count || ga.artists?.length || objectsActive(ga.objects)) return true;
   return Object.keys(localStorage).some((k) => {
     if (!k.startsWith('lastSelection_')) return false;
     const panel = k.slice('lastSelection_'.length);
@@ -11517,7 +11719,7 @@ function snapshotConfig() {
   return {
     field: { arts: [...(f.arts || [])], centuries: [...(f.centuries || [])], zones: [...(f.zones || [])], remember: true },
     rubrique: { rubriques: [...(r.rubriques || [])], levels: [...(r.levels || [])], count: r.count || '', remember: true },
-    artists: { artists: [...(a.artists || [])], remember: true },
+    artists: { artists: [...(a.artists || [])], objects: objectsActive(a.objects) ? { ...a.objects } : null, remember: true },
     allGames: true, games: [], perGame,
   };
 }
@@ -11529,6 +11731,7 @@ function suggestConfigName() {
     c.field.centuries.join(' + '),
     c.rubrique.levels.length ? 'N' + c.rubrique.levels.join('+') : '',
     c.artists.artists.length ? c.artists.artists.slice(0, 2).join(', ') + (c.artists.artists.length > 2 ? '…' : '') : '',
+    objectsActive(c.artists.objects) ? describeObjectsFilter(c.artists.objects) : '',
   ].filter(Boolean);
   const base = parts.length ? parts.join(' · ') : 'Toutes les œuvres';
   return Object.keys(c.perGame).length ? `${base} (+ jeux à part)` : base;
@@ -11623,9 +11826,12 @@ function quitSession() {
     populateArtistSuggestions();
   });
   $('qc-clear-artists')?.addEventListener('click', () => {
-    if (quickDraft) quickDraft.artist = { artists: [] }; else localStorage.removeItem('globalArtistDefaults');
+    if (quickDraft) quickDraft.artist = { artists: [], objects: null }; else localStorage.removeItem('globalArtistDefaults');
+    refreshObjectsBlockSoon();
     updateExerciseSummaries(); updateProfileMenuBadges(); populateArtistSuggestions(); renderQuickArtistsBox();
   });
+  $('qc-clear-objects')?.addEventListener('click', () => { setObjectsFilter(null); if ($('qc-objects-details')?.open) renderObjectsBlock(); else refreshObjectsBlockSoon(); updateExerciseSummaries(); renderQuickArtistsBox(); });
+  $('qc-objects-details')?.addEventListener('toggle', () => { if ($('qc-objects-details').open) renderObjectsBlock(); });
   $('qc-artists-details')?.addEventListener('toggle', () => { if ($('qc-artists-details').open) populateArtistSuggestions(); });
   $('training-hub-edit-general')?.addEventListener('click', () => showPanel('quick-config'));
 })();
@@ -11855,7 +12061,7 @@ async function populateGuidedArtistList() {
     cb.addEventListener('change', () => {
       const current = readGlobalArtistDefaults().artists || [];
       const next = cb.checked ? [...current, cb.value] : current.filter((n) => n !== cb.value);
-      localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: next, remember: true }));
+      writeGlobalArtistNames(next);
     });
   });
   status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec vos choix de niveau et de champ actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
@@ -11889,7 +12095,7 @@ function buildTrainingHubConfigSentence() {
   const gr = readGlobalRubriqueDefaults();
   const ga = readGlobalArtistDefaults();
   const artLabel = { peinture: 'la peinture', sculpture: 'la sculpture' };
-  const artsPart = (gf.arts || []).map((a) => artLabel[a] || a).join(' et ') || 'la peinture et la sculpture';
+  const artsPart = (gf.arts || []).map((a) => artLabel[a] || a).join(' et ') || (objectsActive(ga.objects) ? artLabel[ga.objects.art] : '') || 'la peinture et la sculpture';
   const centPart = gf.centuries?.length ? ` du ${gf.centuries.join(', du ')} siècle` : '';
   const zoneLabels = { france: 'France', italie: 'Italie', espagne: 'Espagne', royaume_uni: 'Royaume-Uni', allemagne: 'Allemagne', europe_centrale_russie: 'Europe centrale et Russie', europe_nord: 'Europe du Nord', amerique: 'Amérique' };
   const zonePart = gf.zones?.length ? ` en ${gf.zones.map((z) => zoneLabels[z] || z).join(', ')}` : '';
@@ -11901,7 +12107,7 @@ function buildTrainingHubConfigSentence() {
   const levelPart = gr.levels?.length
     ? ` de niveau ${gr.levels.join('/')} (artistes ${gr.levels.map((l) => levelLabels[l]).join('/')})`
     : '';
-  const artistsPart = ga.artists?.length ? `, en particulier ${ga.artists.join(', ')}` : '';
+  const artistsPart = (ga.artists?.length ? `, en particulier ${ga.artists.join(', ')}` : '') + (objectsActive(ga.objects) ? `, en vous limitant à : ${describeObjectsFilter(ga.objects)}` : '');
   const countPart = gr.count ? ` et en répondant à des questionnaires de ${gr.count === 'max' ? 'un maximum de' : gr.count} questions` : '';
   const middle = `vous exercer sur ${artsPart}${centPart}${zonePart}${rubriquePart}${levelPart}${artistsPart}${countPart}`;
   if (loadedGuidedConfigName) {
