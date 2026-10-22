@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v221';
+const APP_VERSION = 'v222';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -3209,7 +3209,7 @@ function normaliseRows(rows) {
     return {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
-      associates, artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
+      associates, artistDates, materials, nature, natureAll: natureFull, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
       artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
       row: rowIndex + 2
     };
@@ -11107,7 +11107,10 @@ function objClassify(r) {
     // (mot dans le titre) ou, par défaut, un mémorial / hommage.
     else if (/equestre/.test(`${keyName(r.title || '')} ${nat}`)) { o.nature = 'monument'; o.sub = 'equestre'; }
     // Même principe pour les fontaines : le mot « fontaine » (en mot entier : pas « Fontainebleau ») dans le titre ou la nature suffit.
-    else if (/\bfontaines?\b/.test(`${keyName(r.title || '')} ${nat}`)) { o.nature = 'monument'; o.sub = 'fontaine'; }
+    // v222 (retour Stéphane : « pour la Statue de Neptune, Ammannati n'a créé que la statue, pas la fontaine : j'écris la fontaine dans l'explication de la nature de
+    // l'objet, et l'application ne la repère plus ») : on cherche « fontaine » dans le titre ET dans TOUT le texte de la nature, explication comprise
+    // (nature = seulement la phrase avant le premier point ; natureAll = le texte entier).
+    else if (/\bfontaines?\b/.test(`${keyName(r.title || '')} ${keyName(r.natureAll || '')} ${nat}`)) { o.nature = 'monument'; o.sub = 'fontaine'; }
     else if (/^monument|edicule/.test(nat)) { o.nature = 'monument'; const tk = keyName(r.title || ''); o.sub = OBJ_DECO_TITLES.some((d) => tk.includes(d)) ? 'decoratif' : 'memorial'; }
     else if (/architectur|decoratif/.test(nat)) o.nature = 'architecture';
     else if (/relief/.test(nat) && !/ronde|groupe/.test(nat)) o.nature = 'relief';
