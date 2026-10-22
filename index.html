@@ -712,16 +712,20 @@
               <label class="rubrique-option"><input type="checkbox" id="imp-level-3" /><span>Niveau 3</span></label>
             </div>
             <div>
-              <!-- v223 : le bloc « Avancement — Manuel : cliquez sur → ou Entrée » n'avait pas sa place ici (c'est une
-                   indication de fonctionnement, pas un réglage) et remplaçait la colonne « Nb de questions » des autres jeux.
-                   Imprégnation n'a pas de nombre de questions : toutes les œuvres du choix défilent. -->
+              <!-- v223 : la colonne « Nb de questions » (ici « œuvres à parcourir ») remplace le bloc « Avancement — Manuel : cliquez sur → ou Entrée »,
+                   qui était une indication de fonctionnement et non un réglage. Lue par imp-start-button (app.js) ; mémorisée et reprise du choix
+                   général comme les autres jeux (name="imp-count"). -->
+              <p class="config-table-col-title">Nb d'œuvres</p>
+              <label class="rubrique-option"><input type="radio" name="imp-count" value="5" /><span>5 œuvres</span></label>
+              <label class="rubrique-option"><input type="radio" name="imp-count" value="10" /><span>10 œuvres</span></label>
+              <label class="rubrique-option"><input type="radio" name="imp-count" value="20" /><span>20 œuvres</span></label>
+              <label class="rubrique-option"><input type="radio" name="imp-count" value="max" checked /><span>Maximum disponible</span></label>
               <!-- v133 (Stéphane : « pour Imprégnation, ne s'imprégner que d'œuvres avec commentaire oral ») : filtre propre à
                    Imprégnation (pas valable pour les autres jeux). Voir imp-start-button dans app.js. L'état de la case est mémorisé
                    comme les autres cases du panneau (saveLastSelection/restoreLastSelection parcourent toutes les cases). -->
-              <p class="config-table-col-title">Œuvres</p>
+              <p class="config-table-col-title" style="margin-top:14px;">Œuvres</p>
               <label class="rubrique-option"><input type="checkbox" id="imp-only-commented" /><span>Uniquement les œuvres commentées</span></label>
               <p class="modal-hint" style="margin-top:2px;">Œuvres emblématiques qui racontent leur histoire à voix haute (haut-parleur 🔊).</p>
-              <p class="modal-hint" style="margin-top:8px;">Toutes les œuvres de votre choix défilent, dans l'ordre chronologique.</p>
             </div>
           </div>
           <button type="button" class="secondary-button" id="imp-validate-choice-button" style="width:100%;margin-top:8px;">Valider mon choix pour ce jeu →</button>
@@ -2214,6 +2218,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script src="app.js?v=451"></script>
+    <script src="app.js?v=452"></script>
   </body>
 </html>

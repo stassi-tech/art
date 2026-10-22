@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v223';
+const APP_VERSION = 'v224';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -1662,7 +1662,7 @@ function dropInheritedGroups(panelId, state) {
   Object.keys(state).filter((k) => k.startsWith('radio:') && /count$/.test(k)).forEach((k) => {
     const radios = [...($(panelId)?.querySelectorAll(`input[type="radio"][name="${k.slice(6)}"]`) || [])];
     const def = radios.find((r) => r.defaultChecked)?.value;
-    if (state[k] === def || (gr.count && state[k] === gr.count)) delete state[k];
+    if (state[k] === def || (gr.count && state[k] === gr.count && panelId !== 'impregnation-setup-panel')) delete state[k];
   });
   return state;
 }
@@ -11682,7 +11682,9 @@ function applyGlobalFieldDefaultsTo(prefix) {
         if (el) el.checked = gr.rubriques.includes(key);
       });
     }
-    if (gr.count) {
+    // v224 : Imprégnation ne reprend pas le « nombre de questions » du choix général (10 par défaut) — par défaut elle parcourt
+    // toutes les œuvres ; le nombre ne se règle que dans la page propre au jeu.
+    if (gr.count && prefix !== 'imp') {
       const radios = [...document.querySelectorAll(`input[name="${prefix}-count"]`)];
       const exact = radios.find((r) => r.value === gr.count);
       if (exact) exact.checked = true;
@@ -12605,6 +12607,14 @@ $('imp-start-button')?.addEventListener('click', async () => {
       const commented = pool.filter((r) => r.workText);
       if (!commented.length) { feedback.textContent = "Aucune œuvre commentée pour ce choix : élargissez l'art, le siècle, la zone ou le niveau."; return; }
       pool = commented;
+    }
+    // v223 : « Nb d'œuvres » (5 / 10 / 20 / maximum). Quand on en demande moins que le choix n'en contient, on en tire au hasard
+    // puis on les remet dans l'ordre chronologique — pour que ce ne soient pas toujours les plus anciennes.
+    const impCountChoice = document.querySelector('input[name="imp-count"]:checked')?.value || 'max';
+    if (impCountChoice !== 'max' && Number(impCountChoice) > 0 && Number(impCountChoice) < pool.length) {
+      const shuffled = pool.slice();
+      for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
+      pool = impChronologicalOrder(shuffled.slice(0, Number(impCountChoice)));
     }
     IMP_SESSION = pool;
     feedback.textContent = '';
