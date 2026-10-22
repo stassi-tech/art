@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v220';
+const APP_VERSION = 'v221';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12781,6 +12781,7 @@ function impShowCurrent() {
       if (seg >= 0) { stageImgPlan.push({ url, seg, key }); break; }
     }
   });
+  stageImgPlan.forEach((pl) => { try { const im = new Image(); im.src = imageSourceSized(pl.url, 900); } catch (e) { /* ignoré */ } });   // v221 : images de lieu préchargées, pour qu'elles soient prêtes à l'heure
   // v76 (retour Stéphane 29/09 : « le commentaire arrive après l'image, ça devrait être l'inverse —
   // la voix doit d'abord lire le commentaire, l'image n'apparaît que 3-4 secondes après, doucement »)
   // : la bascule d'image (Lieu/Ensemble) ne dépend plus du tout du rythme STAGGER du texte affiché —
@@ -12826,10 +12827,10 @@ function impShowCurrent() {
     // qu'avant (la voix passe d'abord) ; au milieu d'un segment (les dimensions, lues à la suite du matériau) : dès que la voix y arrive.
     const myRunStage = impRunId;
     const planHere = stageImgPlan.filter((pl) => pl.seg === i);
-    const startImgs = planHere.filter((pl) => segment.findIndex((f) => f.key === pl.key) <= 0);
+    const startImgs = planHere.filter((pl) => !pl.early && segment.findIndex((f) => f.key === pl.key) <= 0);
     startImgs.forEach((pl, k) => impTimers.push(setTimeout(() => impShowFlowImage(pl.url, ''), flowDelayMs + k * 5000)));
     var midStageOpts = null;
-    planHere.filter((pl) => !startImgs.includes(pl)).forEach((pl) => {
+    planHere.filter((pl) => !pl.early && !startImgs.includes(pl)).forEach((pl) => {
       const idx = segment.findIndex((f) => f.key === pl.key);
       const off = segment.slice(0, idx).reduce((n, f) => n + String(f.spoken || f.value || '').length + 3, 0);
       const frac = off / Math.max(1, text.length);
@@ -12848,7 +12849,14 @@ function impShowCurrent() {
     // sans attente perceptible. Les autres coupures (Ensemble, s'il revenait) gardent 2 s.
     const nextSegment = speechSegments[i + 1];
     const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : (nextSegment && nextSegment[0].key === 'materiaux' ? IMP_GAP_BEFORE_MATERIAL_MS : (nextSegment && nextSegment[0].key === 'date' ? IMP_GAP_BEFORE_DATE_MS : 2000));
-    impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), gapMs)); }, false, midStageOpts);
+    // v221 (retour Stéphane : « la 3e image doit arriver 2-3 secondes avant : quand on a fini de donner les dimensions, l'image est là, avant que la voix
+    // commence le lieu ») : si le segment suivant est celui du lieu de conservation et que l'image du lieu existe, on la lance dès la fin de la voix
+    // (fondu de 2 s) et on laisse ~2,5 s avant que la voix du lieu démarre.
+    const earlyPlan = stageImgPlan.filter((pl) => pl.seg === i + 1 && pl.key === 'location' && speechSegments[i + 1].findIndex((f) => f.key === 'location') <= 0);
+    impSpeak(text, () => {
+      if (earlyPlan.length && myRunStage === impRunId) earlyPlan.forEach((pl) => { pl.early = true; impShowFlowImage(pl.url, ''); });
+      impTimers.push(setTimeout(() => impSpeakSegment(i + 1), earlyPlan.length ? Math.max(gapMs, 2500) : gapMs));
+    }, false, midStageOpts);
   }
   // v128 (docx 9 oct, IMPREGNATION : « la voix doit donner la consigne sur la première page ; c'est bon pour
   // les autres jeux ») : comme dans Intrus & co., la consigne écrite (#imp-instruction) est lue UNE fois,
