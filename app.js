@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v217';
+const APP_VERSION = 'v218';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -11245,24 +11245,34 @@ function describeObjectsFilter(f, skipArt) {
   return parts.join(' · ');
 }
 // Œuvres du champ en vigueur (art, siècles, zones, niveaux, artistes) — l'ensemble sur lequel s'appuient les effectifs.
-let objBasePoolCache = { key: '', rows: null };
+let objBasePoolCache = { key: '', rows: null }; let objPoolProblem = ''; let objPoolRaw = 0;
 async function objectsBasePool(ignoreArtists) {
   const f = readGlobalFieldDefaults(); const r = readGlobalRubriqueDefaults(); const ga = readGlobalArtistDefaults();
   const key = JSON.stringify([f.arts, f.centuries, f.zones, r.levels, ignoreArtists ? null : ga.artists]);
   if (objBasePoolCache.key === key && objBasePoolCache.rows) return objBasePoolCache.rows;
   const arts = f.arts?.length ? f.arts : ['peinture', 'sculpture'];
   const centuries = f.centuries?.length ? f.centuries : ['15e', '16e', '17e', '18e', '19e', '20e'];
-  let rows = [];
-  for (const art of arts) {
-    for (const century of centuries) {
-      try { rows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
+  let rows = []; let failed = [];
+  // v218 (mobile : « Toutes (0), comme s'il n'y avait aucune œuvre ») : un fichier qui n'arrive pas (connexion lente, coupure brève) ne doit plus laisser
+  // une liste vide en mémoire. On retente les fichiers manquants (jusqu'à 2 fois, avec une courte pause) et on ne garde en cache que du complet.
+  const pairs = []; arts.forEach((art) => centuries.forEach((century) => pairs.push([art, century])));
+  const lastErr = {};
+  for (let attempt = 0; attempt < 3 && (attempt === 0 ? pairs : failed).length; attempt++) {
+    const todo = attempt === 0 ? pairs : failed; failed = [];
+    if (attempt > 0) await new Promise((res) => setTimeout(res, 700 * attempt));
+    for (const pr of todo) {
+      try { rows.push(...(await fetchQuizRows(pr[0], pr[1]))); } catch (e) { failed.push(pr); lastErr[pr.join('-')] = String(e && e.message || e); }
     }
   }
+  // un fichier simplement absent du site (« fichier introuvable ») n'est pas une panne : ni nouvelle tentative utile, ni liste « incomplète »
+  objPoolRaw = rows.length;
+  const realFailed = failed.filter((pr) => lastErr[pr.join('-')] !== 'fichier introuvable');
+  objPoolProblem = realFailed.length ? `${realFailed.length} fichier(s) d’œuvres non chargé(s) : ${realFailed.slice(0, 3).map((pr) => pr.join(' ') + ' (' + lastErr[pr.join('-')] + ')').join(', ')}` : '';
   if (r.levels?.length) { const lv = rows.filter((w) => r.levels.includes(String(w.niveau || 1))); if (lv.length) rows = lv; }
   if (f.zones?.length) rows = rows.filter((w) => { const z = zoneOfNationality(w.nationality); return !z || f.zones.includes(z); });
   const names = ignoreArtists ? [] : (ga.artists || []).map((n) => keyName(n)).filter(Boolean);
   if (names.length) rows = rows.filter((w) => workArtistKeys(w).some((k) => names.some((a) => k.includes(a) || a.includes(k))));
-  objBasePoolCache = { key, rows };
+  if (rows.length && !objPoolProblem) objBasePoolCache = { key, rows };   // v218 : jamais de liste vide ou incomplète gardée en mémoire
   return rows;
 }
 function objAnySub(f) { return !!(f && f.art && (f.nature || f.support || f.tech || f.sub || f.mat)); }
@@ -11287,6 +11297,12 @@ async function renderObjectsBlock(ui) {
   if (countEl) { countEl.textContent = 'Chargement des œuvres…'; countEl.className = 'hint qc-objects-count'; }
   const pool = await objectsBasePool();
   if (token !== objRenderToken) return; // un rafraîchissement plus récent a pris le relais
+  if (!pool.length && (objPoolProblem || !objPoolRaw)) { // v218 : rien n'a pu être chargé : on le dit clairement, avec un bouton pour réessayer, au lieu de menus vides « Toutes (0) »
+    host.innerHTML = `<div class="hint qc-objects-warn" style="text-align:left">Les œuvres n’ont pas pu être chargées (connexion lente ou interrompue ?).${objPoolProblem ? `<br><small>${escapeHtml(objPoolProblem)}</small>` : ''}<br><button type="button" class="secondary-button" id="${ui}-objects-retry" style="margin-top:8px">↻ Réessayer</button></div>`;
+    if (countEl) { countEl.textContent = ''; countEl.className = 'hint qc-objects-count'; }
+    $(`${ui}-objects-retry`)?.addEventListener('click', () => { objBasePoolCache = { key: '', rows: null }; renderObjectsBlock(ui); });
+    return;
+  }
   const fieldArts = readGlobalFieldDefaults().arts || [];
   let f = { ...(readGlobalArtistDefaults().objects || {}) };
   if (f.art && fieldArts.length && !fieldArts.includes(f.art)) f = {}; // le champ exclut maintenant cet art
