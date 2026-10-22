@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v219';
+const APP_VERSION = 'v220';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -12767,13 +12767,14 @@ function impShowCurrent() {
     currentSpeechSegment.push(f);
   });
   if (currentSpeechSegment.length) speechSegments.push(currentSpeechSegment);
+  // v220 (retour Stéphane : « la deuxième image devrait commencer un tout petit peu plus tôt, sur les indications de date ») : le sous-lieu arrive sur « Date ».
   // v219 (retour Stéphane : « la 2e image est trop courte quand la nature et le matériau tiennent en peu de mots : la dernière image, celle du lieu, n'apparaît
   // qu'avec la mention du lieu de conservation, comme une conclusion ») : l'image du lieu se déclenche sur « Lieu de conservation » (et seulement à défaut
   // de cette rubrique, sur « Dimensions »).
   // v215 : plan des images de lieu — sous-lieu sur « Nature et matériau », lieu sur « Lieu de conservation ».
   // Si la rubrique voulue n'est pas affichée, l'image prend la suivante de sa liste ; sous-lieu toujours avant lieu.
   const stageImgPlan = [];
-  [[work.subLocationImage, ['materiaux', 'dimensions', 'location']], [work.locationImage, ['location', 'dimensions']]].forEach(([url, keys]) => {
+  [[work.subLocationImage, ['date', 'materiaux', 'dimensions', 'location']], [work.locationImage, ['location', 'dimensions']]].forEach(([url, keys]) => {
     if (!url) return;
     for (const key of keys) {
       const seg = speechSegments.findIndex((sg) => sg.some((f) => f.key === key));
@@ -12904,6 +12905,9 @@ function impShowFlowImage(url, label) {
   const src = imageSourceSized(url, 900);
   const CROSSFADE_MS = 2000;
   const runCrossfade = () => {
+    // v220 : la couche du dessus occupe exactement la même place que l'image du dessous (la figure a un cadre intérieur de 22 px que l'image
+    // « dans le flux » respecte et que la couche en position absolue ignorait : l'image changeait de taille au passage de relais)
+    try { const cs = getComputedStyle(img.parentElement); nextImg.style.inset = `${cs.paddingTop} ${cs.paddingRight} ${cs.paddingBottom} ${cs.paddingLeft}`; nextImg.style.maxWidth = `calc(100% - ${parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)}px)`; } catch (e) { /* ignoré */ }
     // v76 : garde-fou (impFlowBusyUntil, voir sa déclaration) — ne démarre jamais un nouveau fondu
     // avant que le précédent n'ait eu le temps de se terminer, même si cet appel arrive très près du
     // précédent (segment de voix particulièrement court). En usage normal (voix bien plus longue que
@@ -12915,10 +12919,14 @@ function impShowFlowImage(url, label) {
       img.classList.add('imp-flow-fading');
       nextImg.classList.add('imp-flow-next-visible');
       impTimers.push(setTimeout(() => {
+        // v220 (retour Stéphane : « quand on change de rubrique, la 2e image devient floue, comme si elle se rechargeait, se recalait ») : avant, ce
+        // passage de relais refaisait un SECOND fondu de 2 s (l'image du dessus s'efface pendant que celle du dessous réapparaît) ; comme les deux ne
+        // sont pas exactement à la même taille, on voyait l'image en double, floue, puis elle se recalait. Maintenant : la bascule est instantanée,
+        // sans transition, et seulement une fois l'image prête à l'écran sous l'autre — un seul fondu, net, du début à la fin.
+        img.style.transition = 'none'; nextImg.style.transition = 'none';
+        const settle = () => { img.classList.remove('imp-flow-fading'); nextImg.classList.remove('imp-flow-next-visible'); void img.offsetWidth; img.style.transition = ''; nextImg.style.transition = ''; impLoupe?.setLevel(0); };
         img.src = src;
-        img.classList.remove('imp-flow-fading');
-        nextImg.classList.remove('imp-flow-next-visible');
-        impLoupe?.setLevel(0);
+        (img.decode ? img.decode().then(settle, settle) : settle());
       }, CROSSFADE_MS)); // doit correspondre à la durée de transition en CSS
       if (labelEl && !label) { labelEl.classList.add('hidden'); labelEl.textContent = ''; }
       else if (labelEl) {
