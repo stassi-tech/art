@@ -712,14 +712,16 @@
               <label class="rubrique-option"><input type="checkbox" id="imp-level-3" /><span>Niveau 3</span></label>
             </div>
             <div>
-              <p class="config-table-col-title">Avancement</p>
-              <p class="modal-hint" style="margin-top:0;">Manuel : cliquez sur → ou appuyez sur Entrée pour passer à l'œuvre suivante.</p>
+              <!-- v223 : le bloc « Avancement — Manuel : cliquez sur → ou Entrée » n'avait pas sa place ici (c'est une
+                   indication de fonctionnement, pas un réglage) et remplaçait la colonne « Nb de questions » des autres jeux.
+                   Imprégnation n'a pas de nombre de questions : toutes les œuvres du choix défilent. -->
               <!-- v133 (Stéphane : « pour Imprégnation, ne s'imprégner que d'œuvres avec commentaire oral ») : filtre propre à
                    Imprégnation (pas valable pour les autres jeux). Voir imp-start-button dans app.js. L'état de la case est mémorisé
                    comme les autres cases du panneau (saveLastSelection/restoreLastSelection parcourent toutes les cases). -->
-              <p class="config-table-col-title" style="margin-top:14px;">Œuvres</p>
+              <p class="config-table-col-title">Œuvres</p>
               <label class="rubrique-option"><input type="checkbox" id="imp-only-commented" /><span>Uniquement les œuvres commentées</span></label>
               <p class="modal-hint" style="margin-top:2px;">Œuvres emblématiques qui racontent leur histoire à voix haute (haut-parleur 🔊).</p>
+              <p class="modal-hint" style="margin-top:8px;">Toutes les œuvres de votre choix défilent, dans l'ordre chronologique.</p>
             </div>
           </div>
           <button type="button" class="secondary-button" id="imp-validate-choice-button" style="width:100%;margin-top:8px;">Valider mon choix pour ce jeu →</button>
@@ -728,7 +730,7 @@
 
         <section id="impregnation-panel" class="quiz-panel hidden">
           <div class="progress-row" id="imp-progress-row">
-            <span id="imp-progress-label">Œuvre 1 / 10</span>
+            <span id="imp-progress-label"></span>
           </div>
           <div class="progress-track"><div class="progress-bar" id="imp-progress-bar"></div></div>
           <div id="imp-ready-screen" style="text-align:center;padding:40px 20px;margin-top:25vh;">
@@ -2212,6 +2214,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script src="app.js?v=450"></script>
+    <script src="app.js?v=451"></script>
   </body>
 </html>
