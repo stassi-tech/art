@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v217';
+const APP_VERSION = 'v186';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -328,33 +328,14 @@ async function saveCurrentScore() {
       timeSpent: quizTimer.stop(),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
-    if (statusEl) {
-      statusEl.textContent = 'Score enregistré automatiquement sur votre compte. Vous le retrouverez dans vos scores de quiz : ';
-      const link = document.createElement('button');
-      link.type = 'button'; link.className = 'results-account-link'; link.textContent = '👤';
-      link.title = 'Mes scores de quiz'; link.setAttribute('aria-label', 'Mes scores de quiz');
-      link.addEventListener('click', () => openAccountScores('quiz'));
-      statusEl.appendChild(link);
-      statusEl.classList.remove('hidden');
-    }
+    if (statusEl) { statusEl.textContent = 'Score enregistré automatiquement sur votre compte.'; statusEl.classList.remove('hidden'); }
   } catch (error) {
     if (statusEl) { statusEl.textContent = "Le score n'a pas pu être enregistré automatiquement."; statusEl.classList.remove('hidden'); }
   }
 }
 
 // --- Page « Mon compte » : historique complet, groupé par type de quiz, avec évolution ---
-let accountScoreFilter = 'quiz';
-// v192 (retour Stéphane) : depuis la fin d'un exercice ou d'un quiz, le logo 👤 ouvre directement l'historique des scores du
-// BON type (« entrainement » après un exercice, « quiz » après un quiz) au lieu de laisser le joueur choisir entre les deux onglets.
-// Sans compte connecté, on garde le comportement habituel du bouton « Mon compte » (invitation à se connecter).
-function openAccountScores(filter) {
-  if (!currentUser) { $('global-account-button')?.click(); return; }
-  accountScoreFilter = filter === 'entrainement' ? 'entrainement' : 'quiz';
-  $('account-scores-training-button')?.classList.toggle('inactive', accountScoreFilter !== 'entrainement');
-  $('account-scores-quiz-button')?.classList.toggle('inactive', accountScoreFilter !== 'quiz');
-  showPanel('account');
-  loadAccountPage();
-} // 'quiz' | 'entrainement' — bascule via les 2 boutons de la page compte
+let accountScoreFilter = 'quiz'; // 'quiz' | 'entrainement' — bascule via les 2 boutons de la page compte
 async function fetchScoreLevelGroups() {
   if (!firebaseReady || !currentUser) return null;
   const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores')
@@ -561,7 +542,7 @@ function downloadAccountTable() {
   const stamp = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(workbook, `mes-scores-quiz-art-${stamp}.xlsx`);
 }
-$('account-page-download-button')?.addEventListener('click', openProgressReport);
+$('account-page-download-button')?.addEventListener('click', downloadAccountTable);
 async function deleteScore(docId) {
   if (!firebaseReady || !currentUser || !docId) return;
   try {
@@ -714,7 +695,7 @@ function initProfilePage() {
   if ($('pf-link-ambiance-field')) $('pf-link-ambiance-field').checked = localStorage.getItem('linkAmbianceToField') !== 'false';
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   $('pf-voice').innerHTML = voices.length
-    ? '<option value="">Automatique (voix de femme ou d’homme selon l’artiste)</option>' + voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
     : '<option value="">Voix par défaut du système</option>';
   let fieldDefaults = {};
   try { fieldDefaults = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); } catch (e) {}
@@ -940,7 +921,6 @@ async function populateArtistSuggestions() {
   const list = $('pf-artist-clickable-list');
   const status = $('pf-artist-list-status');
   if (!list) return;
-  refreshObjectsBlockSoon(); // v204 : le champ, le niveau ou les artistes ont changé -> les effectifs du bloc « natures d'objets » aussi
   status.textContent = 'Chargement de la liste des artistes…';
   const ok = await loadArtistListComplete();
   if (!ok) {
@@ -953,11 +933,8 @@ async function populateArtistSuggestions() {
   // leurs œuvres elles-mêmes (colonne Niveau des fichiers quiz). On ne va vérifier ceci œuvre par
   // œuvre que si la liste est déjà raisonnablement réduite par le champ (sinon, trop d'artistes à
   // interroger un par un pour rester fluide) — sinon on affiche la liste filtrée par champ seule.
-  // v207 : une nature d'objets choisie réduit d'abord la liste aux artistes qui ont de telles œuvres (le niveau est alors déjà pris en compte).
-  const hasObjFilter = objectsActive(readGlobalArtistDefaults().objects);
-  if (hasObjFilter) { status.textContent = "Tri des artistes selon la nature d'objets choisie…"; matchingRows = await filterArtistRowsByObjects(matchingRows); }
   const levels = readGlobalRubriqueDefaults().levels || [];
-  if (levels.length && matchingRows.length <= 80 && !hasObjFilter) {
+  if (levels.length && matchingRows.length <= 80) {
     status.textContent = 'Vérification du niveau des artistes…';
     const kept = [];
     for (const row of matchingRows) {
@@ -983,24 +960,24 @@ async function populateArtistSuggestions() {
   list.querySelectorAll('.pf-artist-pick').forEach((cb) => {
     cb.addEventListener('change', () => toggleArtistSelection(cb.value));
   });
-  status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec vos choix de niveau${hasObjFilter ? ", de champ et de nature d'objets" : ' et de champ'} actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
+  status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec vos choix de niveau et de champ actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
 }
 function toggleArtistSelection(name) {
   sessionStorage.setItem('hasConfiguredThisSession', 'true');
   const current = readGlobalArtistDefaults().artists || [];
   const next = current.includes(name) ? current.filter((n) => n !== name) : [...current, name];
-  writeGlobalArtistNames(next);
+  if (quickDraft) quickDraft.artist = { artists: next };
+  else localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: next, remember: true }));
   updateExerciseSummaries();
   updateProfileMenuBadges();
   populateArtistSuggestions(); // rafraîchit la liste pour montrer la coche à jour
-  renderQuickArtistsBox();
 }
 $('pf-artists-clear')?.addEventListener('click', () => {
-  writeGlobalArtistNames([]);
+  if (quickDraft) quickDraft.artist = { artists: [] };
+  else localStorage.removeItem('globalArtistDefaults');
   updateExerciseSummaries();
   updateProfileMenuBadges();
   populateArtistSuggestions();
-  renderQuickArtistsBox();
 });
 $('profile-menu-artists')?.addEventListener('click', populateArtistSuggestions);
 // « Aller au choix suivant » : simple raccourci qui clique le bouton de menu correspondant, pour
@@ -1148,31 +1125,6 @@ document.querySelectorAll('.volume-bar').forEach((bar) => {
   });
 });
 renderVolumeBars();
-// v187 (« une voix de femme pour Vigée Le Brun, une voix d'homme pour Cole ») : on ne peut pas imposer une voix précise (chaque appareil a les siennes),
-// mais on peut demander « une voix de femme » ou « une voix d'homme » : le navigateur ne donne pas le sexe d'une voix, on le devine d'après le prénom
-// qui figure dans son nom (Denise, Hortense… / Rémy, Henri, Paul…). Le choix du joueur dans ses réglages passe toujours avant.
-const bioStrip = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-const VOICE_FEMALE_RE = /\b(hortense|charline|julie|sylvie|denise|ariane|vivienne|eloise|amelie|audrey|aurelie|marie|celine|brigitte|claire|caroline|sophie|isabelle|catherine|nathalie|francoise|fabienne|josephine|elodie|lucie|chantal|virginie|sandrine)/;
-const VOICE_MALE_RE = /\b(paul|gerard|jean|antoine|thierry|henri|fabrice|rem[iy]|thomas|mathieu|nicolas|bruno|guillaume|olivier|pierre|daniel|maxime|alain|claude|julien|lucas)/;
-const FEMALE_FIRST_RE = /^(elisabeth|elizabeth|isabelle|isabella|marie|maria|mary|artemisia|sofonisba|rosalba|angelica|berthe|suzanne|paula|frida|georgia|lavinia|judith|clara|rosa|kathe|marguerite|margaret|louise|gabrielle|anna|anne|catharina|catherine|elisabetta|giovanna|barbara|dorothea|helen|helene|jeanne|sonia|tamara|leonora|remedios|niki|eva|emily|alice|amelie|charlotte|clemence|claudine|diane|francoise|genevieve|hannah|henriette|irene|josephine|julie|laure|leonie|lucie|madeleine|mathilde|nathalie|olga|pauline|rachel|sophie|therese|valentine|virginie|yvonne|agnes|aurelie|beatrice|bridget|carmen|cecilia|cecile|chiara|christina|cornelia|dora|edith|ellen|emma|esther|fanny|gwen|ida|jacqueline|katharina|kiki|leonor|lotte|lygia|marianne|marlene|martha|meret|michaela|nancy|natalia|orsola|rebecca|sarah|sheila|susanna|tina|ulrike|vanessa|vera)$/;
-function normalizeVoiceGender(raw) {
-  const t = bioStrip(raw).trim(); if (!t) return '';
-  if (/^(f|femme|feminin|feminine|femini|woman|female)/.test(t)) return 'femme';
-  if (/^(h|m|homme|masculin|man|male)/.test(t)) return 'homme';
-  return '';
-}
-function bioInferGender(prenom) {   // '' = pas de préférence (artiste sans prénom : « Le Greco », « Maître de… »)
-  const first = bioStrip(prenom).trim().split(/[\s\-’']+/)[0]; if (!first) return '';
-  return FEMALE_FIRST_RE.test(first) ? 'femme' : 'homme';
-}
-function pickVoiceByGender(g) {
-  if (!window.speechSynthesis || !g) return null;
-  const re = g === 'femme' ? VOICE_FEMALE_RE : VOICE_MALE_RE;
-  const cands = speechSynthesis.getVoices().filter((v) => /^fr/i.test(v.lang) && re.test(bioStrip(v.name)));
-  if (!cands.length) return null;
-  const score = (v) => { const n = bioStrip(v.name); return (/natural/.test(n) ? 3 : 0) + (/online/.test(n) ? 2 : 0) + (/multilingual/.test(n) ? 0.5 : 0) + (/fr-fr|france/.test(bioStrip(v.lang + ' ' + v.name)) ? 0.2 : 0); };
-  return cands.sort((a, b) => score(b) - score(a))[0];
-}
 function getGlobalVoice() {
   if (!window.speechSynthesis) return null;
   const prefs = getGlobalPrefs();
@@ -1185,7 +1137,7 @@ function populateGlobalVoiceSelect() {
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   const prefs = getGlobalPrefs();
   select.innerHTML = voices.length
-    ? '<option value="">Automatique (voix de femme ou d’homme selon l’artiste)</option>' + voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
+    ? voices.map((v) => `<option value="${escapeHtml(v.name)}" ${v.name === prefs.voiceName ? 'selected' : ''}>${escapeHtml(v.name)}</option>`).join('')
     : '<option value="">Voix par défaut du système</option>';
 }
 speechSynthesis.onvoiceschanged = populateGlobalVoiceSelect;
@@ -1294,11 +1246,6 @@ function showExerciseResultsModal(exerciseName, correct, total, closeTarget) {
   $('exercise-results-message').textContent = encouragingMessage(percent);
   openModal('modal-exercise-results');
 }
-// v189 : le logo du compte, dans la fenêtre de fin d'exercice, ouvre « Mon compte » (ou la connexion si le joueur n'est pas connecté).
-$('exercise-results-account')?.addEventListener('click', () => {
-  closeModal('modal-exercise-results');
-  openAccountScores('entrainement');
-});
 $('exercise-results-close')?.addEventListener('click', () => {
   closeModal('modal-exercise-results');
   showPanel(exerciseResultsCloseTarget);
@@ -1974,9 +1921,6 @@ const PRONUNCIATION_FIXES = {
   'poyer': 'Pôyé', // v152 (atelier 16 oct)
   'chœur': 'keur',
   'adam': 'Adant', // v128 : « Adam = dan, comme une dent » — la finale « -ant » est un « an » sûr (« Adan » restait lu « adane »)
-  // v198 : « Kunsthaus » / « Kunsthalle » doivent passer AVANT le préfixe générique « kunst* », sinon celui-ci les transformait en premier et leur écriture validée ne s'appliquait jamais
-  'kunsthaus': 'kounsthaosse',
-  'kunsthalle': 'kounst-halleu',
   'kunst*': 'kounst',
   // v116 (docx 29 sept, tableau PRONONCIATION) : réécritures phonétiques ajoutées d'après les
   // indications de Stéphane (les noms déjà présents plus haut — Sœurs, Adam, Kunst…, Rijn… — n'ont pas
@@ -2245,8 +2189,7 @@ const PRONUNCIATION_FIXES = {
   'neue': 'neuyeu',
   'odilon': 'odilon',
   'of art': 'artte',
-  'singer sargent': 'sinngger sargente', // atelier 18 oct 08:26 (avant : 'singer sargente' ; les voix qui préfèrent l'ancienne écriture l'ont dans leur propre table)
-  'edward burne-jones': 'Edward BeURNE-Jones', // atelier 18 oct 08:26
+  'singer sargent': 'singer sargente',
   'l\'avis': 'l\'avis',  // identité : sert de support aux écritures propres à certaines voix
   'l’avis': 'l’avis',  // idem, apostrophe courbe
   // v175 (atelier de prononciation, export du 17 oct 14:45) : écritures communes à toutes les voix. La dernière écriture d'une
@@ -2348,30 +2291,6 @@ const PRONUNCIATION_FIXES = {
   'immobiles': 'immobiles',  // identité : sert de support aux écritures propres à certaines voix
   'valmondois': 'valmondois',  // identité : sert de support aux écritures propres à certaines voix
   'werefkin': 'werefkin',  // identité : sert de support aux écritures propres à certaines voix
-  // atelier 18 oct 16:13 : corrections de la table commune
-  'menabuoi': 'Ménabwo-y',
-  'tino di camaino': 'tino di kama-i-no',
-  'werefkin': 'véréfkine',
-  'houston': 'Youstonne',
-  // variantes accentuées (celles du texte) : l'atelier n'a gardé que la variante sans accent, on lui applique la même écriture validée
-  'böcklin': 'beuklinne',
-  'cáceres': 'Cassérèsse',
-  'juan': 'juan',  // identité : sert de support aux écritures propres à certaines voix
-  'kröller-müller': 'kröller-müller',  // identité : sert de support aux écritures propres à certaines voix
-  'pan': 'pan',  // identité : sert de support aux écritures propres à certaines voix
-  'yale': 'yale',  // identité : sert de support aux écritures propres à certaines voix
-  // atelier 19 oct 00:08 : nouveaux mots (écriture commune à toutes les voix)
-  'jungle': 'junngle',
-  'kunsthalle': 'kounst-halleu',
-  'lembachhaus': 'lemmbak-haousse',
-  'munch': 'münk',
-  'slevogt': 'sléfokt',
-  'beckmann': 'beckmann',  // identité : sert de support aux écritures propres à certaines voix
-  // v216 (atelier de prononciation, export du 21 oct 21:36) : nouveaux mots, écritures communes à toutes les voix.
-  'bellano': 'béllano',
-  'fiesole': 'fiésole',
-  'gattamelata': 'gattamélata',
-  'signoria': 'signorilla',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2397,7 +2316,7 @@ function deArtist(name) {
 // (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
 const PHONE_PRONUNCIATION = {
   // v175 : après l'atelier du 17 oct (14:45), les voix du smartphone n'ont plus que ces écritures propres ; tout le reste suit la table commune.
-  'schwerin': 'Schvéérinne', 'guidi': 'guidi', 'sœurs': 'seur', 'adam': 'Adant', 'bandini': 'bandini', 'carlyle': 'Carlyle', 'epsom': 'éppsom', 'titien': 'TItIEN', 'ursins': 'ursin', 'venise': 'Veunize', 'odilon': '', 'thomas ball': 'thomass bowll', 'menabuoi': 'Ménaboy', 'tino di camaino': 'tino di kamaï-no', // atelier 18 oct 16:13
+  'schwerin': 'Schvéérinne', 'guidi': 'guidi', 'sœurs': 'seur', 'adam': 'Adant', 'bandini': 'bandini', 'carlyle': 'Carlyle', 'epsom': 'éppsom', 'titien': 'TItIEN', 'ursins': 'ursin', 'venise': 'Veunize', 'odilon': '',
 };
 const PHONE_PRONUNCIATION_CA = { ...PHONE_PRONUNCIATION, 'titien': 'TItiEN' }; // seule différence entre « français France » et « français Canada »
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
@@ -2407,341 +2326,214 @@ const PRONUNCIATION_BY_VOICE = {
   // v175 : résultats de l'atelier de prononciation (17 oct 14:45), une table par voix, repérée par un morceau de son nom.
   // Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
-    // atelier 21 oct 21:36
-    'bellano': 'bélano',
-    'cavalli': 'ka va li',
-    'donatello': 'dona-télo',
-    'linden': 'lyn-den',
-    // atelier 19 oct 00:08
-    'beckmann': 'béck-manne',
-    'lembachhaus': 'lemmbake-haousse',
-    'munch': 'mun-ke',
-    'slevogt': 'sléfoktt',
-    // atelier 18 oct 16:13 (rapport complet)
+    'l\'avis': 'laavi',
+    'l’avis': 'laavi',
+    'odilon': 'odilont',
+    'singer sargent': 'sinn-guerr sargente',
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
     'benci': 'BéNtchi',
     'bolton': 'bôl-teun',
     'canaletto': 'kanâléto',
-    'edward burne-jones': 'Edward BeURNE-Jônnsse',
     'élément': 'éléman',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'immobiles': 'imo-biles',
-    'juan': 'ruanne',
-    'kröller-müller': 'kreulerr-müller',
-    'l\'avis': 'laavi',
-    'l’avis': 'laavi',
     'lancashire': 'leng-kasheur',
     'medicis': 'médississe',
     'médicis': 'médississe',
-    'menabuoi': 'Ménabwo-ylle',
-    'odilon': 'odilont',
-    'pan': 'pans',
     'pollux': 'Pollûkss',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'sinn-guerr sargente',
     'tino di camaino': 'tino di kama-ï-no',
     'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
-    'yale': 'yèle',
   },
   'charline': {
-    // atelier 19 oct 00:08
-    'munch': 'mun-ke',
-    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'giusto di menabuoi': 'djousto di ménabwoille',
     'jongkind': 'jonkinnde',
-    'menabuoi': 'Ménabwo-ylle',
+    'menabuoi': 'Ménabwo-y',
     'pollaiolo': '',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
     'tate britain': 'Tête Britenn',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venize',
-    'werefkin': 'vérefkine',
+    'werefkin': 'weréfkine',
   },
   'julie': {
-    // atelier 21 oct 21:36
-    'bellano': 'bélano',
-    'cavalli': 'ka va li',
-    'donatello': 'dona-télo',
-    'fiesole': 'fié-sole',
-    'linden': 'lyn-den',
-    // atelier 19 oct 00:08
-    'beckmann': 'béck-manne',
-    'lembachhaus': 'lemmbake-haousse',
-    'munch': 'mun-ke',
-    'slevogt': 'sléfoktt',
-    // atelier 18 oct 16:13 (rapport complet)
+    'l\'avis': 'laavi',
+    'l’avis': 'laavi',
+    'odilon': 'odilont',
+    'singer sargent': 'sinn-guerr sargente',
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
     'bolton': 'bôl-teune',
     'canaletto': 'kanâléto',
     'carlyle': 'Carl-aïe-le',
-    'edward burne-jones': 'Edward BeURNE-Jônnsse',
     'élément': 'éléman',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'immobiles': 'imo-biles',
-    'juan': 'ruanne',
-    'kröller-müller': 'kreulerr-müller',
-    'l\'avis': 'laavi',
-    'l’avis': 'laavi',
     'medicis': 'médississe',
     'médicis': 'médississe',
-    'menabuoi': 'Ménabwo-ylle',
-    'odilon': 'odilont',
-    'pan': 'pans',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'sinn-guerr sargente',
     'tino di camaino': 'tino di kama-ï-no',
     'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
-    'yale': 'yèle',
   },
   'paul': {
-    // atelier 21 oct 21:36
-    'bellano': 'bélano',
-    'cavalli': 'ka va li',
-    'donatello': 'dona-télo',
-    'linden': 'lyn-den',
-    // atelier 19 oct 00:08
-    'beckmann': 'béck-manne',
-    'lembachhaus': 'lemmbake-haousse',
-    'munch': 'mun-ke',
-    'slevogt': 'sléfoktt',
-    // atelier 18 oct 16:13 (rapport complet)
+    'l\'avis': 'laavi',
+    'l’avis': 'laavi',
+    'odilon': 'odilont',
+    'singer sargent': 'sinn-guerr sargente',
     'adam': 'Adant',
     'arcimboldo': 'archimeboldo',
     'bolton': 'bôl-teun',
     'canaletto': 'kanâléto',
-    'edward burne-jones': 'Edward BeURNE-Jônnsse',
     'élément': 'éléman',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'immobiles': 'imo-biles',
-    'juan': 'ruanne',
-    'kröller-müller': 'kreulerr-müller',
-    'l\'avis': 'laavi',
-    'l’avis': 'laavi',
     'medicis': 'médississe',
     'médicis': 'médississe',
-    'menabuoi': 'Ménabwo-ylle',
-    'odilon': 'odilont',
-    'pan': 'pans',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'sinn-guerr sargente',
     'tino di camaino': 'tino di kama-ï-no',
     'valmondois': 'valmon-doigt',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
-    'yale': 'yèle',
   },
   'gerard': {
-    // atelier 19 oct 00:08
-    'munch': 'münke',
-    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
-    'venise': 'Venîz',
-    'werefkin': 'vérefkine',
     'tate britain': 'Tétte Britenn',
     'tino di camaino': 'tino di kama-ï-no',
+    'venise': 'Venîz',
   },
   'sylvie': {
-    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
   },
   'jean': {
-    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
   },
   'antoine': {
-    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
   },
   'thierry': {
-    // atelier 19 oct 00:08
-    'munch': 'mûnn-ke',
-    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
   },
   'denise': {
-    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
   },
   'henri': {
-    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
   },
   'ariane': {
-    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
-    'venise': 'Venîz',
-    'werefkin': 'vérefkine',
     'tate britain': 'Tétte Britenn',
+    'tino di camaino': 'tino di kama-ï-no',
+    'venise': 'Venîz',
   },
   'fabrice': {
-    // atelier 18 oct 16:13 (rapport complet)
     'adam': 'Adant',
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
-    'venise': 'Venîz',
-    'werefkin': 'vérefkine',
-    'menabuoi': 'Ménabwui',
     'tate britain': 'Tétte Britenn',
+    'tino di camaino': 'tino di kama-ï-no',
+    'venise': 'Venîz',
   },
   'vivienne': {
-    'pollaiuolo': 'pollaiuolo', // v198 : évite que « pollaiolo » → « pollaiuolo » soit retransformé par l'entrée commune « pollaiuolo »
-    'gellée': 'ge llée', // = « gellee » de l'atelier (variante accentuée du texte)
-    // atelier 18 oct 16:13 (rapport complet)
+    'odilon': 'odilont',
     'ca\'d\'oro': 'ka\'dôorro',
-    'clésinger': 'clésin-jey',
-    'edward burne-jones': 'Edward burne-jones',
-    'edwin': 'Edwin',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
-    'gellee': 'ge llée',
-    'gentile': 'Génnti-léy',
-    'giobbe': 'djobey',
+    'gentile': 'Génntilé',
     'immobiles': 'imo-biles',
-    'jason': 'Jazon',
     'lancashire': 'lancashire',
-    'menabuoi': 'Ménabwui',
-    'michelozzo': 'meekélotso',
-    'odilon': 'odilont',
-    'phryné': 'Freeney',
-    'poisson': 'Poisson',
-    'pollaiolo': 'pollaiuolo',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
+    'tino di camaino': 'tino di kama-ï-no',
     'titien': 'TITIEN',
-    'werefkin': 'vérefkine',
   },
   'rémy': {
-    // atelier 21 oct 21:36
-    'fiesole': 'fiésolé',
-    'pollaiuolo': 'pollaiuolo', // v198 : évite que « pollaiolo » → « pollaiuolo » soit retransformé par l'entrée commune « pollaiuolo »
-    'gellée': 'gellée', // = « gellee » de l'atelier (variante accentuée du texte)
-    // atelier 18 oct 16:13 (rapport complet)
     'ca\'d\'oro': 'ka\'dôorro',
-    'clésinger': 'clésin-jey',
-    'edward burne-jones': 'Edward burne-jones',
-    'edwin': 'Edwin',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
-    'gellee': 'gellée',
-    'gentile': 'Génnti-léy',
-    'giobbe': 'giobbé',
+    'gentile': 'Génntilé',
     'immobiles': 'imo-biles',
     'lancashire': 'lancashire',
-    'menabuoi': 'Ménabwui',
-    'michelozzo': 'meekélotso',
-    'phryné': 'Freeney',
-    'poisson': 'Poisson',
-    'pollaiolo': 'pollaiuolo',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
+    'tino di camaino': 'tino di kama-ï-no',
     'titien': 'TITIEN',
-    'werefkin': 'vérefkine',
   },
   'eloise': {
-    // atelier 18 oct 16:13 (rapport complet)
-    'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
-    'singer sargent': 'singer sargente',
+    'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
   },
 };
 function currentPronunciationOverrides() {
   try {
     const norm = (t) => String(t || '').toLowerCase().replace(/[()\-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-    let name = norm((getGlobalPrefs() || {}).voiceName) || norm(typeof impAutoVoice !== 'undefined' && impAutoVoice ? impAutoVoice.name : '');   // v187 : voix choisie automatiquement
+    let name = norm((getGlobalPrefs() || {}).voiceName);
     if (!name) {
       // Aucune voix choisie dans les réglages : sur un téléphone qui n'a que les deux voix françaises,
       // c'est l'une d'elles qui parle, donc on applique leurs réglages.
@@ -2749,7 +2541,7 @@ function currentPronunciationOverrides() {
       if (fr.length && fr.every((v) => PHONE_VOICE_KEYS.some((k) => norm(v.name).includes(k)))) return PHONE_PRONUNCIATION;
       return null;
     }
-    const nameNA = bioStrip(name); const hit = Object.keys(PRONUNCIATION_BY_VOICE).find((part) => nameNA.includes(bioStrip(part)));   // v187 : sans tenir compte des accents (Rémy / Remy)
+    const hit = Object.keys(PRONUNCIATION_BY_VOICE).find((part) => name.includes(part));
     return hit ? PRONUNCIATION_BY_VOICE[hit] : null;
   } catch (e) { return null; }
 }
@@ -2785,23 +2577,11 @@ function frYearInWords(y) {
   const head = y >= 2000 ? 'deux mille' : 'mille';
   return head + (r ? ' ' + frBelow1000(r) : '');
 }
-// v200 : chiffres romains lus à voix haute (voir fixSpeechPronunciation)
-const FR_REGNAL = /^(Louis|Charles|Henri|Philippe|François|Jean|Pierre|Alexandre|Napoléon|Guillaume|Frédéric|Édouard|Georges|Léon|Pie|Paul|Clément|Urbain|Jules|Sixte|Grégoire|Benoît|Innocent|Boniface|Nicolas|Ferdinand|Maximilien|Rodolphe|Joseph|Léopold|Ivan|Catherine|Élisabeth|Victor|Louise|Marie|Jacques|Alphonse|Charles-Quint)$/u;
-function frOrdinal(n) {
-  if (n === 1) return 'premier';
-  let w = frBelow100(n);
-  if (/ et un$/.test(w)) return w + 'ième';
-  if (w.endsWith('cinq')) return w + 'uième';
-  if (w.endsWith('neuf')) return w.slice(0, -1) + 'vième';
-  if (w.endsWith('e')) return w.slice(0, -1) + 'ième';
-  return w + 'ième';
-}
 function fixSpeechPronunciation(text) {
   // Le texte entre parenthèses (ex. un nom de musée alternatif) reste utile à l'écran mais
   // alourdit la lecture à voix haute : on le retire ici, avant toute autre correction, pour que
   // ça s'applique partout où l'on parle, sans avoir à y penser exercice par exercice.
-  // v200 : un chiffre romain entre parenthèses fait partie du titre (« La Danse (II) ») : on garde le numéro, on retire les parenthèses
-  let out = String(text || '').replace(/\s*\(([IVX]{1,6})\)/g, ' $1').replace(/\s*\([^)]*\)/g, '');
+  let out = String(text || '').replace(/\s*\([^)]*\)/g, '');
   // v80 (retour Stéphane, docx 29 sept, QUIZ : « la voix à l'énoncé de la consigne dit deux fois
   // micro ») : la consigne du Quiz ("...dictez-la avec le micro 🎤...") contient l'emoji 🎤 juste
   // après le mot "micro" — certaines voix de synthèse (notamment les voix Windows/SAPI) énoncent
@@ -2828,40 +2608,11 @@ function fixSpeechPronunciation(text) {
     const isComma = sep.includes(',');
     if (y2 <= y1 || (isComma && y2 - y1 !== 1)) return m;
     const p = (prep || '').toLowerCase();
-    // v188 (retour Stéphane, Drouais « peint en 1763-1764 » : « ça fait sec ») : à l'oral on ne répète pas le siècle de la 2e année :
-    // « en dix-sept cent soixante-trois et soixante-quatre », « entre dix-sept cent soixante-trois et soixante-six ».
-    // (Si le siècle change, ou si la 2e année est de la forme « dix-huit cent un », on garde la forme complète.)
-    const y2w = (Math.floor(y1 / 100) === Math.floor(y2 / 100) && y1 >= 1100 && y2 < 2000 && y2 % 100 >= 10) ? frBelow100(y2 % 100) : frYearInWords(y2);
     if (p === 'de' || p === 'du' || p === 'depuis') return `${prep} ${y1} à ${y2}`;
-    if (p === 'vers' || p === 'environ' || p === 'autour de') return `${prep} ${frYearInWords(y1)} ou ${y2w}`;
-    if (y2 === y1 + 1 && p !== 'entre') return `${p === 'en' ? prep + ' ' : ''}${frYearInWords(y1)} et ${y2w}`;
-    return `entre ${frYearInWords(y1)} et ${y2w}`;
+    if (p === 'vers' || p === 'environ' || p === 'autour de') return `${prep} ${y1} ou ${y2}`;
+    return `entre ${y1} et ${y2}`;
   });
   out = out.replace(/(?<![\p{L}\p{N}])(?<!\d[.,])(1\d{3}|20\d{2})(?![\p{L}\p{N}])(?![.,]\d)/gu, (m, y) => frYearInWords(Number(y)));
-  // v200 (retour Stéphane : « l'application ne sait pas lire I comme le 1 en chiffre romain ; je ne peux pas le corriger dans l'atelier ») :
-  // les chiffres romains (« Tableau I », « Composition II », « Louis XIV », « Charles Ier », « XIXe siècle ») sont lus comme des nombres.
-  // Fait ici, et non dans la table de prononciation de l'atelier : cette table ne distingue pas majuscules et minuscules, donc « I » y
-  // désignerait aussi tous les « i ». Ici, seules les MAJUSCULES comptent, et il faut un mot juste avant (« Adele I », « Tableau II »).
-  out = out.replace(/(?<![\p{L}\p{N}])(X{1,3}(?:IX|IV|V?I{0,3})|IX|IV|V?I{1,3}|V|X)(er|ère|re|ème|e)?(?![\p{L}\p{N}])/gu, (m, rom, suf, off, str) => {
-    const val = { I: 1, V: 5, X: 10 }; let n = 0;
-    for (let i = 0; i < rom.length; i++) { const a = val[rom[i]], b = val[rom[i + 1]] || 0; n += a < b ? -a : a; }
-    if (n < 1 || n > 39) return m;
-    const prev = (str.slice(0, off).match(/([\p{L}'’-]+)\s+$/u) || [])[1];
-    const ord = !!suf && suf !== 'er' && suf !== 're' && suf !== 'ère';
-    const nextSiecle = /^\s+siècles?(?![\p{L}])/iu.test(str.slice(off + m.length));
-    if (!suf && !prev && !nextSiecle) return m;   // sans mot avant (ni « siècle » après) : on ne touche pas (début de phrase, initiale…)
-    if (!suf && (rom === 'V' || rom === 'X') && !nextSiecle && !FR_REGNAL.test(prev || '')) return m;   // V ou X isolés : seulement après un nom de souverain/pape
-    if (suf === 'er' || suf === 're' || suf === 'ère') return n === 1 ? (suf === 'er' ? 'premier' : 'première') : m;
-    if (ord || nextSiecle) return frOrdinal(n);
-    return n === 1 ? 'un' : frBelow100(n);
-  });
-  // v201 (retour Stéphane, voix du téléphone : « J'en veux pluS (le s se prononce) / je n'en veux plus (le s ne se prononce pas dans une négation simple) ») :
-  // « plus » de négation (ne… plus, plus rien / jamais / personne…, plus de) se dit [plu] : on l'écrit « plu » pour la voix, qui n'a plus de « s » à lire.
-  // « plus » positif (« j'en veux plus », « en plus », « de plus ») reste inchangé : le s se prononce. Écrit ici et non dans l'atelier,
-  // car la table de l'atelier ne sait pas distinguer les deux emplois d'un même mot.
-  const PLU = (w) => (w[0] === 'P' ? 'Plu' : 'plu');
-  out = out.replace(/(?<![\p{L}\p{N}])((?:ne|n['’])\s*(?:[\p{L}'’-]+\s+){0,4}?)(plus)(?![\p{L}\p{N}])/giu, (m, head, w) => (/(^|\s)non\s+$/iu.test(head) ? m : head + PLU(w)));
-  out = out.replace(/(?<![\p{L}\p{N}])(plus)(?=\s+(?:(?:rien|jamais|personne|aucune?|nulle?|guère)(?![\p{L}\p{N}])|d['’]|de\s))/giu, (m, w) => PLU(w));
   out = out.replace(new RegExp(`${NB}[A-ZÀ-Ý]{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
   Object.entries(NATIONALITY_AWARE_FIXES).forEach(([wrong, { exceptFor, otherwise }]) => {
     if (exceptFor.test(currentSpeechNationality)) return; // nationalité exceptée : on ne touche pas
@@ -3047,21 +2798,10 @@ function normaliseRows(rows) {
       title = stripQuotes(row[legacyTitleKey]);
     }
 
-    // v210 : colonne facultative « Artiste associé » (œuvre conçue ou signée à plusieurs : frères Lombardo, élève qui achève l'œuvre
-    // du maître…). Plusieurs noms possibles, séparés par des points-virgules (« Prénom NOM »). L'artiste principal reste celui des
-    // colonnes Prénom/Patronyme ; les associés sont affichés avec lui, acceptés comme réponse et retrouvés par les filtres d'artistes.
-    const associatesKey = findColumn(row, ['artiste associe', 'artistes associes', 'co auteur', 'coauteur']);
-    const associates = associatesKey ? String(row[associatesKey] || '').split(/\s*;\s*/).map((n) => n.trim()).filter(Boolean) : [];
     const materialsKey = findColumn(row, ['materiaux et technique', 'materiaux', 'technique', 'materials', 'materiau']);
     const materials = materialsKey ? String(row[materialsKey] || '').trim() : '';
     const natureKey = findColumn(row, ['nature de l objet', 'nature objet', 'nature']);
-    // v209 : la colonne « Nature de l'objet » peut porter, après un point, une précision (ex. « Monument équestre avec ronde-bosse.
-    // L'artiste a conçu la base. ») : la nature proprement dite reste ce qui précède le point (classement, voix, « en bronze »…),
-    // la précision est ajoutée à la fin de la phrase « Nature et matériau » (écran et voix).
-    const natureFull = natureKey ? String(row[natureKey] || '').trim() : '';
-    const natureSplit = natureFull.match(/^(.*?)\.\s+(\S.*)$/);
-    const nature = natureSplit ? natureSplit[1].trim() : natureFull.replace(/\.\s*$/, '');
-    const natureNote = natureSplit ? natureSplit[2].trim().replace(/\.?$/, '.') : '';
+    const nature = natureKey ? String(row[natureKey] || '').trim() : '';
     // Phrase combinée pour le texte et la voix : « Monument funéraire en marbre » plutôt que
     // « sculpture » ou le matériau seul — se rabat sur ce qui est disponible si l'un manque.
     // v122 (question de Stéphane : remplir aussi « Nature de l'objet » pour les peintures, avec « Tableau »
@@ -3084,19 +2824,7 @@ function normaliseRows(rows) {
     // retable, y compris « Panneau de retable »), la nature et le matériau se séparent par une virgule.
     const natureTakesComma = /(triptyque|diptyque|polyptyque|polyptique|retable)/.test(keyName(nature));
     const materialsLower = materials ? `${materials.charAt(0).toLowerCase()}${materials.slice(1)}` : '';
-    // v212 (retour Stéphane : « Bronze pour la statue, pierre pour le socle » à la place de « Bronze (statue) pierre (socle) ») : quand la colonne
-    // « Matériaux » distingue les parties de l'œuvre (« … pour la statue, … pour le socle »), « en » ne convient plus (« en bronze pour la statue,
-    // pierre pour le socle » boite) : la nature et les matériaux forment alors deux phrases, « Monument équestre avec ronde-bosse. Bronze pour la
-    // statue, marbre pour le socle. » — à l'écran comme à la voix (la ponctuation donne la pause).
-    const materialsByPart = /\bpour (la|le|les|l['’])\s*\S/i.test(materials);
-    // v213 (retour Stéphane : « Monument avec ronde-bosse en bronze conçue par l'artiste, le socle en pierre est dû à … » écrit
-    // directement dans « Nature de l'objet ») : quand la nature cite déjà tous les matériaux de la colonne « Matériaux »
-    // (bronze, marbre, pierre…), la phrase de la nature suffit — on ne rajoute pas une seconde phrase de matériaux.
-    const MAT_WORD_RE = /\b(bronze|marbre|pierre|granit|granite|bois|platre|stuc|cire|fer|acier|fonte|cuivre|argent|ivoire|albatre|porphyre|plomb|etain|laiton|terre cuite)\b/g;
-    const matWordsInMaterials = materials ? (keyName(materials).match(MAT_WORD_RE) || []) : [];
-    const natureHasMaterials = !!(nature && matWordsInMaterials.length && matWordsInMaterials.every(w => new RegExp('\\b' + w + '\\b').test(keyName(natureFull))));
-    let materialsPhrase = natureHasMaterials && !natureIsPaintingGenre ? nature : nature && materials && materialsByPart && !natureIsPaintingGenre ? `${nature}. ${materials}` : nature && materials && !natureIsPaintingGenre && !materialsRepeatNature ? `${nature}${natureTakesComma ? ',' : ' en'} ${materialsLower}` : ((natureIsPaintingGenre || materialsRepeatNature) && materials ? materials : (nature || materials));
-    if (natureNote && materialsPhrase) materialsPhrase = `${materialsPhrase}. ${natureNote}`;
+    const materialsPhrase = nature && materials && !natureIsPaintingGenre && !materialsRepeatNature ? `${nature}${natureTakesComma ? ',' : ' en'} ${materialsLower}` : ((natureIsPaintingGenre || materialsRepeatNature) && materials ? materials : (nature || materials));
 
     // --- Dimensions : nouvelle structure Hauteur/Longueur/Profondeur si présente, sinon ancienne
     // colonne unique « dimensions » (repliée dans hauteur/longueur via une expression régulière).
@@ -3146,7 +2874,6 @@ function normaliseRows(rows) {
     // qui la fusionne dans masterRow sous "Légende de l'artiste", même mécanique que la photo
     // elle-même juste au-dessus (artistImage).
     let artistImageCaption = '';
-    let artistVoice = '';   // v187 : « femme » / « homme » (colonne facultative « Voix » du fichier maître)
     let workText = '';
     const masterRow = findArtistMasterRow(prenom, patronyme, surnomFr);
     if (masterRow) {
@@ -3167,7 +2894,6 @@ function normaliseRows(rows) {
       if (!nationalityKey && masterRow['Nationalité']) nationality = String(masterRow['Nationalité']).trim();
       if (!artistImageKey && masterRow["Image de l'artiste"]) artistImage = String(masterRow["Image de l'artiste"]).trim();
       if (masterRow["Légende de l'artiste"]) artistImageCaption = String(masterRow["Légende de l'artiste"]).trim();
-      { const vk = Object.keys(masterRow).find((k) => String(k).trim().toLowerCase() === 'voix'); if (vk) artistVoice = normalizeVoiceGender(masterRow[vk]); }
       if (masterRow['Bio']) bio = String(masterRow['Bio']).trim();
       // v129 (Stéphane : « pour chaque artiste de niveau 1, l'œuvre emblématique et un petit texte ») : le maître
       // porte, par artiste, le titre de son œuvre emblématique et le texte (à la première personne) qui la raconte.
@@ -3209,8 +2935,8 @@ function normaliseRows(rows) {
     return {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
-      associates, artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
+      artistDates, materials, nature, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
+      artistImage, artistImageCaption, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
       row: rowIndex + 2
     };
   }).filter((question) => question && (question.image || question.artist || question.date || question.location || question.title));
@@ -3545,7 +3271,7 @@ function acceptableValues(question, key) {
   // ou langue d'origine), titre français ou langue d'origine. Les autres rubriques n'ont qu'une
   // seule valeur attendue.
   if (key === 'artist') {
-    return [question.artist, ...associateNames(question), question.surnomFr, question.surnomOrig].filter(Boolean);
+    return [question.artist, question.surnomFr, question.surnomOrig].filter(Boolean);
   }
   if (key === 'title') {
     return [question.title, question.titleOriginal].filter(Boolean);
@@ -3851,23 +3577,7 @@ function formatCorrectionValue(key, rawValue, work) {
   if (key === 'location') return locationWithFlag(work);
   return escapeHtml(rawValue);
 }
-// v210 : artistes associés d'une œuvre (voir la colonne « Artiste associé »).
-function associateNames(work) { return Array.isArray(work?.associates) ? work.associates : []; }
-function joinNamesFr(list) { return list.length <= 1 ? (list[0] || '') : `${list.slice(0, -1).join(', ')} et ${list[list.length - 1]}`; }
-function artistWithAssociates(work) { return joinNamesFr([work?.artist, ...associateNames(work)].filter(Boolean)); }
-// Noms (normalisés) sous lesquels une œuvre est retrouvée : l'artiste principal et ses associés.
-function workArtistKeys(w) { return [keyName(w?.artist), ...associateNames(w).map((n) => keyName(n))].filter(Boolean); }
-// Version parlée : « Prénom Nom, dit Surnom » puis les associés (« … et Jean Bologne »).
-function spokenArtistFull(work, withSurnom) {
-  const main = withSurnom && work?.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : (work?.artist || '');
-  return joinNamesFr([main, ...associateNames(work)].filter(Boolean));
-}
 function formatArtistDisplayName(work) {
-  const main = formatMainArtistDisplayName(work);
-  const assoc = associateNames(work);
-  return assoc.length ? `${main} et ${assoc.map((n) => escapeHtml(formatArtistName(n))).join(' et ')}` : main;
-}
-function formatMainArtistDisplayName(work) {
   // Prénom NOM (nom de famille en majuscules) ; si un surnom (français) existe, on l'ajoute
   // en italique entre guillemets : « Prénom NOM, dit "Surnom" ». Pour les mononymes sans nom
   // civil connu (Donatello, Masaccio...), seul le surnom s'affiche, sans virgule ni "dit".
@@ -3952,72 +3662,9 @@ function formatDimensionsPlainText(work) {
 // l'écrit, lui, ne garde l'unité que sur la dernière dimension renseignée — retour réel (« les cm
 // ont bien disparu à l'écrit mais la voix continue à le dire pour la hauteur »). On réutilise donc
 // dimensionEntries pour rester cohérent avec l'écrit plutôt que de dupliquer sa propre règle.
-// v193 (retour Stéphane : « l'Escalier doré… c'est tout en 8000, 250 : la voix ne pourrait-elle pas dire 8 mètres plutôt que
-// 800 centimètres ? ») : à l'ORAL seulement (l'écrit et le fichier Excel ne changent pas), une dimension en centimètres de
-// 100 ou plus est dite en mètres : 200 → « 2 mètres », 550 → « 5 mètres 50 », 8000 → « 80 mètres ».
-// Sous 100 cm, on reste en centimètres. Renvoie { text, meters } pour une valeur brute du fichier (avec ou sans unité).
-function spokenDimensionValue(raw) {
-  let v = String(raw || '').trim();
-  const approx = /^c[.,]\s*/i.test(v);
-  if (approx) v = v.replace(/^c[.,]\s*/i, '').trim();
-  const unitMatch = v.match(/\b(cm|mm|m)\b/i);
-  const unit = unitMatch ? unitMatch[1].toLowerCase() : 'cm';
-  const numMatch = v.match(/\d[\d\s]*(?:[.,]\d+)?/);
-  const n = numMatch ? parseFloat(numMatch[0].replace(/\s/g, '').replace(',', '.')) : NaN;
-  const note = v.replace(numMatch ? numMatch[0] : '', '').replace(/\b(cm|mm|m)\b/i, '').replace(/\s+/g, ' ').trim(); // ex. « (diamètre) »
-  const tail = (approx ? ' environ' : '') + (note ? ` ${note}` : '');
-  if (unit === 'cm' && Number.isFinite(n) && n >= 100) {
-    const m = Math.floor(n / 100);
-    const rest = Math.round(n - m * 100);
-    return { meters: true, text: `${m} mètre${m > 1 ? 's' : ''}${rest ? ` ${rest}` : ''}${tail}` };
-  }
-  const unitWord = { cm: 'centimètres', mm: 'millimètres', m: 'mètres' }[unit];
-  return { meters: false, unit, text: `${Number.isFinite(n) ? numMatch[0].trim() : v} ${unitWord}${tail}`, bare: Number.isFinite(n) ? `${numMatch[0].trim()}${tail}` : v };
-}
-// v214 (retour Stéphane : « pour tous les monuments, quand la voix donne la dimension, elle commence par "Le monument a une hauteur de
-// 4,50 m pour la statue, etc." et ne s'enchaîne pas avec le matériau ; on peut mettre un point à la fin des matériaux ») :
-// un monument = hauteur donnée par partie (« 395 pour la statue, 400 pour le socle ») ou nature qui commence par « Monument ».
-// Pour lui, la voix dit une phrase complète et distincte : « Le monument a une hauteur de 3 mètres 95 pour la statue, 4 mètres pour
-// le socle, une longueur de 3 mètres 80, et une profondeur de 1 mètre 45. », et la phrase des matériaux se termine par un point.
-const DIM_BY_PART_RE = /\bpour\s+(la|le|les|l['’])\s*\S|\((statue|socle|piédestal|piedestal|cheval|groupe)/i;
-function isMonumentWork(work) {
-  if (!work) return false;
-  return DIM_BY_PART_RE.test(String(work.hauteur || '')) || /^monument/.test(keyName(work.nature || ''));
-}
-function matPhrase(work) {
-  const t = (work && (work.materialsPhrase || work.materials)) || '';
-  return t && isMonumentWork(work) && !/[.!?…]\s*$/.test(t) ? `${t}.` : t;
-}
-function spokenMonumentDimensions(work) {
-  const spokenSeg = (seg) => {
-    const m = String(seg).trim().match(/^((?:c[.,]\s*)?\d[\d\s]*(?:[.,]\d+)?\s*(?:cm|mm|m)?)\b\s*(.*)$/i);
-    if (!m) return String(seg).trim();
-    // « 300 (statue) » → « pour la statue » ; « 50 pour le socle (anciennement 300) » → « …, anciennement 3 mètres »
-    const part = { statue: 'la statue', socle: 'le socle', 'piédestal': 'le piédestal', piedestal: 'le piédestal', cheval: 'le cheval', groupe: 'le groupe' };
-    const restRaw = m[2].replace(/^\(\s*(statue|socle|piédestal|piedestal|cheval|groupe)\s*\)$/i, (_, w) => `pour ${part[w.toLowerCase()]}`);
-    const rest = restRaw.replace(/\d[\d\s]*(?:[.,]\d+)?\s*(?:cm|mm|m)?\b/gi, (x) => spokenDimensionValue(x).text).replace(/\s*\(\s*/g, ', ').replace(/\s*\)/g, '').replace(/\s+/g, ' ').trim();
-    return `${spokenDimensionValue(m[1].trim()).text}${rest ? ` ${rest}` : ''}`;
-  };
-  const labels = { h: 'une hauteur', l: 'une longueur', p: 'une profondeur' };
-  const parts = [{ key: 'h', value: work.hauteur }, { key: 'l', value: work.longueur }, { key: 'p', value: work.profondeur }]
-    .filter((d) => String(d.value || '').trim())
-    .map((d) => {
-      const segs = String(d.value).split(/\s*,\s*|\s+et\s+(?=\d)|(?<=\))\s+(?=\d)/).filter((x) => x.trim());
-      return `${labels[d.key]} de ${segs.map(spokenSeg).join(', ')}`;
-    });
-  if (!parts.length) return '';
-  return `Le monument a ${parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')}, et ${parts[parts.length - 1]}`}`;
-}
 function spokenDimensionsPhrase(work) {
-  if (isMonumentWork(work)) { const mono = spokenMonumentDimensions(work); if (mono) return mono; }
   const labels = { h: 'hauteur', l: 'longueur', p: 'profondeur' };
-  const raw = [
-    { key: 'h', value: work.hauteur }, { key: 'l', value: work.longueur }, { key: 'p', value: work.profondeur },
-  ].filter((d) => d.value).map((d) => ({ key: d.key, ...spokenDimensionValue(d.value) }));
-  // Dès qu'une dimension est dite en mètres, chacune dit son unité (sinon « 2 mètres de hauteur, 50 de longueur » prêterait à confusion) ;
-  // sinon règle d'avant : l'unité n'est dite que sur la dernière.
-  const anyMeters = raw.some((d) => d.meters || (d.unit && d.unit !== 'cm'));
-  const parts = raw.map((d, i) => `${anyMeters || i === raw.length - 1 ? d.text : (d.bare ?? d.text)} de ${labels[d.key]}`);
+  const parts = dimensionEntries(work).map((d) => `${d.text.replace(/\bcm\b/i, 'centimètres')} de ${labels[d.key]}`);
   if (!parts.length) return '';
   if (parts.length === 1) return `de ${parts[0]}`;
   return `de ${parts.slice(0, -1).join(', ')}, et ${parts[parts.length - 1]}`;
@@ -4093,15 +3740,14 @@ function spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, 
 // exemple ») : nom civil puis surnom (« El Greco, dit Le Greco »), comme dans Imprégnation et
 // Reconstitution ; sans surnom, le nom seul.
 function spokenArtistWithSurnom(work) {
-  return spokenArtistFull(work, true);
+  return work?.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : (work?.artist || '');
 }
 function spokenFullReference(work, extraFields = null, withSurnom = false) {
   const on = (key) => !extraFields || extraFields.includes(key);
   const dimsPhrase = on('dimensions') ? spokenDimensionsPhrase(work) : '';
-  const dimsAreSentence = /^Le monument a /.test(dimsPhrase);
-  const matDims = dimsAreSentence ? [on('materiaux') ? matPhrase(work).replace(/\.\s*$/, '') : '', dimsPhrase].filter(Boolean).join('. ') : [on('materiaux') ? matPhrase(work).replace(/\.\s*$/, '') : '', dimsPhrase].filter(Boolean).join(' ');
+  const matDims = [on('materiaux') ? (work.materialsPhrase || work.materials) : '', dimsPhrase].filter(Boolean).join(' ');
   const parts = [
-    `${spokenArtistFull(work, withSurnom)}, «\u00a0${work.title}\u00a0»${on('date') ? `, ${work.date}` : ''}.`,
+    `${withSurnom && work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist}, «\u00a0${work.title}\u00a0»${on('date') ? `, ${work.date}` : ''}.`,
     matDims ? `${matDims}.` : '',
     (on('location') && work.location) ? `${work.location}.` : '',
   ].filter(Boolean);
@@ -4135,7 +3781,7 @@ function renderCorrectionDetails(testedQuestion, displayedWork, answer) {
     // Matériaux/technique et dimensions : toujours purement informatifs, jamais quizzés, affichés
     // juste après la ligne « date de création ».
     if (key === 'date') {
-      if (displayedWork.materials) html += correctionInfoRow('Nature et matériau de l’œuvre', matPhrase(displayedWork));
+      if (displayedWork.materials) html += correctionInfoRow('Nature et matériau de l’œuvre', displayedWork.materialsPhrase || displayedWork.materials);
       const dims = formatDimensionsDisplay(displayedWork);
       if (dims) {
         html += `<div class="correction-item correction-extra">
@@ -4531,7 +4177,7 @@ function openGalleryWorkLoupe(work) {
   const img = $('gallery-proto-loupe-solo-img');
   if (img) img.src = imageSourceSized(work.image, 1000);
   const cartel = $('gallery-proto-loupe-solo-cartel');
-  if (cartel) cartel.textContent = `${artistWithAssociates(work)} — « ${work.title || 'Sans titre'} »${work.date ? `, ${work.date}` : ''}`;
+  if (cartel) cartel.textContent = `${work.artist || ''} — « ${work.title || 'Sans titre'} »${work.date ? `, ${work.date}` : ''}`;
   galleryWorkLoupe?.setLevel(1);
 }
 function setLightboxScaleData(work) {
@@ -5883,7 +5529,7 @@ function buildCheckpointCorridorWorks(wallEl, works, pxPerCm, winHeightPx, addCa
       cartel.addEventListener('click', (event) => { event.stopPropagation(); openLoupe(); });
       const artistLine = document.createElement('div');
       artistLine.className = 'gallery-proto-work-cartel-artist';
-      artistLine.textContent = artistWithAssociates(work);
+      artistLine.textContent = work.artist || '';
       const titleLine = document.createElement('div');
       titleLine.className = 'gallery-proto-work-cartel-title';
       titleLine.textContent = `« ${work.title || 'Sans titre'} »${work.date ? `, ${work.date}` : ''}`;
@@ -7352,7 +6998,7 @@ function enterFocusView(work, hCm, note, cartelWork) {
   const cartelEl = $('scale-focus-cartel');
   if (cartelEl) {
     if (cartelWork) {
-      cartelEl.textContent = `${artistWithAssociates(cartelWork)} — « ${cartelWork.title || 'Sans titre'} »${cartelWork.date ? `, ${cartelWork.date}` : ''}`;
+      cartelEl.textContent = `${cartelWork.artist || ''} — « ${cartelWork.title || 'Sans titre'} »${cartelWork.date ? `, ${cartelWork.date}` : ''}`;
       cartelEl.classList.remove('hidden');
     } else {
       cartelEl.classList.add('hidden');
@@ -7886,7 +7532,7 @@ async function openArtistWorksPage(idx) {
   const surnomKey = row['Surnom'] ? keyName(row['Surnom']) : '';
   const works = allRows
     .filter((w) => w.title || w.image) // v124 : une ligne qui ne porte encore que le nom de l'artiste (ni titre ni image) n'est pas une œuvre à afficher
-    .filter((w) => workArtistKeys(w).some((wKey) => wKey === keyName(artistName) || (surnomKey && wKey === surnomKey)))
+    .filter((w) => { const wKey = keyName(w.artist); return wKey === keyName(artistName) || (surnomKey && wKey === surnomKey); })
     .sort((a, b) => {
       const yearA = yearsOf(a.date)[0]; const yearB = yearsOf(b.date)[0];
       if (yearA == null && yearB == null) return 0;
@@ -8489,7 +8135,7 @@ $('artist-list-refresh')?.addEventListener('click', async () => {
   quizRowsCache.clear(); quizRowsResolvedCache.clear(); quizFileCache.clear();
   titleSearchIndex = null; titleSearchIndexCacheSize = -1;
   museumIndexRows = null; cityViewKey = null;
-  artistListLoaded = false; artistListAutoDone = false; natureTextsPromise = null; NATURE_TEXTS = null;
+  artistListLoaded = false; artistListAutoDone = false;
   DATA_CACHE_BUST = Date.now();
   const ok = await loadArtistListComplete();
   if (!ok) { status.textContent = "L'actualisation a échoué (connexion internet ?)."; return; }
@@ -8525,16 +8171,6 @@ $('artist-list-search')?.addEventListener('input', (e) => {
   clearTimeout(artistListSearchDebounceTimer);
   artistListSearchDebounceTimer = setTimeout(() => { artistListSearchTerm = value; renderCurrentListMode(); }, 200);
 });
-// v189 : met en majuscules les mots « nom » d'un patronyme, en laissant les particules et épithètes telles quelles.
-function upperPatronymeCore(p) {
-  const KEEP = /^(af|da|de|del|della|di|du|van|von|der|den|le|la|of|ten|ter|jeune|ancien|l['’]ancien|l['’]aîné|l['’]aine|père|fils|[dl]['’]|de['’]|dell['’])$/i;
-  return String(p).split(/(\s+)/).map((w) => {
-    if (!w.trim() || KEEP.test(w)) return w;
-    const m = w.match(/^(d|l|de|dell)(['’])(.+)$/i);   // d'Antonio → d'ANTONIO
-    if (m) return m[1] + m[2] + m[3].toLocaleUpperCase('fr-FR');
-    return w.toLocaleUpperCase('fr-FR');
-  }).join('');
-}
 async function loadArtistListIfNeeded() {
   if (artistListLoaded) return true;
   try {
@@ -8605,12 +8241,6 @@ async function loadArtistListIfNeeded() {
     // v132 : les artistes qui n'ont QUE des œuvres du 14e (siècle mis de côté) restent dans artistListRows
     // (les jointures nom/surnom/nationalité des fichiers d'œuvres en ont encore besoin) mais sont
     // marqués : ils ne sont plus listés ni comptés (voir listedArtistRows).
-    // v189 (retour Stéphane : quelques patronymes sont restés en minuscules/capitalisés dans le fichier maître — « Minne »,
-    // « Woolner », « Rosso », « Lutero », « Gaudier-Brzeska ») : on met le NOM en majuscules à la lecture, sans toucher aux
-    // particules (af, da, de, van, von…) ni aux épithètes (L'Ancien, le Jeune), qui restent comme dans le fichier.
-    rows.forEach((r) => {
-      if (typeof r['Patronyme'] === 'string') r['Patronyme'] = upperPatronymeCore(r['Patronyme']);
-    });
     rows.forEach((r) => {
       const sc = String(r['Siècle(s)'] || '').split(',').map((x) => x.trim()).filter(Boolean);
       r._retired = !!(sc.length && sc.every((x) => RETIRED_CENTURIES.includes(x)));
@@ -8666,15 +8296,6 @@ async function augmentArtistListFromQuizFiles() {
   found.forEach((entry, key) => {
     let master = masterByKey.get(key);
     if (!master) { for (const alt of entry.alt) { if (masterByKey.has(alt)) { master = masterByKey.get(alt); break; } } }
-    // v188 (retour Stéphane : « la LISTE comporte 504 noms, il y en a 4 de trop ») : les fichiers d'œuvres écrivent « Pieter BRUEGEL »,
-    // « Jean COUSIN », « Lucas CRANACH », « Hans HOLBEIN », alors que le maître les nomme « BRUEGEL L'ANCIEN », « COUSIN L'ANCIEN »,
-    // « CRANACH L'ANCIEN », « HOLBEIN le JEUNE » : ils étaient ajoutés une 2e fois. On rattache désormais un nom d'œuvre au maître quand
-    // celui-ci est ce même nom suivi d'un qualificatif (L'ANCIEN, le JEUNE…) — « l'ancien » l'emporte s'il y a le choix, sinon il faut
-    // qu'il n'y ait qu'un seul candidat.
-    if (!master) {
-      const cands = artistListRows.filter((row) => { const nk = artistRowNameKeys(row).nameKey; return nk && nk.startsWith(key + ' ') && /^(l ancien|le jeune|le vieux|l aine|le pere|le fils)$/.test(nk.slice(key.length + 1)); });
-      master = cands.find((row) => /l ancien$/.test(artistRowNameKeys(row).nameKey)) || (cands.length === 1 ? cands[0] : null) || undefined;
-    }
     if (master) {
       const have = (col) => new Set(String(master[col] || '').split(',').map((v) => keyName(v)).filter(Boolean));
       const haveArts = have('Art(s)'); const haveCenturies = have('Siècle(s)');
@@ -8736,13 +8357,6 @@ async function fetchWorksForArtistRow(row) {
   // (bug réel repéré : plus aucun artiste ne renvoyait la moindre œuvre, la case étant désormais
   // toujours vide) — on fixe donc directement le filtre à la peinture, sans dépendre d'une colonne
   // qui n'existe plus dans le fichier.
-  // v188 : les fichiers d'œuvres peuvent écrire « Pieter BRUEGEL » là où le maître écrit « BRUEGEL L'ANCIEN » (idem COUSIN, CRANACH, HOLBEIN le JEUNE) :
-  // on retrouve alors les œuvres sous le nom sans qualificatif — pour « l'ancien », ou si l'artiste est seul de son nom.
-  const EPITHET = /^(.*) (l ancien|le jeune|le vieux|l aine|le pere|le fils)$/;
-  let shortKey = '';
-  { const mm = keyName(artistName).match(EPITHET);
-    if (mm) { const sibs = listedArtistRows().filter((r2) => { const k2 = keyName([r2['Prénom'], r2['Patronyme']].filter(Boolean).join(' ')); const m2 = k2.match(EPITHET); return m2 && m2[1] === mm[1]; });
-      if (mm[2] === 'l ancien' || sibs.length === 1) shortKey = mm[1]; } }
   const arts = ['peinture'];
   const centuriesOfArtist = String(row['Siècle(s)'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   const works = [];
@@ -8750,7 +8364,7 @@ async function fetchWorksForArtistRow(row) {
     for (const century of expandMergedCenturies(art, centuriesOfArtist)) {
       try {
         const rows = await fetchQuizRows(art, century);
-        rows.filter((w) => workArtistKeys(w).some((wk) => wk === keyName(artistName) || (shortKey && wk === shortKey))).forEach((w) => { w.artCategory = art; works.push(w); });
+        rows.filter((w) => keyName(w.artist) === keyName(artistName)).forEach((w) => { w.artCategory = art; works.push(w); });
       } catch (e) { /* fichier absent, ignoré */ }
     }
   }
@@ -9089,14 +8703,6 @@ $('global-back-button')?.addEventListener('click', () => {
 // déjà en place pour « Voir mes scores » en plein jeu (returnToExercisePanel + le bouton « ↩ Revenir
 // à l'exercice en cours ») pour ramener ensuite exactement sur la page de configuration d'où l'on
 // est parti, plutôt que sur le tableau de bord général de Mon compte.
-// v204 : même chose pour « Mes choix de natures d'objets » — ouvre le bloc correspondant de la page des choix.
-document.querySelectorAll('.setup-objects-link').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    returnToExercisePanel = btn.dataset.returnPanel || null;
-    showPanel('quick-config');
-    if ($('qc-objects-details')) { $('qc-objects-details').open = true; renderObjectsBlock(); $('qc-objects-details').scrollIntoView({ block: 'center' }); }
-  });
-});
 document.querySelectorAll('.setup-artists-link').forEach((btn) => {
   btn.addEventListener('click', () => {
     returnToExercisePanel = btn.dataset.returnPanel || null;
@@ -10118,13 +9724,13 @@ function spokenReconWrong(work, extraFields) {
 }
 function vfFieldValue(row, key) {
   if (key === 'dimensions') return formatDimensionsPlainText(row) || [row.hauteur, row.longueur].filter(Boolean).join(' × ');
-  if (key === 'materials') return matPhrase(row) || '';
+  if (key === 'materials') return row.materialsPhrase || row.materials || '';
   // Retour de Stéphane (22/09) : le surnom d'un artiste (« dit LE CARAVAGE ») avait disparu de
   // Vrai/Faux — cette rubrique utilisait le nom civil brut (row.artist) sans jamais consulter
   // row.surnomFr, alors que toutes les autres épreuves passent par formatArtistDisplayName(work),
   // qui l'ajoute. Même convention ici, aussi bien pour la référence affichée à l'écran que pour
   // celle révélée en correction.
-  if (key === 'artist') return spokenArtistFull(row, true);
+  if (key === 'artist') return row.surnomFr ? `${row.artist}, dit ${row.surnomFr}` : (row.artist || '');
   return row[key] || '';
 }
 // Bug réel signalé par Stéphane (« Vous n'avez pas vu que l'artiste n'était pas jean de bologne,
@@ -10799,7 +10405,7 @@ function reconRefreshCorrectionDetails() {
   // conservation ») : ces deux rubriques s'affichent désormais toujours à l'écran, sans dépendre
   // des rubriques choisies pour la correction (qui ne conditionnent plus que Matériau/Dimensions).
   detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Nature et matériau de l’œuvre</span><span class="correction-value">${escapeHtml(matPhrase(q.correct))}</span>`);
+  if ((showFullCorrection || reconExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Nature et matériau de l’œuvre</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if ((showFullCorrection || reconExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
   detailsParts.push(`<span class="correction-label">Lieu de conservation actuel</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   el.innerHTML = detailsParts.join('');
@@ -11076,299 +10682,10 @@ function readGlobalArtistDefaults() {
 // précis (ex. aucune œuvre de niveau 3 chez Monet/Gauguin/Manet réunis), on se rabat sur
 // l'ensemble de leurs œuvres tous niveaux confondus plutôt que de ne rien pouvoir lancer — bug
 // réel repéré : le jeu refusait de démarrer sans que la cause (niveau incompatible) soit claire.
-// =====================================================================================================
-// v204 — « Se limiter à des natures d'objets précis » (page des choix, sous « 1. Choisissez vos champs »).
-// Menus déroulants successifs : Peinture/Sculpture, puis — pour la peinture — nature, support, technique ;
-// — pour la sculpture — nature, matériau. Les colonnes « Nature de l'objet » et « Matériaux et technique »
-// des fichiers sont en texte libre : on les range ici dans des catégories fixes, par mots-clés (voir
-// objClassify). Le choix est rangé dans le réglage « artistes » (propriété objects) : il se mémorise,
-// s'enregistre et se recharge avec lui, et s'applique à tous les jeux via filterPoolByGlobalArtists.
-// =====================================================================================================
-const OBJ_PE_NATURES = [['isole', 'Tableau isolé'], ['ensemble', 'Ensemble de tableaux (diptyque, triptyque, polyptyque)'], ['deco', 'Peinture décorative (fresque, plafond…)']];
-const OBJ_PE_SUPPORTS = [['toile', 'Toile'], ['bois', 'Bois (panneau)'], ['papier', 'Papier, parchemin'], ['carton', 'Carton'], ['mur', 'Surface murale'], ['autre', 'Autres supports (cuivre, pierre, verre…)']];
-const OBJ_PE_TECHS = [['huile', 'Huile'], ['detrempe', 'Détrempe, tempera'], ['aquarelle', 'Aquarelle'], ['pastel', 'Pastel'], ['gouache', 'Gouache'], ['dessin', 'Dessin, encre, estampe'], ['fresque', 'Fresque'], ['autre', 'Autre technique']];
-const OBJ_SC_NATURES = [['ronde', 'Ronde-bosse (statue, buste…)'], ['groupe', 'Groupe ou ensemble en ronde-bosse'], ['relief', 'Bas-relief, haut-relief'], ['funeraire', 'Monument funéraire'], ['monument', 'Monument (non funéraire)'], ['liturgique', 'Mobilier ou objet liturgique'], ['architecture', 'Élément architectural ou décoratif'], ['autre', 'Autre (objet d\'art…)']];
-const OBJ_SC_MATS = [['marbre', 'Marbre (et albâtre)'], ['bronze', 'Bronze'], ['bois', 'Bois'], ['pierre', 'Pierre (granit, grès…)'], ['terre', 'Terre cuite, céramique'], ['stuc', 'Stuc, plâtre'], ['cire', 'Cire'], ['metaux', 'Autres métaux (plomb, argent, cuivre…)'], ['associes', 'Matériaux associés (marbre et bronze…)'], ['autre', 'Autre matériau']];
-const OBJ_SC_MONUMENTS = [['fontaine', 'Fontaine'], ['memorial', 'Mémorial, hommage'], ['equestre', 'Statue ou monument équestre'], ['decoratif', 'Monument purement décoratif']];
-// Monuments purement décoratifs (ni fontaine, ni hommage, ni équestre) : repérés par leur titre — liste à compléter au besoin.
-const OBJ_DECO_TITLES = ['colosse de l apennin', 'elephant de la minerve'];
-const OBJ_MIN_WORKS = 12; // en dessous, les jeux manquent de choix de réponses : on prévient
-function objectsActive(f) { return !!(f && f.art); }
-function objClassify(r) {
-  if (r._obj) return r._obj;
-  const nat = keyName(r.nature || '');
-  const mat = keyName(r.materials || '');
-  const o = { nature: '', supports: new Set(), techs: new Set(), mat: '', sub: '' };
-  if (r.art === 'sculpture') {
-    if (/funeraire|gisant/.test(nat)) o.nature = 'funeraire';
-    else if (/liturgique/.test(nat)) o.nature = 'liturgique';
-    // « équestre » dans le titre OU dans la nature de l'objet : toujours rangé en monument équestre, quelle que soit la nature notée
-    // (le monument entier ou la seule ronde-bosse qui le surmonte : la fiche précisera lequel). Sinon, un monument est une fontaine
-    // (mot dans le titre) ou, par défaut, un mémorial / hommage.
-    else if (/equestre/.test(`${keyName(r.title || '')} ${nat}`)) { o.nature = 'monument'; o.sub = 'equestre'; }
-    // Même principe pour les fontaines : le mot « fontaine » (en mot entier : pas « Fontainebleau ») dans le titre ou la nature suffit.
-    else if (/\bfontaines?\b/.test(`${keyName(r.title || '')} ${nat}`)) { o.nature = 'monument'; o.sub = 'fontaine'; }
-    else if (/^monument|edicule/.test(nat)) { o.nature = 'monument'; const tk = keyName(r.title || ''); o.sub = OBJ_DECO_TITLES.some((d) => tk.includes(d)) ? 'decoratif' : 'memorial'; }
-    else if (/architectur|decoratif/.test(nat)) o.nature = 'architecture';
-    else if (/relief/.test(nat) && !/ronde|groupe/.test(nat)) o.nature = 'relief';
-    else if (/ronde|statue|buste|groupe|modele|ensemble/.test(nat)) o.nature = /groupe|ensemble/.test(nat) ? 'groupe' : 'ronde';
-    else o.nature = 'autre';
-    const fam = new Set();
-    if (/\b(marbre|albatre)\b/.test(mat)) fam.add('marbre');
-    if (/\bbronze/.test(mat)) fam.add('bronze');
-    if (/\b(bois|noyer|chene|ebene|buis|tilleul|acajou|cedre|poirier)\b/.test(mat)) fam.add('bois');
-    if (/\b(pierre|pierres|granit|granite|gres|travertin|pietra|roche|calcaire|porphyre|basalte|schiste|brique|onyx)\b/.test(mat)) fam.add('pierre');
-    if (/\b(terre|ceramique|faience|porcelaine|biscuit|argile)\b/.test(mat)) fam.add('terre');
-    if (/\b(stuc|platre)\b/.test(mat)) fam.add('stuc');
-    if (/\bcire\b/.test(mat)) fam.add('cire');
-    if (/\b(plomb|argent|cuivre|etain|laiton|fer|or|fonte|zinc|aluminium|acier)\b/.test(mat)) fam.add('metaux');
-    if (/\b(ivoire|beton|verre|resine|ebonite)\b/.test(mat)) fam.add('autre');
-    o.mat = fam.size > 1 ? 'associes' : (fam.size === 1 ? [...fam][0] : 'autre');
-  } else {
-    // Nature : ensemble d'éléments, décor lié à un lieu, ou tableau isolé (cas général, y compris dessins, aquarelles…).
-    if (/fresque|plafond/.test(nat)) o.nature = 'deco';
-    else if (/(triptyque|polyptyque|polyptique|diptyque|ensemble de)/.test(nat)) o.nature = 'ensemble'; // un simple retable reste un tableau isolé
-    else o.nature = 'isole';
-    // Support (un tableau peut en cumuler plusieurs : « toile marouflée sur bois »).
-    if (/\b(toile|lin|soie|gaze|rupfen|canevas|jute|coton|tissu|drap)\b/.test(mat)) o.supports.add('toile');
-    if (/\b(bois|panneau|peuplier|chene|noyer|sapin|pin|tilleul|chataignier|acajou|contreplaque|isorel|agglomere|cedre|ebene)\b/.test(mat)) o.supports.add('bois');
-    if (/\b(papier|velin|parchemin|calque)\b/.test(mat)) o.supports.add('papier');
-    if (/\bcarton/.test(mat)) o.supports.add('carton');
-    if (/\b(fresques?|mur|murale?|enduit|intonaco|plafond|voute|coupole|crepi|platre)\b/.test(mat) || /^fresque/.test(nat)) o.supports.add('mur');
-    if (/\b(cuivre|metal|zinc|ardoise|pierre|verre|email|marbre|albatre|porcelaine|ceramique|ivoire|etain|laiton|fer|aluminium|plexiglas|plaque|lapis|vitrail)\b/.test(mat)) o.supports.add('autre');
-    // Technique.
-    if (/\bhuile/.test(mat)) o.techs.add('huile');
-    if (/(detrempe|tempera|a la colle|\boeuf\b|caseine|leimfarbe)/.test(mat)) o.techs.add('detrempe');
-    if (/aquarell/.test(mat) || /^aquarell/.test(nat)) o.techs.add('aquarelle');
-    if (/\bpastels?\b/.test(mat)) o.techs.add('pastel');
-    if (/gouache/.test(mat)) o.techs.add('gouache');
-    if (/\b(dessin|graphite|crayons?|encre|fusain|sanguine|plume|lavis|pierre noire|craie|monotype|gravure|estampe|eau forte|lithographie|burin|pointe seche|aquatinte|xylographie)\b/.test(mat) || /^(dessin|estampe)/.test(nat)) o.techs.add('dessin');
-    if (/(fresque|fresco|secco)/.test(mat) || /^fresque/.test(nat)) o.techs.add('fresque');
-    if (/(acryli|email|enlumin|mosaique|vitrail|cire|encaustique|vinyl|laque|alkyde|glycero|collage)/.test(mat) || /^(enlumin|email)/.test(nat)) o.techs.add('autre');
-    if (!o.techs.size) o.techs.add('autre');
-    // Pastel, aquarelle, gouache, dessin… sans support précisé : c'est du papier.
-    if (!o.supports.size && ['pastel', 'aquarelle', 'gouache', 'dessin'].some((t) => o.techs.has(t))) o.supports.add('papier');
-    if (!o.supports.size) o.supports.add('autre');
-  }
-  r._obj = o;
-  return o;
-}
-
-// ============================================================
-// v211 (retour Stéphane : « dans la nature on voit monument équestre : il faut un petit haut-parleur qui amène à ce texte ») : textes
-// « Natures et techniques » — l'évolution d'un matériau, d'une technique, d'une nature d'objet ou d'un genre à travers les siècles.
-// Écrits dans l'onglet « Natures et techniques » de l'atelier de textes, publiés dans quizzes/textes-natures-techniques.xlsx (colonnes
-// Identifiant, Sujet, Texte, Statut ; seules les lignes « Terminé » sont lues). Les identifiants sont ceux du menu « Se limiter à des
-// natures d'objets précis » : pe.nature.* / pe.support.* / pe.tech.* (peinture) et sc.nature.* / sc.sub.* / sc.mat.* (sculpture).
-// Dans l'Imprégnation, sur la ligne « Nature et matériau de l'œuvre », un haut-parleur apparaît pour chaque sujet de l'œuvre qui a un texte.
-// ============================================================
-let NATURE_TEXTS = null; let natureTextsPromise = null;
-function ensureNatureTexts() {
-  if (natureTextsPromise) return natureTextsPromise;
-  natureTextsPromise = (async () => {
-    const map = new Map();
-    try {
-      if (!window.XLSX) { natureTextsPromise = null; return map; }
-      const response = await fetch(`quizzes/textes-natures-techniques.xlsx?v=${DATA_CACHE_BUST}`);
-      if (!response.ok) throw new Error('fichier absent');
-      const book = XLSX.read(await response.arrayBuffer(), { type: 'array' });
-      const sheet = book.Sheets['Natures et techniques'] || book.Sheets[book.SheetNames[0]];
-      XLSX.utils.sheet_to_json(sheet, { defval: '' }).forEach((row) => {
-        const id = String(row['Identifiant'] || '').trim(); const text = String(row['Texte'] || '').trim(); if (!id || !text) return;
-        const st = String(row['Statut'] === undefined ? '' : row['Statut']).trim(); if (st && !/^termin/i.test(st)) return;   // brouillon : pas publié
-        map.set(id, { label: String(row['Sujet'] || '').trim() || id, text });
-      });
-    } catch (e) { /* fichier absent ou illisible : aucun texte, aucune erreur */ }
-    NATURE_TEXTS = map; return map;
-  })();
-  return natureTextsPromise;
-}
-// Sujets d'une œuvre (du plus précis au plus général) qui ont un texte : le type de monument, la nature, puis le matériau (sculpture)
-// ou la nature, les supports et les techniques (peinture). Les rubriques « autre » n'ont jamais de texte.
-function natureTopicIds(work) {
-  if (!NATURE_TEXTS || !NATURE_TEXTS.size) return [];
-  const o = objClassify(work); const ids = [];
-  if (work.art === 'sculpture') {
-    if (o.nature === 'monument' && o.sub) ids.push(`sc.sub.${o.sub}`);
-    if (o.nature && o.nature !== 'autre') ids.push(`sc.nature.${o.nature}`);
-    if (o.mat && o.mat !== 'autre') ids.push(`sc.mat.${o.mat}`);
-  } else {
-    if (o.nature) ids.push(`pe.nature.${o.nature}`);
-    o.supports.forEach((x) => { if (x !== 'autre') ids.push(`pe.support.${x}`); });
-    o.techs.forEach((x) => { if (x !== 'autre') ids.push(`pe.tech.${x}`); });
-  }
-  return ids.filter((id) => NATURE_TEXTS.has(id));
-}
-function natureTopicButtons(work) {
-  const ids = natureTopicIds(work); if (!ids.length) return '';
-  return ids.map((id) => {
-    const lab = escapeHtml(NATURE_TEXTS.get(id).label);
-    return `<button type="button" class="imp-speaker-btn imp-topic-btn" data-topic="${escapeHtml(id)}" title="Écouter l’histoire : ${lab}" aria-label="Écouter l’histoire : ${lab}">🔊${ids.length > 1 ? ` <small>${lab}</small>` : ''}</button>`;
-  }).join('');
-}
-// Même écran « film » que la bio et le texte de l'œuvre, sans portrait : un faux « work » dont le texte est celui du sujet.
-function openImpTopicText(work, id) {
-  const t = NATURE_TEXTS && NATURE_TEXTS.get(id); if (!t) return;
-  const first = bioFirstImg(parseBioMarkup(t.text).marks);
-  const pseudo = { ...work, workText: t.text, bio: '', artistImage: '', artistImageCaption: '', image: bioWantMode() && first ? '' : (first ? first.ref : ''), title: t.label, date: '', topicLabel: t.label };
-  if (bioWantMode()) openImpArtistBio(pseudo, true, { work: true, topic: t.label }); else openImpWorkText(pseudo, t.label);
-}
-function objMatches(r, f, skip) {
-  if (!objectsActive(f)) return true;
-  if (r.art !== f.art) return false;
-  const c = objClassify(r);
-  if (skip !== 'nature' && f.nature && c.nature !== f.nature) return false;
-  if (f.art === 'peinture') {
-    if (skip !== 'support' && f.support && !c.supports.has(f.support)) return false;
-    if (skip !== 'tech' && f.tech && !c.techs.has(f.tech)) return false;
-  } else {
-    if (skip !== 'sub' && f.sub && f.nature === 'monument' && c.sub !== f.sub) return false;
-    if (skip !== 'mat' && f.mat && c.mat !== f.mat) return false;
-  }
-  return true;
-}
-function objLabelOf(list, key) { const e = list.find((x) => x[0] === key); return e ? e[1] : ''; }
-// Phrase courte du choix : « Peinture · Ensemble de tableaux · Bois · Huile ».
-function describeObjectsFilter(f, skipArt) {
-  if (!objectsActive(f)) return '';
-  const short = (s) => s.replace(/\s*\(.*\)/, '');
-  const parts = skipArt ? [] : [f.art === 'peinture' ? 'Peinture' : 'Sculpture'];
-  if (f.art === 'peinture') {
-    if (f.nature) parts.push(short(objLabelOf(OBJ_PE_NATURES, f.nature)));
-    if (f.support) parts.push(short(objLabelOf(OBJ_PE_SUPPORTS, f.support)));
-    if (f.tech) parts.push(short(objLabelOf(OBJ_PE_TECHS, f.tech)));
-  } else {
-    if (f.nature) parts.push(short(objLabelOf(OBJ_SC_NATURES, f.nature)));
-    if (f.sub && f.nature === 'monument') parts.push(short(objLabelOf(OBJ_SC_MONUMENTS, f.sub)));
-    if (f.mat) parts.push(short(objLabelOf(OBJ_SC_MATS, f.mat)));
-  }
-  return parts.join(' · ');
-}
-// Œuvres du champ en vigueur (art, siècles, zones, niveaux, artistes) — l'ensemble sur lequel s'appuient les effectifs.
-let objBasePoolCache = { key: '', rows: null };
-async function objectsBasePool(ignoreArtists) {
-  const f = readGlobalFieldDefaults(); const r = readGlobalRubriqueDefaults(); const ga = readGlobalArtistDefaults();
-  const key = JSON.stringify([f.arts, f.centuries, f.zones, r.levels, ignoreArtists ? null : ga.artists]);
-  if (objBasePoolCache.key === key && objBasePoolCache.rows) return objBasePoolCache.rows;
-  const arts = f.arts?.length ? f.arts : ['peinture', 'sculpture'];
-  const centuries = f.centuries?.length ? f.centuries : ['15e', '16e', '17e', '18e', '19e', '20e'];
-  let rows = [];
-  for (const art of arts) {
-    for (const century of centuries) {
-      try { rows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
-    }
-  }
-  if (r.levels?.length) { const lv = rows.filter((w) => r.levels.includes(String(w.niveau || 1))); if (lv.length) rows = lv; }
-  if (f.zones?.length) rows = rows.filter((w) => { const z = zoneOfNationality(w.nationality); return !z || f.zones.includes(z); });
-  const names = ignoreArtists ? [] : (ga.artists || []).map((n) => keyName(n)).filter(Boolean);
-  if (names.length) rows = rows.filter((w) => workArtistKeys(w).some((k) => names.some((a) => k.includes(a) || a.includes(k))));
-  objBasePoolCache = { key, rows };
-  return rows;
-}
-function objAnySub(f) { return !!(f && f.art && (f.nature || f.support || f.tech || f.sub || f.mat)); }
-// Liste des artistes : quand une nature d'objets est choisie, on ne garde que les artistes qui ont au moins une œuvre correspondante.
-async function filterArtistRowsByObjects(rows) {
-  const ga = readGlobalArtistDefaults();
-  if (!objectsActive(ga.objects)) return rows;
-  const pool = await objectsBasePool(true);
-  const keys = [...new Set(pool.filter((r) => objMatches(r, ga.objects)).flatMap((r) => workArtistKeys(r)))];
-  const set = new Set(keys);
-  return rows.filter((row) => {
-    const k = keyName([row['Prénom'], row['Patronyme']].filter(Boolean).join(' '));
-    return !!k && (set.has(k) || keys.some((w) => k.includes(w) || w.includes(k)));
-  });
-}
-let objRenderToken = 0;
-async function renderObjectsBlock(ui) {
-  ui = ui || (($('gc-objects-menus') && !$('gc-objects-panel').classList.contains('hidden') && !$('guided-config-panel').classList.contains('hidden')) ? 'gc' : 'qc');
-  const host = $(`${ui}-objects-menus`); if (!host) return;
-  const token = ++objRenderToken;
-  const countEl = $(`${ui}-objects-count`);
-  if (countEl) { countEl.textContent = 'Chargement des œuvres…'; countEl.className = 'hint qc-objects-count'; }
-  const pool = await objectsBasePool();
-  if (token !== objRenderToken) return; // un rafraîchissement plus récent a pris le relais
-  const fieldArts = readGlobalFieldDefaults().arts || [];
-  let f = { ...(readGlobalArtistDefaults().objects || {}) };
-  if (f.art && fieldArts.length && !fieldArts.includes(f.art)) f = {}; // le champ exclut maintenant cet art
-  // Un seul art coché dans les champs : inutile de le redemander, il s'applique de lui-même.
-  const implicitArt = fieldArts.length === 1 ? fieldArts[0] : '';
-  if (implicitArt) f.art = implicitArt;
-  const lists = f.art === 'peinture'
-    ? [['nature', 'Nature', OBJ_PE_NATURES], ['support', 'Support', OBJ_PE_SUPPORTS], ['tech', 'Technique', OBJ_PE_TECHS]]
-    : (f.art === 'sculpture' ? [['nature', 'Nature', OBJ_SC_NATURES], ...(f.nature === 'monument' ? [['sub', 'Type de monument', OBJ_SC_MONUMENTS]] : []), ['mat', 'Matériau', OBJ_SC_MATS]] : []);
-  // Effectif d'une option = nombre d'œuvres qui la respectent en plus de tous les AUTRES choix déjà faits.
-  const countFor = (menu, key) => {
-    const probe = { ...f, [menu]: key };
-    return pool.filter((r) => objMatches(r, probe)).length;
-  };
-  // Un choix devenu impossible (0 œuvre) à cause d'un autre menu modifié est abandonné.
-  if (f.nature !== 'monument') f.sub = '';
-  lists.forEach(([menu]) => { if (f[menu] && !countFor(menu, f[menu])) f[menu] = ''; });
-  const artCounts = { peinture: pool.filter((r) => r.art === 'peinture').length, sculpture: pool.filter((r) => r.art === 'sculpture').length };
-  const allowed = ['peinture', 'sculpture'].filter((a) => (!fieldArts.length || fieldArts.includes(a)) && artCounts[a] > 0);
-  const artLabel = { peinture: 'Peinture', sculpture: 'Sculpture' };
-  let html = implicitArt ? '' : `<label class="qc-obj-row"><span>Peinture ou sculpture</span><select id="${ui}-obj-art" class="qc-obj-art"><option value="">Pas de limitation</option>${allowed.map((a) => `<option value="${a}" ${f.art === a ? 'selected' : ''}>${artLabel[a]} (${artCounts[a]})</option>`).join('')}</select></label>`;
-  lists.forEach(([menu, title, list]) => {
-    const all = pool.filter((r) => objMatches(r, f, menu)).length;
-    html += `<label class="qc-obj-row"><span>${title}</span><select class="qc-obj-menu" data-menu="${menu}"><option value="">Toutes (${all})</option>${list.map(([k, lab]) => {
-      const n = countFor(menu, k);
-      return `<option value="${k}" ${f[menu] === k ? 'selected' : ''} ${n ? '' : 'disabled'}>${escapeHtml(lab)} (${n})</option>`;
-    }).join('')}</select></label>`;
-  });
-  host.innerHTML = html;
-  const isActive = implicitArt ? objAnySub(f) : objectsActive(f);
-  const total = isActive ? pool.filter((r) => objMatches(r, f)).length : pool.length;
-  if (countEl) {
-    if (!isActive) { countEl.textContent = implicitArt ? `Aucune limitation : ${total} œuvres dans votre champ actuel. Affinez avec les menus ci-dessus.` : `Aucune limitation : ${total} œuvres dans votre champ actuel. Choisissez d'abord Peinture ou Sculpture pour affiner.`; countEl.className = 'hint qc-objects-count'; }
-    else if (!total) { countEl.textContent = 'Aucune œuvre ne correspond à cette combinaison.'; countEl.className = 'hint qc-objects-count qc-objects-warn'; }
-    else if (total < OBJ_MIN_WORKS) { countEl.textContent = `${total} œuvre${total > 1 ? 's' : ''} seulement : c'est peu pour que les jeux offrent de vrais choix de réponses (il en faut idéalement ${OBJ_MIN_WORKS} ou plus). Élargissez un menu si possible.`; countEl.className = 'hint qc-objects-count qc-objects-warn'; }
-    else { countEl.textContent = `${total} œuvres correspondent à ce choix.`; countEl.className = 'hint qc-objects-count'; }
-  }
-  const save = (next) => {
-    const clean = next.art ? { art: next.art, nature: next.nature || '', ...(next.art === 'peinture' ? { support: next.support || '', tech: next.tech || '' } : { sub: next.nature === 'monument' ? (next.sub || '') : '', mat: next.mat || '' }) } : null;
-    setObjectsFilter(clean && (!implicitArt || objAnySub(clean)) ? clean : null);
-    renderObjectsBlock(ui);
-    if (ui === 'qc') { renderQuickArtistsBox(); updateExerciseSummaries(); if ($('qc-artists-details')?.open) populateArtistSuggestions(); }
-  };
-  $(`${ui}-obj-art`)?.addEventListener('change', (e) => save({ art: e.target.value })); // changer d'art repart d'une page blanche
-  host.querySelectorAll('.qc-obj-menu').forEach((sel) => sel.addEventListener('change', () => save({ ...f, [sel.dataset.menu]: sel.value })));
-  // Le réglage enregistré peut avoir été corrigé ci-dessus (choix devenu impossible) : on le remet d'équerre.
-  const stored = readGlobalArtistDefaults().objects || null;
-  if (JSON.stringify(stored || {}) !== JSON.stringify(isActive ? f : {}) && (stored || isActive)) {
-    if (!isActive) setObjectsFilter(null); else setObjectsFilter(f);
-  }
-  const sum = $('qc-objects-summary');
-  if (sum) sum.textContent = isActive ? `Se limiter à des natures d'objets précis : ${describeObjectsFilter(f)}` : "Se limiter à des natures d'objets précis (facultatif)";
-}
-function setObjectsFilter(objects) {
-  if (quickDraft) { quickDraft.artist = { ...quickDraft.artist, objects: objects || null }; }
-  else {
-    const a = readGlobalArtistDefaults();
-    const artists = a.artists || [];
-    if (!objects && !artists.length) localStorage.removeItem('globalArtistDefaults');
-    else localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists, objects: objects || null, remember: true }));
-  }
-}
-// Met à jour le seul volet « artistes » du réglage, sans perdre le choix d'objets qui l'accompagne.
-function writeGlobalArtistNames(next) {
-  if (quickDraft) { quickDraft.artist = { ...quickDraft.artist, artists: next }; return; }
-  const a = readGlobalArtistDefaults();
-  const objects = objectsActive(a.objects) ? a.objects : null;
-  if (!next.length && !objects) localStorage.removeItem('globalArtistDefaults');
-  else localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: next, objects, remember: true }));
-}
-function refreshObjectsBlockSoon() {
-  const d = $('qc-objects-details');
-  if (d && d.open) renderObjectsBlock();
-  const sum = $('qc-objects-summary');
-  if (sum && !(d && d.open)) { const f = readGlobalArtistDefaults().objects; sum.textContent = objectsActive(f) ? `Se limiter à des natures d'objets précis : ${describeObjectsFilter(f)}` : "Se limiter à des natures d'objets précis (facultatif)"; }
-}
 function filterPoolByGlobalArtists(pool, fallbackPool) {
-  const ga = readGlobalArtistDefaults();
-  const artists = (ga.artists || []).map((n) => keyName(n)).filter(Boolean);
-  const objects = objectsActive(ga.objects) ? ga.objects : null;
-  if (!artists.length && !objects) return pool;
-  const matches = (r) => (!artists.length || workArtistKeys(r).some((k) => artists.some((a) => k.includes(a) || a.includes(k)))) && (!objects || objMatches(r, objects));
+  const artists = (readGlobalArtistDefaults().artists || []).map((n) => keyName(n)).filter(Boolean);
+  if (!artists.length) return pool;
+  const matches = (r) => artists.some((a) => keyName(r.artist).includes(a) || a.includes(keyName(r.artist)));
   const filtered = pool.filter(matches);
   if (filtered.length) return filtered;
   if (fallbackPool) {
@@ -11399,9 +10716,8 @@ function buildExerciseSummary(prefix) {
   const gr = readGlobalRubriqueDefaults();
   const hasGlobalField = gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length);
   const hasGlobalArtists = ga.remember && ga.artists?.length;
-  const hasGlobalObjects = ga.remember && objectsActive(ga.objects);
   const hasGlobalRubrique = gr.remember && (gr.rubriques?.length || gr.levels?.length);
-  if (hasGlobalField || hasGlobalArtists || hasGlobalObjects || hasGlobalRubrique) {
+  if (hasGlobalField || hasGlobalArtists || hasGlobalRubrique) {
     // Le choix d'artiste(s) affine le champ plutôt que de le remplacer — les deux s'affichent
     // ensemble s'ils sont actifs tous les deux, pour qu'on voie bien qu'ils se combinent.
     const artLabel = (gf.arts || []).map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join('+');
@@ -11412,9 +10728,8 @@ function buildExerciseSummary(prefix) {
       const extra = ga.artists.length > 2 ? ` +${ga.artists.length - 2}` : '';
       artistPart = `${shown}${extra}`;
     }
-    const objectsPart = hasGlobalObjects ? (describeObjectsFilter(ga.objects, hasGlobalField && (gf.arts || []).includes(ga.objects.art)) || (gf.arts || []).includes(ga.objects.art) && '') : '';
     const levelPart = gr.levels?.length ? ' N' + gr.levels.join('+') : '';
-    return `🌐 ${[fieldPart, artistPart, objectsPart].filter(Boolean).join(' · ')}${levelPart}`;
+    return `🌐 ${[fieldPart, artistPart].filter(Boolean).join(' · ')}${levelPart}`;
   }
   return '';
 }
@@ -11462,7 +10777,6 @@ function summarizeSavedConfig(cfg) {
   if (gf.centuries?.length) parts.push(gf.centuries.join('+'));
   if (gf.zones?.length) parts.push(`${gf.zones.length} zone(s)`);
   if (ga.artists?.length) parts.push(ga.artists.slice(0, 2).join(', ') + (ga.artists.length > 2 ? ` +${ga.artists.length - 2}` : ''));
-  if (objectsActive(ga.objects)) parts.push(describeObjectsFilter(ga.objects));
   if (gr.levels?.length) parts.push('N' + gr.levels.join('+'));
   if (gr.count) parts.push(`${gr.count} questions`);
   parts.push(cfg.allGames ? 'tous les jeux' : `${(cfg.games || []).length} jeu(x)`);
@@ -11515,8 +10829,9 @@ function renderSavedConfigsInto(wrapId, listId, saved) {
 function renderSavedGuidedConfigsList() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}'); } catch (e) {}
-  // Les configurations enregistrées ne s'affichent plus sur la page des scores : on les retrouve
-  // uniquement dans la page « Mes configurations enregistrées » (Mon compte).
+  // Les configurations enregistrées ne se retrouvent plus que dans Mon compte — plus sur les
+  // pages de menus elles-mêmes, pour ne garder qu'un seul endroit où les chercher.
+  renderSavedConfigsInto('account-saved-configs-section', 'account-saved-configs-list', saved);
 }
 // Si le parcours guidé (ou une configuration enregistrée rechargée) a limité la partie à certains
 // jeux seulement, on ne montre que ceux-là sur la page d'accueil des exercices — pas la peine de
@@ -11551,7 +10866,7 @@ function applyGamesFilterToHub() {
   });
   const nameNote = $('training-hub-config-name');
   if (nameNote) {
-    nameNote.textContent = ''; // v190 : la phrase récapitulative est maintenant en bas de la page des choix (3e encadré)
+    nameNote.textContent = guidedModeActive ? buildTrainingHubConfigSentence() : '';
   }
   // Bouton d'enregistrement direct : utile si le joueur n'a pas déjà enregistré sa configuration
   // à l'étape précédente — inutile en revanche s'il vient de recharger une config déjà nommée.
@@ -11746,7 +11061,7 @@ function hasGeneralChoice() {
   const gf = readGlobalFieldDefaults(); const gr = readGlobalRubriqueDefaults(); const ga = readGlobalArtistDefaults();
   return !!((gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length))
     || (gr.remember && (gr.rubriques?.length || gr.levels?.length || gr.count))
-    || (ga.remember && (ga.artists?.length || objectsActive(ga.objects))));
+    || (ga.remember && ga.artists?.length));
 }
 function prepareQuickConfig() {
   quickDraft = null; // les lecteurs renvoient alors le réglage réellement en vigueur (session, sinon enregistré)
@@ -11754,7 +11069,7 @@ function prepareQuickConfig() {
   quickDraft = {
     field: { arts: [...(f.arts || [])], centuries: [...(f.centuries || [])], zones: [...(f.zones || [])] },
     rubrique: { rubriques: [...(r.rubriques || [])], levels: [...(r.levels || [])], count: r.count || '' },
-    artist: { artists: [...(a.artists || [])], objects: objectsActive(a.objects) ? { ...a.objects } : null },
+    artist: { artists: [...(a.artists || [])] },
   };
   const d = quickDraft;
   document.querySelectorAll('.pf-field-art').forEach((el) => { el.checked = d.field.arts.includes(el.value); });
@@ -11771,11 +11086,9 @@ function prepareQuickConfig() {
     else { if ($('pf-count-custom')) $('pf-count-custom').value = c; const cu = document.querySelector('input[name="pf-count"][value="custom"]'); if (cu) cu.checked = true; }
   }
   if ($('qc-artists-details')?.open) populateArtistSuggestions();
-  { const od = $('qc-objects-details'); if (od) { if (objectsActive(d.artist.objects)) od.open = true; if (od.open) renderObjectsBlock(); else refreshObjectsBlockSoon(); } }
   renderExerciseOverrides();
   updateQuickIntro();
   renderQuickOverrides();
-  renderQuickArtistsBox();
 }
 // v146 (retour Stéphane : « au départ il n'enregistre rien ; en quittant la session, un écran propose de donner un nom ») :
 // valider la page 2 écrit TOUJOURS le choix à deux endroits — la session en cours (sessionStorage) et la mémoire de
@@ -11800,7 +11113,7 @@ function commitQuickConfig() {
   } catch (e) { /* session indisponible : le réglage reste tout de même mémorisé sur l'appareil */ }
   localStorage.setItem('globalFieldDefaults', JSON.stringify(field));
   localStorage.setItem('globalRubriqueDefaults', JSON.stringify(rubrique));
-  if (artist.artists.length || objectsActive(artist.objects)) localStorage.setItem('globalArtistDefaults', JSON.stringify(artist));
+  if (artist.artists.length) localStorage.setItem('globalArtistDefaults', JSON.stringify(artist));
   else localStorage.removeItem('globalArtistDefaults');
   localStorage.removeItem('globalGamesDefaults');
   let loadedName = '';
@@ -11853,16 +11166,6 @@ function resetPanelContentToDefaults(panelId) {
   });
   $(panelId)?.querySelectorAll('input[type="radio"][name$="count"]').forEach((el) => { el.checked = el.defaultChecked; });
 }
-// v188 : 3e encadré (artistes choisis) de la page « Mes choix de configuration » : visible seulement s'il y a au moins un artiste.
-function renderQuickArtistsBox() {
-  const box = $('qc-artists-box'); const list = $('qc-artists-chosen'); if (!box || !list) return;
-  const ga0 = readGlobalArtistDefaults();
-  const names = ga0.artists || [];
-  const hasObj = objectsActive(ga0.objects);
-  box.classList.toggle('hidden', !names.length && !hasObj);
-  // v190 : la phrase récapitulative (art, siècle, rubriques, artistes, nombre de questions) vit ici, plus sur la page des exercices.
-  list.textContent = (names.length || hasObj) ? buildTrainingHubConfigSentence() : '';
-}
 function renderQuickOverrides() {
   const box = $('qc-overrides'); if (!box) return;
   const rows = gameOverrides();
@@ -11886,7 +11189,7 @@ function renderQuickOverrides() {
 function hasSavedLastConfig() {
   let gf = {}, gr = {}, ga = {};
   try { gf = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); gr = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); ga = JSON.parse(localStorage.getItem('globalArtistDefaults') || '{}'); } catch (e) { /* ignoré */ }
-  if (gf.arts?.length || gf.centuries?.length || gf.zones?.length || gr.rubriques?.length || gr.levels?.length || gr.count || ga.artists?.length || objectsActive(ga.objects)) return true;
+  if (gf.arts?.length || gf.centuries?.length || gf.zones?.length || gr.rubriques?.length || gr.levels?.length || gr.count || ga.artists?.length) return true;
   return Object.keys(localStorage).some((k) => {
     if (!k.startsWith('lastSelection_')) return false;
     const panel = k.slice('lastSelection_'.length);
@@ -11920,7 +11223,7 @@ function snapshotConfig() {
   return {
     field: { arts: [...(f.arts || [])], centuries: [...(f.centuries || [])], zones: [...(f.zones || [])], remember: true },
     rubrique: { rubriques: [...(r.rubriques || [])], levels: [...(r.levels || [])], count: r.count || '', remember: true },
-    artists: { artists: [...(a.artists || [])], objects: objectsActive(a.objects) ? { ...a.objects } : null, remember: true },
+    artists: { artists: [...(a.artists || [])], remember: true },
     allGames: true, games: [], perGame,
   };
 }
@@ -11932,7 +11235,6 @@ function suggestConfigName() {
     c.field.centuries.join(' + '),
     c.rubrique.levels.length ? 'N' + c.rubrique.levels.join('+') : '',
     c.artists.artists.length ? c.artists.artists.slice(0, 2).join(', ') + (c.artists.artists.length > 2 ? '…' : '') : '',
-    objectsActive(c.artists.objects) ? describeObjectsFilter(c.artists.objects) : '',
   ].filter(Boolean);
   const base = parts.length ? parts.join(' · ') : 'Toutes les œuvres';
   return Object.keys(c.perGame).length ? `${base} (+ jeux à part)` : base;
@@ -12026,13 +11328,6 @@ function quitSession() {
     if ($('pf-count-custom')) $('pf-count-custom').value = '';
     populateArtistSuggestions();
   });
-  $('qc-clear-artists')?.addEventListener('click', () => {
-    writeGlobalArtistNames([]);
-    refreshObjectsBlockSoon();
-    updateExerciseSummaries(); updateProfileMenuBadges(); populateArtistSuggestions(); renderQuickArtistsBox();
-  });
-  $('qc-clear-objects')?.addEventListener('click', () => { setObjectsFilter(null); if ($('qc-objects-details')?.open) renderObjectsBlock(); else refreshObjectsBlockSoon(); updateExerciseSummaries(); renderQuickArtistsBox(); populateArtistSuggestions(); });
-  $('qc-objects-details')?.addEventListener('toggle', () => { if ($('qc-objects-details').open) renderObjectsBlock(); });
   $('qc-artists-details')?.addEventListener('toggle', () => { if ($('qc-artists-details').open) populateArtistSuggestions(); });
   $('training-hub-edit-general')?.addEventListener('click', () => showPanel('quick-config'));
 })();
@@ -12148,8 +11443,6 @@ function resetGuidedConfig() {
   document.querySelectorAll('.gc-step').forEach((el, i) => el.classList.toggle('hidden', i !== 0));
   document.querySelectorAll('.gc-art, .gc-century, .gc-zone, .gc-level, .gc-rubrique').forEach((el) => { el.checked = false; });
   document.querySelector('input[name="gc-want-artists"][value="no"]').checked = true;
-  document.querySelector('input[name="gc-want-objects"][value="no"]').checked = true;
-  $('gc-objects-panel').classList.add('hidden');
   $('gc-artist-list').classList.add('hidden');
   $('gc-artist-status').textContent = '';
   $('gc-artist-patience').classList.add('hidden');
@@ -12238,11 +11531,8 @@ async function populateGuidedArtistList() {
   const ok = await loadArtistListComplete();
   if (!ok) { patience.classList.add('hidden'); status.textContent = "La liste des artistes n'a pas pu être chargée (connexion internet ?)."; list.innerHTML = ''; return; }
   let matchingRows = listedArtistRows().filter(artistMatchesCurrentField);
-  // v207 : une nature d'objets choisie réduit d'abord la liste aux artistes qui ont de telles œuvres (le niveau est alors déjà pris en compte).
-  const hasObjFilter = objectsActive(readGlobalArtistDefaults().objects);
-  if (hasObjFilter) { status.textContent = "Tri des artistes selon la nature d'objets choisie…"; matchingRows = await filterArtistRowsByObjects(matchingRows); }
   const levels = readGlobalRubriqueDefaults().levels || [];
-  if (levels.length && matchingRows.length <= 80 && !hasObjFilter) {
+  if (levels.length && matchingRows.length <= 80) {
     status.textContent = 'Vérification du niveau des artistes…';
     const kept = [];
     for (const row of matchingRows) {
@@ -12267,10 +11557,10 @@ async function populateGuidedArtistList() {
     cb.addEventListener('change', () => {
       const current = readGlobalArtistDefaults().artists || [];
       const next = cb.checked ? [...current, cb.value] : current.filter((n) => n !== cb.value);
-      writeGlobalArtistNames(next);
+      localStorage.setItem('globalArtistDefaults', JSON.stringify({ artists: next, remember: true }));
     });
   });
-  status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec vos choix de niveau${hasObjFilter ? ", de champ et de nature d'objets" : ' et de champ'} actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
+  status.textContent = `${matchingRows.length} artiste${matchingRows.length > 1 ? 's' : ''} compatible${matchingRows.length > 1 ? 's' : ''} avec vos choix de niveau et de champ actuels. Cochez des noms si vous voulez réduire le jeu aux artistes cochés. Attention, les artistes les plus célèbres (de niveau 1) ont au moins 12 œuvres dans la base, ceux de niveau 2, 8 œuvres et ceux de niveau 3, 4 œuvres. Si vous voulez jouer avec peu d'artistes, sélectionnez-en tout de même plusieurs pour que les jeux offrent de vrais choix de réponse.`;
   // Sonorise la question de l'étape ET ce texte, seulement disponible une fois la liste chargée.
   // Ce texte n'arrive qu'après un chargement réseau : si le joueur a déjà avancé plus loin dans
   // le parcours pendant ce temps, on ne parle plus par-dessus l'étape où il se trouve vraiment.
@@ -12286,19 +11576,10 @@ document.querySelectorAll('input[name="gc-want-artists"]').forEach((el) => {
       $('gc-artist-list').classList.add('hidden');
       $('gc-artist-status').textContent = '';
       $('gc-artist-patience').classList.add('hidden');
-      writeGlobalArtistNames([]);
+      localStorage.removeItem('globalArtistDefaults');
     }
   });
 });
-document.querySelectorAll('input[name="gc-want-objects"]').forEach((el) => {
-  el.addEventListener('change', () => {
-    if (!el.checked) return;
-    $('gc-objects-panel').classList.toggle('hidden', el.value !== 'yes');
-    if (el.value === 'yes') renderObjectsBlock('gc');
-    else setObjectsFilter(null);
-  });
-});
-$('gc-clear-objects')?.addEventListener('click', () => { setObjectsFilter(null); renderObjectsBlock('gc'); });
 document.querySelectorAll('input[name="gc-allgames"]').forEach((el) => {
   el.addEventListener('change', () => { $('gc-games-list').classList.toggle('hidden', el.value !== 'no' || !el.checked); });
 });
@@ -12310,7 +11591,7 @@ function buildTrainingHubConfigSentence() {
   const gr = readGlobalRubriqueDefaults();
   const ga = readGlobalArtistDefaults();
   const artLabel = { peinture: 'la peinture', sculpture: 'la sculpture' };
-  const artsPart = (gf.arts || []).map((a) => artLabel[a] || a).join(' et ') || (objectsActive(ga.objects) ? artLabel[ga.objects.art] : '') || 'la peinture et la sculpture';
+  const artsPart = (gf.arts || []).map((a) => artLabel[a] || a).join(' et ') || 'la peinture et la sculpture';
   const centPart = gf.centuries?.length ? ` du ${gf.centuries.join(', du ')} siècle` : '';
   const zoneLabels = { france: 'France', italie: 'Italie', espagne: 'Espagne', royaume_uni: 'Royaume-Uni', allemagne: 'Allemagne', europe_centrale_russie: 'Europe centrale et Russie', europe_nord: 'Europe du Nord', amerique: 'Amérique' };
   const zonePart = gf.zones?.length ? ` en ${gf.zones.map((z) => zoneLabels[z] || z).join(', ')}` : '';
@@ -12322,7 +11603,7 @@ function buildTrainingHubConfigSentence() {
   const levelPart = gr.levels?.length
     ? ` de niveau ${gr.levels.join('/')} (artistes ${gr.levels.map((l) => levelLabels[l]).join('/')})`
     : '';
-  const artistsPart = (ga.artists?.length ? `, en particulier ${ga.artists.join(', ')}` : '') + (objectsActive(ga.objects) ? `, en vous limitant à : ${describeObjectsFilter(ga.objects)}` : '');
+  const artistsPart = ga.artists?.length ? `, en particulier ${ga.artists.join(', ')}` : '';
   const countPart = gr.count ? ` et en répondant à des questionnaires de ${gr.count === 'max' ? 'un maximum de' : gr.count} questions` : '';
   const middle = `vous exercer sur ${artsPart}${centPart}${zonePart}${rubriquePart}${levelPart}${artistsPart}${countPart}`;
   if (loadedGuidedConfigName) {
@@ -12457,7 +11738,7 @@ function impSelectedCenturies() { return ['15e', '16e', '17e', '18e', '19e', '20
 function impSelectedZones() { return ['france', 'italie', 'espagne', 'royaume_uni', 'allemagne', 'europe_centrale_russie', 'europe_nord', 'amerique'].filter((z) => $(`imp-zone-${z}`)?.checked); }
 function impSelectedLevels() { return ['1', '2', '3'].filter((lvl) => $(`imp-level-${lvl}`)?.checked); }
 
-let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impAutoVoice = null, impFieldLabel = '';
+let IMP_SESSION = [], impIndex = 0, impPaused = false, impTimers = [], impAudioOn = true, impDelayMs = 3000, impSelectedVoice = null, impFieldLabel = '';
 // v76 : horodatage (Date.now()) jusqu'auquel une bascule d'image de case (Lieu/Ensemble) est déjà
 // « réservée » par la précédente — garantit qu'on ne lance jamais un second fondu enchaîné avant que
 // le précédent soit terminé, quelle que soit la vitesse de la voix (remis à zéro à chaque nouvelle
@@ -12502,7 +11783,6 @@ function impSpeak(text, onEnd, force, opts) {
   const u = new SpeechSynthesisUtterance(fixSpeechPronunciation(opts && opts.onProgress ? bioVoiceFlat(text) : text));
   u.lang = 'fr-FR'; u.rate = 0.72; u.volume = getGlobalPrefs().speechVolume ?? 1;
   if (impSelectedVoice) u.voice = impSelectedVoice;
-  if (opts && opts.onBoundary) { const spokenLenB = u.text.length; u.onboundary = (ev) => { if (typeof ev.charIndex === 'number') opts.onBoundary(ev.charIndex, spokenLenB); }; }   // v215 : position de la voix (déroulé d'images d'Imprégnation)
   if (opts && opts.onSpoken) opts.onSpoken(u.text);   // v186 : le texte réellement lu, pour l'aligner sur le texte affiché
   // v163 : suivi de la lecture (bio) — position de la voix dans le texte, pour faire défiler le texte et changer d'image.
   if (opts && opts.onProgress) {
@@ -12529,15 +11809,6 @@ function impSpeak(text, onEnd, force, opts) {
   speechSynthesis.speak(u);
 }
 
-// Ordre d'Imprégnation : chronologique (voir le commentaire au lancement). Fonction pure, réutilisable pour le futur
-// parcours commenté (diapositives d'évolution d'un type d'objet).
-function impChronologicalOrder(rows) {
-  const keyOf = (w) => { const y = yearsOf(w.date); return { start: y.length ? y[0] : Infinity, end: y.length ? y[y.length - 1] : Infinity }; };
-  return rows.map((w) => ({ w, k: keyOf(w) })).sort((a, b) =>
-    (a.k.start - b.k.start || 0) || (a.k.end - b.k.end || 0)
-    || keyName(a.w.artist).localeCompare(keyName(b.w.artist), 'fr') || keyName(a.w.title).localeCompare(keyName(b.w.title), 'fr')
-  ).map((x) => x.w);
-}
 $('imp-start-button')?.addEventListener('click', async () => {
   handleExtendAndRemember('imp', 'impregnation-setup-panel');
   saveLastSelection('impregnation-setup-panel');
@@ -12553,7 +11824,6 @@ $('imp-start-button')?.addEventListener('click', async () => {
   try {
     const zones = impSelectedZones();
     let allRows = [];
-    await ensureNatureTexts();   // v211 : textes « Natures et techniques » (haut-parleurs sur la ligne nature et matériau)
     for (const art of arts) {
       for (const century of centuries) {
         try { allRows.push(...(await fetchQuizRows(art, century))); } catch (e) { /* fichier absent, ignoré */ }
@@ -12572,11 +11842,8 @@ $('imp-start-button')?.addEventListener('click', async () => {
     // qui est justement le cas quand des artistes sont choisis : bug réel repéré, le filtre
     // ne s'appliquait alors jamais).
     pool = filterPoolByGlobalArtists(pool, allRows);
-    // v206 (Stéphane : « imprégnation, quel que soit le choix, on range les œuvres par ordre chronologique — pour voir
-    // l'évolution, et pour y rattacher plus tard un petit texte à diapositives sur l'histoire d'un type d'objet ») :
-    // plus de mélange. Tri par première année de la date (« 1480-1488 » → 1480), puis année de fin, puis nom d'artiste et
-    // titre pour que l'ordre soit toujours le même à choix égal. Les œuvres sans année exploitable passent à la fin.
-    pool = impChronologicalOrder(pool);
+    // Mélange, sans limitation de nombre : tout l'échantillon correspondant au choix.
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     // v133 (Stéphane : « pour Imprégnation, ne s'imprégner que d'œuvres avec commentaire ») : case « Uniquement
     // les œuvres commentées ». Une œuvre est « commentée » quand le maître (colonnes Œuvre emblématique + Texte
     // de l'œuvre) lui attache un texte à la première personne, lu par son haut-parleur — c'est la propriété
@@ -12692,10 +11959,10 @@ function impShowCurrent() {
       const lastWord = !baseName.includes('<') && baseName.match(/^(.*\S)\s+(\S+)$/);
       const nameHtml = lastWord ? `${lastWord[1]} <span class="imp-nm-end">${lastWord[2]}${tail}</span>` : `${baseName}${tail}`;
       return (work.bio || work.artistImage) ? `<span role="button" tabindex="0" class="imp-artist-name-button" id="imp-artist-name-button">${nameHtml}</span>` : nameHtml;
-    })(), spoken: spokenArtistFull(work, true), on: fieldOn('artist') },
+    })(), spoken: work.surnomFr ? `${work.artist}, dit ${work.surnomFr}` : work.artist, on: fieldOn('artist') },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>${work.workText ? ` <button type="button" class="imp-speaker-btn" id="imp-speaker-work" title="Écouter l’histoire de cette œuvre" aria-label="Écouter l’histoire de cette œuvre">🔊</button>` : ''}`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
-    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: `${escapeHtml(matPhrase(work))}${natureTopicButtons(work)}`, spoken: matPhrase(work), on: fieldOn('materiaux') && work.materials },
+    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: work.materialsPhrase || work.materials, on: fieldOn('materiaux') && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },
     // Nouvelle rubrique demandée par Stéphane : quand l'œuvre appartient à un ensemble plus vaste
     // (un cycle de fresques, un manuscrit...), le texte qui le décrit (déjà récupéré dans
@@ -12751,16 +12018,6 @@ function impShowCurrent() {
     currentSpeechSegment.push(f);
   });
   if (currentSpeechSegment.length) speechSegments.push(currentSpeechSegment);
-  // v215 : plan des images de lieu — sous-lieu sur « Nature et matériau », lieu sur « Dimensions » (ou, à défaut, sur « Lieu de conservation »).
-  // Si la rubrique voulue n'est pas affichée, l'image prend la suivante de sa liste ; sous-lieu toujours avant lieu.
-  const stageImgPlan = [];
-  [[work.subLocationImage, ['materiaux', 'dimensions', 'location']], [work.locationImage, ['dimensions', 'location']]].forEach(([url, keys]) => {
-    if (!url) return;
-    for (const key of keys) {
-      const seg = speechSegments.findIndex((sg) => sg.some((f) => f.key === key));
-      if (seg >= 0) { stageImgPlan.push({ url, seg, key }); break; }
-    }
-  });
   // v76 (retour Stéphane 29/09 : « le commentaire arrive après l'image, ça devrait être l'inverse —
   // la voix doit d'abord lire le commentaire, l'image n'apparaît que 3-4 secondes après, doucement »)
   // : la bascule d'image (Lieu/Ensemble) ne dépend plus du tout du rythme STAGGER du texte affiché —
@@ -12790,36 +12047,16 @@ function impShowCurrent() {
     // v149 : pour le Lieu, on enchaîne l'image du lieu puis celle du sous-lieu (si les deux existent ; une seule
     // suffit à s'afficher), et on n'affiche AUCUN badge « Lieu de conservation » par-dessus (« pour une place
     // publique, c'est bizarre : on ne met rien, le texte des références suffit »). Le badge reste pour le cycle.
-    const flowImages = flowField?.key === 'cycle' ? [work.cycleImage].filter(Boolean) : [];
-    const estimatedSegDurMs = Math.max(1200, (text.length / 10) * 1000) + 400;
-    const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
+    const flowImages = flowField?.key === 'location' ? [work.locationImage, work.subLocationImage].filter(Boolean) : flowField?.key === 'cycle' ? [work.cycleImage].filter(Boolean) : [];
     if (flowImages.length) {
-      const badge = flowField.label;
+      const estimatedSegDurMs = Math.max(1200, (text.length / 10) * 1000) + 400;
+      const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
+      const badge = flowField.key === 'location' ? '' : flowField.label;
       flowImages.forEach((url, k) => {
         // 2e image : après le fondu enchaîné de la 1re (2 s) + ~3 s d'affichage
         impTimers.push(setTimeout(() => impShowFlowImage(url, badge), flowDelayMs + k * 5000));
       });
     }
-    // v215 (retour Stéphane : « au départ, sur auteur, titre, date, l'image de l'œuvre ; sur nature et matériau, l'image du sous-lieu ; sur
-    // dimensions et lieu de conservation, l'image du lieu — comme un zoom arrière : les images à égalité de temps, pas toutes à la fin ») :
-    // le plan (stageImgPlan, plus haut) dit pour chaque image de lieu la rubrique qui la déclenche. En début de segment : même délai
-    // qu'avant (la voix passe d'abord) ; au milieu d'un segment (les dimensions, lues à la suite du matériau) : dès que la voix y arrive.
-    const myRunStage = impRunId;
-    const planHere = stageImgPlan.filter((pl) => pl.seg === i);
-    const startImgs = planHere.filter((pl) => segment.findIndex((f) => f.key === pl.key) <= 0);
-    startImgs.forEach((pl, k) => impTimers.push(setTimeout(() => impShowFlowImage(pl.url, ''), flowDelayMs + k * 5000)));
-    var midStageOpts = null;
-    planHere.filter((pl) => !startImgs.includes(pl)).forEach((pl) => {
-      const idx = segment.findIndex((f) => f.key === pl.key);
-      const off = segment.slice(0, idx).reduce((n, f) => n + String(f.spoken || f.value || '').length + 3, 0);
-      const frac = off / Math.max(1, text.length);
-      let fired = false; let sawBoundary = false;
-      const fire = () => { if (fired || myRunStage !== impRunId) return; fired = true; impTimers.push(setTimeout(() => impShowFlowImage(pl.url, ''), 700)); };
-      const prev = midStageOpts && midStageOpts.onBoundary;
-      midStageOpts = { onBoundary: (ci, len) => { if (prev) prev(ci, len); sawBoundary = true; if (ci / Math.max(1, len) >= frac) fire(); } };
-      // sans événements de position (certaines voix) : estimation à ~10 caractères par seconde
-      impTimers.push(setTimeout(() => { if (!sawBoundary) fire(); }, Math.round((text.length / 10) * 1000 * frac) + 300));
-    });
     // v120 (retour Stéphane : « trop de marge entre la dernière rubrique et le lieu de conservation, surtout
     // s'il n'y a plus Ensemble ; on revient à ce qui était, un tout petit peu plus ») : avant v116, le
     // Lieu se lisait d'une traite à la suite des dimensions (aucune pause). v116 y avait mis les 2 s de
@@ -12828,7 +12065,7 @@ function impShowCurrent() {
     // sans attente perceptible. Les autres coupures (Ensemble, s'il revenait) gardent 2 s.
     const nextSegment = speechSegments[i + 1];
     const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : (nextSegment && nextSegment[0].key === 'materiaux' ? IMP_GAP_BEFORE_MATERIAL_MS : (nextSegment && nextSegment[0].key === 'date' ? IMP_GAP_BEFORE_DATE_MS : 2000));
-    impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), gapMs)); }, false, midStageOpts);
+    impSpeak(text, () => { impTimers.push(setTimeout(() => impSpeakSegment(i + 1), gapMs)); });
   }
   // v128 (docx 9 oct, IMPREGNATION : « la voix doit donner la consigne sur la première page ; c'est bon pour
   // les autres jeux ») : comme dans Intrus & co., la consigne écrite (#imp-instruction) est lue UNE fois,
@@ -12848,14 +12085,13 @@ function impShowCurrent() {
     impTimers.push(setTimeout(() => {
       const el = $(`imp-val-${f.key}`);
       if (el) {
-        if (f.key === 'dimensions' || f.key === 'title' || f.key === 'artist' || f.key === 'location' || f.key === 'materiaux') el.innerHTML = f.value; else el.textContent = f.value;
+        if (f.key === 'dimensions' || f.key === 'title' || f.key === 'artist' || f.key === 'location') el.innerHTML = f.value; else el.textContent = f.value;
         el.classList.add('written');
         // v76 : le bouton nom-d'artiste cliquable (voir plus haut) est réinjecté à chaque œuvre avec
         // le reste du HTML de la rubrique — son écouteur de clic doit donc être rattaché à chaque
         // fois, l'ancien élément (et son écouteur) ayant disparu avec l'ancien innerHTML.
         if (f.key === 'artist') { { const nb = $('imp-artist-name-button'); nb?.addEventListener('click', () => openImpArtistBio(work)); nb?.addEventListener('keydown', (e) => { if (e.target === nb && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openImpArtistBio(work); } }); } $('imp-speaker-bio')?.addEventListener('click', (e) => { e.stopPropagation(); openImpArtistBio(work, true); }); }
         if (f.key === 'title') { $('imp-speaker-work')?.addEventListener('click', () => openImpWorkText(work)); }
-        if (f.key === 'materiaux') { el.querySelectorAll('.imp-topic-btn').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); openImpTopicText(work, b.dataset.topic); })); }
       }
     }, textDelay));
   });
@@ -12960,21 +12196,8 @@ function bioSplitCapFx(raw) {
   raw = String(raw || ''); const i = raw.lastIndexOf('|'); if (i < 0) return { caption: raw.trim(), fx: null };
   const fx = bioParseFx(raw.slice(i + 1)); return fx ? { caption: raw.slice(0, i).trim(), fx } : { caption: raw.trim(), fx: null };
 }
-// v217 (retour Stéphane : « une page titre, et un effet de sortie du film, un fondu au noir par exemple ») : deux balises de plus, ni affichées ni lues.
-//   [titre: Titre | Sous-titre | 4]  → au tout début, une page noire avec le titre (et le sous-titre) en blanc, 4 s par défaut, qui s'efface en fondu quand la voix démarre.
-//   [sortie: noir 2]  (ou [sortie: coupe])  → à la fin de la lecture, l'écran s'éteint en fondu au noir (1,5 s par défaut) ; « coupe » = noir net.
-const BIO_TITLE_RE = /\[\s*titre\s*[:|]\s*([^\]]*?)\s*\]\s*/i;
-const BIO_EXIT_RE = /\s*\[\s*sortie\s*(?:[:|]\s*([^\]]*?)\s*)?\]\s*/i;
-function bioParseTitle(raw) {
-  const parts = String(raw || '').split('|').map((x) => x.trim()); let ms = null;
-  if (parts.length > 1) { const dm = parts[parts.length - 1].match(/^(\d+(?:[.,]\d+)?)\s*s?$/i); if (dm) { ms = Math.round(parseFloat(dm[1].replace(',', '.')) * 1000); parts.pop(); } }
-  return parts[0] ? { text: parts[0], sub: parts.slice(1).join(' — '), ms } : null;
-}
-function bioParseExit(raw) { const fx = bioParseFx(raw); return { type: fx && fx.type === 'cut' ? 'cut' : 'black', ms: fx && fx.ms != null ? fx.ms : null }; }
 function parseBioMarkup(text) {
-  let src = String(text || ''); let title = null, exit = null;
-  src = src.replace(BIO_TITLE_RE, (m0, g) => { if (!title) title = bioParseTitle(g); return ''; });
-  src = src.replace(BIO_EXIT_RE, (m0, g) => { if (!exit) exit = bioParseExit(g); return '\n'; }).replace(/\s+$/, exit ? '' : '$&');
+  const src = String(text || '');
   let plain = ''; const marks = []; let last = 0; let m;
   BIO_TAG_RE.lastIndex = 0;
   while ((m = BIO_TAG_RE.exec(src))) {
@@ -13010,30 +12233,7 @@ function parseBioMarkup(text) {
     marks.forEach((mk) => { mk.offset -= removed.filter((p) => p < mk.offset).length; });
     plain = out.replace(/\*/g, '');
   }
-  return { plain, marks, ital, title, exit };
-}
-// v217 : le rideau noir (page titre au début, fondu au noir à la fin)
-const bioCur = { launch: 0, fade: 0, exit: 0 };
-function bioCurtainHide() {
-  clearTimeout(bioCur.launch); clearTimeout(bioCur.fade); clearTimeout(bioCur.exit);
-  const c = $('imp-bio-curtain'); if (!c) return; c.style.transition = 'none'; c.classList.remove('on'); void c.offsetWidth; c.style.transition = '';
-}
-function bioCurtainTitle(title) { // affiche la page titre aussitôt ; renvoie la durée d'affichage (ms) avant que le film démarre
-  const c = $('imp-bio-curtain'); if (!c || !title) return 0;
-  bioCurtainHide(); const ms = title.ms != null ? title.ms : 4000;
-  $('imp-bio-curtain-title').textContent = title.text; $('imp-bio-curtain-sub').textContent = title.sub || '';
-  c.style.transition = 'none'; c.classList.add('on'); void c.offsetWidth; c.style.transition = '';
-  bioCur.fade = setTimeout(() => { c.style.setProperty('--cu-ms', '1400ms'); c.classList.remove('on'); }, ms);
-  return ms;
-}
-function bioFilmExit() { // appelé quand la lecture est finie : fondu au noir (ou coupe) si le texte porte [sortie]
-  const ex = bioAuto.parsed && bioAuto.parsed.exit; const c = $('imp-bio-curtain'); if (!ex || !c) return;
-  clearTimeout(bioCur.exit);
-  bioCur.exit = setTimeout(() => {
-    $('imp-bio-curtain-title').textContent = ''; $('imp-bio-curtain-sub').textContent = '';
-    if (ex.type === 'cut') { c.style.transition = 'none'; c.classList.add('on'); void c.offsetWidth; c.style.transition = ''; }
-    else { c.style.setProperty('--cu-ms', (ex.ms != null ? ex.ms : 1500) + 'ms'); c.classList.add('on'); }
-  }, 700);
+  return { plain, marks, ital };
 }
 const bioAuto = { active: false, speaking: false, marks: [], plainLen: 0, spokenLen: 0, startT: 0, gotBoundary: false, frac: 0,
   pauseUntil: 0, raf: 0, rate: 0.72, curIdx: -2, baseRef: '', baseCap: '', nodes: [], shownRef: '', fading: false, pending: [], fid: 0, holdUntil: 0, fshow: -1, lastT: 0, fadeTimer: 0, userMoved: false, dual: false, parsed: null, baseFrac: 0, paused: false, pausedAt: 0, ended: false, sid: 0, work: null, force: false };
@@ -13223,10 +12423,7 @@ function bioFrame() {
   let lineY = col.scrollTop + col.clientHeight * lineF;
   if (A.speaking) {
     let f = A.frac;
-    if (A.chunked) {
-      // v199 (mobile) : lecture par morceaux — sans position fournie par la voix, on estime d'après la vitesse MESURÉE sur les morceaux déjà lus
-      if (!A.gotBoundary && !A.paused && A.ck) f = (A.ck.start + Math.min(A.ck.len * 0.98, Math.max(0, (now - A.ck.t0) / 1000) * (A.cpsEst || 13))) / Math.max(1, A.plainLen);
-    } else if (!A.gotBoundary && !A.paused && now - A.startT > 1500) f = Math.min(0.98, (A.baseFrac || 0) + Math.min(1, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen)) * (1 - (A.baseFrac || 0)));
+    if (!A.gotBoundary && !A.paused && now - A.startT > 1500) f = Math.min(0.98, (A.baseFrac || 0) + Math.min(1, ((now - A.startT) / 1000) * 8 * (A.rate / 0.72) / Math.max(1, A.spokenLen)) * (1 - (A.baseFrac || 0)));
     // v183 : la position lue ne recule jamais et n'avance jamais d'un bloc. La voix signale sa position par à-coups (parfois
     // plusieurs mots d'un coup) ; on lisse : avance régulière à la vitesse de la voix, rattrapage progressif si la voix est devant,
     // et le repère ne dépasse jamais la voix de plus de ~12 caractères (pour ne pas annoncer une image trop tôt).
@@ -13267,7 +12464,6 @@ function bioFrame() {
   A.raf = requestAnimationFrame(bioFrame);
 }
 function bioAutoStop() {
-  if (bioAuto.voiceSwap) { impSelectedVoice = bioAuto.voiceSwap.prev; impAutoVoice = null; bioAuto.voiceSwap = null; }   // v187 : on rend la voix d'avant
   bioAuto.sid++; bioAuto.paused = false;
   bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
   clearTimeout(bioAuto.fadeTimer); clearTimeout(bioAuto.queueTimer); bioAuto.fid++; bioAuto.fading = false; bioAuto.pending = []; bioCapReset();
@@ -13351,73 +12547,6 @@ function bioProgress(ci, spokenLen) {
   A.frac = A.map ? Math.min(1, (A.mapBase + A.map(ci)) / Math.max(1, A.plainLen)) : A.baseFrac + Math.min(1, ci / A.spokenLen) * (1 - A.baseFrac);
   if (A.debug && (!A.lastLog || A.lastCiT - A.lastLog > 3000)) { A.lastLog = A.lastCiT; bioDbg('voix à', ci + '/' + spokenLen); }
 }
-function bioChooseVoice(work, isWork) {
-  const A = bioAuto; if (A.voiceSwap) { impSelectedVoice = A.voiceSwap.prev; impAutoVoice = null; A.voiceSwap = null; }
-  try {
-    if (isWork || !window.speechSynthesis) return;
-    if (getGlobalPrefs().voiceName && getGlobalVoice()) { bioDbg('voix : choix du joueur respecté'); return; }
-    const g = work.artistVoice || bioInferGender(work.prenom); if (!g) return;
-    const v = pickVoiceByGender(g);
-    bioDbg('voix demandée :', g, '→', v ? v.name : 'aucune voix de ce genre sur cet appareil (voix habituelle)');
-    if (!v) return;
-    A.voiceSwap = { prev: impSelectedVoice }; impSelectedVoice = v; impAutoVoice = v;
-  } catch (e) { /* ignoré : on garde la voix habituelle */ }
-}
-// v199 (retour Stéphane sur mobile : « le texte est fini et on arrive seulement à l'image de Danaé ») : sur téléphone, la voix ne signale en général pas
-// sa position (pas d'événement « boundary ») ; l'application estimait alors la lecture à vitesse fixe, trop lente par rapport à la voix, et l'écart
-// s'accumulait tout au long du texte. Désormais, sur mobile, le texte est lu PAR MORCEAUX, découpés exactement aux balises d'images : chaque morceau
-// est une phrase de voix à part, et c'est le DÉBUT de ce morceau (signalé de façon fiable par la voix) qui déclenche l'image. L'écart ne peut donc plus
-// s'accumuler : il est remis à zéro à chaque balise. Entre deux balises, la position est estimée d'après la vitesse réellement mesurée sur les morceaux précédents.
-let bioCpsLearned = 0;
-function bioWantChunks() {
-  try {
-    const q = location.search; if (/[?&]bio=chunk/.test(q)) return true; if (/[?&]bio=single/.test(q)) return false;
-    const ua = navigator.userAgent || '';
-    return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || ((navigator.maxTouchPoints || 0) > 0 && window.innerWidth < 1100);
-  } catch (e) { return false; }
-}
-function bioMakeChunks(plain, offset, marks) {
-  const cuts = new Set([offset, plain.length]);
-  (marks || []).forEach((mk) => { if (mk.offset > offset && mk.offset < plain.length) cuts.add(mk.offset); });
-  const starts = bioSentenceStarts(plain); let pts = [...cuts].sort((a, b) => a - b); const out = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    let a = pts[i]; const b = pts[i + 1];
-    while (b - a > 700) { let c = -1; for (const s of starts) { if (s > a + 200 && s <= a + 700) c = s; } if (c < 0) break; out.push([a, c]); a = c; }
-    if (plain.slice(a, b).trim()) out.push([a, b]);
-  }
-  return out;
-}
-function bioSpeakChunks(plain, offset, sid) {
-  const A = bioAuto;
-  if ((!impAudioOn && !A.force) || !window.speechSynthesis) return;
-  const chunks = bioMakeChunks(plain, offset, A.marks); if (!chunks.length) return;
-  A.cpsEst = A.cpsEst || bioCpsLearned || 13; A.cpsLast = A.cpsEst;
-  const L = Math.max(1, plain.length); const vol = getGlobalPrefs().speechVolume ?? 1;
-  try { speechSynthesis.cancel(); } catch (e) { /* ignoré */ }
-  chunks.forEach(([a, b], i) => {
-    const raw = plain.slice(a, b); const spoken = fixSpeechPronunciation(bioVoiceFlat(raw)); const last = i === chunks.length - 1;
-    const u = new SpeechSynthesisUtterance(spoken); u.lang = 'fr-FR'; u.rate = 0.72; u.volume = vol; if (impSelectedVoice) u.voice = impSelectedVoice;
-    const map = bioBuildMap(raw, spoken);
-    u.onstart = () => {
-      if (sid !== bioAuto.sid) return; const now = performance.now();
-      A.gotBoundaryOrSpoke = true; A.speaking = true; A.rate = u.rate; A.ck = { start: a, len: b - a, t0: now, idx: i };
-      A.baseFrac = a / L; A.startT = now; A.gotBoundary = false; A.lastCi = 0; A.cand = null; A.lastCiT = now; A.mapBase = a; A.map = map; A.spokenLen = Math.max(1, spoken.length);
-      A.frac = a / L; A.fshow = Math.max(A.fshow >= 0 ? A.fshow : 0, a / L); A.cpsLast = A.cpsEst;
-      bioDbg('morceau', i + 1 + '/' + chunks.length, 'début à', a, 'vitesse estimée', A.cpsEst.toFixed(1));
-    };
-    u.onboundary = (ev) => { if (sid !== bioAuto.sid || !A.ck || A.ck.idx !== i) return; if (typeof ev.charIndex === 'number') bioProgress(ev.charIndex, spoken.length); };
-    const done = (ok) => {
-      if (sid !== bioAuto.sid) return;
-      if (ok && A.ck && A.ck.idx === i && !A.ck.paused) {
-        const dur = (performance.now() - A.ck.t0) / 1000;
-        if (dur > 2 && b - a > 30) { const m = Math.max(6, Math.min(30, (b - a) / dur)); A.cpsEst = i === 0 && !bioCpsLearned ? m : A.cpsEst * 0.4 + m * 0.6; bioCpsLearned = A.cpsEst; bioDbg('morceau', i + 1, 'lu en', dur.toFixed(1) + 's →', m.toFixed(1), 'car/s'); }
-      }
-      if (last) { A.speaking = false; if (A.dual && A.willSpeak) { A.ended = true; A.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); } }
-    };
-    u.onend = () => done(true); u.onerror = () => done(false);
-    speechSynthesis.speak(u);
-  });
-}
 function bioSpeakFrom(offset) {
   const A = bioAuto; if (!A.parsed) return;
   const plain = A.parsed.plain; offset = Math.max(0, Math.min(plain.length - 1, offset));
@@ -13425,11 +12554,10 @@ function bioSpeakFrom(offset) {
   A.baseFrac = offset / Math.max(1, plain.length);
   A.map = null; A.mapBase = offset; A.pending = []; clearTimeout(A.queueTimer); A.fshow = A.baseFrac; A.lastCi = 0; A.cand = null; A.lastCiT = performance.now(); A.allowBack = true; A.t0 = A.t0 || performance.now(); bioDbg('lecture depuis', offset);
   A.frac = A.baseFrac; A.gotBoundary = false; A.gotBoundaryOrSpoke = false; A.startT = performance.now();
-  A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0; bioCurtainHide();
+  A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0;
   $('imp-bio-split')?.classList.add('bio-film');
   try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch (e) { /* ignoré */ }
   bioSyncButton();
-  if (A.chunked) { A.ck = null; bioSpeakChunks(plain, offset, sid); return; }
   impSpeak(plain.slice(offset), undefined, A.force, {
     onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = offset; bioAuto.map = bioBuildMap(plain.slice(offset), spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },
     onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
@@ -13437,14 +12565,14 @@ function bioSpeakFrom(offset) {
     onStop: () => {
       if (sid !== bioAuto.sid) return;
       bioAuto.speaking = false;
-      if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); }
+      if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); }
     },
   });
 }
 function bioSeek(dir) {
   const A = bioAuto; if (!A.dual || !A.parsed) return;
   const starts = bioSentenceStarts(A.parsed.plain);
-  const cur = A.ended ? A.parsed.plain.length : (A.chunked ? Math.max(0, A.fshow) : A.frac) * A.parsed.plain.length;
+  const cur = A.ended ? A.parsed.plain.length : A.frac * A.parsed.plain.length;
   let target;
   if (dir < 0) { target = 0; for (const s of starts) { if (s < cur - 45) target = s; else break; } }
   else { target = starts.find((s) => s > cur + 1); if (target === undefined) return; }
@@ -13454,9 +12582,9 @@ $('imp-bio-back')?.addEventListener('click', () => bioSeek(-1));
 $('imp-bio-fwd')?.addEventListener('click', () => bioSeek(1));
 $('imp-bio-toggle')?.addEventListener('click', () => {
   const A = bioAuto; if (!A.dual) return;
-  if (A.ended) { if (A.work) openImpArtistBio(A.work, A.force, { work: A.isWork, topic: A.topic }); return; }
+  if (A.ended) { if (A.work) openImpArtistBio(A.work, A.force, { work: A.isWork }); return; }
   if (!A.paused) { A.paused = true; A.pausedAt = performance.now(); try { speechSynthesis.pause(); } catch (e) { /* ignoré */ } }
-  else { A.paused = false; A.startT += performance.now() - A.pausedAt; if (A.ck) { A.ck.t0 += performance.now() - A.pausedAt; A.ck.paused = true; } try { speechSynthesis.resume(); } catch (e) { /* ignoré */ } }
+  else { A.paused = false; A.startT += performance.now() - A.pausedAt; try { speechSynthesis.resume(); } catch (e) { /* ignoré */ } }
   bioSyncButton();
 });
 window.addEventListener('resize', () => { if (bioAuto.dual && !$('imp-bio-split')?.classList.contains('hidden')) bioSetPads(); });
@@ -13506,7 +12634,7 @@ function openImpArtistBio(work, force, opts) {
   impClearTimers();
   // v165 : le texte de l'œuvre (première personne) passe par le même écran « film » que la bio : opts.work = true
   const isWork = !!(opts && opts.work); const srcText = isWork ? (work.workText || '') : (work.bio || '');
-  bioAuto.isWork = isWork; bioAuto.topic = (opts && opts.topic) || '';   // v211 : texte « Natures et techniques » (sans portrait ni guillemets)
+  bioAuto.isWork = isWork;
   const splitEl = $('imp-bio-split');
   const mode = bioWantMode(); const dual = !!mode;
   bioAuto.vert = mode === 'v'; bioAuto.dual = dual; bioAuto.work = work; bioAuto.force = !!force; bioAuto.artistRef = work.artistImage || '';
@@ -13525,7 +12653,7 @@ function openImpArtistBio(work, force, opts) {
   const datesEl = $('imp-bio-split-dates');
   if (datesEl) { const dt = isWork ? '' : String(work.artistDates || '').trim().replace(/\s*[-–—]\s*/, '\u00a0–\u00a0'); datesEl.textContent = dt; datesEl.classList.toggle('hidden', !dt); }
   const nameEl = $('imp-bio-split-name');
-  if (nameEl) nameEl.textContent = bioAuto.topic ? bioAuto.topic : isWork ? `«\u00a0${work.title}\u00a0»` : formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
+  if (nameEl) nameEl.textContent = isWork ? `«\u00a0${work.title}\u00a0»` : formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
   const bioText = srcText || 'Aucune biographie n’est encore disponible pour cet artiste.';
   const textEl = $('imp-bio-split-text');
   const parsedBio = parseBioMarkup(bioText);
@@ -13554,37 +12682,30 @@ function openImpArtistBio(work, force, opts) {
     splitEl.classList.toggle('bio-film', willSpeak);
     bioSetPads();
   }
-  const launch = () => {
-    if (textEl) bioAutoStart(parsedBio, baseRef, baseCap, willSpeak);
-    bioAuto.shownRef = baseRef || ''; bioAuto.solo = solo; bioAuto.soloOk = solo;
-    bioSyncButton();
-    bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
-    if (srcText) {
-      bioAuto.rate = 0.72; bioChooseVoice(work, isWork);
-      bioAuto.chunked = dual && bioWantChunks(); bioAuto.ck = null;
-      if (bioAuto.chunked) { if (willSpeak) bioSpeakFrom(0); return; }
-      const sid = bioAuto.sid;
-      impSpeak(parsedBio.plain, undefined, force, {
-        onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = 0; bioAuto.map = bioBuildMap(parsedBio.plain, spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },
-        onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
-        onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioProgress(ci, spokenLen); },
-        onStop: () => {
-          if (sid !== bioAuto.sid) return;
-          bioAuto.speaking = false;
-          if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); }
-        },
-      });
-    }
-  };
-  bioCurtainHide();
-  const titleMs = bioCurtainTitle(parsedBio.title);
-  if (titleMs) { bioAutoStop(); try { speechSynthesis.cancel(); } catch (e) { /* ignoré */ } bioCur.launch = setTimeout(launch, titleMs); } else launch();
+  if (textEl) bioAutoStart(parsedBio, baseRef, baseCap, willSpeak);
+  bioAuto.shownRef = baseRef || ''; bioAuto.solo = solo; bioAuto.soloOk = solo;
+  bioSyncButton();
+  bioAuto.parsed = parsedBio; bioAuto.baseFrac = 0;
+  if (srcText) {
+    bioAuto.rate = 0.72;
+    const sid = bioAuto.sid;
+    impSpeak(parsedBio.plain, undefined, force, {
+      onSpoken: (spoken) => { if (sid !== bioAuto.sid) return; bioAuto.mapBase = 0; bioAuto.map = bioBuildMap(parsedBio.plain, spoken); bioDbg('alignement texte lu / texte affiché', bioAuto.map ? 'ok' : 'indisponible'); },
+      onStart: (spokenLen, rate) => { if (sid !== bioAuto.sid) return; bioAuto.gotBoundaryOrSpoke = true; bioAuto.spokenLen = Math.max(1, spokenLen); bioAuto.rate = rate || 0.72; bioAuto.startT = performance.now(); bioAuto.speaking = true; },
+      onProgress: (ci, spokenLen) => { if (sid !== bioAuto.sid) return; bioProgress(ci, spokenLen); },
+      onStop: () => {
+        if (sid !== bioAuto.sid) return;
+        bioAuto.speaking = false;
+        if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); }
+      },
+    });
+  }
 }
 // v129 : même écran partagé que la bio, mais avec l'image de l'œuvre à gauche et son texte (première personne) à droite.
-function openImpWorkText(work, topicLabel) {
-  if (bioWantMode()) { openImpArtistBio(work, true, { work: true, topic: topicLabel || '' }); return; }
+function openImpWorkText(work) {
+  if (bioWantMode()) { openImpArtistBio(work, true, { work: true }); return; }
   impClearTimers();
-  bioAutoStop(); bioCurtainHide();
+  bioAutoStop();
   bioAuto.dual = false; bioSyncButton();
   $('imp-bio-split')?.classList.remove('bio-dual', 'bio-vert', 'bio-film', 'bio-noslide');
   const padT = $('imp-bio-pad-top'), padB = $('imp-bio-pad-bot'); if (padT) padT.style.height = ''; if (padB) padB.style.height = '';
@@ -13595,10 +12716,10 @@ function openImpWorkText(work, topicLabel) {
   }
   showImpBioCredit(work.image);
   const captionEl = $('imp-bio-split-caption');
-  if (captionEl) captionEl.textContent = topicLabel ? '' : [formatArtistDisplayName(work).replace(/<[^>]+>/g, ''), work.date].filter(Boolean).join(', ');
+  if (captionEl) captionEl.textContent = [formatArtistDisplayName(work).replace(/<[^>]+>/g, ''), work.date].filter(Boolean).join(', ');
   const nameEl = $('imp-bio-split-name');
   { const de = $('imp-bio-split-dates'); if (de) { de.textContent = ''; de.classList.add('hidden'); } }
-  if (nameEl) nameEl.textContent = topicLabel ? topicLabel : `«\u00a0${work.title}\u00a0»`;
+  if (nameEl) nameEl.textContent = `«\u00a0${work.title}\u00a0»`;
   const textEl = $('imp-bio-split-text');
   const plainWork = parseBioMarkup(work.workText).plain; // les balises [image: …] ne s'affichent ni ne se lisent
   if (textEl) textEl.textContent = plainWork;
@@ -13607,7 +12728,7 @@ function openImpWorkText(work, topicLabel) {
   impSpeak(plainWork, undefined, true);
 }
 function closeImpArtistBio() {
-  bioAutoStop(); bioCurtainHide();
+  bioAutoStop();
   $('imp-bio-split')?.classList.add('hidden');
   $('imp-quiz-grid')?.classList.remove('imp-bio-open');
   speechSynthesis.cancel();
@@ -13953,7 +13074,7 @@ function intrusRefreshCorrectionDetails() {
   detailsParts.push(`<span class="correction-label">Auteur</span><span class="correction-value">${formatArtistDisplayName(q.correct)}</span>`);
   detailsParts.push(`<span class="correction-label">Titre de l'œuvre</span><span class="correction-value"><em>«\u00a0${escapeHtml(q.correct.title)}\u00a0»</em></span>`);
   if (showFullCorrection || intrusExtraFields.includes('date')) detailsParts.push(`<span class="correction-label">Date</span><span class="correction-value">${escapeHtml(q.correct.date || '—')}</span>`);
-  if ((showFullCorrection || intrusExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Nature et matériau de l’œuvre</span><span class="correction-value">${escapeHtml(matPhrase(q.correct))}</span>`);
+  if ((showFullCorrection || intrusExtraFields.includes('materiaux')) && q.correct.materials) detailsParts.push(`<span class="correction-label">Nature et matériau de l’œuvre</span><span class="correction-value">${escapeHtml(q.correct.materialsPhrase || q.correct.materials)}</span>`);
   if ((showFullCorrection || intrusExtraFields.includes('dimensions')) && dims) detailsParts.push(`<span class="correction-label">Dimensions</span><span class="correction-value">${dims}</span>`);
   if (showFullCorrection || intrusExtraFields.includes('location')) detailsParts.push(`<span class="correction-label">Lieu de conservation actuel</span><span class="correction-value">${locationWithFlag(q.correct) || '—'}</span>`);
   $('intrus-correction-details').innerHTML = detailsParts.join('');
@@ -14447,222 +13568,22 @@ $('restart-full-button').addEventListener('click', () => {
   state.currentScoreSaved = false;
   showPanel('quiz'); renderQuestion();
 });
-// ============================================================
-// v195 — « Mon bilan de progression » : remplace l'ancien fichier Excel par une page synthétique,
-// bienveillante, imprimable / enregistrable en PDF (retour Stéphane). Elle lit tous les scores du
-// joueur (quiz + exercices d'entraînement), calcule ses progrès, ses points forts et ce qu'il
-// reste à travailler, puis rappelle quelques conseils d'utilisation de l'application.
-// ============================================================
-async function fetchAllScoresForReport() {
-  if (!firebaseReady || !currentUser) return null;
-  const snapshot = await db.collection('users').doc(currentUser.uid).collection('scores').orderBy('createdAt', 'asc').get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-    .filter((d) => d.createdAt && typeof d.createdAt.toDate === 'function' && Number.isFinite(d.percent))
-    .map((d) => ({ ...d, type: d.type || 'quiz', date: d.createdAt.toDate() }));
-}
-function reportAvg(list) { return list.length ? list.reduce((s, d) => s + d.percent, 0) / list.length : 0; }
-function reportGroup(docs, keyFn, minCount) {
-  const map = new Map();
-  docs.forEach((d) => { const k = keyFn(d); if (!k) return; if (!map.has(k)) map.set(k, []); map.get(k).push(d); });
-  return Array.from(map.entries()).filter(([, l]) => l.length >= minCount)
-    .map(([k, l]) => ({ key: k, count: l.length, avg: Math.round(reportAvg(l)) }))
-    .sort((a, b) => a.avg - b.avg);
-}
-function reportDuration(seconds) {
-  const s = Math.round(seconds || 0);
-  if (s < 60) return `${s} s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m} min`;
-  const h = Math.floor(m / 60);
-  return `${h} h ${String(m % 60).padStart(2, '0')}`;
-}
-function buildProgressReport(docs, userName) {
-  const esc = escapeHtml;
-  const fmtDate = (d) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-  const quiz = docs.filter((d) => d.type === 'quiz');
-  const train = docs.filter((d) => d.type === 'entrainement');
-  const first = docs[0].date, last = docs[docs.length - 1].date;
-  const spanDays = Math.max(1, Math.round((last - first) / 86400000) + 1);
-  const spanText = spanDays < 14 ? `${spanDays} jour${spanDays > 1 ? 's' : ''}`
-    : spanDays < 60 ? `${Math.round(spanDays / 7)} semaines`
-    : `${Math.round(spanDays / 30.4)} mois`;
-  const activeDays = new Set(docs.map((d) => d.date.toDateString())).size;
-  const totalQuestions = docs.reduce((s, d) => s + (d.questionCount || d.possible || 0), 0);
-  const totalTime = docs.reduce((s, d) => s + (d.timeSpent || 0), 0);
-  const recentCount = docs.filter((d) => (new Date() - d.date) < 14 * 86400000).length;
-
-  // --- Progrès : moyenne des premières séances comparée à celle des dernières ---
-  const progressRows = [];
-  const progressOf = (list, label) => {
-    if (!list.length) return;
-    const avgAll = Math.round(reportAvg(list));
-    if (list.length >= 6) {
-      const k = Math.min(5, Math.floor(list.length / 2));
-      const early = Math.round(reportAvg(list.slice(0, k)));
-      const recent = Math.round(reportAvg(list.slice(-k)));
-      progressRows.push({ label, count: list.length, avgAll, early, recent, diff: recent - early, hasTrend: true });
-    } else {
-      progressRows.push({ label, count: list.length, avgAll, hasTrend: false });
-    }
-  };
-  progressOf(quiz, 'Quiz');
-  progressOf(train, 'Exercices d’entraînement');
-
-  // --- Rubriques (quiz) ---
-  const RUB = { artist: 'Artiste', title: 'Titre de l’œuvre', date: 'Date de création', location: 'Lieu de conservation' };
-  const rubTotals = {};
-  quiz.forEach((d) => Object.entries(d.perField || {}).forEach(([k, v]) => {
-    if (!RUB[k]) return;
-    rubTotals[k] = rubTotals[k] || { c: 0, p: 0 };
-    rubTotals[k].c += v.correct || 0; rubTotals[k].p += v.possible || 0;
-  }));
-  const rubrics = Object.entries(rubTotals).filter(([, v]) => v.p >= 10)
-    .map(([k, v]) => ({ key: k, label: RUB[k], pct: Math.round((v.c / v.p) * 100), n: v.p }))
-    .sort((a, b) => b.pct - a.pct);
-
-  // --- Par siècle, par art, par exercice ---
-  const single = (arr) => (Array.isArray(arr) && arr.length === 1 ? arr[0] : '');
-  const byCentury = reportGroup(docs, (d) => single(d.quizCenturies), 3);
-  const byArt = reportGroup(docs, (d) => single(d.quizArts), 3);
-  const byExercise = reportGroup(train, (d) => d.exerciseName || d.quizLabel, 2);
-
-  const bar = (pct) => `<span class="rp-bar"><span style="width:${Math.max(2, Math.min(100, pct))}%"></span></span>`;
-  const rowHtml = (label, pct, extra) => `<div class="rp-line"><span class="rp-line-label">${esc(label)}</span>${bar(pct)}<span class="rp-line-pct">${pct} %</span>${extra ? `<span class="rp-line-extra">${esc(extra)}</span>` : ''}</div>`;
-
-  // --- Mot d'encouragement ---
-  const best = progressRows.find((r) => r.hasTrend && r.diff >= 5);
-  const slipping = progressRows.find((r) => r.hasTrend && r.diff <= -5);
-  let intro;
-  if (best) intro = `En ${spanText}, vos résultats aux ${best.label === 'Quiz' ? 'quiz' : 'exercices'} sont passés de ${best.early} % à ${best.recent} % : c’est une vraie progression, et elle est le fruit de votre régularité. Bravo !`;
-  else if (docs.length >= 6 && progressRows.some((r) => r.hasTrend && Math.abs(r.diff) < 5 && r.recent >= 80)) intro = `Depuis ${spanText}, vous maintenez un très bon niveau de façon constante : la mémoire de l’œil se consolide à force de régularité. Continuez dans ce sens !`;
-  else if (docs.length < 6) intro = `Vous avez commencé : c’est le plus important. Quelques séances de plus et ce bilan pourra vous montrer précisément vos progrès.`;
-  else intro = `Depuis ${spanText}, vous avez fait ${docs.length} séances : l’essentiel est de continuer à vous exercer, les progrès viennent avec la répétition. Voici où vous en êtes.`;
-  if (slipping && best == null && docs.length >= 6) intro += ' Vos derniers scores sont un peu plus bas que les premiers : rien d’inquiétant, les œuvres deviennent aussi plus difficiles à mesure que vous avancez.';
-
-  // --- Conseils personnalisés (bienveillants) ---
-  const advice = [];
-  const TIPS = {
-    artist: 'associez chaque artiste à une image mentale.',
-    title: 'retenez le sujet de l’œuvre avec vos propres mots.',
-    date: 'rattachez chaque œuvre à une période (essayez « Chronologie »).',
-    location: 'retenez le musée avec sa ville (essayez « Famille »).',
-  };
-  const weakRub = rubrics.length >= 2 ? rubrics[rubrics.length - 1] : null;
-  if (weakRub && weakRub.pct < 85) advice.push(`Rubrique « ${weakRub.label} » (${weakRub.pct} %) : ${TIPS[weakRub.key]}`);
-  const weakCentury = byCentury.length >= 2 ? byCentury[0] : null;
-  if (weakCentury && weakCentury.avg < 85) advice.push(`Le ${weakCentury.key} siècle (${weakCentury.avg} %) : une ou deux séances ciblées feraient progresser vite.`);
-  const weakEx = byExercise.length >= 2 ? byExercise[0] : null;
-  if (weakEx && weakEx.avg < 85) advice.push(`Exercice « ${weakEx.key} » (${weakEx.avg} %) : bon candidat pour votre prochain entraînement.`);
-  if (recentCount === 0) advice.push('Vous n’avez pas joué depuis plus de deux semaines : une séance courte de 5 questions suffit pour reprendre le fil.');
-  if (!advice.length) advice.push('Vos résultats sont très homogènes : c’est le moment de passer au niveau supérieur ou d’explorer un siècle que vous avez moins pratiqué.');
-  if (!quiz.length && train.length) advice.push('Pensez aussi à essayer les quiz : ils testent l’ensemble (artiste, titre, date, lieu) et complètent bien les exercices.');
-  if (quiz.length && !train.length) advice.push('Pensez aussi à essayer les exercices d’entraînement (Chronologie, Famille, Intrus…) : ils travaillent la mémoire autrement que le quiz.');
-
-  const trendHtml = progressRows.map((r) => `
-    <div class="rp-card">
-      <div class="rp-card-title">${esc(r.label)}</div>
-      <div class="rp-card-big">${r.avgAll} %</div>
-      <div class="rp-card-sub">moyenne sur ${r.count} séance${r.count > 1 ? 's' : ''}</div>
-      ${r.hasTrend ? `<div class="rp-card-trend ${r.diff > 0 ? 'up' : r.diff < 0 ? 'down' : ''}">${r.diff > 0 ? '▲ +' + r.diff : r.diff < 0 ? '▼ ' + r.diff : '= stable'} pts<br><span>${r.early} % au début → ${r.recent} % récemment</span></div>` : ''}
-    </div>`).join('');
-
-  const section = (title, body) => body ? `<section class="rp-section"><h3>${title}</h3>${body}</section>` : '';
-  const hello = userName ? esc(userName) : 'Bravo';
-  const rubHtml = rubrics.length ? rubrics.map((r) => rowHtml(r.label, r.pct)).join('') : '';
-  const cenHtml = byCentury.length ? byCentury.slice().sort((a, b) => parseInt(a.key) - parseInt(b.key)).map((r) => rowHtml(r.key + ' siècle', r.avg)).join('') : '';
-  const exHtml = byExercise.length ? byExercise.slice().reverse().map((r) => rowHtml(r.key, r.avg)).join('') : '';
-  const col = (title, html) => html ? `<div class="rp-col"><h3>${title}</h3>${html}</div>` : '';
-  const twoCols = col('Par rubrique (quiz)', rubHtml) + col('Par siècle', cenHtml);
-  return `
-    <div class="rp-frame"></div>
-    ${reportCorners()}
-    <div class="rp-inner">
-      <div class="rp-header">
-        ${reportEmblem()}
-        <div class="rp-eyebrow">MNEMART</div>
-        <h2>Bilan de progression</h2>
-        <div class="rp-decor"><span></span><i>❖</i><span></span></div>
-        <div class="rp-award">${userName ? 'est décerné avec félicitations à' : 'est décerné avec félicitations'}</div>
-        ${userName ? `<div class="rp-name">${esc(userName)}</div>` : ''}
-        <div class="rp-period">du ${esc(fmtDate(first))} au ${esc(fmtDate(last))}</div>
-      </div>
-      <p class="rp-intro">${esc(intro)}</p>
-      <div class="rp-figures">
-        <div><strong>${docs.length}</strong><span>séances</span></div>
-        <div><strong>${activeDays}</strong><span>jours de pratique</span></div>
-        <div><strong>${totalQuestions}</strong><span>questions travaillées</span></div>
-        <div><strong>${esc(reportDuration(totalTime))}</strong><span>passées à vous exercer</span></div>
-      </div>
-      <div class="rp-cards">${trendHtml}</div>
-      ${twoCols ? `<div class="rp-cols">${twoCols}</div>` : ''}
-      ${exHtml ? `<section class="rp-section"><h3>Exercices d’entraînement</h3><div class="rp-lines-2">${exHtml}</div></section>` : ''}
-      ${advice.length ? `<section class="rp-section rp-next"><h3>Votre prochain défi</h3><ul class="rp-list">${advice.slice(0, 3).map((x) => `<li>${esc(x)}</li>`).join('')}</ul></section>` : ''}
-      <p class="rp-closing">${hello}, continuez à regarder, à nommer, à situer : chaque séance affine votre œil.</p>
-      <div class="rp-bottom">
-        <span class="rp-foot">Établi le ${esc(fmtDate(new Date()))}<br>d’après les scores de votre compte</span>
-        ${reportSeal()}
-        <span class="rp-foot rp-sign">Le musée imaginaire<br><strong>MNEMART</strong></span>
-      </div>
-    </div>`;
-}
-// Décor du diplôme : médaillon à laurier, coins ornés, sceau doré (tout en SVG, sans image externe).
-function reportEmblem() {
-  const leaves = [];
-  for (let i = 0; i < 10; i++) {
-    const th = 105 + i * (150 / 9); // arc gauche : du bas vers le haut en passant par la gauche
-    const rad = th * Math.PI / 180;
-    const x = 60 + 45 * Math.cos(rad), y = 60 + 45 * Math.sin(rad);
-    const rot = th + (i % 2 ? 28 : -28);
-    leaves.push(`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="3" ry="7.5" transform="rotate(${rot.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="url(#rpg)"/>`);
-    leaves.push(`<ellipse cx="${(120 - x).toFixed(1)}" cy="${y.toFixed(1)}" rx="3" ry="7.5" transform="rotate(${(-rot).toFixed(0)} ${(120 - x).toFixed(1)} ${y.toFixed(1)})" fill="url(#rpg)"/>`);
-  }
-  return `<svg class="rp-emblem" viewBox="0 0 120 120" aria-hidden="true">
-    <defs><linearGradient id="rpg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e6c978"/><stop offset=".5" stop-color="#b08d4c"/><stop offset="1" stop-color="#7a5c35"/></linearGradient></defs>
-    ${leaves.join('')}
-    <circle cx="60" cy="60" r="31" fill="#fffaf0" stroke="url(#rpg)" stroke-width="3"/>
-    <circle cx="60" cy="60" r="26" fill="none" stroke="#c9a85c" stroke-width=".8"/>
-    <rect x="42" y="45" width="36" height="30" rx="1.5" fill="none" stroke="url(#rpg)" stroke-width="2.2"/>
-    <rect x="46" y="49" width="28" height="22" fill="#f6efe0" stroke="#c9a85c" stroke-width=".6"/>
-    <text x="60" y="67" text-anchor="middle" font-family="Georgia,serif" font-size="20" font-weight="700" fill="#7a5c35">M</text>
-  </svg>`;
-}
-function reportCorners() {
-  const c = `<svg viewBox="0 0 60 60" aria-hidden="true"><path d="M2 58 V2 H58" fill="none" stroke="#b08d4c" stroke-width="2.2"/><path d="M9 58 V9 H58" fill="none" stroke="#d9c08a" stroke-width="1"/><path d="M2 2 C20 6 28 14 30 30 C14 28 6 20 2 2 Z" fill="#b08d4c" opacity=".85"/><circle cx="36" cy="36" r="2.4" fill="#b08d4c"/></svg>`;
-  return ['tl', 'tr', 'bl', 'br'].map((p) => `<span class="rp-corner rp-${p}">${c}</span>`).join('');
-}
-function reportSeal() {
-  return `<svg class="rp-seal" viewBox="0 0 80 80" aria-hidden="true">
-    <defs><radialGradient id="rps" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#f0d98f"/><stop offset=".6" stop-color="#b08d4c"/><stop offset="1" stop-color="#7a5c35"/></radialGradient></defs>
-    <path d="M26 56 L18 78 L30 72 L36 78 L40 58 Z" fill="#8a5449"/><path d="M54 56 L62 78 L50 72 L44 78 L40 58 Z" fill="#a8665a"/>
-    <path d="M40 4 l5 5 7-2 3 7 7 2-1 7 6 4-4 6 3 7-7 3-1 7-7-1-5 6-5-5-7 1-1-7-7-3 3-7-4-6 6-4-1-7 7-2 3-7 7 2z" fill="url(#rps)" transform="translate(0,2) scale(1)"/>
-    <circle cx="40" cy="38" r="19" fill="none" stroke="#fff3cf" stroke-width="1.2" opacity=".8"/>
-    <text x="40" y="46" text-anchor="middle" font-family="Georgia,serif" font-size="24" font-weight="700" fill="#fff3cf">M</text>
-  </svg>`;
-}
-async function openProgressReport() {
-  const overlay = $('report-overlay'), sheet = $('report-sheet');
-  if (!overlay || !sheet) return;
-  if (!firebaseReady || !currentUser) { $('global-account-button')?.click(); return; }
-  sheet.innerHTML = '<p class="rp-loading">Préparation de votre bilan…</p>';
-  overlay.classList.remove('hidden');
+$('view-my-results-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
+$('download-my-report-button')?.addEventListener('click', async () => {
+  const button = $('download-my-report-button');
+  const originalText = button.textContent;
+  button.disabled = true; button.textContent = 'Préparation du fichier…';
   try {
-    const docs = await fetchAllScoresForReport();
-    if (!docs || !docs.length) {
-      sheet.innerHTML = '<p class="rp-loading">Aucun score enregistré pour le moment. Terminez un quiz ou un exercice pour commencer votre historique : votre bilan apparaîtra ici.</p>';
+    if (!lastAccountLevelGroups) await fetchScoreLevelGroups();
+    if (!lastAccountLevelGroups || !lastAccountLevelGroups.size) {
+      alert('Aucun score enregistré pour le moment. Terminez un quiz pour commencer votre historique.');
       return;
     }
-    const name = (currentUser.displayName || '').trim();
-    sheet.innerHTML = buildProgressReport(docs, name);
-  } catch (e) {
-    sheet.innerHTML = '<p class="rp-loading">Impossible de préparer le bilan pour le moment. Réessayez dans un instant.</p>';
+    downloadAccountTable();
+  } finally {
+    button.disabled = false; button.textContent = originalText;
   }
-}
-$('report-close')?.addEventListener('click', () => $('report-overlay')?.classList.add('hidden'));
-$('report-print')?.addEventListener('click', () => window.print());
-document.addEventListener('keydown', (event) => { if (event.key === 'Escape') $('report-overlay')?.classList.add('hidden'); });
-
-$('view-my-results-button')?.addEventListener('click', () => { showPanel('account'); loadAccountPage(); });
-$('download-my-report-button')?.addEventListener('click', openProgressReport);
+});
 
 // Touche Entrée : clique le bouton d'action principal actuellement visible (Valider, Suivant,
 // Commencer…), pour avancer d'écran en écran sans toucher la souris. On laisse le clavier ouvrir
