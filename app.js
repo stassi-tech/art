@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v228';
+const APP_VERSION = 'v229';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -13193,10 +13193,14 @@ function bioEls() {
 }
 // v180 (retour Stéphane : « les légendes apparaissent avant l'image ») : la légende et le lien de crédits suivent le fondu de l'image :
 // ils s'éteignent pendant la 1ʳᵉ moitié, le texte change au milieu, puis ils réapparaissent pendant la 2ᵉ moitié.
-function bioCapEls(E) { return [E.cap, $(E.link)].filter(Boolean); }
-function bioCapOut(E, ms) { bioCapEls(E).forEach((el) => { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '0'; }); }
-function bioCapIn(E, ms) {
-  bioCapEls(E).forEach((el) => { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = ''; });
+// v229 (retour Stéphane : « le fondu sur le sous-titre est trop long ») : la légende (et le crédit) s'éteint en 2 s au plus et réapparaît en 2 s au plus,
+// même quand le fondu enchaîné des images dure 10 s ; et si la légende ne change pas (les 3 images d'une même œuvre portent le même sous-titre), elle ne bouge pas.
+const BIO_CAP_MAX_MS = 2000;
+function bioCapEls(E, keepCap) { return [keepCap ? null : E.cap, $(E.link)].filter(Boolean); }
+function bioCapOut(E, ms, keepCap) { ms = Math.min(ms, BIO_CAP_MAX_MS); bioCapEls(E, keepCap).forEach((el) => { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '0'; }); }
+function bioCapIn(E, ms, keepCap) {
+  ms = Math.min(ms, BIO_CAP_MAX_MS);
+  bioCapEls(E, keepCap).forEach((el) => { el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = ''; });
   clearTimeout(bioAuto.capClean); bioAuto.capClean = setTimeout(() => bioCapEls(E).forEach((el) => { el.style.transition = ''; }), ms + 60);
 }
 function bioCapReset() {
@@ -13235,7 +13239,7 @@ function bioNextPending() {
 }
 function bioShowImage(ref, caption, fx, mi) {
   const E = bioEls(); const img = E.img; const nx = E.nx; if (!img || !ref) return;
-  const cap = E.cap;
+  const cap = E.cap; const sameCap = !!cap && cap.textContent === (caption || '');   // v229 : même sous-titre → pas de fondu de la légende
   if (bioAuto.dual) img.classList.remove('hidden');
   if (bioAuto.shownRef === ref) { if (cap) cap.textContent = caption || ''; return; }
   if (bioAuto.fading) { if (!bioAuto.pending.some((p) => p.ref === ref)) bioAuto.pending.push({ ref, caption, fx, mi }); bioDbg('en attente', ref.slice(-30), 'file', bioAuto.pending.length); return; }
@@ -13247,12 +13251,12 @@ function bioShowImage(ref, caption, fx, mi) {
   }
   if (fxType === 'black') { // fondu au noir : l'image s'éteint (1ʳᵉ moitié), puis la nouvelle apparaît (2ᵉ moitié)
     const half = Math.max(0, Math.round(fxMs / 2)); const src2 = imageSourceSized(ref, 900);
-    bioAuto.fading = true; bioAuto.shownRef = ref; img.style.transition = `opacity ${half}ms ease`; img.classList.add('bio-fading'); bioCapOut(E, half);
+    bioAuto.fading = true; bioAuto.shownRef = ref; img.style.transition = `opacity ${half}ms ease`; img.classList.add('bio-fading'); bioCapOut(E, half, sameCap);
     bioAuto.fadeTimer = setTimeout(() => {
       let done = false;
       const swap = () => {
         if (done || fid !== bioAuto.fid) return; done = true; img.onload = null; img.onerror = null;
-        if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); bioCapIn(E, half);
+        if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); bioCapIn(E, half, sameCap);
         void img.offsetWidth; img.classList.remove('bio-fading');
         bioAuto.fadeTimer = setTimeout(() => {
           if (fid !== bioAuto.fid) return;
@@ -13283,8 +13287,8 @@ function bioShowImage(ref, caption, fx, mi) {
     nx.classList.remove('hidden'); void nx.offsetWidth;
     img.style.transition = `opacity ${fxMs}ms ease`; nx.style.transition = `opacity ${fxMs}ms ease`; void nx.offsetWidth;
     nx.classList.add('bio-next-on'); img.classList.add('bio-fading');
-    const halfC = Math.round(fxMs / 2); bioCapOut(E, halfC); clearTimeout(bioAuto.capTimer);
-    bioAuto.capTimer = setTimeout(() => { if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); bioCapIn(E, halfC); }, halfC);
+    const halfC = Math.round(fxMs / 2); bioCapOut(E, halfC, sameCap); clearTimeout(bioAuto.capTimer);
+    bioAuto.capTimer = setTimeout(() => { if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); bioCapIn(E, halfC, sameCap); }, halfC);
     bioAuto.fadeTimer = setTimeout(() => {
       img.onload = finish; img.onerror = finish; img.src = src;
       if (img.complete && img.naturalWidth) finish();
