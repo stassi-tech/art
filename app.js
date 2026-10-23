@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v225';
+const APP_VERSION = 'v226';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -2372,6 +2372,22 @@ const PRONUNCIATION_FIXES = {
   'fiesole': 'fiésole',
   'gattamelata': 'gattamélata',
   'signoria': 'signorilla',
+  // v226 (atelier de prononciation, export du 23 oct 01:06) : nouveaux mots communs, et supports (identité) des écritures propres à certaines voix.
+  'brunelleschi': 'brounélleski',
+  'chigi': 'kidji',
+  'gian': 'djiane',
+  'melchiorre': 'melkioré',
+  'raggi': 'râdji',
+  'troubetzkoi': 'troubetz-koye',
+  'anguier': 'anguier',  // identité : sert de support aux écritures propres à certaines voix
+  'fabriano': 'fabriano',  // idem
+  'ghirlandaio': 'ghirlandaio',  // idem
+  'maiano': 'maiano',  // idem
+  'michelangelo': 'michelangelo',  // idem
+  'pisanello': 'pisanello',  // idem
+  'taft': 'taft',  // idem
+  'tuby': 'tuby',  // idem
+  'zacharie': 'zacharie',  // idem
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2407,6 +2423,18 @@ const PRONUNCIATION_BY_VOICE = {
   // v175 : résultats de l'atelier de prononciation (17 oct 14:45), une table par voix, repérée par un morceau de son nom.
   // Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
+    // atelier 23 oct 01:06
+    'algardi': 'âlgardi',
+    'anguier': 'en-guier',
+    'fabriano': 'fâbriano',
+    'ghirlandaio': 'ghirlandaillo',
+    'maiano': 'mayano',
+    'michelangelo': 'mikel-angelo',
+    'pisanello': 'pizanélo',
+    'raggi': 'râd-ji',
+    'taft': 'tâft',
+    'tuby': 'tûby',
+    'zacharie': 'zakari',
     // atelier 21 oct 21:36
     'bellano': 'bélano',
     'cavalli': 'ka va li',
@@ -2469,6 +2497,18 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'julie': {
+    // atelier 23 oct 01:06
+    'algardi': 'âlgardi',
+    'anguier': 'en-guier',
+    'fabriano': 'fâbriano',
+    'ghirlandaio': 'ghirlandaillo',
+    'maiano': 'mayano',
+    'michelangelo': 'mikel-angelo',
+    'pisanello': 'pizanélo',
+    'raggi': 'râd-ji',
+    'taft': 'tâft',
+    'tuby': 'tûby',
+    'zacharie': 'zakari',
     // atelier 21 oct 21:36
     'bellano': 'bélano',
     'cavalli': 'ka va li',
@@ -2509,6 +2549,18 @@ const PRONUNCIATION_BY_VOICE = {
     'yale': 'yèle',
   },
   'paul': {
+    // atelier 23 oct 01:06
+    'algardi': 'âlgardi',
+    'anguier': 'en-guier',
+    'fabriano': 'fâbriano',
+    'ghirlandaio': 'ghirlandaillo',
+    'maiano': 'mayano',
+    'michelangelo': 'mikel-angelo',
+    'pisanello': 'pizanélo',
+    'raggi': 'râd-ji',
+    'taft': 'tâft',
+    'tuby': 'tûby',
+    'zacharie': 'zakari',
     // atelier 21 oct 21:36
     'bellano': 'bélano',
     'cavalli': 'ka va li',
@@ -2673,6 +2725,7 @@ const PRONUNCIATION_BY_VOICE = {
     'tate britain': 'Tétte Britenn',
   },
   'vivienne': {
+    'fabriano': 'fabrianos', // atelier 23 oct 01:06
     'pollaiuolo': 'pollaiuolo', // v198 : évite que « pollaiolo » → « pollaiuolo » soit retransformé par l'entrée commune « pollaiuolo »
     'gellée': 'ge llée', // = « gellee » de l'atelier (variante accentuée du texte)
     // atelier 18 oct 16:13 (rapport complet)
@@ -2862,7 +2915,9 @@ function fixSpeechPronunciation(text) {
   const PLU = (w) => (w[0] === 'P' ? 'Plu' : 'plu');
   out = out.replace(/(?<![\p{L}\p{N}])((?:ne|n['’])\s*(?:[\p{L}'’-]+\s+){0,4}?)(plus)(?![\p{L}\p{N}])/giu, (m, head, w) => (/(^|\s)non\s+$/iu.test(head) ? m : head + PLU(w)));
   out = out.replace(/(?<![\p{L}\p{N}])(plus)(?=\s+(?:(?:rien|jamais|personne|aucune?|nulle?|guère)(?![\p{L}\p{N}])|d['’]|de\s))/giu, (m, w) => PLU(w));
-  out = out.replace(new RegExp(`${NB}[A-ZÀ-Ý]{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
+  // v226 (retour Stéphane : « si le mot est en majuscules ou en minuscules, il doit se prononcer pareil ») : toute lettre capitale compte (\p{Lu}), pas seulement
+  // A-Z et À-Ý — sinon un mot avec « Œ », « Š », « Ł »… (ŒUVRE, KUBIŠTA) restait en majuscules et la voix l'épelait, sans passer par la table.
+  out = out.replace(new RegExp(`${NB}\\p{Lu}{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
   Object.entries(NATIONALITY_AWARE_FIXES).forEach(([wrong, { exceptFor, otherwise }]) => {
     if (exceptFor.test(currentSpeechNationality)) return; // nationalité exceptée : on ne touche pas
     out = out.replace(new RegExp(`${NB}${wrong}${NA}`, 'giu'), otherwise);
