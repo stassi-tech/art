@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v226';
+const APP_VERSION = 'v228';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -11145,6 +11145,13 @@ const OBJ_PE_TECHS = [['huile', 'Huile'], ['detrempe', 'Détrempe, tempera'], ['
 const OBJ_SC_NATURES = [['ronde', 'Ronde-bosse (statue, buste…)'], ['groupe', 'Groupe ou ensemble en ronde-bosse'], ['relief', 'Bas-relief, haut-relief'], ['funeraire', 'Monument funéraire'], ['monument', 'Monument (non funéraire)'], ['liturgique', 'Mobilier ou objet liturgique'], ['architecture', 'Élément architectural ou décoratif'], ['autre', 'Autre (objet d\'art…)']];
 const OBJ_SC_MATS = [['marbre', 'Marbre (et albâtre)'], ['bronze', 'Bronze'], ['bois', 'Bois'], ['pierre', 'Pierre (granit, grès…)'], ['terre', 'Terre cuite, céramique'], ['stuc', 'Stuc, plâtre'], ['cire', 'Cire'], ['metaux', 'Autres métaux (plomb, argent, cuivre…)'], ['associes', 'Matériaux associés (marbre et bronze…)'], ['autre', 'Autre matériau']];
 const OBJ_SC_MONUMENTS = [['fontaine', 'Fontaine ou bassin'], ['memorial', 'Mémorial, hommage'], ['equestre', 'Statue ou monument équestre'], ['decoratif', 'Monument purement décoratif']];
+// v227 (retour Stéphane : « dans mobilier liturgique on peut faire des sous-catégories : autels et retables, tabernacles, chaires, stalles ») : second menu pour le mobilier liturgique.
+const OBJ_SC_LITURGIE = [['autel', 'Autels et retables'], ['tabernacle', 'Tabernacles'], ['chaire', 'Chaires'], ['stalles', 'Stalles'], ['benitier', 'Bénitiers']];
+function objLiturgieSub(r) {
+  // On cherche d'abord dans le titre, puis dans la nature, enfin dans le lieu (sous-lieu « Maître-autel de la Croix »). Le chœur d'une cathédrale = ses stalles.
+  const pick = (t) => /\btabernacles?\b/.test(t) ? 'tabernacle' : /\bchaires?\b/.test(t) ? 'chaire' : /\bstalles?\b|\bchoeur\b/.test(t) ? 'stalles' : /\b(retables?|autels?|maitre autel|maitre-autel)\b/.test(t) ? 'autel' : /\b(benitiers?|eau benite)\b/.test(t) ? 'benitier' : '';
+  return pick(keyName(r.title || '')) || pick(`${keyName(r.natureAll || '')} ${keyName(r.nature || '')}`) || pick(keyName(r.location || ''));   // v228 : plus de rubrique « autre » (les pièces qui n'étaient pas du mobilier liturgique ont été reclassées dans les fichiers) ; sans mot-clé, pas de sous-type
+}
 // Monuments purement décoratifs (ni fontaine, ni hommage, ni équestre) : repérés par leur titre — liste à compléter au besoin.
 const OBJ_DECO_TITLES = ['colosse de l apennin', 'elephant de la minerve'];
 const OBJ_MIN_WORKS = 12; // en dessous, les jeux manquent de choix de réponses : on prévient
@@ -11156,7 +11163,7 @@ function objClassify(r) {
   const o = { nature: '', supports: new Set(), techs: new Set(), mat: '', sub: '' };
   if (r.art === 'sculpture') {
     if (/funeraire|gisant/.test(nat)) o.nature = 'funeraire';
-    else if (/liturgique/.test(nat)) o.nature = 'liturgique';
+    else if (/liturgique/.test(nat)) { o.nature = 'liturgique'; o.sub = objLiturgieSub(r); }
     // « équestre » dans le titre OU dans la nature de l'objet : toujours rangé en monument équestre, quelle que soit la nature notée
     // (le monument entier ou la seule ronde-bosse qui le surmonte : la fiche précisera lequel). Sinon, un monument est une fontaine
     // (mot dans le titre) ou, par défaut, un mémorial / hommage.
@@ -11248,7 +11255,7 @@ function natureTopicIds(work) {
   if (!NATURE_TEXTS || !NATURE_TEXTS.size) return [];
   const o = objClassify(work); const ids = [];
   if (work.art === 'sculpture') {
-    if (o.nature === 'monument' && o.sub) ids.push(`sc.sub.${o.sub}`);
+    if ((o.nature === 'monument' || o.nature === 'liturgique') && o.sub) ids.push(`sc.sub.${o.sub}`);
     if (o.nature && o.nature !== 'autre') ids.push(`sc.nature.${o.nature}`);
     if (o.mat && o.mat !== 'autre') ids.push(`sc.mat.${o.mat}`);
   } else {
@@ -11281,7 +11288,7 @@ function objMatches(r, f, skip) {
     if (skip !== 'support' && f.support && !c.supports.has(f.support)) return false;
     if (skip !== 'tech' && f.tech && !c.techs.has(f.tech)) return false;
   } else {
-    if (skip !== 'sub' && f.sub && f.nature === 'monument' && c.sub !== f.sub) return false;
+    if (skip !== 'sub' && f.sub && (f.nature === 'monument' || f.nature === 'liturgique') && c.sub !== f.sub) return false;
     if (skip !== 'mat' && f.mat && c.mat !== f.mat) return false;
   }
   return true;
@@ -11299,6 +11306,7 @@ function describeObjectsFilter(f, skipArt) {
   } else {
     if (f.nature) parts.push(short(objLabelOf(OBJ_SC_NATURES, f.nature)));
     if (f.sub && f.nature === 'monument') parts.push(short(objLabelOf(OBJ_SC_MONUMENTS, f.sub)));
+    if (f.sub && f.nature === 'liturgique') parts.push(short(objLabelOf(OBJ_SC_LITURGIE, f.sub)));
     if (f.mat) parts.push(short(objLabelOf(OBJ_SC_MATS, f.mat)));
   }
   return parts.join(' · ');
@@ -11370,14 +11378,14 @@ async function renderObjectsBlock(ui) {
   if (implicitArt) f.art = implicitArt;
   const lists = f.art === 'peinture'
     ? [['nature', 'Nature', OBJ_PE_NATURES], ['support', 'Support', OBJ_PE_SUPPORTS], ['tech', 'Technique', OBJ_PE_TECHS]]
-    : (f.art === 'sculpture' ? [['nature', 'Nature', OBJ_SC_NATURES], ...(f.nature === 'monument' ? [['sub', 'Type de monument', OBJ_SC_MONUMENTS]] : []), ['mat', 'Matériau', OBJ_SC_MATS]] : []);
+    : (f.art === 'sculpture' ? [['nature', 'Nature', OBJ_SC_NATURES], ...(f.nature === 'monument' ? [['sub', 'Type de monument', OBJ_SC_MONUMENTS]] : f.nature === 'liturgique' ? [['sub', 'Type de mobilier', OBJ_SC_LITURGIE]] : []), ['mat', 'Matériau', OBJ_SC_MATS]] : []);
   // Effectif d'une option = nombre d'œuvres qui la respectent en plus de tous les AUTRES choix déjà faits.
   const countFor = (menu, key) => {
     const probe = { ...f, [menu]: key };
     return pool.filter((r) => objMatches(r, probe)).length;
   };
   // Un choix devenu impossible (0 œuvre) à cause d'un autre menu modifié est abandonné.
-  if (f.nature !== 'monument') f.sub = '';
+  { const subList = f.nature === 'monument' ? OBJ_SC_MONUMENTS : (f.nature === 'liturgique' ? OBJ_SC_LITURGIE : null); if (!subList || !subList.some((x) => x[0] === f.sub)) f.sub = ''; }   // v227 : le sous-type doit appartenir à la nature choisie
   lists.forEach(([menu]) => { if (f[menu] && !countFor(menu, f[menu])) f[menu] = ''; });
   const artCounts = { peinture: pool.filter((r) => r.art === 'peinture').length, sculpture: pool.filter((r) => r.art === 'sculpture').length };
   const allowed = ['peinture', 'sculpture'].filter((a) => (!fieldArts.length || fieldArts.includes(a)) && artCounts[a] > 0);
@@ -11400,7 +11408,7 @@ async function renderObjectsBlock(ui) {
     else { countEl.textContent = `${total} œuvres correspondent à ce choix.`; countEl.className = 'hint qc-objects-count'; }
   }
   const save = (next) => {
-    const clean = next.art ? { art: next.art, nature: next.nature || '', ...(next.art === 'peinture' ? { support: next.support || '', tech: next.tech || '' } : { sub: next.nature === 'monument' ? (next.sub || '') : '', mat: next.mat || '' }) } : null;
+    const clean = next.art ? { art: next.art, nature: next.nature || '', ...(next.art === 'peinture' ? { support: next.support || '', tech: next.tech || '' } : { sub: (next.nature === 'monument' || next.nature === 'liturgique') ? (next.sub || '') : '', mat: next.mat || '' }) } : null;
     setObjectsFilter(clean && (!implicitArt || objAnySub(clean)) ? clean : null);
     renderObjectsBlock(ui);
     if (ui === 'qc') { renderQuickArtistsBox(); updateExerciseSummaries(); if ($('qc-artists-details')?.open) populateArtistSuggestions(); }
