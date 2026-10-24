@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v230';
+const APP_VERSION = 'v231';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -13225,9 +13225,19 @@ function bioCps() {
 function bioAdaptMs(mi, fxMs) {
   const A = bioAuto; if (!A.speaking || mi == null || mi < 0 || !A.marks[mi]) return fxMs;
   const mk = A.marks[mi]; const nextOff = A.marks[mi + 1] ? A.marks[mi + 1].offset : A.plainLen;
-  const from = Math.max(mk.offset, (A.fshow >= 0 ? A.fshow : A.frac) * A.plainLen);
-  const availMs = ((nextOff - from) / bioCps()) * 1000;
-  return Math.round(Math.max(700, Math.min(fxMs, availMs * 0.6)));
+  const from = (A.fshow >= 0 ? A.fshow : A.frac) * A.plainLen;   // v231 : position réelle de la lecture (l'image arrive en général une ligne AVANT sa balise : partir de la balise surestimait le temps disponible)
+  const availMs = (Math.max(0, nextOff - 50 - from) / bioCps()) * 1000;   // (la diapo suivante arrive en moyenne ~50 caractères avant sa balise : début de ligne)
+  return Math.round(Math.max(700, Math.min(fxMs, availMs * 0.5)));
+}
+// v231 (retour Stéphane : « le texte défile normalement mais il est désynchronisé des images ; l'avance rapide ne fait pas avancer les images ») :
+// avec des fondus longs (« enchaîné 10 ») et des images brèves, chaque image en attente devait d'abord attendre la fin du fondu PUIS 2,2 s de
+// pose minimale : la file s'allongeait et le retard s'accumulait de diapo en diapo. Désormais : (1) la pose minimale est proportionnelle à la durée
+// de la diapo (fondu 50 % + pose 15 % : jamais plus que la diapo) ; (2) une image dont le moment est déjà passé est sautée au profit de la plus récente ;
+// (3) l'avance / le retour rapide coupe le fondu en cours et affiche tout de suite l'image du passage atteint (voir bioCutToOffset).
+function bioHoldMs(mi) {
+  const A = bioAuto; const mk = mi != null && mi >= 0 ? A.marks[mi] : null; if (!mk) return BIO_MIN_SHOW_MS;
+  const nextOff = A.marks[mi + 1] ? A.marks[mi + 1].offset : A.plainLen;
+  return Math.round(Math.max(0, Math.min(BIO_MIN_SHOW_MS, ((nextOff - mk.offset) / bioCps()) * 1000 * 0.15)));
 }
 function bioNextPending() {
   const A = bioAuto; if (!A.pending.length) return;
@@ -13235,6 +13245,7 @@ function bioNextPending() {
   clearTimeout(A.queueTimer);
   A.queueTimer = setTimeout(() => {
     if (A.fading || !A.pending.length) return;
+    while (A.pending.length > 1 && A.pending[0].mi != null && A.pending[0].mi < A.curIdx) { const sk = A.pending.shift(); bioDbg('image sautée (son moment est passé)', sk.ref.slice(-30)); }
     const p = A.pending.shift(); bioDbg('file →', p.ref.slice(-30), 'restant', A.pending.length);
     bioShowImage(p.ref, p.caption, p.fx, p.mi);
   }, wait);
@@ -13262,7 +13273,7 @@ function bioShowImage(ref, caption, fx, mi) {
         void img.offsetWidth; img.classList.remove('bio-fading');
         bioAuto.fadeTimer = setTimeout(() => {
           if (fid !== bioAuto.fid) return;
-          img.style.transition = ''; bioAuto.fading = false; bioAuto.holdUntil = performance.now() + BIO_MIN_SHOW_MS; bioNextPending();
+          img.style.transition = ''; bioAuto.fading = false; bioAuto.holdUntil = performance.now() + bioHoldMs(mi); bioNextPending();
         }, half);
       };
       img.onload = swap; img.onerror = swap; img.src = src2; if (img.complete && img.naturalWidth) swap();
@@ -13279,7 +13290,7 @@ function bioShowImage(ref, caption, fx, mi) {
     img.style.transition = 'none'; nx.style.transition = 'none';
     img.classList.remove('bio-fading'); nx.classList.remove('bio-next-on'); nx.classList.add('hidden');
     void img.offsetWidth; img.style.transition = ''; nx.style.transition = '';
-    bioAuto.fading = false; bioAuto.holdUntil = performance.now() + BIO_MIN_SHOW_MS; bioDbg('fondu terminé', ref.slice(-30));
+    bioAuto.fading = false; bioAuto.holdUntil = performance.now() + bioHoldMs(mi); bioDbg('fondu terminé', ref.slice(-30));
     bioNextPending();
   };
   let ran = false; let retried = false;
@@ -13539,6 +13550,19 @@ function bioSpeakChunks(plain, offset, sid) {
     speechSynthesis.speak(u);
   });
 }
+// v231 : avance / retour rapide → on coupe le fondu en cours (et la file d'attente) et on pose tout de suite l'image du passage atteint.
+function bioCutToOffset(offset) {
+  const A = bioAuto; if (A.solo) return;
+  bioCancelFade();
+  const E = bioEls(); const img = E.img; if (!img) return;
+  let idx = -1; A.marks.forEach((mk, i) => { if (!mk.end && mk.offset <= offset) idx = i; });
+  const mk = idx >= 0 ? A.marks[idx] : null; const ref = mk ? mk.ref : A.baseRef; if (!ref) return;
+  const last = mk ? A.marks.findIndex((m, i) => i > idx && m.end && m.offset <= offset) : -1; if (last >= 0) return;   // un [retour] a été franchi : bioFrame s'en occupe
+  img.style.transition = 'none'; img.classList.remove('bio-fading'); img.classList.remove('hidden');
+  if (A.shownRef !== ref) img.src = imageSourceSized(ref, 900);
+  A.shownRef = ref; if (E.cap) E.cap.textContent = mk ? (mk.caption || '') : (A.baseCap || ''); showImpBioCredit(ref, E.link, E.txt);
+  void img.offsetWidth; img.style.transition = ''; A.curIdx = idx; A.holdUntil = 0; bioDbg('coupe vers le repère', idx, 'à', offset);
+}
 function bioSpeakFrom(offset) {
   const A = bioAuto; if (!A.parsed) return;
   const plain = A.parsed.plain; offset = Math.max(0, Math.min(plain.length - 1, offset));
@@ -13549,6 +13573,7 @@ function bioSpeakFrom(offset) {
   A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0; bioCurtainHide();
   $('imp-bio-split')?.classList.add('bio-film');
   try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch (e) { /* ignoré */ }
+  bioCutToOffset(offset);
   bioSyncButton();
   if (A.chunked) { A.ck = null; bioSpeakChunks(plain, offset, sid); return; }
   impSpeak(plain.slice(offset), undefined, A.force, {
