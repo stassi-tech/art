@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v231';
+const APP_VERSION = 'v232';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -13226,7 +13226,7 @@ function bioAdaptMs(mi, fxMs) {
   const A = bioAuto; if (!A.speaking || mi == null || mi < 0 || !A.marks[mi]) return fxMs;
   const mk = A.marks[mi]; const nextOff = A.marks[mi + 1] ? A.marks[mi + 1].offset : A.plainLen;
   const from = (A.fshow >= 0 ? A.fshow : A.frac) * A.plainLen;   // v231 : position réelle de la lecture (l'image arrive en général une ligne AVANT sa balise : partir de la balise surestimait le temps disponible)
-  const availMs = (Math.max(0, nextOff - 50 - from) / bioCps()) * 1000;   // (la diapo suivante arrive en moyenne ~50 caractères avant sa balise : début de ligne)
+  const availMs = (Math.max(0, nextOff - from) / bioCps()) * 1000;   // v232 : la diapo suivante arrive maintenant exactement à sa balise
   return Math.round(Math.max(700, Math.min(fxMs, availMs * 0.5)));
 }
 // v231 (retour Stéphane : « le texte défile normalement mais il est désynchronisé des images ; l'avance rapide ne fait pas avancer les images ») :
@@ -13385,6 +13385,11 @@ function bioFrame() {
   if (!A.speaking && !A.userMoved && A.gotBoundaryOrSpoke) { A.raf = requestAnimationFrame(bioFrame); return; }
   let idx = -1; const colTop = col.getBoundingClientRect().top - col.scrollTop;
   A.marks.forEach((mk, i) => { if (mk.el && mk.el.getBoundingClientRect().top - colTop <= lineY) idx = i; });
+  // v232 (retour Stéphane : « on voit une statue apparaître alors qu'on est encore dans le commentaire de la précédente ») : pendant la lecture,
+  // l'image n'est plus déclenchée quand la ligne de lecture atteint la LIGNE qui contient la balise (jusqu'à une ligne trop tôt, soit ~5 s),
+  // mais au caractère exact de la balise : le fondu démarre au premier mot du commentaire de la nouvelle statue, jamais avant.
+  // (Quand vous faites défiler le texte vous-même, on garde la méthode par ligne.)
+  if (A.speaking && reading) { const pos = A.fshow * A.plainLen; idx = -1; A.marks.forEach((mk, i) => { if (mk.offset <= pos + 0.5) idx = i; }); }
   // pendant la lecture, l'image ne revient jamais en arrière toute seule (seuls ◀◀ ou un défilement manuel le permettent)
   if (A.allowBack) A.allowBack = false; else if (reading && A.curIdx >= -1 && idx < A.curIdx) { bioDbg('recul de repère refusé', idx, '<', A.curIdx); idx = A.curIdx; }
   if (idx !== A.curIdx) {
