@@ -174,13 +174,13 @@ details summary{cursor:pointer;font-weight:600}
     </div>
     <div id="list"></div>
     <div class="add">
-      <input type="text" id="newWord" placeholder="Nouveau mot (tel qu'il est écrit)" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <input type="text" id="newWord" placeholder="Nouveau mot ou expression (ex. fonte gaia)" title="Un mot seul (fonte) ou une expression de plusieurs mots (fonte gaia) : l'expression ne change que ces mots-là, pas toutes les « fonte » du texte." autocapitalize="off" autocomplete="off" spellcheck="false">
       <button class="big" id="newGo">＋</button>
     </div>
   </aside>
 
   <main>
-    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v4</small></h1>
+    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v5</small></h1>
     <p class="sub">Choisissez une voix : elle lit toute la liste. Quand un mot est mal dit, appuyez sur <b>Stop</b> (ou sur la barre Espace). Ce mot s'ouvre alors ici pour être corrigé.</p>
     <div class="novoice" id="novoice">Aucune voix française n'est disponible dans ce navigateur pour le moment (réessayez dans quelques secondes, ou utilisez Chrome / Edge).</div>
 
@@ -815,7 +815,7 @@ $('view').onchange = e=>{ S.view = e.target.value; save(); renderList(); };
 
 // ---- nouveau mot (en bas de la liste) ----
 function addWord(){
-  const k = $('newWord').value.trim().toLowerCase(); if (!k) return;
+  const k = $('newWord').value.trim().toLowerCase().replace(/\s+/g, ' '); if (!k) return;   // v5 : une expression (plusieurs mots) est acceptée
   if (reading) stopReading(false);
   if (!(k in BASEMAP) && !S.words.includes(k)) S.words.push(k);
   delete S.removed[k];
@@ -832,7 +832,8 @@ function applyTable(text){
   const NB='(?<![\\p{L}\\p{N}])', NA='(?![\\p{L}\\p{N}])';
   out = out.replace(new RegExp(`${NB}[A-ZÀ-Ý]{3,}${NA}`,'gu'), w=>w.charAt(0)+w.slice(1).toLowerCase());
   out = out.replace(new RegExp(`${NB}([Dd]e)[’']\\s*`,'gu'), '$1 ');
-  listKeys().forEach(k=>{
+  // v5 : les expressions (plusieurs mots) passent AVANT les mots seuls, sinon « fonte » changerait déjà « fonte gaia » avant qu'on l'atteigne
+  listKeys().slice().sort((a,b)=>b.length-a.length).forEach(k=>{
     const right = curVal(k,P); if (!right) return;
     const isPrefix = k.endsWith('*'); const stem = isPrefix ? k.slice(0,-1) : k;
     let re; try { re = new RegExp(`${NB}${stem.replace(/[.+?^${}()|[\]\\]/g,'\\$&')}${isPrefix?'':NA}`,'giu'); } catch(e){ return; }
@@ -857,7 +858,7 @@ function exportText(){
   const gone = Object.keys(S.removed);
   const goneTxt = gone.length ? `\n\n================ MOTS ÉLIMINÉS DE LA LISTE par Stéphane (${gone.length}) ================\n` + gone.map(k=>`${q(k)}${baseVal(k)?`   // application : ${q(baseVal(k))}`:''}${everyKey().some(o=>o!==k && o.normalize('NFD').replace(/[\u0300-\u036f]/g,'')===k.normalize('NFD').replace(/[\u0300-\u036f]/g,''))?"   // variante avec/sans accent d'un autre mot : à garder dans l'application":''}`).join('\n') + '\n' : '';
   t += `\n================ ÉCRITURES COMMUNES À TOUTES LES VOIX — ${common.length} (à intégrer dans la table de l'application) ================\n`;
-  t += (common.map(k=>`${q(k)}: ${q(S.shared[k])},   // application : ${baseVal(k)?q(baseVal(k)):'rien'}${(k in BASEMAP)?'':'   // NOUVEAU MOT'}${noteTxt(anyNote(k))}`).join('\n') || '(aucune)') + '\n';
+  t += (common.map(k=>`${q(k)}: ${q(S.shared[k])},   // application : ${baseVal(k)?q(baseVal(k)):'rien'}${(k in BASEMAP)?'':'   // NOUVEAU MOT'}${/\s/.test(k)?'   // EXPRESSION (plusieurs mots : à placer AVANT les mots seuls)':''}${noteTxt(anyNote(k))}`).join('\n') || '(aucune)') + '\n';
   names.forEach(n=>{
     const P = S.v[n];
     const spec = keys.filter(k=>P.st[k]!=='bad' && own(P,k) && P.val[k]!==inherited(k));
