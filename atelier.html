@@ -26,6 +26,11 @@ aside .head label{font-size:.8rem;display:flex;gap:6px;align-items:center;margin
 .w .chk{font-size:.7rem;color:#7a2e8a;background:#f3e1f7;border-radius:8px;padding:0 6px;margin-left:4px;white-space:nowrap;font-weight:600}
 .goneBar{display:none;padding:8px 10px;border-bottom:1px solid var(--line,#ddd);background:#faf6ff;font-size:.85rem}
 .goneBar button{margin-top:4px;padding:6px 10px;font-weight:600;cursor:pointer}
+.w .lnk{font-size:.7rem;color:#0a5a7a;background:#dff1f8;border-radius:8px;padding:0 6px;margin-left:4px;white-space:nowrap;font-weight:600}
+.fix .alias{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line,#ccc);font-size:.85rem}
+.fix .alias .ch{display:inline-block;background:#dff1f8;color:#0a5a7a;border-radius:10px;padding:1px 4px 1px 8px;margin:2px 4px 2px 0;font-weight:600}
+.fix .alias .ch button{border:0;background:none;cursor:pointer;color:#0a5a7a;font-weight:700}
+.fix .alias .af{display:flex;gap:6px;margin-top:4px}.fix .alias .af input{flex:1;min-width:0}
 .w .dup{font-size:.7rem;color:#9a6a00;background:#fff3cf;border-radius:8px;padding:0 6px;margin-left:4px;white-space:nowrap}
 .w .rb{display:flex;gap:3px;flex:none}
 .w .rb button{width:29px;height:29px;padding:0;font-size:.78rem;border-radius:6px;line-height:1;background:#fff}
@@ -184,7 +189,7 @@ details summary{cursor:pointer;font-weight:600}
   </aside>
 
   <main>
-    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v6</small></h1>
+    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v7</small></h1>
     <p class="sub">Choisissez une voix : elle lit toute la liste. Quand un mot est mal dit, appuyez sur <b>Stop</b> (ou sur la barre Espace). Ce mot s'ouvre alors ici pour être corrigé.</p>
     <div class="novoice" id="novoice">Aucune voix française n'est disponible dans ce navigateur pour le moment (réessayez dans quelques secondes, ou utilisez Chrome / Edge).</div>
 
@@ -277,10 +282,10 @@ const STORE_KEY = 'atelierPron_v3';
 const $ = (id)=>document.getElementById(id);
 const esc = (s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BASEMAP = {}; BASE.forEach(([k,v])=>{ BASEMAP[k]=v; });
-let S = { rate:0.85, gap:1.2, voice:'', sel:'', words:[], v:{}, view:'all', removed:{}, check:{}, shared:{}, locked:{}, sharedDone:false, applyAll:true };
+let S = { rate:0.85, gap:1.2, voice:'', sel:'', words:[], v:{}, view:'all', removed:{}, check:{}, alias:{}, shared:{}, locked:{}, sharedDone:false, applyAll:true };
 try { Object.assign(S, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch(e) {}
 let dirHandle = null, saveT = null, askedAuth = false;
-function save(){ try { const r = restoreLocked(); if (r.length) toast('🔒 « '+r[0]+' »'+(r.length>1?' et '+(r.length-1)+' autre(s)':'')+' : validé par toutes les voix, donc verrouillé. Pour le modifier : « Déverrouiller » dans le panneau de droite.'); autoLock(); } catch(e) {} try { stampChanges(); } catch(e) {} try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e) {} clearTimeout(saveT); saveT = setTimeout(()=>autosave(false), 600); try { schedulePush(); } catch(e) {} }
+function save(){ try { syncAliases(); } catch(e) {} try { const r = restoreLocked(); if (r.length) toast('🔒 « '+r[0]+' »'+(r.length>1?' et '+(r.length-1)+' autre(s)':'')+' : validé par toutes les voix, donc verrouillé. Pour le modifier : « Déverrouiller » dans le panneau de droite.'); autoLock(); } catch(e) {} try { stampChanges(); } catch(e) {} try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e) {} clearTimeout(saveT); saveT = setTimeout(()=>autosave(false), 600); try { schedulePush(); } catch(e) {} }
 // reprise de la version précédente de l'atelier
 try {
   if (!localStorage.getItem(STORE_KEY)) {
@@ -472,11 +477,11 @@ function renderList(){
   else shown = keys.filter(k=> V==='all' ? true : V==='bad' ? P.st[k]==='bad' : V==='ok' ? (P.st[k]==='ok'||P.st[k]==='fixed') : !P.st[k]);
   $('list').innerHTML = shown.map(k=>{
     const st = P.st[k]||''; const gone = !!S.removed[k];
-    const twins = (vmap[curVal(k,P).toLowerCase()]||[]).filter(x=>x!==k);
+    const twins = (vmap[curVal(k,P).toLowerCase()]||[]).filter(x=>x!==k && mainOf(x)!==mainOf(k));
     const dup = (!gone && curVal(k,P) && twins.length) ? `<span class="dup" title="Même écriture phonétique que : ${esc(twins.join(', '))}">= ${esc(twins[0])}</span>` : '';
     const btns = gone ? `<button class="rp" title="Écouter">▶</button><button class="rback" title="Remettre dans la liste">Remettre</button>`
       : `<button class="rp" title="Écouter">▶</button><button class="rok ${(st==='ok'||st==='fixed')?'on':''}" title="Bon">✔</button><button class="rno ${st==='bad'?'on':''}" title="Mal dit : on reprend">✖</button><button class="rdel" title="Éliminer ce mot de la liste">🗑</button>`;
-    return `<div class="w ${gone?'gone':st} ${(k in BASEMAP)?'':'new'} ${S.sel===k?'sel':''} ${reading&&reading.cur===k?'cur':''}" data-k="${esc(k)}"><span class="dot"></span><div class="mid"><span class="k">${esc(k)}</span>${dup}${(!gone && S.check && S.check[k]) ? '<span class="chk" title="Mot remis dans la liste pour être revérifié">à vérifier</span>' : ''}${(!gone) ? allvBadge(k) : ''}${(!gone && differs(k))?'<span class="diff" title="Cette écriture n\'est pas la même pour toutes les voix">≠ voix</span>':''}<div class="p">${esc(curVal(k,P)||'tel quel')}</div></div><span class="rb">${btns}</span></div>`;
+    return `<div class="w ${gone?'gone':st} ${(k in BASEMAP)?'':'new'} ${S.sel===k?'sel':''} ${reading&&reading.cur===k?'cur':''}" data-k="${esc(k)}"><span class="dot"></span><div class="mid"><span class="k">${esc(k)}</span>${dup}${(!gone && S.alias && S.alias[k]) ? '<span class="lnk" title="Autre orthographe : se prononce comme ce mot (et suit ses réglages)">= '+esc(S.alias[k])+'</span>' : ''}${(!gone && S.check && S.check[k]) ? '<span class="chk" title="Mot remis dans la liste pour être revérifié">à vérifier</span>' : ''}${(!gone) ? allvBadge(k) : ''}${(!gone && differs(k))?'<span class="diff" title="Cette écriture n\'est pas la même pour toutes les voix">≠ voix</span>':''}<div class="p">${esc(curVal(k,P)||'tel quel')}</div></div><span class="rb">${btns}</span></div>`;
   }).join('') || '<div class="help" style="padding:12px;color:var(--muted)">Aucun mot dans cette vue.</div>';
   const nOk = keys.filter(k=>P.st[k]==='ok'||P.st[k]==='fixed').length, nBad = keys.filter(k=>P.st[k]==='bad').length, nGone = Object.keys(S.removed).length;
   $('cnt').textContent = `${keys.length} mots · ${nOk} bons · ${nBad} à corriger${nGone?` · ${nGone} éliminés`:''} (voix : ${S.voice?shortName(S.voice):'par défaut'})`;
@@ -492,15 +497,15 @@ function restoreAllGone(){
   S.view = 'check'; save(); renderAll(); toast(`${ks.length} mot(s) remis dans la liste, à vérifier`);
 }
 $('list').addEventListener('click', (e)=>{
-  const row = e.target.closest('.w'); if (!row) return; const k = row.dataset.k; const P = prof();
+  const row = e.target.closest('.w'); if (!row) return; let k = row.dataset.k; const P = prof();
   const btn = e.target.closest('button');
-  if (!btn) { if (S.removed[k]) return; if (reading) stopReading(false); if (wordRead) stopWordRead(false); settlePlay(null); S.sel = k; S.pin = null; save(); renderAll(); return; }
+  if (!btn) { if (S.removed[k]) return; if (reading) stopReading(false); if (wordRead) stopWordRead(false); settlePlay(null); S.sel = mainOf(k); S.pin = null; save(); renderAll(); return; }
   e.stopPropagation();
   if (btn.classList.contains('rp')) { speakOnceKeep(said(k,P)); return; }
   if (btn.classList.contains('rback')) { delete S.removed[k]; S.check = S.check||{}; S.check[k] = true; save(); renderAll(); toast(`« ${k} » remis dans la liste`); return; }
-  if (btn.classList.contains('rok')) { if (S.check) delete S.check[k]; if (P.st[k]==='ok'||P.st[k]==='fixed') delete P.st[k]; else P.st[k]='ok'; save(); renderAll(); return; }
+  if (btn.classList.contains('rok')) { k = mainOf(k); if (S.check) delete S.check[k]; if (P.st[k]==='ok'||P.st[k]==='fixed') delete P.st[k]; else P.st[k]='ok'; save(); renderAll(); return; }
   if (btn.classList.contains('rno')) {
-    if (S.check) delete S.check[k];
+    k = mainOf(k); if (S.check) delete S.check[k];
     if (P.st[k]==='bad') { delete P.st[k]; save(); renderAll(); return; }
     P.st[k]='bad'; if (!reading) { S.sel = k; S.pin = null; } save(); renderAll(); if (!reading) setTimeout(()=>{ const f=$('fix'); if (f) f.scrollIntoView({block:'nearest',behavior:'smooth'}); },60); return;
   }
@@ -524,6 +529,10 @@ function renderFix(){
     <div class="acts"><button id="fixRaw">▶ Le mot tel quel</button><button class="ok" id="fixOk">✔ C'est bon</button><button id="fixRawOk">✔ Le mot tel quel suffit</button></div>
     <label class="help" style="display:block;margin-top:8px"><input type="checkbox" id="fixAll" ${S.applyAll?'checked':''}> Valable pour toutes les voix <span style="color:var(--muted)">(décochez si cette écriture ne convient qu'à cette voix)</span></label>
     <input type="text" class="note" id="fixNote" placeholder="Note pour Claude (facultatif)" value="${esc(P.note[k]||'')}">
+    <div class="alias"><b>Autre orthographe, même prononciation</b>
+      <div>${Object.keys(S.alias||{}).filter(x=>S.alias[x]===k).map(x=>`<span class="ch">${esc(x)}<button data-un="${esc(x)}" title="Délier : ce mot redevient indépendant">✕</button></span>`).join('') || '<span style="color:var(--muted)">aucune pour l\'instant</span>'}</div>
+      <div class="af"><input type="text" id="aliasIn" placeholder="ex. trubetskoy (si le mot ci-dessus est trubetskoi)" autocapitalize="off" autocomplete="off" spellcheck="false"><button id="aliasGo">＋ Lier</button></div>
+    </div>
   </div>`;
   const inp = $('fixIn');
   inp.oninput = ()=>{ P.val[k] = inp.value; save(); renderList(); const r = $('vpRows').querySelector(`.vr[data-n="${CSS.escape(S.voice)}"] .vin`); if (r && document.activeElement!==r) r.value = inp.value; };
@@ -542,6 +551,9 @@ function renderFix(){
   $('fixOk').onclick = ()=>done(inp.value.trim());
   $('fixRawOk').onclick = ()=>done('');
   $('fixNote').oninput = e=>{ P.note[k] = e.target.value; save(); };
+  const goAl = ()=>{ const v = $('aliasIn').value; if (v.trim()) linkAlias(k, v); };
+  $('aliasGo').onclick = goAl; $('aliasIn').onkeydown = e=>{ if (e.key==='Enter') goAl(); };
+  box.querySelectorAll('[data-un]').forEach(b=>{ b.onclick = ()=>{ const v = b.dataset.un; delete S.alias[v]; save(); renderAll(); toast(`« ${v} » n'est plus lié (il garde l'écriture actuelle)`); }; });
 }
 
 // ---- panneau « voix par voix » ----
@@ -822,7 +834,37 @@ function stopWordRead(mark){
 }
 $('vpPlayAll').onclick = ()=>startWordRead();
 $('vpStopAll').onclick = ()=>stopWordRead(true);
+// ---- v7 : plusieurs orthographes pour une même prononciation ----
+// S.alias = { variante: mot principal }. La variante reprend toujours l'écriture phonétique et l'état du mot principal ;
+// elle reste dans la liste (et dans l'export) comme un mot à part, pour que l'application la reconnaisse aussi.
+const mainOf = (k)=> (S.alias && S.alias[k]) || k;
+function syncAliases(){
+  const A = S.alias || {}; const own = (o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+  Object.keys(A).forEach(v=>{
+    const m = A[v]; if (!m || m===v || A[m]) return;
+    const val = inherited(m);
+    if (val && val!==baseVal(v)) { S.shared = S.shared||{}; S.shared[v] = val; } else if (S.shared) delete S.shared[v];
+    Object.keys(S.v||{}).forEach(n=>{
+      const P = S.v[n]; P.val = P.val||{}; P.st = P.st||{};
+      if (own(P.val,m)) P.val[v] = P.val[m]; else delete P.val[v];
+      if (P.st[v] && !P.st[m]) P.st[m] = P.st[v];      // un état posé sur la variante (ex. « mal dit » en lecture) passe au mot principal
+      if (P.st[m]) P.st[v] = P.st[m]; else delete P.st[v];
+    });
+  });
+}
+function linkAlias(main, v){
+  main = mainOf(main); v = String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+  if (!v) return; if (v===main) { toast('C\'est le même mot'); return; }
+  S.alias = S.alias || {};
+  Object.keys(S.alias).forEach(x=>{ if (S.alias[x]===v) S.alias[x] = main; });   // si la variante avait elle-même des variantes
+  if (!(v in BASEMAP) && !S.words.includes(v)) S.words.push(v);
+  delete S.removed[v];
+  if (!inherited(main) && inherited(v)) S.shared[main] = inherited(v);            // le mot principal n'avait rien : il reprend l'écriture de la variante
+  S.alias[v] = main; save(); renderAll();
+  toast(`« ${v} » lié à « ${main} » : même prononciation`);
+}
 function renderAll(){
+  if (S.alias && S.alias[S.sel]) S.sel = S.alias[S.sel];
   renderVoices(); renderList(); renderFix(); renderPanel();
   const r = !!reading; $('stop').disabled = !r; $('stop2').style.display = r ? '' : 'none';
 }
@@ -900,7 +942,7 @@ $('dl').onclick = ()=>{
   document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 500);
   toast('Fichier enregistré (dossier Téléchargements)');
 };
-$('reset').onclick = ()=>{ if (!confirm('Tout effacer : tous les essais de toutes les voix ?')) return; stopReading(false); S = { rate:S.rate, gap:S.gap, voice:S.voice, sel:'', words:[], v:{}, view:'all', removed:{}, check:{}, shared:{}, sharedDone:true, applyAll:true }; save(); renderAll(); };
+$('reset').onclick = ()=>{ if (!confirm('Tout effacer : tous les essais de toutes les voix ?')) return; stopReading(false); S = { rate:S.rate, gap:S.gap, voice:S.voice, sel:'', words:[], v:{}, view:'all', removed:{}, check:{}, alias:{}, shared:{}, sharedDone:true, applyAll:true }; save(); renderAll(); };
 $('rate').oninput = e=>{ S.rate=+e.target.value; $('rateV').textContent=String(S.rate).replace('.',','); save(); };
 $('gap').oninput = e=>{ S.gap=+e.target.value; $('gapV').textContent=String(S.gap).replace('.',','); save(); };
 $('rate').value = S.rate; $('rateV').textContent = String(S.rate).replace('.',',');
@@ -977,17 +1019,19 @@ function flatS(o){
   const f = {};
   (o.words||[]).forEach(w=>{ f['w'+SEP+w] = 1; });
   Object.keys(o.removed||{}).forEach(k=>{ if (o.removed[k]) f['r'+SEP+k] = 1; });
+  Object.keys(o.alias||{}).forEach(k=>{ if (o.alias[k]) f['a'+SEP+k] = o.alias[k]; });
   Object.keys(o.shared||{}).forEach(k=>{ if (o.shared[k]) f['s'+SEP+k] = o.shared[k]; });
   Object.keys(o.locked||{}).forEach(k=>{ if (o.locked[k]) f['l'+SEP+k] = o.locked[k]; });
   Object.keys(o.v||{}).forEach(n=>{ const P = o.v[n] || {}; ['val','st','note'].forEach(t=>Object.keys(P[t]||{}).forEach(k=>{ if (P[t][k] !== undefined) f[t+SEP+n+SEP+k] = P[t][k]; })); });
   return f;
 }
 function buildS(f, mt){
-  const o = { words:[], removed:{}, shared:{}, locked:{}, v:{}, mt };
+  const o = { words:[], removed:{}, alias:{}, shared:{}, locked:{}, v:{}, mt };
   Object.keys(f).forEach(key=>{
     const p = key.split(SEP), t = p[0];
     if (t==='w') o.words.push(p[1]);
     else if (t==='r') o.removed[p[1]] = true;
+    else if (t==='a') o.alias[p[1]] = f[key];
     else if (t==='s') o.shared[p[1]] = f[key];
     else if (t==='l') o.locked[p[1]] = f[key];
     else { const n = p[1], k = p.slice(2).join(SEP); const P = o.v[n] || (o.v[n] = { val:{}, st:{}, note:{} }); P[t][k] = f[key]; }
@@ -1012,12 +1056,12 @@ function mergeInto(remote){
     if (tl || tr) mtOut[k] = Math.max(tl, tr);
   });
   const before = JSON.stringify(fl), m = buildS(out, mtOut);
-  S.words = m.words; S.removed = m.removed; S.shared = m.shared; S.locked = m.locked; S.v = m.v; S.mt = m.mt; S.sharedDone = true;
+  S.words = m.words; S.removed = m.removed; S.alias = m.alias; S.shared = m.shared; S.locked = m.locked; S.v = m.v; S.mt = m.mt; S.sharedDone = true;
   const fixed = restoreLocked().length;   // v3 : un mot verrouillé ne peut pas être défait par une fusion venue d'un autre appareil
   prevFlat = flatS(S);
   return fixed > 0 || JSON.stringify(prevFlat) !== before;
 }
-const payload = ()=> JSON.stringify({ words:S.words, removed:S.removed, shared:S.shared, locked:S.locked||{}, v:S.v, mt:S.mt||{} });
+const payload = ()=> JSON.stringify({ words:S.words, removed:S.removed, alias:S.alias||{}, shared:S.shared, locked:S.locked||{}, v:S.v, mt:S.mt||{} });
 let fbAuth = null, fbDb = null, syncRef = null, syncUnsub = null, lastPushed = '', pushT = null, syncUser = null;
 function setSyncLabel(kind, extra){
   const el = $('syncState'); if (!el) return; el.className = 'st';
