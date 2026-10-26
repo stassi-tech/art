@@ -2884,3 +2884,11 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 /* dans le cinéma, l'écran des bios sert seul : pas de compteur de jeu, ni de réglages de jeu */
 #impregnation-panel.cinema-mode #imp-progress-row, #impregnation-panel.cinema-mode .progress-track, #impregnation-panel.cinema-mode #imp-ready-screen { display:none !important; }
 @media (max-width:600px) { .cinema-picker { padding-top:48px; } .cinema-card { max-height:calc(100svh - 60px); padding:12px; } }
+
+/* v235 : compteur de temps + curseur dans la barre du bas du film, note de reprise */
+.imp-bio-split.bio-dual .imp-bio-controls { flex-wrap:wrap; }
+.imp-bio-time { flex:1 0 100%; display:flex; align-items:center; gap:10px; color:#fff; font:600 .85rem Arial,sans-serif; font-variant-numeric:tabular-nums; }
+.imp-bio-time.hidden, .imp-bio-note.hidden { display:none; }
+.imp-bio-time input[type=range] { flex:1 1 auto; min-width:0; height:28px; accent-color:#e8c36a; background:transparent; cursor:pointer; touch-action:none; }
+.imp-bio-time span { flex:0 0 auto; min-width:2.6em; text-align:center; }
+.imp-bio-note { flex:1 0 100%; text-align:center; color:#ffe9b0; font:.8rem/1.3 Arial,sans-serif; padding:0 6px; }

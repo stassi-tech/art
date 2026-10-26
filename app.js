@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v234';
+const APP_VERSION = 'v235';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -1855,6 +1855,9 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v235 (atelier de prononciation, export du 26 oct 11:51) : expressions de plusieurs mots, placées AVANT les mots seuls
+  'fonte gaia': 'fonté gaya',
+  'la barcaccia': 'barkâ-tchia',
   // Retour de Stéphane : « BaKST », sans é final — un « t » final isolé se prononce mal ou reste
   // muet en français (comme dans « chat »). Doubler la consonne suivie d'un « e » muet (même
   // procédé que 'gaudenss' plus bas) force la prononciation du « t » sans ajouter de son « é ».
@@ -2514,6 +2517,10 @@ const PRONUNCIATION_FIXES = {
   'vermeer': 'vermère',
   'vœu': 'veut',
   'werefkin': 'véréfkine',
+  // v235 (atelier de prononciation, export du 26 oct 11:51) : écritures communes à toutes les voix ; la dernière écriture d'une même clé l'emporte.
+  'barcaccia': 'bârkâtchia',
+  'jets': 'jet',
+  'pistoia': 'pisto-ya',
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2537,19 +2544,50 @@ function deArtist(name) {
 // vide ('') veut dire « lire le mot tel quel ». Une voix absente de cette table utilise la table commune.
 // Voix du smartphone (« français France » et « français Canada »), réglées à l'oreille sur le téléphone
 // (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
+// Voix du smartphone (« français France » et « français Canada ») : tables réglées à l'oreille dans l'atelier de prononciation (export du 26 oct 11:51, v235).
 const PHONE_PRONUNCIATION = {
-  // v175 : après l'atelier du 17 oct (14:45), les voix du smartphone n'ont plus que ces écritures propres ; tout le reste suit la table commune.
-  'schwerin': 'Schvéérinne', 'guidi': 'guidi', 'sœurs': 'seur', 'adam': 'Adant', 'bandini': 'bandini', 'carlyle': 'Carlyle', 'epsom': 'éppsom', 'titien': 'TItIEN', 'ursins': 'ursin', 'venise': 'Veunize', 'odilon': '', 'thomas ball': 'thomass bowll', 'menabuoi': 'Ménaboy', 'tino di camaino': 'tino di kamaï-no', // atelier 18 oct 16:13
+  // v235 : export de l'atelier du 26 oct 11:51 ; les écritures « conservées » sont absentes de l'export.
+  'adam': 'Adant',
+  'bandini': 'bandini',
+  'barcaccia': 'bârkatchia',
+  'carlyle': 'Carlyle',
+  'epsom': 'éppsom',
+  'guidi': 'guidi',
+  'menabuoi': 'Ménaboy',
+  'odilo': 'odilon',
+  'pyotr': 'piotre',
+  'thomas ball': 'thomass bowll',
+  'tino di camaino': 'tino di kamaï-no',
+  'titien': 'TItIEN',
+  'ursins': 'ursin',
+  'venise': 'Veunize',
+  'schwerin': 'Schvéérinne',  // conservée (mot absent de l'export)
+  'sœurs': 'seur',  // conservée (mot absent de l'export)
 };
-const PHONE_PRONUNCIATION_CA = { ...PHONE_PRONUNCIATION, 'titien': 'TItiEN' }; // seule différence entre « français France » et « français Canada »
+const PHONE_PRONUNCIATION_CA = {
+  // v235 : export de l'atelier du 26 oct 11:51 (voix « français Canada »).
+  'adam': 'Adant',
+  'bandini': 'bandini',
+  'carlyle': 'Carlyle',
+  'epsom': 'éppsom',
+  'guidi': 'guidi',
+  'menabuoi': 'Ménaboy',
+  'odilo': 'odilon',
+  'thomas ball': 'thomass bowll',
+  'tino di camaino': 'tino di kamaï-no',
+  'titien': 'TItiEN',
+  'ursins': 'ursin',
+  'venise': 'Veunize',
+  'schwerin': 'Schvéérinne',  // conservée (mot absent de l'export)
+  'sœurs': 'seur',  // conservée (mot absent de l'export)
+};
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
 const PRONUNCIATION_BY_VOICE = {
   'français france': PHONE_PRONUNCIATION,
   'français canada': PHONE_PRONUNCIATION_CA,
-  // v175 : résultats de l'atelier de prononciation (17 oct 14:45), une table par voix, repérée par un morceau de son nom.
-  // Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
+  // Une table par voix, repérée par un morceau de son nom. Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'alvear': 'âlvéar',
     'anguier': 'en-guier',
@@ -2560,11 +2598,14 @@ const PRONUNCIATION_BY_VOICE = {
     'bolton': 'bôl-teun',
     'canaletto': 'kanâléto',
     'cavalli': 'ka va li',
+    'corinthien': 'korein-tien',
     'donatello': 'dona-télo',
     'edward burne-jones': 'Edward BeURNE-Jônnsse',
     'élément': 'éléman',
+    'entablement': 'en-ta-blement',
     'epsom': 'épsomm',
     'fabriano': 'fâbriano',
+    'fonte gaia': 'fonté gayâ',
     'gentile': 'Génntilé',
     'ghirlandaio': 'ghirlandaillo',
     'immobiles': 'imo-biles',
@@ -2572,9 +2613,11 @@ const PRONUNCIATION_BY_VOICE = {
     'juan': 'ruanne',
     'kröller-müller': 'kreulerr-müller',
     'l\'avis': 'laavi',
+    'la barcaccia': 'barkâtchia',
     'lancashire': 'leng-kasheur',
     'lembachhaus': 'lemmbake-haousse',
     'linden': 'lyn-den',
+    'maggiore': 'madjioré',
     'maiano': 'mayano',
     'medicis': 'médississe',
     'menabuoi': 'Ménabwo-ylle',
@@ -2584,6 +2627,7 @@ const PRONUNCIATION_BY_VOICE = {
     'pan': 'pans',
     'pisanello': 'pizanélo',
     'pollux': 'Pollûkss',
+    'pyotr': 'piotre',
     'raggi': 'râd-ji',
     'rogers': 'rogerse',
     'schifanoia': 'Skifannôya',
@@ -2598,11 +2642,11 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
     'yale': 'yèle',
     'zacharie': 'zakari',
-    'l’avis': 'laavi',  // variante (accent ou apostrophe) conservée
-    'médicis': 'médississe',  // variante (accent ou apostrophe) conservée
+    'l’avis': 'laavi',  // conservée (mot absent de l'export)
+    'médicis': 'médississe',  // conservée (mot absent de l'export)
   },
   'charline': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
@@ -2614,7 +2658,7 @@ const PRONUNCIATION_BY_VOICE = {
     'jongkind': 'jonkinnde',
     'menabuoi': 'Ménabwo-ylle',
     'munch': 'mun-ke',
-    'pollaiolo': '',  // lire tel quel
+    'pollaiol': 'pollaiolo',
     'schifanoia': 'Skifannôya',
     'singer sargent': 'singer sargente',
     'tate britain': 'Tête Britenn',
@@ -2623,7 +2667,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'julie': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'alvear': 'alvéar',
     'anguier': 'en-guier',
@@ -2634,12 +2678,15 @@ const PRONUNCIATION_BY_VOICE = {
     'canaletto': 'kanâléto',
     'carlyle': 'Carl-aïe-le',
     'cavalli': 'ka va li',
+    'corinthien': 'korein-tien',
     'donatello': 'dona-télo',
     'edward burne-jones': 'Edward BeURNE-Jônnsse',
     'élément': 'éléman',
+    'entablement': 'en-ta-blement',
     'epsom': 'épsomm',
     'fabriano': 'fâbriano',
     'fiesole': 'fié-sole',
+    'fonte gaia': 'fonté gayâ',
     'gentile': 'Génntilé',
     'ghirlandaio': 'ghirlandaillo',
     'immobiles': 'imo-biles',
@@ -2647,8 +2694,10 @@ const PRONUNCIATION_BY_VOICE = {
     'juan': 'ruanne',
     'kröller-müller': 'kreulerr-müller',
     'l\'avis': 'laavi',
+    'la barcaccia': 'barkâtchia',
     'lembachhaus': 'lemmbake-haousse',
     'linden': 'lyn-den',
+    'maggiore': 'madjioré',
     'maiano': 'mayano',
     'medicis': 'médississe',
     'menabuoi': 'Ménabwo-ylle',
@@ -2657,6 +2706,7 @@ const PRONUNCIATION_BY_VOICE = {
     'odilon': 'odilont',
     'pan': 'pans',
     'pisanello': 'pizanélo',
+    'pyotr': 'piotre',
     'raggi': 'râd-ji',
     'rogers': 'rogerse',
     'schifanoia': 'Skifannôya',
@@ -2671,11 +2721,11 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
     'yale': 'yèle',
     'zacharie': 'zakari',
-    'l’avis': 'laavi',  // variante (accent ou apostrophe) conservée
-    'médicis': 'médississe',  // variante (accent ou apostrophe) conservée
+    'l’avis': 'laavi',  // conservée (mot absent de l'export)
+    'médicis': 'médississe',  // conservée (mot absent de l'export)
   },
   'paul': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'alvear': 'âlvéar',
     'anguier': 'en-guier',
@@ -2685,11 +2735,14 @@ const PRONUNCIATION_BY_VOICE = {
     'bolton': 'bôl-teun',
     'canaletto': 'kanâléto',
     'cavalli': 'ka va li',
+    'corinthien': 'korein-tien',
     'donatello': 'dona-télo',
     'edward burne-jones': 'Edward BeURNE-Jônnsse',
     'élément': 'éléman',
+    'entablement': 'en-ta-blement',
     'epsom': 'épsomm',
     'fabriano': 'fâbriano',
+    'fonte gaia': 'fonté gayâ',
     'gentile': 'Génntilé',
     'ghirlandaio': 'ghirlandaillo',
     'immobiles': 'imo-biles',
@@ -2697,8 +2750,10 @@ const PRONUNCIATION_BY_VOICE = {
     'juan': 'ruanne',
     'kröller-müller': 'kreulerr-müller',
     'l\'avis': 'laavi',
+    'la barcaccia': 'barkâtchia',
     'lembachhaus': 'lemmbake-haousse',
     'linden': 'lyn-den',
+    'maggiore': 'madjioré',
     'maiano': 'mayano',
     'medicis': 'médississe',
     'menabuoi': 'Ménabwo-ylle',
@@ -2707,6 +2762,7 @@ const PRONUNCIATION_BY_VOICE = {
     'odilon': 'odilont',
     'pan': 'pans',
     'pisanello': 'pizanélo',
+    'pyotr': 'piotre',
     'raggi': 'râd-ji',
     'rogers': 'rogerse',
     'schifanoia': 'Skifannôya',
@@ -2721,11 +2777,11 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
     'yale': 'yèle',
     'zacharie': 'zakari',
-    'l’avis': 'laavi',  // variante (accent ou apostrophe) conservée
-    'médicis': 'médississe',  // variante (accent ou apostrophe) conservée
+    'l’avis': 'laavi',  // conservée (mot absent de l'export)
+    'médicis': 'médississe',  // conservée (mot absent de l'export)
   },
   'gerard': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
@@ -2741,7 +2797,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'sylvie': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
@@ -2754,7 +2810,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'jean': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
@@ -2767,7 +2823,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'antoine': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
@@ -2780,21 +2836,21 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'thierry': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
+    'munch': 'mûnn-ke',
     'schifanoia': 'Skifannôya',
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'munch': 'mûnn-ke',
   },
   'denise': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
@@ -2807,7 +2863,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'henri': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
@@ -2820,7 +2876,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'ariane': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
@@ -2829,27 +2885,27 @@ const PRONUNCIATION_BY_VOICE = {
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
     'singer sargent': 'singer sargente',
+    'tate britain': 'Tétte Britenn',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'tate britain': 'Tétte Britenn',
   },
   'fabrice': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
+    'menabuoi': 'Ménabwui',
     'schifanoia': 'Skifannôya',
     'singer sargent': 'singer sargente',
+    'tate britain': 'Tétte Britenn',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'menabuoi': 'Ménabwui',
-    'tate britain': 'Tétte Britenn',
   },
   'vivienne': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'ca\'d\'oro': 'ka\'dôorro',
     'clésinger': 'clésin-jey',
     'edward burne-jones': 'Edward burne-jones',
@@ -2862,6 +2918,7 @@ const PRONUNCIATION_BY_VOICE = {
     'giobbe': 'djobey',
     'immobiles': 'imo-biles',
     'jason': 'Jazon',
+    'jets': 'jè',
     'lancashire': 'lancashire',
     'menabuoi': 'Ménabwui',
     'michelozzo': 'meekélotso',
@@ -2874,10 +2931,10 @@ const PRONUNCIATION_BY_VOICE = {
     'titien': 'TITIEN',
     'werefkin': 'vérefkine',
     'pollaiuolo': 'pollaiuolo',  // conservée (mot absent de l'export)
-    'gellée': 'ge llée',  // variante (accent ou apostrophe) conservée
+    'gellée': 'ge llée',  // conservée (mot absent de l'export)
   },
   'rémy': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'ca\'d\'oro': 'ka\'dôorro',
     'clésinger': 'clésin-jey',
     'edward burne-jones': 'Edward burne-jones',
@@ -2889,6 +2946,7 @@ const PRONUNCIATION_BY_VOICE = {
     'gentile': 'Génnti-léy',
     'giobbe': 'giobbé',
     'immobiles': 'imo-biles',
+    'jets': 'jè',
     'lancashire': 'lancashire',
     'menabuoi': 'Ménabwui',
     'michelozzo': 'meekélotso',
@@ -2900,10 +2958,10 @@ const PRONUNCIATION_BY_VOICE = {
     'titien': 'TITIEN',
     'werefkin': 'vérefkine',
     'pollaiuolo': 'pollaiuolo',  // conservée (mot absent de l'export)
-    'gellée': 'gellée',  // variante (accent ou apostrophe) conservée
+    'gellée': 'gellée',  // conservée (mot absent de l'export)
   },
   'eloise': {
-    // atelier 24 oct 15:54 : table complète de la voix (remplace les écritures précédentes)
+    // atelier 26 oct 11:51 : table complète de la voix (remplace les écritures précédentes)
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
     'emmaüs': 'émaüsse',
@@ -3790,6 +3848,7 @@ let currentPanelName = null, suppressHistoryPush = false;
 // v234 (cinéma) : déclarés ici, avant showPanel, pour que showPanel puisse les lire dès le démarrage
 let cinemaCat = null, cinemaTab = 'evo', cinemaActive = false, cinemaOpening = false, cinemaSaved = null, cinemaPrev = 'welcome';
 function showPanel(name) {
+  try { bioPauseNow(); } catch (e) { /* ignoré */ }   // v235 : on quitte l'écran du film → pause, et la position est retenue
   if (cinemaActive && !cinemaOpening) cinemaTeardown();   // v234 : on quitte le cinéma dès qu'on change d'écran autrement que par lui
   // Coupe systématiquement toute voix en cours ET tous les minuteurs différés de chaque
   // exercice dès qu'on change de page — sinon un rappel programmé (setTimeout) d'un exercice
@@ -13474,8 +13533,13 @@ function bioFrame() {
   const A = bioAuto; const split = $('imp-bio-split');
   if (!A.active || !split || split.classList.contains('hidden')) { A.active = false; A.raf = 0; return; }
   const col = A.dual ? $('imp-bio-scroll') : split.querySelector('.imp-bio-text-col');
-  const now = performance.now(); const maxScroll = Math.max(0, col.scrollHeight - col.clientHeight);
-  const reading = A.speaking && !A.paused && now > A.pauseUntil;
+  const now = performance.now(); bioWatchdog(now); bioTimeUpdate(false);
+  // v235 : le doigt (ou la molette) s'est arrêté sur le texte → la voix, l'image et le temps se calent sur la ligne de lecture
+  if (A.dual && A.userScrollMode && !A.dragging && A.userScrollT && now - A.userScrollT > 550) {
+    A.userScrollMode = false; A.userScrollT = 0; const frac = A.vert ? 0.5 : 0.55; const off = bioOffsetForY(col, col.scrollTop + col.clientHeight * frac);
+    bioDbg('défilement manuel → lecture depuis', off); A.pauseUntil = 0; bioSeekTo(off);
+  } const maxScroll = Math.max(0, col.scrollHeight - col.clientHeight);
+  const reading = A.speaking && !A.paused && now > A.pauseUntil && !A.userScrollMode;
   const lineF = A.dual ? (A.vert ? 0.5 : 0.55) : 0.35; const readFrac = A.dual ? lineF : 0.3;
   let lineY = col.scrollTop + col.clientHeight * lineF;
   if (A.speaking) {
@@ -13500,7 +13564,7 @@ function bioFrame() {
     if (reading) {
       if (maxScroll > 0) {
         const target = Math.max(0, Math.min(maxScroll, readY - col.clientHeight * readFrac)); const diff = target - col.scrollTop;
-        col.scrollTop = Math.abs(diff) < 0.6 ? target : col.scrollTop + diff * 0.08;
+        A.progT = now; col.scrollTop = Math.abs(diff) < 0.6 ? target : col.scrollTop + diff * 0.08;
       }
       lineY = readY + 4;
     }
@@ -13522,13 +13586,14 @@ function bioFrame() {
     bioDbg('ligne de lecture : repère', idx, 'pos', Math.round(A.fshow * A.plainLen) + '/' + A.plainLen);
     A.curIdx = idx;
     if (idx >= 0 && A.marks[idx].end) { if (A.soloOk && !A.solo) bioEnterSolo(A.marks[idx].ms); }   // [retour] : l'écran se referme sur l'artiste
-    else if (idx >= 0) { if (A.solo) bioLeaveSolo(A.marks[idx]); else bioShowImage(A.marks[idx].ref, A.marks[idx].caption, A.marks[idx].fx, idx); }
+    else if (idx >= 0) { if (A.solo) bioLeaveSolo(A.marks[idx]); else if (A.userScrollMode) bioCutToOffset(A.marks[idx].offset); else bioShowImage(A.marks[idx].ref, A.marks[idx].caption, A.marks[idx].fx, idx); }   // v235 : pendant que le doigt fait défiler le texte, l'image suit tout de suite (sans fondu)
     else if (A.soloOk) bioEnterSolo();
     else if (A.baseRef) bioShowImage(A.baseRef, A.baseCap);
   }
   A.raf = requestAnimationFrame(bioFrame);
 }
 function bioAutoStop() {
+  try { bioSavePos(); } catch (e) { /* ignoré */ }
   if (bioAuto.voiceSwap) { impSelectedVoice = bioAuto.voiceSwap.prev; impAutoVoice = null; bioAuto.voiceSwap = null; }   // v187 : on rend la voix d'avant
   bioAuto.sid++; bioAuto.paused = false;
   bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
@@ -13553,10 +13618,46 @@ const BIO_ICON = {
   play: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>',
   replay: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" fill="currentColor"/></svg>',
 };
+function bioFmt(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+function bioNote(msg) { const n = $('imp-bio-note'); if (!n) return; n.textContent = msg || ''; n.classList.toggle('hidden', !msg); }
+// v235 (retour Stéphane : « mettre un compteur de temps dans la barre du bas ») : temps écoulé / durée estimée + curseur pour se déplacer dans le film.
+// La durée est estimée d'après la vitesse de la voix (mesurée sur les morceaux déjà lus) : elle se précise au fil de la lecture.
+function bioTimeCps() { const A = bioAuto; return Math.max(6, A.chunked ? (A.cpsEst || bioCpsLearned || 13) : bioCps()); }
+function bioTimeUpdate(force) {
+  const A = bioAuto; const cur = $('imp-bio-time-cur'), tot = $('imp-bio-time-tot'), rg = $('imp-bio-range'); if (!cur || !tot || !rg || !A.plainLen) return;
+  const now = performance.now(); if (!force && now - (A.timeT || 0) < 250) return; A.timeT = now;
+  const cps = bioTimeCps(); const L = A.plainLen; const pos = A.seeking ? (parseInt(rg.value, 10) / 1000) * L : bioCurPos();
+  cur.textContent = bioFmt(pos / cps); tot.textContent = bioFmt(L / cps);
+  if (!A.seeking) rg.value = String(Math.round((pos / L) * 1000));
+}
+function bioStartPaused(off) {   // film rouvert à l'endroit où on l'avait quitté : en pause, la voix repartira au toucher de « Reprise »
+  const A = bioAuto; const L = Math.max(1, A.plainLen);
+  A.resumeOffset = off; A.paused = true; A.pausedAt = performance.now(); A.speaking = true; A.gotBoundaryOrSpoke = true; A.ended = false; A.fshow = A.baseFrac = A.frac = off / L;
+  $('imp-bio-split')?.classList.add('bio-film'); bioSetPads(); bioPlaceText(off); bioCutToOffset(off); bioSyncButton(); bioTimeUpdate(true);
+  bioNote('Vous étiez à ' + bioFmt(off / bioTimeCps()) + ' : appuyez sur « Reprise », ou glissez la barre pour changer d’endroit.');
+}
+function bioSeekTo(offset) {   // aller à un endroit précis (barre de temps, défilement au doigt)
+  const A = bioAuto; if (!A.dual || !A.parsed) return;
+  const target = bioSentenceStartAt(Math.max(0, Math.min(A.plainLen - 1, offset)));
+  if (A.paused) {   // en pause : on se place sans lancer la voix (la reprise partira de là)
+    A.resumeOffset = target; A.fshow = A.baseFrac = A.frac = target / Math.max(1, A.plainLen); A.ended = false; A.speaking = true;
+    bioCutToOffset(target); bioMemSave(target); bioPlaceText(target); bioSyncButton(); bioTimeUpdate(true);
+  } else { bioSpeakFrom(target); bioTimeUpdate(true); }
+}
+function bioPlaceText(offset) {
+  const A = bioAuto; const col = A.dual ? $('imp-bio-scroll') : null; if (!col || !A.nodes || !A.nodes.length) return;
+  const frac = A.vert ? 0.5 : 0.55; const maxScroll = Math.max(0, col.scrollHeight - col.clientHeight);
+  col.scrollTop = Math.max(0, Math.min(maxScroll, bioYForOffset(col, offset) - col.clientHeight * frac)); A.progT = performance.now();
+}
+function bioOffsetForY(col, y) {   // inverse de bioYForOffset : caractère situé à la hauteur y (dans le contenu)
+  let lo = 0, hi = bioAuto.plainLen; for (let k = 0; k < 14 && hi - lo > 1; k++) { const mid = (lo + hi) >> 1; if (bioYForOffset(col, mid) <= y) lo = mid; else hi = mid; } return lo;
+}
+$('imp-bio-range')?.addEventListener('input', () => { bioAuto.seeking = true; bioTimeUpdate(true); });
+$('imp-bio-range')?.addEventListener('change', () => { const A = bioAuto; const v = parseInt($('imp-bio-range').value, 10) / 1000; A.seeking = false; bioSeekTo(v * A.plainLen); });
 function bioSyncButton() {
   const b = $('imp-bio-toggle'); if (!b) return;
   const A = bioAuto; const show = A.dual && A.willSpeak;
-  ['imp-bio-back', 'imp-bio-fwd'].forEach((id) => $(id)?.classList.toggle('hidden', !show));
+  ['imp-bio-back', 'imp-bio-fwd'].forEach((id) => $(id)?.classList.toggle('hidden', !show)); $('imp-bio-time')?.classList.toggle('hidden', !show);
   if (!show) { b.classList.add('hidden'); return; }
   b.classList.remove('hidden');
   b.innerHTML = A.ended ? `${BIO_ICON.replay} Rejouer` : (A.paused ? `${BIO_ICON.play} Reprise` : `${BIO_ICON.pause} Arrêt`);
@@ -13644,7 +13745,12 @@ function bioMakeChunks(plain, offset, marks) {
   const starts = bioSentenceStarts(plain); let pts = [...cuts].sort((a, b) => a - b); const out = [];
   for (let i = 0; i < pts.length - 1; i++) {
     let a = pts[i]; const b = pts[i + 1];
-    while (b - a > 700) { let c = -1; for (const s of starts) { if (s > a + 200 && s <= a + 700) c = s; } if (c < 0) break; out.push([a, c]); a = c; }
+    // v235 : morceaux d'au plus ~360 caractères (≈ 25 s) — sur téléphone, les longues phrases de voix s'interrompent plus souvent
+    while (b - a > 360) {
+      let c = -1; for (const s of starts) { if (s > a + 120 && s <= a + 360) c = s; }
+      if (c < 0) { const seg = plain.slice(a + 120, a + 360); const k = Math.max(seg.lastIndexOf(', '), seg.lastIndexOf('; '), seg.lastIndexOf(' ')); if (k >= 0) c = a + 120 + k + 1; }
+      if (c < 0) break; out.push([a, c]); a = c;
+    }
     if (plain.slice(a, b).trim()) out.push([a, b]);
   }
   return out;
@@ -13656,29 +13762,54 @@ function bioSpeakChunks(plain, offset, sid) {
   A.cpsEst = A.cpsEst || bioCpsLearned || 13; A.cpsLast = A.cpsEst;
   const L = Math.max(1, plain.length); const vol = getGlobalPrefs().speechVolume ?? 1;
   try { speechSynthesis.cancel(); } catch (e) { /* ignoré */ }
-  chunks.forEach(([a, b], i) => {
-    const raw = plain.slice(a, b); const spoken = fixSpeechPronunciation(bioVoiceFlat(raw)); const last = i === chunks.length - 1;
+  // v235 (retour Stéphane sur smartphone : « au changement d'image, la voix s'arrête ») : les morceaux n'étaient plus lancés d'avance
+  // en file d'attente — sur Android, la file de la voix se bloque parfois à la jonction de deux morceaux (justement là où l'image change).
+  // On lance désormais UN morceau à la fois, et un chien de garde (bioWatchdog) relance la voix si elle s'est tue sans prévenir.
+  const ctl = A.ctl = { sid, u: null, i: -1, t: 0, started: false, advanced: true, tries: 0, idleSince: 0, n: chunks.length, maxMs: 0, speakAt: null, advance: null };
+  const finishAll = () => { A.speaking = false; if (A.dual && A.willSpeak) { A.ended = true; A.paused = false; bioMemClear(); $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); } };
+  const speakAt = (i) => {
+    if (sid !== bioAuto.sid) return;
+    if (i >= chunks.length) { finishAll(); return; }
+    const [a, b] = chunks[i]; const raw = plain.slice(a, b); const spoken = fixSpeechPronunciation(bioVoiceFlat(raw));
     const u = new SpeechSynthesisUtterance(spoken); u.lang = 'fr-FR'; u.rate = 0.72; u.volume = vol; if (impSelectedVoice) u.voice = impSelectedVoice;
     const map = bioBuildMap(raw, spoken);
+    ctl.u = u; ctl.i = i; ctl.t = performance.now(); ctl.started = false; ctl.advanced = false; ctl.idleSince = 0; ctl.maxMs = Math.max(8000, ((b - a) / 6) * 1000 + 4000);
     u.onstart = () => {
-      if (sid !== bioAuto.sid) return; const now = performance.now();
+      if (sid !== bioAuto.sid || ctl.u !== u) return; const now = performance.now(); ctl.started = true; ctl.t = now; ctl.idleSince = 0;
       A.gotBoundaryOrSpoke = true; A.speaking = true; A.rate = u.rate; A.ck = { start: a, len: b - a, t0: now, idx: i };
       A.baseFrac = a / L; A.startT = now; A.gotBoundary = false; A.lastCi = 0; A.cand = null; A.lastCiT = now; A.mapBase = a; A.map = map; A.spokenLen = Math.max(1, spoken.length);
       A.frac = a / L; A.fshow = Math.max(A.fshow >= 0 ? A.fshow : 0, a / L); A.cpsLast = A.cpsEst;
       bioDbg('morceau', i + 1 + '/' + chunks.length, 'début à', a, 'vitesse estimée', A.cpsEst.toFixed(1));
     };
-    u.onboundary = (ev) => { if (sid !== bioAuto.sid || !A.ck || A.ck.idx !== i) return; if (typeof ev.charIndex === 'number') bioProgress(ev.charIndex, spoken.length); };
-    const done = (ok) => {
-      if (sid !== bioAuto.sid) return;
-      if (ok && A.ck && A.ck.idx === i && !A.ck.paused) {
+    u.onboundary = (ev) => { if (sid !== bioAuto.sid || ctl.u !== u || !A.ck || A.ck.idx !== i) return; if (typeof ev.charIndex === 'number') bioProgress(ev.charIndex, spoken.length); };
+    const advance = (ok) => {
+      if (sid !== bioAuto.sid || ctl.u !== u || ctl.advanced) return; ctl.advanced = true; ctl.tries = 0;
+      if (ok && A.ck && A.ck.idx === i) {
         const dur = (performance.now() - A.ck.t0) / 1000;
         if (dur > 2 && b - a > 30) { const m = Math.max(6, Math.min(30, (b - a) / dur)); A.cpsEst = i === 0 && !bioCpsLearned ? m : A.cpsEst * 0.4 + m * 0.6; bioCpsLearned = A.cpsEst; bioDbg('morceau', i + 1, 'lu en', dur.toFixed(1) + 's →', m.toFixed(1), 'car/s'); }
       }
-      if (last) { A.speaking = false; if (A.dual && A.willSpeak) { A.ended = true; A.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); } }
+      if (i === chunks.length - 1) { finishAll(); return; }
+      A.fshow = Math.max(A.fshow >= 0 ? A.fshow : 0, b / L);   // le morceau est fini : la lecture est au moins arrivée à sa fin
+      setTimeout(() => speakAt(i + 1), 20);
     };
-    u.onend = () => done(true); u.onerror = () => done(false);
-    speechSynthesis.speak(u);
-  });
+    ctl.advance = advance; ctl.speakAt = speakAt;
+    u.onend = () => advance(true); u.onerror = () => advance(false);
+    try { speechSynthesis.speak(u); } catch (e) { advance(false); }
+  };
+  setTimeout(() => speakAt(0), 60);
+}
+// v235 : chien de garde de la voix (appelé à chaque image du film) — voix muette sans « fin » signalée, morceau jamais démarré, morceau trop long
+function bioWatchdog(now) {
+  const A = bioAuto; const c = A.ctl; const ss = window.speechSynthesis;
+  if (!A.chunked || !c || c.sid !== A.sid || c.advanced || !A.speaking || A.paused || A.ended || !ss) return;
+  const busy = ss.speaking || ss.pending;
+  if (busy) c.idleSince = 0; else if (!c.idleSince) c.idleSince = now;
+  const idle = c.idleSince ? now - c.idleSince : 0;
+  if (!c.started) {
+    if (!busy && idle > 2500) { if (c.tries < 2) { c.tries++; bioDbg('voix : morceau jamais démarré, nouvel essai', c.i); try { ss.cancel(); } catch (e) { /* ignoré */ } c.speakAt(c.i); } else { bioDbg('voix : morceau abandonné', c.i); c.advance(false); } }
+    else if (busy && now - c.t > 12000) { c.tries++; bioDbg('voix : morceau bloqué au démarrage', c.i); try { ss.cancel(); } catch (e) { /* ignoré */ } if (c.tries < 3) c.speakAt(c.i); else c.advance(false); }
+  } else if (idle > 1200) { bioDbg('voix : muette sans signal de fin, on enchaîne', c.i); c.advance(false); }
+  else if (now - c.t > c.maxMs) { bioDbg('voix : morceau trop long, on enchaîne', c.i); try { ss.cancel(); } catch (e) { /* ignoré */ } c.advance(false); }
 }
 // v231 : avance / retour rapide → on coupe le fondu en cours (et la file d'attente) et on pose tout de suite l'image du passage atteint.
 function bioCutToOffset(offset) {
@@ -13700,7 +13831,7 @@ function bioSpeakFrom(offset) {
   A.baseFrac = offset / Math.max(1, plain.length);
   A.map = null; A.mapBase = offset; A.pending = []; clearTimeout(A.queueTimer); A.fshow = A.baseFrac; A.lastCi = 0; A.cand = null; A.lastCiT = performance.now(); A.allowBack = true; A.t0 = A.t0 || performance.now(); bioDbg('lecture depuis', offset);
   A.frac = A.baseFrac; A.gotBoundary = false; A.gotBoundaryOrSpoke = false; A.startT = performance.now();
-  A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0; bioCurtainHide();
+  A.paused = false; A.ended = false; A.speaking = true; A.userMoved = false; A.pauseUntil = 0; A.userScrollMode = false; A.userScrollT = 0; A.dragging = false; A.resumeOffset = null; bioNote(''); bioCurtainHide();
   $('imp-bio-split')?.classList.add('bio-film');
   try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch (e) { /* ignoré */ }
   bioCutToOffset(offset);
@@ -13713,7 +13844,7 @@ function bioSpeakFrom(offset) {
     onStop: () => {
       if (sid !== bioAuto.sid) return;
       bioAuto.speaking = false;
-      if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); }
+      if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; bioMemClear(); $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); }
     },
   });
 }
@@ -13728,13 +13859,48 @@ function bioSeek(dir) {
 }
 $('imp-bio-back')?.addEventListener('click', () => bioSeek(-1));
 $('imp-bio-fwd')?.addEventListener('click', () => bioSeek(1));
+// v235 (retour Stéphane sur smartphone : « quand on arrête le film et qu'on le reprend, souvent on ne retouche que les images, pas la voix ») :
+// sur Android, speechSynthesis.pause()/resume() ne reprend pas la voix (elle reste muette alors que les images repartent). L'arrêt coupe donc
+// vraiment la voix et note le début de la phrase en cours ; la reprise relance la voix à cet endroit (images et défilement suivent).
+function bioSentenceStartAt(pos) {
+  const A = bioAuto; if (!A.parsed) return 0; const starts = bioSentenceStarts(A.parsed.plain); let t = 0; for (const x of starts) { if (x <= pos + 1) t = x; else break; } return t;
+}
+function bioCurPos() { const A = bioAuto; const L = A.plainLen || 1; return (A.ended ? 1 : Math.max(0, A.fshow >= 0 ? A.fshow : A.frac || 0)) * L; }
+function bioPauseNow() {
+  const A = bioAuto; if (!A.active || !A.dual || !A.parsed || !A.willSpeak || A.ended || A.paused) return;
+  A.resumeOffset = bioSentenceStartAt(bioCurPos());
+  A.paused = true; A.pausedAt = performance.now(); A.sid++;   // les rappels de la voix coupée sont ignorés
+  try { speechSynthesis.cancel(); } catch (e) { /* ignoré */ }
+  bioMemSave(A.resumeOffset); bioSyncButton();
+}
+function bioResumeNow() {
+  const A = bioAuto; if (!A.dual || !A.parsed || !A.paused) return;
+  const off = A.resumeOffset != null ? A.resumeOffset : bioSentenceStartAt(bioCurPos());
+  bioNote(''); bioSpeakFrom(off);
+}
 $('imp-bio-toggle')?.addEventListener('click', () => {
   const A = bioAuto; if (!A.dual) return;
-  if (A.ended) { if (A.work) openImpArtistBio(A.work, A.force, { work: A.isWork, topic: A.topic }); return; }
-  if (!A.paused) { A.paused = true; A.pausedAt = performance.now(); try { speechSynthesis.pause(); } catch (e) { /* ignoré */ } }
-  else { A.paused = false; A.startT += performance.now() - A.pausedAt; if (A.ck) { A.ck.t0 += performance.now() - A.pausedAt; A.ck.paused = true; } try { speechSynthesis.resume(); } catch (e) { /* ignoré */ } }
-  bioSyncButton();
+  if (A.ended) { if (A.work) { bioMemClear(); openImpArtistBio(A.work, A.force, { work: A.isWork, topic: A.topic, fromStart: true }); } return; }
+  if (!A.paused) bioPauseNow(); else bioResumeNow();
 });
+// quitter l'application (téléphone verrouillé, autre appli) ou changer de page : le film se met en pause et retient où il en est
+document.addEventListener('visibilitychange', () => { if (document.hidden) { try { bioPauseNow(); } catch (e) { /* ignoré */ } } });
+window.addEventListener('pagehide', () => { try { bioSavePos(); } catch (e) { /* ignoré */ } });
+// mémoire de la position (par film, dans ce navigateur) : on rouvre le même film là où on l'avait laissé
+function bioHash(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0; return h.toString(36); }
+function bioMemRead() { try { return JSON.parse(localStorage.getItem('bioResumeV1') || '{}') || {}; } catch (e) { return {}; } }
+function bioMemWrite(m) { try { const ks = Object.keys(m).sort((a, b) => (m[b].t || 0) - (m[a].t || 0)).slice(0, 16); const o = {}; ks.forEach((k) => { o[k] = m[k]; }); localStorage.setItem('bioResumeV1', JSON.stringify(o)); } catch (e) { /* ignoré */ } }
+function bioMemSave(off) {
+  const A = bioAuto; if (!A.resumeKey || !A.plainLen) return;
+  const m = bioMemRead(); if (off < A.plainLen * 0.03 || off > A.plainLen * 0.97) delete m[A.resumeKey]; else m[A.resumeKey] = { o: Math.round(off), n: A.plainLen, t: Date.now() };
+  bioMemWrite(m);
+}
+function bioMemClear() { const A = bioAuto; if (!A.resumeKey) return; const m = bioMemRead(); if (m[A.resumeKey]) { delete m[A.resumeKey]; bioMemWrite(m); } }
+function bioMemGet(key, len) { const e = bioMemRead()[key]; if (!e || e.n !== len || Date.now() - (e.t || 0) > 12 * 3600 * 1000) return 0; return e.o > len * 0.03 && e.o < len * 0.97 ? e.o : 0; }
+function bioSavePos() {
+  const A = bioAuto; if (!A.active || !A.dual || !A.willSpeak || A.ended || !A.parsed || !A.resumeKey) return;
+  bioMemSave(A.paused && A.resumeOffset != null ? A.resumeOffset : bioSentenceStartAt(bioCurPos()));
+}
 window.addEventListener('resize', () => { if (bioAuto.dual && !$('imp-bio-split')?.classList.contains('hidden')) bioSetPads(); });
 // v183 : journal de lecture (ouvrir l'application avec ?debug=bio à la fin de l'adresse) : une petite boîte noire affiche les derniers
 // événements du film (repère franchi, image affichée, mise en attente, fondu terminé) ; un clic dessus copie tout le journal.
@@ -13754,7 +13920,7 @@ function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
   bioAutoStop();
   Object.assign(bioAuto, { marks: parsed.marks, plainLen: parsed.plain.length, spokenLen: Math.max(1, parsed.plain.length), frac: 0, gotBoundary: false,
     startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false, solo: false, soloOk: false,
-    pending: [], fshow: -1, lastT: 0, holdUntil: 0, map: null, mapBase: 0, lastCi: 0, cand: null, lastCiT: performance.now(), badEv: 0, allowBack: true, t0: performance.now(), log: [], debug: /[?&]debug=bio/.test(location.search) });
+    pending: [], fshow: -1, lastT: 0, holdUntil: 0, userScrollMode: false, userScrollT: 0, dragging: false, resumeOffset: null, seeking: false, ctl: null, map: null, mapBase: 0, lastCi: 0, cand: null, lastCiT: performance.now(), badEv: 0, allowBack: true, t0: performance.now(), log: [], debug: /[?&]debug=bio/.test(location.search) });
   bioAuto.preload = [];
   parsed.marks.forEach((mk) => { if (mk.end) return; try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); bioAuto.preload.push(im); } catch (e) { /* ignoré */ } });
   bioDebugBox();
@@ -13764,8 +13930,19 @@ function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
 (function wireBioScrollPause() {
   const col = () => $('imp-bio-split')?.querySelector('.imp-bio-text-col');
   ['touchstart', 'wheel', 'pointerdown'].forEach((ev) => document.addEventListener(ev, (e) => {
-    const c = col(); if (c && bioAuto.active && c.contains(e.target) && !(e.target.closest && e.target.closest('.imp-bio-controls'))) { bioAuto.pauseUntil = performance.now() + 6000; bioAuto.userMoved = true; }
+    const c = col(); if (c && bioAuto.active && c.contains(e.target) && !(e.target.closest && e.target.closest('.imp-bio-controls'))) {
+      bioAuto.pauseUntil = performance.now() + 6000; bioAuto.userMoved = true;
+      if (bioAuto.dual && bioAuto.parsed && ev !== 'pointerdown') { bioAuto.userScrollMode = true; bioAuto.userScrollT = performance.now(); if (ev === 'touchstart') bioAuto.dragging = true; }
+    }
   }, { passive: true }));
+  // v235 (retour Stéphane : « on peut faire défiler le texte avec le doigt, mais les images et le commentaire ne suivent pas ») : le défilement
+  // fait par la personne est repéré (celui du film lui-même est exclu) ; quand elle lève le doigt et que le texte s'immobilise, la voix repart de là.
+  ['touchend', 'touchcancel'].forEach((ev) => document.addEventListener(ev, () => { if (bioAuto.dragging) { bioAuto.dragging = false; bioAuto.userScrollT = performance.now(); } }, { passive: true }));
+  document.addEventListener('scroll', (e) => {
+    const c = col(); const A = bioAuto; if (!c || !A.active || e.target !== $('imp-bio-scroll') && e.target !== c) return;
+    if (performance.now() - (A.progT || 0) < 90) return;   // défilement fait par le film lui-même
+    if (A.userScrollMode) { A.userScrollT = performance.now(); A.pauseUntil = performance.now() + 6000; }
+  }, true);
   $('imp-bio-split-portrait')?.addEventListener('click', () => {
     const img = $('imp-bio-split-portrait'); if (!img || img.classList.contains('hidden')) return;
     if (bioAuto.dual) { if (bioAuto.artistRef) openLightboxImage(bioAuto.artistRef, ($('imp-bio-split-caption') || {}).textContent || ''); return; }
@@ -13780,6 +13957,7 @@ function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
 })();
 function openImpArtistBio(work, force, opts) {
   impClearTimers();
+  try { bioAutoStop(); } catch (e) { /* ignoré */ }   // v235 : si un autre film était en cours, sa position est retenue avant de repartir
   // v165 : le texte de l'œuvre (première personne) passe par le même écran « film » que la bio : opts.work = true
   const isWork = !!(opts && opts.work); const srcText = isWork ? (work.workText || '') : (work.bio || '');
   bioAuto.isWork = isWork; bioAuto.topic = (opts && opts.topic) || '';   // v211 : texte « Natures et techniques » (sans portrait ni guillemets)
@@ -13814,6 +13992,9 @@ function openImpArtistBio(work, force, opts) {
   // closeImpArtistBio ci-dessous, jamais ailleurs, donc jamais oublié en sortant de la bio.
   $('imp-quiz-grid')?.classList.add('imp-bio-open');
   const willSpeak = !!srcText && (impAudioOn || !!force) && !!window.speechSynthesis;
+  // v235 (retour Stéphane : « le film repart au début ») : un film quitté en cours de route se rouvre à l'endroit où on l'avait laissé (en pause : « Reprise »)
+  bioAuto.resumeKey = (isWork ? 'w' : 'b') + ':' + bioHash(String(srcText));
+  const memOff = (dual && willSpeak && !(opts && opts.fromStart)) ? bioMemGet(bioAuto.resumeKey, parsedBio.plain.length) : 0;
   // v164 : en mode « deux écrans », l'image de l'œuvre est la première image de la colonne centrale
   let baseRef = work.artistImage, baseCap = work.artistImageCaption || '';
   // v179 : bio à deux écrans avec portrait → l'artiste seul d'abord (« un seul bloc »), split à la 1re image
@@ -13838,6 +14019,7 @@ function openImpArtistBio(work, force, opts) {
     if (srcText) {
       bioAuto.rate = 0.72; bioChooseVoice(work, isWork);
       bioAuto.chunked = dual && bioWantChunks(); bioAuto.ck = null;
+      if (memOff && willSpeak) { bioStartPaused(memOff); return; }
       if (bioAuto.chunked) { if (willSpeak) bioSpeakFrom(0); return; }
       const sid = bioAuto.sid;
       impSpeak(parsedBio.plain, undefined, force, {
@@ -13847,13 +14029,13 @@ function openImpArtistBio(work, force, opts) {
         onStop: () => {
           if (sid !== bioAuto.sid) return;
           bioAuto.speaking = false;
-          if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); }
+          if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; bioMemClear(); $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); }
         },
       });
     }
   };
   bioCurtainHide();
-  const titleMs = bioCurtainTitle(parsedBio.title);
+  const titleMs = memOff ? 0 : bioCurtainTitle(parsedBio.title);
   if (titleMs) { bioAutoStop(); try { speechSynthesis.cancel(); } catch (e) { /* ignoré */ } bioCur.launch = setTimeout(launch, titleMs); } else launch();
 }
 // v129 : même écran partagé que la bio, mais avec l'image de l'œuvre à gauche et son texte (première personne) à droite.

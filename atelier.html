@@ -23,6 +23,9 @@ aside .head label{font-size:.8rem;display:flex;gap:6px;align-items:center;margin
 .w .mid{flex:1;min-width:0}
 .w .k{font-weight:600;word-break:break-word}
 .w .p{color:var(--muted);font-size:.78rem;word-break:break-word}
+.w .chk{font-size:.7rem;color:#7a2e8a;background:#f3e1f7;border-radius:8px;padding:0 6px;margin-left:4px;white-space:nowrap;font-weight:600}
+.goneBar{display:none;padding:8px 10px;border-bottom:1px solid var(--line,#ddd);background:#faf6ff;font-size:.85rem}
+.goneBar button{margin-top:4px;padding:6px 10px;font-weight:600;cursor:pointer}
 .w .dup{font-size:.7rem;color:#9a6a00;background:#fff3cf;border-radius:8px;padding:0 6px;margin-left:4px;white-space:nowrap}
 .w .rb{display:flex;gap:3px;flex:none}
 .w .rb button{width:29px;height:29px;padding:0;font-size:.78rem;border-radius:6px;line-height:1;background:#fff}
@@ -170,8 +173,9 @@ details summary{cursor:pointer;font-weight:600}
     <div class="head">
       <b>Mots à écouter</b>
       <div class="cnt" id="cnt"></div>
-      <label>Afficher : <select id="view" style="padding:4px 6px"><option value="all">tous les mots</option><option value="bad">à corriger</option><option value="ok">bons</option><option value="allv">testés avec toutes les voix</option><option value="notallv">pas encore testés avec toutes les voix</option><option value="diff">pas pareil selon les voix</option><option value="todo">pas encore écoutés</option><option value="gone">éliminés</option></select></label>
+      <label>Afficher : <select id="view" style="padding:4px 6px"><option value="all">tous les mots</option><option value="bad">à corriger</option><option value="ok">bons</option><option value="allv">testés avec toutes les voix</option><option value="notallv">pas encore testés avec toutes les voix</option><option value="diff">pas pareil selon les voix</option><option value="todo">pas encore écoutés</option><option value="check">à vérifier (mots remis)</option><option value="gone">éliminés</option></select></label>
     </div>
+    <div class="goneBar" id="goneBar"></div>
     <div id="list"></div>
     <div class="add">
       <input type="text" id="newWord" placeholder="Nouveau mot ou expression (ex. fonte gaia)" title="Un mot seul (fonte) ou une expression de plusieurs mots (fonte gaia) : l'expression ne change que ces mots-là, pas toutes les « fonte » du texte." autocapitalize="off" autocomplete="off" spellcheck="false">
@@ -180,7 +184,7 @@ details summary{cursor:pointer;font-weight:600}
   </aside>
 
   <main>
-    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v5</small></h1>
+    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v6</small></h1>
     <p class="sub">Choisissez une voix : elle lit toute la liste. Quand un mot est mal dit, appuyez sur <b>Stop</b> (ou sur la barre Espace). Ce mot s'ouvre alors ici pour être corrigé.</p>
     <div class="novoice" id="novoice">Aucune voix française n'est disponible dans ce navigateur pour le moment (réessayez dans quelques secondes, ou utilisez Chrome / Edge).</div>
 
@@ -273,7 +277,7 @@ const STORE_KEY = 'atelierPron_v3';
 const $ = (id)=>document.getElementById(id);
 const esc = (s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BASEMAP = {}; BASE.forEach(([k,v])=>{ BASEMAP[k]=v; });
-let S = { rate:0.85, gap:1.2, voice:'', sel:'', words:[], v:{}, view:'all', removed:{}, shared:{}, locked:{}, sharedDone:false, applyAll:true };
+let S = { rate:0.85, gap:1.2, voice:'', sel:'', words:[], v:{}, view:'all', removed:{}, check:{}, shared:{}, locked:{}, sharedDone:false, applyAll:true };
 try { Object.assign(S, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch(e) {}
 let dirHandle = null, saveT = null, askedAuth = false;
 function save(){ try { const r = restoreLocked(); if (r.length) toast('🔒 « '+r[0]+' »'+(r.length>1?' et '+(r.length-1)+' autre(s)':'')+' : validé par toutes les voix, donc verrouillé. Pour le modifier : « Déverrouiller » dans le panneau de droite.'); autoLock(); } catch(e) {} try { stampChanges(); } catch(e) {} try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e) {} clearTimeout(saveT); saveT = setTimeout(()=>autosave(false), 600); try { schedulePush(); } catch(e) {} }
@@ -461,6 +465,7 @@ function renderList(){
   const vmap = {}; keys.forEach(k=>{ const v = curVal(k,P); if (v) (vmap[v.toLowerCase()] = vmap[v.toLowerCase()] || []).push(k); });
   let shown;
   if (V==='gone') shown = everyKey().filter(k=>S.removed[k]).sort(alpha);
+  else if (V==='check') shown = keys.filter(k=>S.check && S.check[k]);
   else if (V==='diff') shown = keys.filter(differs);
   else if (V==='allv') shown = keys.filter(k=>voiceStatus(k).full);
   else if (V==='notallv') shown = keys.filter(k=>!voiceStatus(k).full);
@@ -471,11 +476,20 @@ function renderList(){
     const dup = (!gone && curVal(k,P) && twins.length) ? `<span class="dup" title="Même écriture phonétique que : ${esc(twins.join(', '))}">= ${esc(twins[0])}</span>` : '';
     const btns = gone ? `<button class="rp" title="Écouter">▶</button><button class="rback" title="Remettre dans la liste">Remettre</button>`
       : `<button class="rp" title="Écouter">▶</button><button class="rok ${(st==='ok'||st==='fixed')?'on':''}" title="Bon">✔</button><button class="rno ${st==='bad'?'on':''}" title="Mal dit : on reprend">✖</button><button class="rdel" title="Éliminer ce mot de la liste">🗑</button>`;
-    return `<div class="w ${gone?'gone':st} ${(k in BASEMAP)?'':'new'} ${S.sel===k?'sel':''} ${reading&&reading.cur===k?'cur':''}" data-k="${esc(k)}"><span class="dot"></span><div class="mid"><span class="k">${esc(k)}</span>${dup}${(!gone) ? allvBadge(k) : ''}${(!gone && differs(k))?'<span class="diff" title="Cette écriture n\'est pas la même pour toutes les voix">≠ voix</span>':''}<div class="p">${esc(curVal(k,P)||'tel quel')}</div></div><span class="rb">${btns}</span></div>`;
+    return `<div class="w ${gone?'gone':st} ${(k in BASEMAP)?'':'new'} ${S.sel===k?'sel':''} ${reading&&reading.cur===k?'cur':''}" data-k="${esc(k)}"><span class="dot"></span><div class="mid"><span class="k">${esc(k)}</span>${dup}${(!gone && S.check && S.check[k]) ? '<span class="chk" title="Mot remis dans la liste pour être revérifié">à vérifier</span>' : ''}${(!gone) ? allvBadge(k) : ''}${(!gone && differs(k))?'<span class="diff" title="Cette écriture n\'est pas la même pour toutes les voix">≠ voix</span>':''}<div class="p">${esc(curVal(k,P)||'tel quel')}</div></div><span class="rb">${btns}</span></div>`;
   }).join('') || '<div class="help" style="padding:12px;color:var(--muted)">Aucun mot dans cette vue.</div>';
   const nOk = keys.filter(k=>P.st[k]==='ok'||P.st[k]==='fixed').length, nBad = keys.filter(k=>P.st[k]==='bad').length, nGone = Object.keys(S.removed).length;
   $('cnt').textContent = `${keys.length} mots · ${nOk} bons · ${nBad} à corriger${nGone?` · ${nGone} éliminés`:''} (voix : ${S.voice?shortName(S.voice):'par défaut'})`;
   $('view').value = V;
+  const gb = $('goneBar'), nChk = Object.keys(S.check||{}).filter(k=>S.check[k] && !S.removed[k]).length;
+  if (V==='gone' && nGone) { gb.style.display = 'block'; gb.innerHTML = `${nGone} mot(s) éliminé(s). Ils étaient peut-être éliminés par erreur ?<br><button id="goneAll">↩ Tout remettre dans la liste, « à vérifier »</button>`; $('goneAll').onclick = restoreAllGone; }
+  else if (V==='check' && nChk) { gb.style.display = 'block'; gb.innerHTML = `${nChk} mot(s) à vérifier. Chaque ✔ ou ✖ retire le mot de cette vue.<br><button id="chkClear">Terminé : vider cette liste « à vérifier »</button>`; $('chkClear').onclick = ()=>{ S.check = {}; save(); renderAll(); toast('Liste « à vérifier » vidée (les mots restent dans la liste normale)'); }; }
+  else gb.style.display = 'none';
+}
+function restoreAllGone(){
+  const ks = Object.keys(S.removed).filter(k=>S.removed[k]); if (!ks.length) return;
+  S.check = S.check || {}; ks.forEach(k=>{ delete S.removed[k]; S.check[k] = true; });
+  S.view = 'check'; save(); renderAll(); toast(`${ks.length} mot(s) remis dans la liste, à vérifier`);
 }
 $('list').addEventListener('click', (e)=>{
   const row = e.target.closest('.w'); if (!row) return; const k = row.dataset.k; const P = prof();
@@ -483,9 +497,10 @@ $('list').addEventListener('click', (e)=>{
   if (!btn) { if (S.removed[k]) return; if (reading) stopReading(false); if (wordRead) stopWordRead(false); settlePlay(null); S.sel = k; S.pin = null; save(); renderAll(); return; }
   e.stopPropagation();
   if (btn.classList.contains('rp')) { speakOnceKeep(said(k,P)); return; }
-  if (btn.classList.contains('rback')) { delete S.removed[k]; save(); renderAll(); toast(`« ${k} » remis dans la liste`); return; }
-  if (btn.classList.contains('rok')) { if (P.st[k]==='ok'||P.st[k]==='fixed') delete P.st[k]; else P.st[k]='ok'; save(); renderAll(); return; }
+  if (btn.classList.contains('rback')) { delete S.removed[k]; S.check = S.check||{}; S.check[k] = true; save(); renderAll(); toast(`« ${k} » remis dans la liste`); return; }
+  if (btn.classList.contains('rok')) { if (S.check) delete S.check[k]; if (P.st[k]==='ok'||P.st[k]==='fixed') delete P.st[k]; else P.st[k]='ok'; save(); renderAll(); return; }
   if (btn.classList.contains('rno')) {
+    if (S.check) delete S.check[k];
     if (P.st[k]==='bad') { delete P.st[k]; save(); renderAll(); return; }
     P.st[k]='bad'; if (!reading) { S.sel = k; S.pin = null; } save(); renderAll(); if (!reading) setTimeout(()=>{ const f=$('fix'); if (f) f.scrollIntoView({block:'nearest',behavior:'smooth'}); },60); return;
   }
@@ -885,7 +900,7 @@ $('dl').onclick = ()=>{
   document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();}, 500);
   toast('Fichier enregistré (dossier Téléchargements)');
 };
-$('reset').onclick = ()=>{ if (!confirm('Tout effacer : tous les essais de toutes les voix ?')) return; stopReading(false); S = { rate:S.rate, gap:S.gap, voice:S.voice, sel:'', words:[], v:{}, view:'all', removed:{}, shared:{}, sharedDone:true, applyAll:true }; save(); renderAll(); };
+$('reset').onclick = ()=>{ if (!confirm('Tout effacer : tous les essais de toutes les voix ?')) return; stopReading(false); S = { rate:S.rate, gap:S.gap, voice:S.voice, sel:'', words:[], v:{}, view:'all', removed:{}, check:{}, shared:{}, sharedDone:true, applyAll:true }; save(); renderAll(); };
 $('rate').oninput = e=>{ S.rate=+e.target.value; $('rateV').textContent=String(S.rate).replace('.',','); save(); };
 $('gap').oninput = e=>{ S.gap=+e.target.value; $('gapV').textContent=String(S.gap).replace('.',','); save(); };
 $('rate').value = S.rate; $('rateV').textContent = String(S.rate).replace('.',',');
