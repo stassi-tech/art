@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v233';
+const APP_VERSION = 'v234';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -3787,7 +3787,10 @@ function selectedRubriquesLabel() {
   return labels.join(', ');
 }
 let currentPanelName = null, suppressHistoryPush = false;
+// v234 (cinéma) : déclarés ici, avant showPanel, pour que showPanel puisse les lire dès le démarrage
+let cinemaCat = null, cinemaTab = 'evo', cinemaActive = false, cinemaOpening = false, cinemaSaved = null, cinemaPrev = 'welcome';
 function showPanel(name) {
+  if (cinemaActive && !cinemaOpening) cinemaTeardown();   // v234 : on quitte le cinéma dès qu'on change d'écran autrement que par lui
   // Coupe systématiquement toute voix en cours ET tous les minuteurs différés de chaque
   // exercice dès qu'on change de page — sinon un rappel programmé (setTimeout) d'un exercice
   // quitté en cours de route peut se déclencher plus tard, en plein milieu d'un autre exercice
@@ -11398,9 +11401,10 @@ function natureTopicButtons(work) {
 // Même écran « film » que la bio et le texte de l'œuvre, sans portrait : un faux « work » dont le texte est celui du sujet.
 function openImpTopicText(work, id) {
   const t = NATURE_TEXTS && NATURE_TEXTS.get(id); if (!t) return;
-  const first = bioFirstImg(parseBioMarkup(t.text).marks);
-  const pseudo = { ...work, workText: t.text, bio: '', artistImage: '', artistImageCaption: '', image: bioWantMode() && first ? '' : (first ? first.ref : ''), title: t.label, date: '', topicLabel: t.label };
-  if (bioWantMode()) openImpArtistBio(pseudo, true, { work: true, topic: t.label }); else openImpWorkText(pseudo, t.label);
+  const parsedT = parseBioMarkup(t.text); const first = bioFirstImg(parsedT.marks);
+  const lab = (parsedT.title && parsedT.title.text) || t.label;   // v234 : l'en-tête du film reprend son titre (« L'évolution des fontaines »), pas le nom du sujet (« Fontaine »)
+  const pseudo = { ...work, workText: t.text, bio: '', artistImage: '', artistImageCaption: '', image: bioWantMode() && first ? '' : (first ? first.ref : ''), title: lab, date: '', topicLabel: lab };
+  if (bioWantMode()) openImpArtistBio(pseudo, true, { work: true, topic: lab }); else openImpWorkText(pseudo, lab);
 }
 function objMatches(r, f, skip) {
   if (!objectsActive(f)) return true;
@@ -13883,6 +13887,7 @@ function closeImpArtistBio() {
   $('imp-bio-split')?.classList.add('hidden');
   $('imp-quiz-grid')?.classList.remove('imp-bio-open');
   speechSynthesis.cancel();
+  if (cinemaActive) cinemaExit();   // v234 : film vu depuis le bouton 🎬 → retour à l'écran d'où l'on venait
 }
 $('imp-bio-split-close')?.addEventListener('click', closeImpArtistBio);
 
@@ -14963,6 +14968,120 @@ if (document.readyState !== 'loading') openPanelFromHash();
 // Écoute les flèches précédent/suivant du navigateur : on rejoue le panneau mémorisé dans l'état
 // d'historique plutôt que de laisser le navigateur quitter l'application. Le drapeau évite de
 // réempiler une entrée d'historique en retour, ce qui romprait la pile précédent/suivant.
+
+// ============================================================
+// v234 — CINÉMA (retour Stéphane : « dans le bandeau du haut, un logo qui permette d'accéder directement au film grâce à un menu : un film sur un
+// artiste, ou sur l'évolution d'un matériau, d'une technique, d'un genre… sans passer par les fiches »).
+// Le bouton 🎬 du bandeau ouvre #cinema-picker : onglet « Évolutions » (les textes « Natures et techniques » publiés) et onglet « Artistes » (tous ceux
+// qui ont une bio dans le fichier maître), avec recherche. Un clic lance le film dans le MÊME écran que celui des fiches (openImpArtistBio /
+// openImpTopicText) : on ouvre simplement l'écran Imprégnation sans jeu autour (classe .cinema-mode), et à la fermeture du film on revient d'où l'on venait.
+// ============================================================
+async function cinemaCatalog() {
+  if (cinemaCat) return cinemaCat;
+  try { await loadArtistListIfNeeded(); } catch (e) { /* liste d'artistes indisponible : onglet vide */ }
+  const topics = await ensureNatureTexts();
+  const evo = [];
+  (topics || new Map()).forEach((t, id) => {
+    const p = parseBioMarkup(t.text); const words = String(p.plain || '').split(/\s+/).filter(Boolean).length;
+    evo.push({ kind: 'topic', id, title: (p.title && p.title.text) || t.label, art: id.startsWith('pe.') ? 'peinture' : 'sculpture', n: p.marks.filter((m) => m.ref).length, min: Math.max(1, Math.round(words / 2.4 / 60)) });
+  });
+  evo.sort((a, b) => a.art.localeCompare(b.art) || keyName(a.title).localeCompare(keyName(b.title)));
+  const arts = [];
+  (artistListRows || []).forEach((r) => {
+    if (r._retired || !String(r['Bio'] || '').trim()) return;
+    const g = (k) => String(r[k] == null ? '' : r[k]).trim();
+    const pre = g('Prénom'), pat = g('Patronyme'), sur = g('Surnom'); const civil = [pre, pat].filter(Boolean).join(' ');
+    const name = civil ? formatArtistName(civil) : sur; if (!name) return;
+    const b = g('Année de naissance'), d = g('Année de mort'); const dates = (b && d && !/inconnu/i.test(`${b} ${d}`)) ? `${b} – ${d}` : '';
+    const a = g('Art(s)').toLowerCase();
+    const parsed = parseBioMarkup(g('Bio'));
+    arts.push({ kind: 'artist', row: r, name: civil && sur ? `${name}, dit ${sur}` : name, dates, p: a.includes('peinture'), s: a.includes('sculpture'), n: parsed.marks.filter((m) => m.ref).length, key: keyName(pat || sur || pre), find: keyName(`${pre} ${pat} ${sur}`) });
+  });
+  arts.sort((a, b) => a.key.localeCompare(b.key));
+  cinemaCat = { evo, arts }; return cinemaCat;
+}
+function cinemaRender() {
+  const list = $('cinema-list'); if (!list || !cinemaCat) return;
+  const q = keyName($('cinema-search').value || ''); const art = $('cinema-art').value;
+  $('cinema-tab-evo').classList.toggle('on', cinemaTab === 'evo'); $('cinema-tab-art').classList.toggle('on', cinemaTab === 'art');
+  $('cinema-search').placeholder = cinemaTab === 'evo' ? 'Chercher une évolution (fontaine, bronze, fresque…)' : 'Chercher un artiste…';
+  list.innerHTML = '';
+  const add = (e, titleTxt, meta, go) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cinema-item';
+    const l = document.createElement('span'); l.className = 'nm'; l.textContent = titleTxt; if (meta) { const s = document.createElement('small'); s.textContent = meta; l.appendChild(s); }
+    const r = document.createElement('span'); r.className = 'go'; r.textContent = go;
+    b.append(l, r); b.addEventListener('click', () => cinemaPlay(e)); list.appendChild(b);
+  };
+  let n = 0, lastG = null; const group = (t) => { if (t === lastG) return; lastG = t; const h = document.createElement('div'); h.className = 'cinema-group'; h.textContent = t; list.appendChild(h); };
+  if (cinemaTab === 'evo') {
+    cinemaCat.evo.forEach((e) => {
+      if (art && e.art !== art) return; if (q && !keyName(e.title).includes(q)) return;
+      group(e.art === 'peinture' ? 'Peinture' : 'Sculpture'); n++;
+      add(e, e.title, `${e.n ? e.n + ' images · ' : ''}environ ${e.min} min`, '▶ Voir');
+    });
+    if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.evo.length ? 'Aucun film ne correspond.' : 'Aucune évolution n’est encore publiée.'}</div>`;
+  } else {
+    cinemaCat.arts.forEach((e) => {
+      if (art === 'peinture' && !e.p) return; if (art === 'sculpture' && !e.s) return; if (q && !e.find.includes(q) && !e.key.includes(q)) return;
+      if (!q) group((e.key[0] || '#').toUpperCase()); n++;
+      add(e, e.name, [e.dates, e.n ? `${e.n} images` : ''].filter(Boolean).join(' · '), '▶ Voir');
+    });
+    if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.arts.length ? 'Aucun artiste ne correspond.' : 'Aucune biographie n’est disponible pour le moment.'}</div>`;
+  }
+}
+async function openCinemaPicker() {
+  const pk = $('cinema-picker'); if (!pk) return;
+  pk.classList.remove('hidden'); $('cinema-list').innerHTML = '<div class="cinema-empty">Chargement des films…</div>';
+  await cinemaCatalog();
+  if (!cinemaCat.evo.length && cinemaTab === 'evo') cinemaTab = 'art';
+  cinemaRender(); setTimeout(() => $('cinema-search')?.focus({ preventScroll: true }), 50);
+}
+function closeCinemaPicker() { $('cinema-picker')?.classList.add('hidden'); }
+function cinemaPseudo(r) {   // l'« œuvre » factice que l'écran des bios attend : l'artiste, sans œuvre
+  const g = (k) => String(r[k] == null ? '' : r[k]).trim();
+  const b = g('Année de naissance'), d = g('Année de mort'); const vk = Object.keys(r).find((k) => String(k).trim().toLowerCase() === 'voix');
+  return { prenom: g('Prénom'), patronyme: g('Patronyme'), surnomFr: g('Surnom'), artist: [g('Prénom'), g('Patronyme')].filter(Boolean).join(' '), associates: [],
+    artistDates: (b && d && !/inconnu/i.test(`${b} ${d}`)) ? `${b}-${d}` : '', artistImage: g("Image de l'artiste"), artistImageCaption: g("Légende de l'artiste"),
+    artistVoice: vk ? normalizeVoiceGender(r[vk]) : '', nationality: g('Nationalité'), bio: g('Bio'), workText: '', title: '', date: '', image: '' };
+}
+function cinemaEnter(label, sub) {
+  if (!cinemaActive) {
+    const prev = currentPanelName || 'welcome'; const inPlay = ['intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz', 'impregnation'].includes(prev);
+    cinemaPrev = inPlay ? 'welcome' : prev;
+    cinemaSaved = { ready: $('imp-ready-screen')?.classList.contains('hidden'), grid: $('imp-quiz-grid')?.classList.contains('hidden') };
+  }
+  cinemaOpening = true; try { showPanel('impregnation'); } finally { cinemaOpening = false; }
+  cinemaActive = true;
+  $('imp-ready-screen')?.classList.add('hidden'); $('imp-quiz-grid')?.classList.remove('hidden'); $('impregnation-panel')?.classList.add('cinema-mode');
+  updateTopBanner('🎬 Cinéma', sub || label || '');
+}
+function cinemaTeardown() {   // remet l'écran Imprégnation comme on l'avait trouvé (sans naviguer)
+  if (!cinemaActive) return; cinemaActive = false;
+  try { bioAutoStop(); bioCurtainHide(); } catch (e) { /* ignoré */ }
+  $('imp-bio-split')?.classList.add('hidden'); $('imp-quiz-grid')?.classList.remove('imp-bio-open'); $('impregnation-panel')?.classList.remove('cinema-mode');
+  if (cinemaSaved) { $('imp-ready-screen')?.classList.toggle('hidden', !!cinemaSaved.ready); $('imp-quiz-grid')?.classList.toggle('hidden', !!cinemaSaved.grid); }
+}
+function cinemaExit() { const prev = cinemaPrev || 'welcome'; cinemaTeardown(); showPanel(prev); }
+function cinemaPlay(e) {   // appelé directement par le clic (la voix du navigateur exige un geste de l'utilisateur : aucune attente avant le film)
+  closeCinemaPicker();
+  const gameOn = !cinemaActive && currentPanelName === 'impregnation' && $('imp-quiz-grid') && !$('imp-quiz-grid').classList.contains('hidden');
+  if (!gameOn) {
+    const inOther = !cinemaActive && ['intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'].includes(currentPanelName);
+    if (inOther && !confirm('Le film va interrompre l’exercice en cours. Continuer ?')) return;
+    cinemaEnter(e.kind === 'topic' ? e.title : e.name, e.kind === 'topic' ? '' : e.dates);
+  }
+  if (e.kind === 'topic') openImpTopicText({}, e.id); else openImpArtistBio(cinemaPseudo(e.row), true);
+}
+$('global-cinema-button')?.addEventListener('click', (ev) => { ev.stopPropagation(); if ($('cinema-picker')?.classList.contains('hidden')) openCinemaPicker(); else closeCinemaPicker(); });
+$('menu-item-cinema')?.addEventListener('click', (ev) => { ev.stopPropagation(); closeHamburgerMenu(); openCinemaPicker(); });
+$('cinema-close')?.addEventListener('click', closeCinemaPicker);
+$('cinema-picker')?.addEventListener('click', (ev) => { if (ev.target === $('cinema-picker')) closeCinemaPicker(); });
+$('cinema-tab-evo')?.addEventListener('click', () => { cinemaTab = 'evo'; $('cinema-search').value = ''; cinemaRender(); });
+$('cinema-tab-art')?.addEventListener('click', () => { cinemaTab = 'art'; $('cinema-search').value = ''; cinemaRender(); });
+$('cinema-search')?.addEventListener('input', cinemaRender);
+$('cinema-art')?.addEventListener('change', cinemaRender);
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && $('cinema-picker') && !$('cinema-picker').classList.contains('hidden')) closeCinemaPicker(); });
+
 window.addEventListener('popstate', (event) => {
   suppressHistoryPush = true;
   showPanel(event.state?.panel || 'welcome');

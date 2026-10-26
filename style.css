@@ -1898,7 +1898,7 @@ body.has-other-works .correction-label { font-size:.76rem; }
   /* La zone centrale à 6 icônes écrasait le titre de l'exercice et le score sur petit écran — on
      ne garde que l'essentiel (accueil, menu) et les 4 autres passent dans le menu hamburger (voir
      .mobile-only-menu-item plus bas, masqués sur grand écran où les boutons du bandeau suffisent). */
-  #global-fullscreen-button, #global-ambiance-button, #global-exhibition-button, #global-account-button { display:none; }
+  #global-fullscreen-button, #global-ambiance-button, #global-exhibition-button, #global-account-button, #global-cinema-button { display:none; }
   .welcome-panel,.results-panel { padding:24px 14px; margin:24px auto; }
   .home-mode-buttons { gap:8px; }
   .home-mode-button { padding:12px 8px; }
@@ -2854,3 +2854,33 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .imp-bio-curtain-sub:empty { display:none; }
 #imp-bio-split-close { z-index:8; }
 .imp-bio-split.bio-dual .imp-bio-controls { position:relative; z-index:7; }
+
+
+/* ============================================================
+   v234 — CINÉMA : le bouton 🎬 du bandeau ouvre un choix de films (évolutions / artistes) ; le film joue dans l'écran habituel des bios
+   ============================================================ */
+.cinema-picker { position:fixed; inset:0; z-index:400; background:rgba(20,16,12,.55); display:flex; align-items:flex-start; justify-content:center; padding:56px 12px 12px; }
+.cinema-picker.hidden { display:none; }
+.cinema-card { background:var(--paper); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,.35); width:min(560px,100%); max-height:calc(100vh - 80px); max-height:calc(100svh - 80px); display:flex; flex-direction:column; padding:14px 16px 10px; font-family:Arial,sans-serif; }
+.cinema-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.cinema-head h2 { margin:0; font-family:Georgia,serif; font-size:1.25rem; }
+.cinema-x { width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:var(--paper); cursor:pointer; font-size:.95rem; }
+.cinema-x:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); }
+.cinema-intro { margin:6px 0 10px; font-size:.82rem; color:var(--muted); line-height:1.4; }
+.cinema-tabs { display:flex; gap:6px; margin-bottom:8px; }
+.cinema-tab { flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--paper); cursor:pointer; font-size:.9rem; font-weight:700; color:var(--muted); }
+.cinema-tab.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+.cinema-tools { display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+.cinema-search { flex:1 1 180px; min-width:0; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:.95rem; }
+.cinema-select { padding:8px; border:1px solid var(--border); border-radius:8px; font-size:.85rem; background:var(--paper); }
+.cinema-list { overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1 1 auto; min-height:120px; border-top:1px solid var(--border); padding-top:4px; }
+.cinema-group { position:sticky; top:0; background:var(--paper); font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:8px 4px 3px; }
+.cinema-item { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:9px 8px; border:0; border-bottom:1px solid rgba(0,0,0,.07); background:transparent; cursor:pointer; font-family:inherit; font-size:.95rem; color:var(--ink); }
+.cinema-item:hover, .cinema-item:focus-visible { background:#f7f2ea; outline:none; }
+.cinema-item .nm { font-weight:600; min-width:0; }
+.cinema-item small { display:block; font-weight:400; color:var(--muted); font-size:.74rem; margin-top:1px; }
+.cinema-item .go { flex:0 0 auto; font-size:.8rem; color:var(--muted); white-space:nowrap; }
+.cinema-empty { padding:18px 6px; color:var(--muted); font-size:.9rem; }
+/* dans le cinéma, l'écran des bios sert seul : pas de compteur de jeu, ni de réglages de jeu */
+#impregnation-panel.cinema-mode #imp-progress-row, #impregnation-panel.cinema-mode .progress-track, #impregnation-panel.cinema-mode #imp-ready-screen { display:none !important; }
+@media (max-width:600px) { .cinema-picker { padding-top:48px; } .cinema-card { max-height:calc(100svh - 60px); padding:12px; } }
