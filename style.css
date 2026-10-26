@@ -2892,3 +2892,8 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .imp-bio-time input[type=range] { flex:1 1 auto; min-width:0; height:28px; accent-color:#e8c36a; background:transparent; cursor:pointer; touch-action:none; }
 .imp-bio-time span { flex:0 0 auto; min-width:2.6em; text-align:center; }
 .imp-bio-note { flex:1 0 100%; text-align:center; color:#ffe9b0; font:.8rem/1.3 Arial,sans-serif; padding:0 6px; }
+
+/* v236 (retour Stéphane : « l'écran ne doit être divisé qu'en deux ») : un film sans portrait d'artiste (évolutions, Natures et techniques)
+   n'a plus de colonne vide à gauche ; les images des œuvres prennent les deux tiers de l'écran, le texte garde sa colonne à droite. */
+.imp-bio-split.bio-dual:not(.bio-vert).bio-nophoto .imp-bio-photo-col { display:none; }
+.imp-bio-split.bio-dual:not(.bio-vert).bio-nophoto .imp-bio-slide-col { flex:0 0 66%; border-left-width:0; }
