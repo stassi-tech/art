@@ -44,7 +44,7 @@
         </div>
         <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
         <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
-        <button type="button" id="global-cinema-button" class="global-topbar-button" aria-label="Cinéma : voir un film" title="Cinéma : voir un film">🎬</button>
+        <button type="button" id="global-cinema-button" class="global-topbar-button" aria-label="Diaporamas : voir un diaporama" title="Diaporamas : voir un diaporama">🎬</button>
         <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
         <button type="button" id="global-exhibition-button" class="global-topbar-button" aria-label="Salle d'exposition" title="Salle d'exposition">🖼️<span id="exhibition-button-label"></span></button>
         <button type="button" id="global-account-button" class="global-topbar-button" aria-label="Mon compte" title="Mon compte">👤</button>
@@ -62,7 +62,7 @@
       <div class="topbar-zone topbar-zone-right" id="topbar-score"></div>
       <div class="hamburger-menu hidden" id="hamburger-menu">
         <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-fullscreen">⛶ Plein écran</button>
-        <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-cinema">🎬 Cinéma : voir un film</button>
+        <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-cinema">🎬 Diaporamas : voir un diaporama</button>
         <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-ambiance">🎨 Changer l'ambiance</button>
         <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-exhibition">🖼️ Salle d'exposition</button>
         <button type="button" class="hamburger-item mobile-only-menu-item" id="menu-item-account">👤 Mon compte</button>
@@ -86,13 +86,14 @@
          pour de vrai, au même niveau que #global-topbar et #gallery-proto (z-index:150) — plus aucun
          ancêtre intermédiaire ne peut plus les piéger derrière eux. -->
     <!-- v234 : CINÉMA — bouton 🎬 du bandeau : on choisit un film (la vie d'un artiste, ou l'évolution d'un matériau / d'une technique / d'un genre) sans passer par une fiche d'œuvre. Voir « CINÉMA » dans app.js. -->
-    <div id="cinema-picker" class="cinema-picker hidden" role="dialog" aria-modal="true" aria-label="Cinéma : choisir un film">
+    <div id="cinema-picker" class="cinema-picker hidden" role="dialog" aria-modal="true" aria-label="Diaporamas : choisir un diaporama">
       <div class="cinema-card">
-        <div class="cinema-head"><h2>🎬 Cinéma</h2><button type="button" id="cinema-close" class="cinema-x" aria-label="Fermer" title="Fermer">✕</button></div>
-        <p class="cinema-intro">Choisissez un film : l'évolution d'un matériau, d'une technique ou d'un genre à travers les siècles, ou la vie d'un artiste.</p>
+        <div class="cinema-head"><h2>🎬 Diaporamas</h2><button type="button" id="cinema-close" class="cinema-x" aria-label="Fermer" title="Fermer">✕</button></div>
+        <p class="cinema-intro">Choisissez un diaporama : la vie d'un artiste, une œuvre, ou l'histoire des formes (l'évolution d'un matériau, d'une technique ou d'un genre à travers les siècles).</p>
         <div class="cinema-tabs" role="tablist">
-          <button type="button" id="cinema-tab-evo" class="cinema-tab" data-tab="evo" role="tab">Évolutions</button>
-          <button type="button" id="cinema-tab-art" class="cinema-tab" data-tab="art" role="tab">Artistes</button>
+          <button type="button" id="cinema-tab-art" class="cinema-tab" data-tab="art" role="tab">Biographies d'artistes</button>
+          <button type="button" id="cinema-tab-work" class="cinema-tab" data-tab="work" role="tab">Œuvres</button>
+          <button type="button" id="cinema-tab-evo" class="cinema-tab" data-tab="evo" role="tab">Histoire des formes</button>
         </div>
         <div class="cinema-tools">
           <input type="search" id="cinema-search" class="cinema-search" placeholder="Chercher…" autocomplete="off" />
@@ -815,7 +816,7 @@
                       <div id="imp-bio-pad-bot" class="imp-bio-pad"></div>
                     </div>
                     <div class="imp-bio-controls" id="imp-bio-controls">
-                      <div class="imp-bio-time hidden" id="imp-bio-time"><span id="imp-bio-time-cur">0:00</span><input type="range" id="imp-bio-range" min="0" max="1000" value="0" step="1" aria-label="Position dans le film"><span id="imp-bio-time-tot">0:00</span></div>
+                      <div class="imp-bio-time hidden" id="imp-bio-time"><span id="imp-bio-time-cur">0:00</span><input type="range" id="imp-bio-range" min="0" max="1000" value="0" step="1" aria-label="Position dans le diaporama"><span id="imp-bio-time-tot">0:00</span></div>
                       <div class="imp-bio-note hidden" id="imp-bio-note"></div>
                       <button type="button" id="imp-bio-back" class="imp-bio-seek hidden" title="Revenir à la phrase précédente" aria-label="Revenir à la phrase précédente"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 6v12l-9-6zM21 6v12l-9-6z" fill="currentColor"/></svg></button>
                       <button type="button" id="imp-bio-toggle" class="imp-bio-toggle hidden">Arrêt</button>

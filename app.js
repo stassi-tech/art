@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v236';
+const APP_VERSION = 'v237';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -3846,7 +3846,7 @@ function selectedRubriquesLabel() {
 }
 let currentPanelName = null, suppressHistoryPush = false;
 // v234 (cinéma) : déclarés ici, avant showPanel, pour que showPanel puisse les lire dès le démarrage
-let cinemaCat = null, cinemaTab = 'evo', cinemaActive = false, cinemaOpening = false, cinemaSaved = null, cinemaPrev = 'welcome';
+let cinemaCat = null, cinemaTab = 'art', cinemaActive = false, cinemaOpening = false, cinemaSaved = null, cinemaPrev = 'welcome';
 function showPanel(name) {
   try { bioPauseNow(); } catch (e) { /* ignoré */ }   // v235 : on quitte l'écran du film → pause, et la position est retenue
   if (cinemaActive && !cinemaOpening) cinemaTeardown();   // v234 : on quitte le cinéma dès qu'on change d'écran autrement que par lui
@@ -15185,8 +15185,8 @@ async function cinemaCatalog() {
 function cinemaRender() {
   const list = $('cinema-list'); if (!list || !cinemaCat) return;
   const q = keyName($('cinema-search').value || ''); const art = $('cinema-art').value;
-  $('cinema-tab-evo').classList.toggle('on', cinemaTab === 'evo'); $('cinema-tab-art').classList.toggle('on', cinemaTab === 'art');
-  $('cinema-search').placeholder = cinemaTab === 'evo' ? 'Chercher une évolution (fontaine, bronze, fresque…)' : 'Chercher un artiste…';
+  ['evo', 'art', 'work'].forEach((k) => $('cinema-tab-' + k)?.classList.toggle('on', cinemaTab === k));
+  $('cinema-search').placeholder = cinemaTab === 'evo' ? 'Chercher une histoire des formes (fontaine, bronze, fresque…)' : cinemaTab === 'work' ? 'Chercher une œuvre…' : 'Chercher un artiste…';   // v237 : trois onglets (biographies, œuvres, histoire des formes)
   list.innerHTML = '';
   const add = (e, titleTxt, meta, go) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'cinema-item';
@@ -15201,7 +15201,9 @@ function cinemaRender() {
       group(e.art === 'peinture' ? 'Peinture' : 'Sculpture'); n++;
       add(e, e.title, `${e.n ? e.n + ' images · ' : ''}environ ${e.min} min`, '▶ Voir');
     });
-    if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.evo.length ? 'Aucun film ne correspond.' : 'Aucune évolution n’est encore publiée.'}</div>`;
+    if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.evo.length ? 'Aucun diaporama ne correspond.' : 'Aucune histoire des formes n’est encore publiée.'}</div>`;
+  } else if (cinemaTab === 'work') {
+    list.innerHTML = '<div class="cinema-empty">Les diaporamas consacrés à une œuvre arriveront bientôt.</div>';
   } else {
     cinemaCat.arts.forEach((e) => {
       if (art === 'peinture' && !e.p) return; if (art === 'sculpture' && !e.s) return; if (q && !e.find.includes(q) && !e.key.includes(q)) return;
@@ -15213,9 +15215,8 @@ function cinemaRender() {
 }
 async function openCinemaPicker() {
   const pk = $('cinema-picker'); if (!pk) return;
-  pk.classList.remove('hidden'); $('cinema-list').innerHTML = '<div class="cinema-empty">Chargement des films…</div>';
+  pk.classList.remove('hidden'); $('cinema-list').innerHTML = '<div class="cinema-empty">Chargement des diaporamas…</div>';
   await cinemaCatalog();
-  if (!cinemaCat.evo.length && cinemaTab === 'evo') cinemaTab = 'art';
   cinemaRender(); setTimeout(() => $('cinema-search')?.focus({ preventScroll: true }), 50);
 }
 function closeCinemaPicker() { $('cinema-picker')?.classList.add('hidden'); }
@@ -15235,7 +15236,7 @@ function cinemaEnter(label, sub) {
   cinemaOpening = true; try { showPanel('impregnation'); } finally { cinemaOpening = false; }
   cinemaActive = true;
   $('imp-ready-screen')?.classList.add('hidden'); $('imp-quiz-grid')?.classList.remove('hidden'); $('impregnation-panel')?.classList.add('cinema-mode');
-  updateTopBanner('🎬 Cinéma', sub || label || '');
+  updateTopBanner('🎬 Diaporama', sub || label || '');
 }
 function cinemaTeardown() {   // remet l'écran Imprégnation comme on l'avait trouvé (sans naviguer)
   if (!cinemaActive) return; cinemaActive = false;
@@ -15249,7 +15250,7 @@ function cinemaPlay(e) {   // appelé directement par le clic (la voix du naviga
   const gameOn = !cinemaActive && currentPanelName === 'impregnation' && $('imp-quiz-grid') && !$('imp-quiz-grid').classList.contains('hidden');
   if (!gameOn) {
     const inOther = !cinemaActive && ['intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'].includes(currentPanelName);
-    if (inOther && !confirm('Le film va interrompre l’exercice en cours. Continuer ?')) return;
+    if (inOther && !confirm('Le diaporama va interrompre l’exercice en cours. Continuer ?')) return;
     cinemaEnter(e.kind === 'topic' ? e.title : e.name, e.kind === 'topic' ? '' : e.dates);
   }
   if (e.kind === 'topic') openImpTopicText({}, e.id); else openImpArtistBio(cinemaPseudo(e.row), true);
@@ -15260,6 +15261,7 @@ $('cinema-close')?.addEventListener('click', closeCinemaPicker);
 $('cinema-picker')?.addEventListener('click', (ev) => { if (ev.target === $('cinema-picker')) closeCinemaPicker(); });
 $('cinema-tab-evo')?.addEventListener('click', () => { cinemaTab = 'evo'; $('cinema-search').value = ''; cinemaRender(); });
 $('cinema-tab-art')?.addEventListener('click', () => { cinemaTab = 'art'; $('cinema-search').value = ''; cinemaRender(); });
+$('cinema-tab-work')?.addEventListener('click', () => { cinemaTab = 'work'; $('cinema-search').value = ''; cinemaRender(); });
 $('cinema-search')?.addEventListener('input', cinemaRender);
 $('cinema-art')?.addEventListener('change', cinemaRender);
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && $('cinema-picker') && !$('cinema-picker').classList.contains('hidden')) closeCinemaPicker(); });
