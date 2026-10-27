@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v244';
+const APP_VERSION = 'v246';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -13646,11 +13646,10 @@ function bioOvShow(c) {
   const clipMs = c ? ((c.b - c.a) / bioCps()) * 1000 : 0;   // durée approximative de l'image sur la ligne 2 : le fondu par défaut ne dépasse pas sa moitié
   let ms0 = c ? (c.ms != null ? c.ms : (type === 'black' ? 1200 : Math.round(Math.max(800, Math.min(BIO_OV_FADE_MS, isFinite(clipMs) && clipMs > 0 ? clipMs * 0.5 : BIO_OV_FADE_MS))))) : (A.ovMs != null ? A.ovMs : BIO_OV_FADE_MS); if (type === 'cut') ms0 = 0; if (c) A.ovMs = ms0;
   const tok = A.ovTok = (A.ovTok || 0) + 1; const now0 = performance.now();
-  // v244 (retour Stéphane : « s'il y a quelque chose sur la ligne 2, plus de légende : seules comptent les légendes de la ligne 1 ») : tant qu'une image de la ligne 2
-  // recouvre l'image principale (inclusion), la légende et le crédit de l'image principale sont éteints ; ils reviennent (avec la légende de la ligne 1 qui est alors la bonne)
-  // quand l'image superposée a fini de s'effacer.
-  if (c) { const wasIncl = A.ovCurIncl; A.ovCurIncl = c.mode === 'incl'; A.ovCurRef = c.ref; A.ovLastRef = c.ref; A.ovInDone = now0 + ms0; clearTimeout(A.capRelT); if (A.ovCurIncl) bioCapOut(bioEls(), Math.min(ms0, 800), false); else if (wasIncl) bioOvCapBack(ms0 + 60); }
-  else { const was = A.ovCurIncl; A.ovCurIncl = false; if (was) { A.ovHideDone = now0 + ms0 + 40; bioOvCapBack(ms0 + 60); } }
+  // v245 (retour Stéphane : « la ligne 2, ce sont souvent des détails de l'œuvre : la légende de la ligne 1 doit continuer ») : la légende et le crédit de l'image principale
+  // restent affichés pendant une image de la ligne 2 ; seule la légende d'une NOUVELLE image principale attend la fin du fondu de l'image superposée.
+  if (c) { A.ovCurIncl = c.mode === 'incl'; A.ovCurRef = c.ref; A.ovLastRef = c.ref; A.ovInDone = now0 + ms0; if (A.capHold && A.capHoldSame && A.ovCurIncl) { clearTimeout(A.capRelT); A.capRelT = setTimeout(bioCapRelease, ms0 + 40); } }
+  else { const was = A.ovCurIncl; A.ovCurIncl = false; if (was) { A.ovHideDone = now0 + ms0 + 40; clearTimeout(A.capRelT); A.capRelT = setTimeout(bioCapRelease, ms0 + 60); } }
   if (type === 'black' && ms0 > 0) { const h = ms0 / 2; bioOvCover(true, h); setTimeout(() => { if (A.ovTok !== tok) return; bioOvRun(c, 0); bioOvCover(false, h); }, h + 20); }
   else { bioOvCover(false, 0); bioOvRun(c, ms0); }
 }
@@ -13666,15 +13665,13 @@ function bioOvCoverInfo(mi, ref) {
   if (!clip && (A.ovCurIncl || (A.ovHideDone || 0) > now)) clip = { ref: A.ovCurIncl ? A.ovCurRef : A.ovLastRef };
   return clip ? { same: bioOvKey(clip.ref) === bioOvKey(ref) } : null;
 }
-function bioOvCapBack(delay) {   // la légende de la ligne 1 revient quand l'image de la ligne 2 a fini de s'effacer
-  const A = bioAuto; clearTimeout(A.capRelT); A.capRelT = setTimeout(() => { if (A.capHold) bioCapRelease(); else bioCapIn(bioEls(), 800, false); }, delay);
-}
 function bioCapRelease() { const A = bioAuto; clearTimeout(A.capRelT); const f = A.capHold; A.capHold = null; if (f) f(); }
 function bioCapApply(E, sameCap, cov, setFn) {
   const A = bioAuto; if (!cov) { setFn(); return; }
   A.capHold = () => { bioCapOut(E, 500, sameCap); clearTimeout(A.capTimer2); A.capTimer2 = setTimeout(() => { setFn(); bioCapIn(E, 500, sameCap); }, 520); };
   A.capHoldSame = cov.same; A.capHoldAt = performance.now(); const now = performance.now(); clearTimeout(A.capRelT);
-  if (!A.ovCurIncl && (A.ovHideDone || 0) > now) A.capRelT = setTimeout(bioCapRelease, A.ovHideDone - now + 40);
+  if (A.ovCurIncl) { if (cov.same) A.capRelT = setTimeout(bioCapRelease, Math.max(0, (A.ovInDone || 0) - now) + 40); }
+  else if ((A.ovHideDone || 0) > now) A.capRelT = setTimeout(bioCapRelease, A.ovHideDone - now + 40);
 }
 // détail : pour un agrandissement, on demande une image plus grande (1920 px) ; si elle n'existe pas à cette taille, on retombe sur la taille habituelle
 function bioOvSrc(c) {
@@ -13697,20 +13694,24 @@ function bioOvRun(c, ms) {
   if (zoomed) {   // v241 : « détail » = on ne montre qu'une partie de l'image, agrandie (cadre qui cache le reste)
     el = document.createElement('div'); el.appendChild(img); img.className = 'ovin'; const zz = c.zz, zx = c.zx, zy = c.zy;
     img.style.left = (50 - zx * zz) + '%'; img.style.top = (50 - zy * zz) + '%'; img.style.width = (zz * 100) + '%';
-    if (c.mode === 'incl') img.style.height = (zz * 100) + '%'; else { el.style.aspectRatio = '4 / 3'; img.onload = () => { if (img.naturalWidth > 0) el.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight; }; }
+    if (c.mode === 'incl') {   // v246 : le détail se cadre sur l'image elle-même : un cadre de la taille de l'image (ajustée à l'écran, centrée), comme l'image principale
+      const fr = document.createElement('div'); fr.className = 'ovfr'; el.removeChild(img); fr.appendChild(img); el.appendChild(fr); img.style.height = 'auto';
+      const fit = () => { const W = el.clientWidth, H = el.clientHeight; if (!img.naturalWidth || !W || !H) return; const k = Math.min(W / img.naturalWidth, H / img.naturalHeight), fw = img.naturalWidth * k, fh = img.naturalHeight * k; fr.style.left = ((W - fw) / 2) + 'px'; fr.style.top = ((H - fh) / 2) + 'px'; fr.style.width = fw + 'px'; fr.style.height = fh + 'px'; };
+      el._fit = fit; img.onload = fit;
+    } else { el.style.aspectRatio = '4 / 3'; img.onload = () => { if (img.naturalWidth > 0) el.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight; }; }
   }
   if (c.mode === 'incl') { el.className = 'imp-bio-ovi incl' + (zoomed ? ' zw' : ''); try { const im = bioEls().img; let L, T, W, H; if (im.offsetParent && im.offsetParent === z.offsetParent) { L = im.offsetLeft - z.offsetLeft; T = im.offsetTop - z.offsetTop; W = im.offsetWidth; H = im.offsetHeight; } else { const ir = im.getBoundingClientRect(), pr = z.getBoundingClientRect(); L = ir.left - pr.left; T = ir.top - pr.top; W = ir.width; H = ir.height; } /* v241 : tailles réelles, hors animation de retour de l'image principale */ if (W > 20 && H > 20) { el.style.left = L + 'px'; el.style.top = T + 'px'; el.style.width = W + 'px'; el.style.height = H + 'px'; } } catch (e) { /* ignoré */ } } else { el.className = 'imp-bio-ovi jx' + (zoomed ? ' zw' : ''); el.style.left = c.ox + '%'; el.style.top = c.oy + '%'; el.style.width = c.ow + '%'; }
-  el.style.opacity = ms <= 0 ? '1' : '0'; z.appendChild(el); if (ms > 0) { void el.offsetWidth; el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '1'; }
+  el.style.opacity = ms <= 0 ? '1' : '0'; z.appendChild(el); if (el._fit) el._fit(); if (ms > 0) { void el.offsetWidth; el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '1'; }
   bioOvCredit(c);
 }
 // v241 : crédit (auteur · licence, lien Commons) de l'image superposée, en haut à droite de la zone ; « · détail » quand elle est agrandie
 function bioOvCredit(c) {
   const par = bioEls().img && bioEls().img.parentElement; if (!par) return;
   let a = $('imp-bio-ov-credit');
-  if (!a) { a = document.createElement('a'); a.id = 'imp-bio-ov-credit'; a.className = 'imp-bio-ovcr hidden'; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = '<span id="imp-bio-ov-credit-text"></span><span id="imp-bio-ov-credit-dt"></span> \u2197'; }
+  if (!a) { a = document.createElement('a'); a.id = 'imp-bio-ov-credit'; a.className = 'imp-bio-split-credit imp-bio-ovcr hidden'; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = 'cr\u00e9dits<span id="imp-bio-ov-credit-text" class="imp-bio-split-credit-text"></span><span id="imp-bio-ov-credit-dt"></span>'; }   // v246 : même pastille « crédits » que les autres, en bas
   if (a.parentElement !== par) par.appendChild(a);
   showImpBioCredit(c ? c.ref : null, 'imp-bio-ov-credit', 'imp-bio-ov-credit-text');
-  const dt = $('imp-bio-ov-credit-dt'); if (dt) dt.textContent = c && c.zz > 1.001 ? ' \u00b7 d\u00e9tail' : '';
+  const dt = $('imp-bio-ov-credit-dt'); if (dt) dt.textContent = c && c.zz > 1.001 ? '\u00a0\u00b7 d\u00e9tail' : '';
 }
 function bioOvUpdate(colTop, lineY, reading) {
   const A = bioAuto; const cl = A.ovs || []; if (A.capHold && !A.ovCurIncl && (A.ovHideDone || 0) < performance.now() && performance.now() - (A.capHoldAt || 0) > 1500) bioCapRelease();   // v243 : sécurité, une légende ne reste jamais retenue sans image superposée
