@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v246';
+const APP_VERSION = 'v248';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -3384,6 +3384,7 @@ function normaliseRows(rows) {
     let artistImageCaption = '';
     let artistVoice = '';   // v187 : « femme » / « homme » (colonne facultative « Voix » du fichier maître)
     let workText = '';
+    let mapCard = '', birthCity = '';   // v248 : colonnes facultatives « Carte » et « Ville de naissance » du fichier maître
     const masterRow = findArtistMasterRow(prenom, patronyme, surnomFr);
     if (masterRow) {
       // v126 : le surnom écrit dans le fichier d'œuvres l'emporte ; s'il est vide sur cette ligne (colonne
@@ -3405,6 +3406,8 @@ function normaliseRows(rows) {
       if (masterRow["Légende de l'artiste"]) artistImageCaption = String(masterRow["Légende de l'artiste"]).trim();
       { const vk = Object.keys(masterRow).find((k) => String(k).trim().toLowerCase() === 'voix'); if (vk) artistVoice = normalizeVoiceGender(masterRow[vk]); }
       if (masterRow['Bio']) bio = String(masterRow['Bio']).trim();
+      if (masterRow['Carte']) mapCard = String(masterRow['Carte']).trim();
+      if (masterRow['Ville de naissance']) birthCity = String(masterRow['Ville de naissance']).trim();
       // v129 (Stéphane : « pour chaque artiste de niveau 1, l'œuvre emblématique et un petit texte ») : le maître
       // porte, par artiste, le titre de son œuvre emblématique et le texte (à la première personne) qui la raconte.
       // Le texte n'est rattaché QU'À la ligne d'œuvre dont le titre correspond (comparaison sans accents ni
@@ -3446,7 +3449,7 @@ function normaliseRows(rows) {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       associates, artistDates, materials, nature, natureAll: natureFull, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText,
+      artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText, mapCard, birthCity,
       row: rowIndex + 2
     };
   }).filter((question) => question && (question.image || question.artist || question.date || question.location || question.title));
@@ -13667,11 +13670,9 @@ function bioOvCoverInfo(mi, ref) {
 }
 function bioCapRelease() { const A = bioAuto; clearTimeout(A.capRelT); const f = A.capHold; A.capHold = null; if (f) f(); }
 function bioCapApply(E, sameCap, cov, setFn) {
-  const A = bioAuto; if (!cov) { setFn(); return; }
-  A.capHold = () => { bioCapOut(E, 500, sameCap); clearTimeout(A.capTimer2); A.capTimer2 = setTimeout(() => { setFn(); bioCapIn(E, 500, sameCap); }, 520); };
-  A.capHoldSame = cov.same; A.capHoldAt = performance.now(); const now = performance.now(); clearTimeout(A.capRelT);
-  if (A.ovCurIncl) { if (cov.same) A.capRelT = setTimeout(bioCapRelease, Math.max(0, (A.ovInDone || 0) - now) + 40); }
-  else if ((A.ovHideDone || 0) > now) A.capRelT = setTimeout(bioCapRelease, A.ovHideDone - now + 40);
+  // v247 (retour Stéphane : « les sous-titres sont calés sur la ligne 1 et ne tiennent pas compte du fondu enchaîné de la ligne 2 ») : la légende change à l'instant où l'image
+  // principale change, sans attendre la fin du fondu de l'image superposée.
+  setFn();
 }
 // détail : pour un agrandissement, on demande une image plus grande (1920 px) ; si elle n'existe pas à cette taille, on retombe sur la taille habituelle
 function bioOvSrc(c) {
@@ -14091,11 +14092,31 @@ function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
     if (ref) openLightboxImage(ref, ($('imp-bio-slide-caption') || {}).textContent || '');
   });
 })();
+// v248 (retour Stéphane : « la première image après l'ouverture du volet, on met une carte… après "je suis né à", la balise, automatiquement ») :
+// si le fichier maître donne une carte pour l'artiste (colonne « Carte »), on pose [image: carte] juste après le lieu de naissance cité dans la bio
+// (« Je suis né à Nancy », « Je suis né en 1817 à Théodosie »…) ; à défaut de lieu reconnu, tout au début du texte. Rien n'est ajouté sans carte, ni si
+// la carte figure déjà dans le texte (posée à la main sur la table de montage).
+const BIO_PLACE_RE = "[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÿ'’]*(?:(?:-|\\s+)(?:(?:de|du|des|la|le|les|sur|sous|en|d['’]|l['’]|di|da|del|van|von|y)\\s*)*[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÿ'’]*)*";
+function bioBirthPlace(text) {
+  const t = String(text || '');
+  const re = new RegExp("\\bn[ée]e?\\s+(?:(?:vers|en|le)\\s+[\\d\\s\\w]{0,14}?\\s*,?\\s*)?(?:probablement\\s+|sans doute\\s+)?(?:à|au|aux|en|près d[eu']|près de la)\\s*(" + BIO_PLACE_RE + ")");
+  const m = re.exec(t); if (!m) return null;
+  return { end: m.index + m[0].length, city: m[1].replace(/\s+/g, ' ').trim() };
+}
+function bioInsertCard(text, card, city) {
+  const t = String(text || ''); const url = String(card || '').trim();
+  if (!url || !/^https?:\/\//i.test(url) || t.includes(url)) return t;
+  const bp = bioBirthPlace(t); const ville = String(city || '').trim() || (bp ? bp.city : '');
+  const tag = ` [image: ${url}${ville ? ' | Carte : ' + ville : ''}]`;
+  if (bp) return t.slice(0, bp.end) + tag + t.slice(bp.end);
+  const lead = /^\s*(?:\[titre:[^\]]*\]\s*)*/.exec(t)[0];
+  return t.slice(0, lead.length) + tag.trimStart() + ' ' + t.slice(lead.length);
+}
 function openImpArtistBio(work, force, opts) {
   impClearTimers();
   try { bioAutoStop(); } catch (e) { /* ignoré */ }   // v235 : si un autre film était en cours, sa position est retenue avant de repartir
   // v165 : le texte de l'œuvre (première personne) passe par le même écran « film » que la bio : opts.work = true
-  const isWork = !!(opts && opts.work); const srcText = isWork ? (work.workText || '') : (work.bio || '');
+  const isWork = !!(opts && opts.work); const srcText = isWork ? (work.workText || '') : ((work.card || work.mapCard) && !(opts && opts.topic) ? bioInsertCard(work.bio || '', work.card || work.mapCard, work.birthCity) : (work.bio || ''));
   bioAuto.isWork = isWork; bioAuto.topic = (opts && opts.topic) || '';   // v211 : texte « Natures et techniques » (sans portrait ni guillemets)
   const splitEl = $('imp-bio-split');
   const mode = bioWantMode(); const dual = !!mode;
@@ -15313,7 +15334,8 @@ async function cinemaCatalog() {
     const b = g('Année de naissance'), d = g('Année de mort'); const dates = (b && d && !/inconnu/i.test(`${b} ${d}`)) ? `${b} – ${d}` : '';
     const a = g('Art(s)').toLowerCase();
     const parsed = parseBioMarkup(g('Bio'));
-    arts.push({ kind: 'artist', row: r, name: civil && sur ? `${name}, dit ${sur}` : name, dates, p: a.includes('peinture'), s: a.includes('sculpture'), n: parsed.marks.filter((m) => m.ref).length, key: keyName(pat || sur || pre), find: keyName(`${pre} ${pat} ${sur}`) });
+    const wkTitle = g('Œuvre emblématique'), wkText = g("Texte de l'œuvre");   // v248 : l'œuvre principale commentée de l'artiste
+    arts.push({ kind: 'artist', wk: wkText ? wkTitle : '', wkText, wkN: wkText ? parseBioMarkup(wkText).marks.filter((m) => m.ref).length : 0, wkFind: keyName(wkTitle), row: r, name: civil && sur ? `${name}, dit ${sur}` : name, dates, p: a.includes('peinture'), s: a.includes('sculpture'), n: parsed.marks.filter((m) => m.ref).length, key: keyName(pat || sur || pre), find: keyName(`${pre} ${pat} ${sur}`) });
   });
   arts.sort((a, b) => a.key.localeCompare(b.key));
   cinemaCat = { evo, arts }; return cinemaCat;
@@ -15321,8 +15343,9 @@ async function cinemaCatalog() {
 function cinemaRender() {
   const list = $('cinema-list'); if (!list || !cinemaCat) return;
   const q = keyName($('cinema-search').value || ''); const art = $('cinema-art').value;
-  ['evo', 'art', 'work'].forEach((k) => $('cinema-tab-' + k)?.classList.toggle('on', cinemaTab === k));
-  $('cinema-search').placeholder = cinemaTab === 'evo' ? 'Chercher une histoire des formes (fontaine, bronze, fresque…)' : cinemaTab === 'work' ? 'Chercher une œuvre…' : 'Chercher un artiste…';   // v237 : trois onglets (biographies, œuvres, histoire des formes)
+  if (cinemaTab !== 'evo') cinemaTab = 'art';
+  ['evo', 'art'].forEach((k) => $('cinema-tab-' + k)?.classList.toggle('on', cinemaTab === k));
+  $('cinema-search').placeholder = cinemaTab === 'evo' ? 'Chercher une histoire des formes (fontaine, bronze, fresque…)' : 'Chercher un artiste ou une œuvre…';   // v248 : deux onglets (artistes + œuvre principale, histoire des formes)
   list.innerHTML = '';
   const add = (e, titleTxt, meta, go) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'cinema-item';
@@ -15338,13 +15361,20 @@ function cinemaRender() {
       add(e, e.title, `${e.n ? e.n + ' images · ' : ''}environ ${e.min} min`, '▶ Voir');
     });
     if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.evo.length ? 'Aucun diaporama ne correspond.' : 'Aucune histoire des formes n’est encore publiée.'}</div>`;
-  } else if (cinemaTab === 'work') {
-    list.innerHTML = '<div class="cinema-empty">Les diaporamas consacrés à une œuvre arriveront bientôt.</div>';
   } else {
+    if (cinemaCat.arts.length) { const hd = document.createElement('div'); hd.className = 'cinema-cols'; hd.innerHTML = '<span>Artiste</span><span>Œuvre principale</span>'; list.appendChild(hd); }
     cinemaCat.arts.forEach((e) => {
-      if (art === 'peinture' && !e.p) return; if (art === 'sculpture' && !e.s) return; if (q && !e.find.includes(q) && !e.key.includes(q)) return;
+      if (art === 'peinture' && !e.p) return; if (art === 'sculpture' && !e.s) return; if (q && !e.find.includes(q) && !e.key.includes(q) && !e.wkFind.includes(q)) return;
       if (!q) group((e.key[0] || '#').toUpperCase()); n++;
-      add(e, e.name, [e.dates, e.n ? `${e.n} images` : ''].filter(Boolean).join(' · '), '▶ Voir');
+      const row = document.createElement('div'); row.className = 'cinema-row';
+      const bA = document.createElement('button'); bA.type = 'button'; bA.className = 'cinema-item cinema-cell';
+      const lA = document.createElement('span'); lA.className = 'nm'; lA.textContent = e.name; const mA = [e.dates, e.n ? `${e.n} images` : ''].filter(Boolean).join(' · ');
+      if (mA) { const sm = document.createElement('small'); sm.textContent = mA; lA.appendChild(sm); }
+      const gA = document.createElement('span'); gA.className = 'go'; gA.textContent = '▶'; bA.append(lA, gA); bA.addEventListener('click', () => cinemaPlay(e));
+      const bW = document.createElement('button'); bW.type = 'button'; bW.className = 'cinema-item cinema-cell cinema-wk'; bW.disabled = !e.wk;
+      const lW = document.createElement('span'); lW.className = 'nm'; if (e.wk) { const em = document.createElement('em'); em.textContent = e.wk; lW.appendChild(em); if (e.wkN) { const sm = document.createElement('small'); sm.textContent = `${e.wkN} images`; lW.appendChild(sm); } } else lW.textContent = '—';
+      const gW = document.createElement('span'); gW.className = 'go'; gW.textContent = e.wk ? '▶' : ''; bW.append(lW, gW); if (e.wk) bW.addEventListener('click', () => cinemaPlay(e, 'work'));
+      row.append(bA, bW); list.appendChild(row);
     });
     if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.arts.length ? 'Aucun artiste ne correspond.' : 'Aucune biographie n’est disponible pour le moment.'}</div>`;
   }
@@ -15361,7 +15391,7 @@ function cinemaPseudo(r) {   // l'« œuvre » factice que l'écran des bios att
   const b = g('Année de naissance'), d = g('Année de mort'); const vk = Object.keys(r).find((k) => String(k).trim().toLowerCase() === 'voix');
   return { prenom: g('Prénom'), patronyme: g('Patronyme'), surnomFr: g('Surnom'), artist: [g('Prénom'), g('Patronyme')].filter(Boolean).join(' '), associates: [],
     artistDates: (b && d && !/inconnu/i.test(`${b} ${d}`)) ? `${b}-${d}` : '', artistImage: g("Image de l'artiste"), artistImageCaption: g("Légende de l'artiste"),
-    artistVoice: vk ? normalizeVoiceGender(r[vk]) : '', nationality: g('Nationalité'), bio: g('Bio'), workText: '', title: '', date: '', image: '' };
+    artistVoice: vk ? normalizeVoiceGender(r[vk]) : '', nationality: g('Nationalité'), bio: g('Bio'), workText: '', title: '', date: '', image: '', card: g('Carte'), birthCity: g('Ville de naissance') };
 }
 function cinemaEnter(label, sub) {
   if (!cinemaActive) {
@@ -15381,15 +15411,17 @@ function cinemaTeardown() {   // remet l'écran Imprégnation comme on l'avait t
   if (cinemaSaved) { $('imp-ready-screen')?.classList.toggle('hidden', !!cinemaSaved.ready); $('imp-quiz-grid')?.classList.toggle('hidden', !!cinemaSaved.grid); }
 }
 function cinemaExit() { const prev = cinemaPrev || 'welcome'; cinemaTeardown(); showPanel(prev); }
-function cinemaPlay(e) {   // appelé directement par le clic (la voix du navigateur exige un geste de l'utilisateur : aucune attente avant le film)
+function cinemaPlay(e, what) {   // appelé directement par le clic (la voix du navigateur exige un geste de l'utilisateur : aucune attente avant le film)
   closeCinemaPicker();
   const gameOn = !cinemaActive && currentPanelName === 'impregnation' && $('imp-quiz-grid') && !$('imp-quiz-grid').classList.contains('hidden');
   if (!gameOn) {
     const inOther = !cinemaActive && ['intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'].includes(currentPanelName);
     if (inOther && !confirm('Le diaporama va interrompre l’exercice en cours. Continuer ?')) return;
-    cinemaEnter(e.kind === 'topic' ? e.title : e.name, e.kind === 'topic' ? '' : e.dates);
+    cinemaEnter(e.kind === 'topic' ? e.title : (what === 'work' ? '«\u00a0' + e.wk + '\u00a0»' : e.name), e.kind === 'topic' ? '' : (what === 'work' ? e.name : e.dates));
   }
-  if (e.kind === 'topic') openImpTopicText({}, e.id); else openImpArtistBio(cinemaPseudo(e.row), true);
+  if (e.kind === 'topic') openImpTopicText({}, e.id);
+  else if (what === 'work') openImpArtistBio({ ...cinemaPseudo(e.row), bio: '', artistImage: '', artistImageCaption: '', artistDates: '', title: e.wk, workText: e.wkText }, true, { work: true });   // v248 : le film de l'œuvre principale
+  else openImpArtistBio(cinemaPseudo(e.row), true);
 }
 $('global-cinema-button')?.addEventListener('click', (ev) => { ev.stopPropagation(); if ($('cinema-picker')?.classList.contains('hidden')) openCinemaPicker(); else closeCinemaPicker(); });
 $('menu-item-cinema')?.addEventListener('click', (ev) => { ev.stopPropagation(); closeHamburgerMenu(); openCinemaPicker(); });
@@ -15397,7 +15429,6 @@ $('cinema-close')?.addEventListener('click', closeCinemaPicker);
 $('cinema-picker')?.addEventListener('click', (ev) => { if (ev.target === $('cinema-picker')) closeCinemaPicker(); });
 $('cinema-tab-evo')?.addEventListener('click', () => { cinemaTab = 'evo'; $('cinema-search').value = ''; cinemaRender(); });
 $('cinema-tab-art')?.addEventListener('click', () => { cinemaTab = 'art'; $('cinema-search').value = ''; cinemaRender(); });
-$('cinema-tab-work')?.addEventListener('click', () => { cinemaTab = 'work'; $('cinema-search').value = ''; cinemaRender(); });
 $('cinema-search')?.addEventListener('input', cinemaRender);
 $('cinema-art')?.addEventListener('change', cinemaRender);
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && $('cinema-picker') && !$('cinema-picker').classList.contains('hidden')) closeCinemaPicker(); });
