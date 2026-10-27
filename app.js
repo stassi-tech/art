@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v242';
+const APP_VERSION = 'v243';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -13425,7 +13425,7 @@ function bioCapIn(E, ms, keepCap) {
   clearTimeout(bioAuto.capClean); bioAuto.capClean = setTimeout(() => bioCapEls(E).forEach((el) => { el.style.transition = ''; }), ms + 60);
 }
 function bioCapReset() {
-  clearTimeout(bioAuto.capTimer); clearTimeout(bioAuto.capClean);
+  clearTimeout(bioAuto.capTimer); clearTimeout(bioAuto.capClean); clearTimeout(bioAuto.capRelT); clearTimeout(bioAuto.capTimer2); bioAuto.capHold = null;
   ['imp-bio-slide-caption', 'imp-bio-slide-credit', 'imp-bio-split-caption', 'imp-bio-split-credit'].forEach((id) => { const el = $(id); if (el) { el.style.transition = ''; el.style.opacity = ''; } });
 }
 // v183 (retour Stéphane : « la balise Le Départ n'est pas lue en lecture normale, mais elle l'est avec les boutons avance/retour rapide ») :
@@ -13475,11 +13475,11 @@ function bioShowImage(ref, caption, fx, mi) {
   if (bioAuto.dual) img.classList.remove('hidden');
   if (bioAuto.shownRef === ref) { if (cap) cap.textContent = caption || ''; return; }
   if (bioAuto.fading) { if (!bioAuto.pending.some((p) => p.ref === ref)) bioAuto.pending.push({ ref, caption, fx, mi }); bioDbg('en attente', ref.slice(-30), 'file', bioAuto.pending.length); return; }
-  const fxType = (fx && fx.type) || 'fade'; const fxMs0 = fx && fx.ms != null ? fx.ms : BIO_FADE_MS;
+  const cov = bioOvCoverInfo(mi, ref); const fxType = cov ? 'cut' : ((fx && fx.type) || 'fade'); const fxMs0 = fx && fx.ms != null ? fx.ms : BIO_FADE_MS;   // v243 : sous une image de la ligne 2 (inclusion), l'image principale change net, et sa légende attend la fin du fondu
   const fxMs = fxType === 'cut' ? fxMs0 : bioAdaptMs(mi, fxMs0);
   const fid = ++bioAuto.fid; bioDbg('affiche', ref.slice(-30), fxType, fxMs0 + '→' + fxMs + 'ms');
   if (fxType === 'cut' || (fxMs <= 0 && fxType === 'fade')) { // coupe : changement net
-    img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); return;
+    img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; bioCapApply(E, sameCap, cov, () => { if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); }); return;
   }
   if (fxType === 'black') { // fondu au noir : l'image s'éteint (1ʳᵉ moitié), puis la nouvelle apparaît (2ᵉ moitié)
     const half = Math.max(0, Math.round(fxMs / 2)); const src2 = imageSourceSized(ref, 900);
@@ -13499,7 +13499,7 @@ function bioShowImage(ref, caption, fx, mi) {
     }, half);
     return;
   }
-  if (!nx) { img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); return; }
+  if (!nx) { img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; bioCapApply(E, sameCap, cov, () => { if (cap) cap.textContent = caption || ''; showImpBioCredit(ref, E.link, E.txt); }); return; }
   bioAuto.fading = true; bioAuto.shownRef = ref;
   const src = imageSourceSized(ref, 900);
   let finished = false;
@@ -13643,10 +13643,39 @@ function bioOvShow(c) {
   const A = bioAuto; const key = c ? [c.ref, c.mode, c.ox, c.oy, c.ow, c.mx, c.my, c.sc, c.zx, c.zy, c.zz, c.fxt, c.ms, c.a].join('|') : ''; if ((A.ovKey || '') === key) return; A.ovKey = key;
   // v242 : trois façons de passer de l'image principale à celle de la ligne 2 (et retour) : fondu enchaîné (défaut), fondu au noir, coupe
   const type = c ? (c.fxt || 'fade') : (A.ovFxT || 'fade'); if (c) A.ovFxT = type;
-  let ms0 = c ? (c.ms != null ? c.ms : (type === 'black' ? 1200 : 800)) : (A.ovMs != null ? A.ovMs : 800); if (type === 'cut') ms0 = 0; if (c) A.ovMs = ms0;
-  const tok = A.ovTok = (A.ovTok || 0) + 1;
+  const clipMs = c ? ((c.b - c.a) / bioCps()) * 1000 : 0;   // durée approximative de l'image sur la ligne 2 : le fondu par défaut ne dépasse pas sa moitié
+  let ms0 = c ? (c.ms != null ? c.ms : (type === 'black' ? 1200 : Math.round(Math.max(800, Math.min(BIO_OV_FADE_MS, isFinite(clipMs) && clipMs > 0 ? clipMs * 0.5 : BIO_OV_FADE_MS))))) : (A.ovMs != null ? A.ovMs : BIO_OV_FADE_MS); if (type === 'cut') ms0 = 0; if (c) A.ovMs = ms0;
+  const tok = A.ovTok = (A.ovTok || 0) + 1; const now0 = performance.now();
+  if (c) { A.ovCurIncl = c.mode === 'incl'; A.ovCurRef = c.ref; A.ovLastRef = c.ref; A.ovInDone = now0 + ms0; if (A.capHold && A.capHoldSame && A.ovCurIncl) { clearTimeout(A.capRelT); A.capRelT = setTimeout(bioCapRelease, ms0 + 40); } }
+  else { const was = A.ovCurIncl; A.ovCurIncl = false; if (was) { A.ovHideDone = now0 + ms0 + 40; clearTimeout(A.capRelT); A.capRelT = setTimeout(bioCapRelease, ms0 + 60); } }
   if (type === 'black' && ms0 > 0) { const h = ms0 / 2; bioOvCover(true, h); setTimeout(() => { if (A.ovTok !== tok) return; bioOvRun(c, 0); bioOvCover(false, h); }, h + 20); }
   else { bioOvCover(false, 0); bioOvRun(c, ms0); }
+}
+// v243 (retour Stéphane : « quand une image de la ligne 2 déborde sur l'image suivante pour faire un fondu enchaîné, la légende de l'image suivante
+// ne doit pas apparaître avant la fin du fondu, et le fondu enchaîné de la ligne 1 doit disparaître ») : quand l'image principale change alors qu'une image de la
+// ligne 2 (inclusion) recouvre l'écran, (1) le changement est net, sans fondu, sous l'image superposée ; (2) la légende et le crédit de la nouvelle image attendent
+// la fin du fondu de l'image superposée (sa sortie ; ou son entrée si c'est la même image).
+const BIO_OV_FADE_MS = 5000;   // durée habituelle d'un fondu enchaîné de la ligne 2 (retour Stéphane : « 5 secondes »)
+function bioOvKey(u) { try { return (commonsFilePageUrl(String(u)) || String(u)).replace(/\/\d+px-/, '/').replace(/\?.*$/, '').toLowerCase(); } catch (e) { return String(u); } }
+function bioOvCoverInfo(mi, ref) {
+  const A = bioAuto; const mk = mi != null && mi >= 0 ? A.marks[mi] : null; const now = performance.now(); let clip = null;
+  if (mk && A.ovs) clip = A.ovs.find((c) => c.mode === 'incl' && mk.offset >= c.a - 0.5 && mk.offset <= c.b + 0.5) || null;
+  if (!clip && (A.ovCurIncl || (A.ovHideDone || 0) > now)) clip = { ref: A.ovCurIncl ? A.ovCurRef : A.ovLastRef };
+  return clip ? { same: bioOvKey(clip.ref) === bioOvKey(ref) } : null;
+}
+function bioCapRelease() { const A = bioAuto; clearTimeout(A.capRelT); const f = A.capHold; A.capHold = null; if (f) f(); }
+function bioCapApply(E, sameCap, cov, setFn) {
+  const A = bioAuto; if (!cov) { setFn(); return; }
+  A.capHold = () => { bioCapOut(E, 500, sameCap); clearTimeout(A.capTimer2); A.capTimer2 = setTimeout(() => { setFn(); bioCapIn(E, 500, sameCap); }, 520); };
+  A.capHoldSame = cov.same; A.capHoldAt = performance.now(); const now = performance.now(); clearTimeout(A.capRelT);
+  if (A.ovCurIncl) { if (cov.same) A.capRelT = setTimeout(bioCapRelease, Math.max(0, (A.ovInDone || 0) - now) + 40); }
+  else if ((A.ovHideDone || 0) > now) A.capRelT = setTimeout(bioCapRelease, A.ovHideDone - now + 40);
+}
+// détail : pour un agrandissement, on demande une image plus grande (1920 px) ; si elle n'existe pas à cette taille, on retombe sur la taille habituelle
+function bioOvSrc(c) {
+  const z = c.zz || 1; let u = imageSourceSized(c.ref, z > 1.3 ? Math.min(1920, Math.round(900 * z)) : 900);
+  if (z > 1.3) u = u.replace(/\/(\d{2,4})px-([^\/]+)$/, (m, w, n) => (+w < 1920 ? '/1920px-' + n : m));
+  return u;
 }
 function bioOvCover(on, ms) {   // écran noir par-dessus la zone de l'image (fondu au noir)
   const E = bioEls(); const par = E.img && E.img.parentElement; if (!par) return;
@@ -13658,7 +13687,7 @@ function bioOvRun(c, ms) {
   [...z.children].forEach((o) => { if (ms <= 0) o.remove(); else { o.style.transition = `opacity ${ms}ms ease`; o.style.opacity = '0'; setTimeout(() => o.remove(), ms + 60); } });
   bioMainXform(c && c.mode === 'juxta' ? c : null, ms);
   if (!c) { bioOvCredit(null); return; }
-  const zoomed = (c.zz || 1) > 1.001; const img = document.createElement('img'); img.alt = ''; img.src = imageSourceSized(c.ref, 900);
+  const zoomed = (c.zz || 1) > 1.001; const img = document.createElement('img'); img.alt = ''; img.src = bioOvSrc(c); img.onerror = () => { img.onerror = null; img.src = imageSourceSized(c.ref, 900); };
   let el = img;
   if (zoomed) {   // v241 : « détail » = on ne montre qu'une partie de l'image, agrandie (cadre qui cache le reste)
     el = document.createElement('div'); el.appendChild(img); img.className = 'ovin'; const zz = c.zz, zx = c.zx, zy = c.zy;
@@ -13679,7 +13708,8 @@ function bioOvCredit(c) {
   const dt = $('imp-bio-ov-credit-dt'); if (dt) dt.textContent = c && c.zz > 1.001 ? ' \u00b7 d\u00e9tail' : '';
 }
 function bioOvUpdate(colTop, lineY, reading) {
-  const A = bioAuto; const cl = A.ovs || []; if (!cl.length) { if (A.ovKey) bioOvShow(null); return; }
+  const A = bioAuto; const cl = A.ovs || []; if (A.capHold && !A.ovCurIncl && (A.ovHideDone || 0) < performance.now() && performance.now() - (A.capHoldAt || 0) > 1500) bioCapRelease();   // v243 : sécurité, une légende ne reste jamais retenue sans image superposée
+  if (!cl.length) { if (A.ovKey) bioOvShow(null); return; }
   let act = -1;
   if (A.solo) act = -1;   // l'artiste est seul à l'écran : rien par-dessus
   else if (A.speaking && reading) { const pos = A.fshow * A.plainLen; act = cl.findIndex((c) => pos >= c.a - 0.5 && pos < c.b); }
@@ -14021,7 +14051,7 @@ function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
     startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false, solo: false, soloOk: false,
     pending: [], fshow: -1, lastT: 0, holdUntil: 0, userScrollMode: false, userScrollT: 0, dragging: false, resumeOffset: null, seeking: false, ctl: null, map: null, mapBase: 0, lastCi: 0, cand: null, lastCiT: performance.now(), badEv: 0, allowBack: true, t0: performance.now(), log: [], debug: /[?&]debug=bio/.test(location.search) });
   bioAuto.preload = [];
-  (parsed.ovs || []).forEach((c) => { try { const im = new Image(); im.src = imageSourceSized(c.ref, 900); bioAuto.preload.push(im); } catch (e) { /* ignoré */ } });
+  (parsed.ovs || []).forEach((c) => { try { const im = new Image(); im.src = bioOvSrc(c); bioAuto.preload.push(im); } catch (e) { /* ignoré */ } });
   parsed.marks.forEach((mk) => { if (mk.end) return; try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); bioAuto.preload.push(im); } catch (e) { /* ignoré */ } });
   bioDebugBox();
   const col = bioAuto.dual ? $('imp-bio-scroll') : $('imp-bio-split')?.querySelector('.imp-bio-text-col'); if (col) col.scrollTop = 0;
