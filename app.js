@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v240';
+const APP_VERSION = 'v241';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -13260,6 +13260,7 @@ function bioParseOv(body) {
     if (/^incl/.test(q)) o.mode = 'incl'; else if (/^juxta/.test(q)) o.mode = 'juxta';
     else if ((m = q.match(/^cadre\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s+([\d.,]+)/))) { o.ox = num(m[1]); o.oy = num(m[2]); o.ow = num(m[3]); cadre = true; }
     else if ((m = q.match(/^princ\w*\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s+([\d.,]+)/))) { o.mx = num(m[1]); o.my = num(m[2]); o.sc = num(m[3]); }
+    else if ((m = q.match(/^detail\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s+([\d.,]+)/))) { o.zx = num(m[1]); o.zy = num(m[2]); o.zz = num(m[3]); }
     else if (/^(petit|moyen|plein|grand)/.test(q)) size = /^petit/.test(q) ? 'petite' : /^moyen/.test(q) ? 'moyenne' : 'pleine';
     else if (/(haut|bas|centre|milieu)/.test(q)) pos = /centre|milieu/.test(q) ? 'centre' : (/haut/.test(q) ? 'haut' : 'bas') + '-' + (/gauche/.test(q) ? 'gauche' : 'droite');
     else { const d = q.match(/^(\d+(?:[.,]\d+)?)\s*s?$/); if (d) o.ms = Math.round(Math.max(0, Math.min(10, parseFloat(d[1].replace(',', '.')))) * 1000); }
@@ -13267,14 +13268,14 @@ function bioParseOv(body) {
   if (!cadre && o.mode !== 'incl') { const sz = size || 'moyenne', ps = pos || 'bas-droite'; const ow = sz === 'petite' ? 30 : sz === 'pleine' ? 100 : 48; const h = ow * 0.75;
     o.ow = ow; o.ox = /gauche/.test(ps) ? 3 + ow / 2 : /droite/.test(ps) ? 97 - ow / 2 : 50; o.oy = /haut/.test(ps) ? 3 + h / 2 : /bas/.test(ps) ? 97 - h / 2 : 50; if (!o.mode && sz === 'pleine') o.mode = 'incl'; }
   const d = (v, def) => (v == null ? def : v);
-  return { ref: o.ref, mode: o.mode === 'incl' ? 'incl' : 'juxta', ox: d(o.ox, 73), oy: d(o.oy, 79), ow: d(o.ow, 48), mx: d(o.mx, 50), my: d(o.my, 50), sc: d(o.sc, 100), ms: o.ms };
+  return { ref: o.ref, mode: o.mode === 'incl' ? 'incl' : 'juxta', ox: d(o.ox, 73), oy: d(o.oy, 79), ow: d(o.ow, 48), mx: d(o.mx, 50), my: d(o.my, 50), sc: d(o.sc, 100), zx: d(o.zx, 50), zy: d(o.zy, 50), zz: Math.max(1, Math.min(10, d(o.zz, 1))), ms: o.ms };
 }
 function bioOvClips(list, endPos) {   // appariement début/fin ; à position égale, une fin passe avant un début
   const L = list.map((x, i) => ({ x, i })).sort((p, q) => p.x.offset - q.x.offset || (!!p.x.ovEnd === !!q.x.ovEnd ? p.i - q.i : (p.x.ovEnd ? -1 : 1))).map((p) => p.x);
   const out = []; let open = null;
   L.forEach((x) => { if (!x.ovEnd) { if (open) out.push(open); open = { s: x, e: null }; } else if (open) { open.e = x; out.push(open); open = null; } });
   if (open) out.push(open);
-  out.forEach((c, i) => { c.a = c.s.offset; c.b = c.e ? c.e.offset : (out[i + 1] ? out[i + 1].s.offset : endPos); ['ref', 'mode', 'ox', 'oy', 'ow', 'mx', 'my', 'sc', 'ms'].forEach((k) => { c[k] = c.s[k]; }); });
+  out.forEach((c, i) => { c.a = c.s.offset; c.b = c.e ? c.e.offset : (out[i + 1] ? out[i + 1].s.offset : endPos); ['ref', 'mode', 'ox', 'oy', 'ow', 'mx', 'my', 'sc', 'zx', 'zy', 'zz', 'ms'].forEach((k) => { c[k] = c.s[k]; }); });
   return out;
 }
 const bioFirstImg = (marks) => (marks || []).find((mk) => !mk.end) || null;
@@ -13639,14 +13640,30 @@ function bioMainXform(mk, ms) {   // v240 : en juxtaposition, l'image principale
   els.forEach((el) => { el.style.transform = to === 'none' ? '' : to; try { if (ms > 0 && el.animate) el.animate([{ transform: from }, { transform: to }], { duration: ms, easing: 'ease' }); } catch (e) { /* ignoré */ } });
 }
 function bioOvShow(c) {
-  const A = bioAuto; const key = c ? [c.ref, c.mode, c.ox, c.oy, c.ow, c.mx, c.my, c.sc, c.a].join('|') : ''; if ((A.ovKey || '') === key) return; A.ovKey = key;
+  const A = bioAuto; const key = c ? [c.ref, c.mode, c.ox, c.oy, c.ow, c.mx, c.my, c.sc, c.zx, c.zy, c.zz, c.a].join('|') : ''; if ((A.ovKey || '') === key) return; A.ovKey = key;
   const z = bioOvHost(); if (!z) return; const ms = c ? (c.ms != null ? c.ms : 800) : (A.ovMs != null ? A.ovMs : 800); if (c) A.ovMs = ms;
   [...z.children].forEach((o) => { if (ms <= 0) o.remove(); else { o.style.transition = `opacity ${ms}ms ease`; o.style.opacity = '0'; setTimeout(() => o.remove(), ms + 60); } });
   bioMainXform(c && c.mode === 'juxta' ? c : null, ms);
-  if (!c) return;
-  const el = document.createElement('img'); el.alt = ''; el.src = imageSourceSized(c.ref, 900);
-  if (c.mode === 'incl') { el.className = 'imp-bio-ovi incl'; try { const ir = bioEls().img.getBoundingClientRect(), pr = z.getBoundingClientRect(); if (ir.width > 20 && ir.height > 20 && !A.mxCur.startsWith('translate')) { el.style.left = (ir.left - pr.left) + 'px'; el.style.top = (ir.top - pr.top) + 'px'; el.style.width = ir.width + 'px'; el.style.height = ir.height + 'px'; } } catch (e) { /* ignoré */ } } else { el.className = 'imp-bio-ovi jx'; el.style.left = c.ox + '%'; el.style.top = c.oy + '%'; el.style.width = c.ow + '%'; }
+  if (!c) { bioOvCredit(null); return; }
+  const zoomed = (c.zz || 1) > 1.001; const img = document.createElement('img'); img.alt = ''; img.src = imageSourceSized(c.ref, 900);
+  let el = img;
+  if (zoomed) {   // v241 : « détail » = on ne montre qu'une partie de l'image, agrandie (cadre qui cache le reste)
+    el = document.createElement('div'); el.appendChild(img); img.className = 'ovin'; const zz = c.zz, zx = c.zx, zy = c.zy;
+    img.style.left = (50 - zx * zz) + '%'; img.style.top = (50 - zy * zz) + '%'; img.style.width = (zz * 100) + '%';
+    if (c.mode === 'incl') img.style.height = (zz * 100) + '%'; else { el.style.aspectRatio = '4 / 3'; img.onload = () => { if (img.naturalWidth > 0) el.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight; }; }
+  }
+  if (c.mode === 'incl') { el.className = 'imp-bio-ovi incl' + (zoomed ? ' zw' : ''); try { const im = bioEls().img; let L, T, W, H; if (im.offsetParent && im.offsetParent === z.offsetParent) { L = im.offsetLeft - z.offsetLeft; T = im.offsetTop - z.offsetTop; W = im.offsetWidth; H = im.offsetHeight; } else { const ir = im.getBoundingClientRect(), pr = z.getBoundingClientRect(); L = ir.left - pr.left; T = ir.top - pr.top; W = ir.width; H = ir.height; } /* v241 : tailles réelles, hors animation de retour de l'image principale */ if (W > 20 && H > 20) { el.style.left = L + 'px'; el.style.top = T + 'px'; el.style.width = W + 'px'; el.style.height = H + 'px'; } } catch (e) { /* ignoré */ } } else { el.className = 'imp-bio-ovi jx' + (zoomed ? ' zw' : ''); el.style.left = c.ox + '%'; el.style.top = c.oy + '%'; el.style.width = c.ow + '%'; }
   el.style.opacity = ms <= 0 ? '1' : '0'; z.appendChild(el); if (ms > 0) { void el.offsetWidth; el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '1'; }
+  bioOvCredit(c);
+}
+// v241 : crédit (auteur · licence, lien Commons) de l'image superposée, en haut à droite de la zone ; « · détail » quand elle est agrandie
+function bioOvCredit(c) {
+  const par = bioEls().img && bioEls().img.parentElement; if (!par) return;
+  let a = $('imp-bio-ov-credit');
+  if (!a) { a = document.createElement('a'); a.id = 'imp-bio-ov-credit'; a.className = 'imp-bio-ovcr hidden'; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = '<span id="imp-bio-ov-credit-text"></span><span id="imp-bio-ov-credit-dt"></span> \u2197'; }
+  if (a.parentElement !== par) par.appendChild(a);
+  showImpBioCredit(c ? c.ref : null, 'imp-bio-ov-credit', 'imp-bio-ov-credit-text');
+  const dt = $('imp-bio-ov-credit-dt'); if (dt) dt.textContent = c && c.zz > 1.001 ? ' \u00b7 d\u00e9tail' : '';
 }
 function bioOvUpdate(colTop, lineY, reading) {
   const A = bioAuto; const cl = A.ovs || []; if (!cl.length) { if (A.ovKey) bioOvShow(null); return; }
@@ -13661,7 +13678,7 @@ function bioOvUpdate(colTop, lineY, reading) {
 }
 function bioAutoStop() {
   try { bioSavePos(); } catch (e) { /* ignoré */ }
-  bioAuto.ovKey = ''; bioAuto.ovs = []; bioAuto.mxCur = 'none'; document.querySelectorAll('.imp-bio-ov').forEach((z) => { z.textContent = ''; });
+  bioAuto.ovKey = ''; bioAuto.ovs = []; bioAuto.mxCur = 'none'; document.querySelectorAll('.imp-bio-ov').forEach((z) => { z.textContent = ''; }); document.querySelectorAll('.imp-bio-ovcr').forEach((a) => a.classList.add('hidden'));
   ['imp-bio-slide', 'imp-bio-slide-next', 'imp-bio-split-portrait', 'imp-bio-split-portrait-next'].forEach((id) => { const el = $(id); if (el) el.style.transform = ''; });   // v239 : plus d'image superposée
   if (bioAuto.voiceSwap) { impSelectedVoice = bioAuto.voiceSwap.prev; impAutoVoice = null; bioAuto.voiceSwap = null; }   // v187 : on rend la voix d'avant
   bioAuto.sid++; bioAuto.paused = false;
