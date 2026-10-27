@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v249';
+const APP_VERSION = 'v250';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -13297,11 +13297,12 @@ function bioParseFx(raw) {
 // dernier champ facultatif de la balise image : « lég: coupe », « lég: enchaîné 2 », « lég: noir 1,5 », « lég: +2 » (décalage : la légende change 2 s plus tard), « lég: enchaîné 2 -1 »
 function bioParseCapFx(raw) {
   const m = String(raw || '').trim().match(/^l[ée]g(?:ende)?\s*:\s*(.+)$/i); if (!m) return null;
-  let rest = m[1].trim(); let shift = 0;
+  let rest = m[1].trim(); let shift = 0; let dur = null;
+  { const dm = rest.match(/(?:^|\s)pendant\s+(\d+(?:[.,]\d+)?)\s*s?$/i); if (dm) { dur = Math.round(parseFloat(dm[1].replace(',', '.')) * 1000); rest = rest.slice(0, dm.index).trim(); } }   // v250 : « pendant 6 » = la légende s'éteint 6 s après son apparition
   const sm = rest.match(/(?:^|\s)([+\-\u2212\u2013]\s*\d+(?:[.,]\d+)?)\s*s?$/);
   if (sm) { shift = Math.round(parseFloat(sm[1].replace(/\s/g, '').replace(/[\u2212\u2013]/, '-').replace(',', '.')) * 1000); rest = rest.slice(0, sm.index).trim(); }
   const fx = rest ? bioParseFx(rest) : null; if (rest && !fx) return null;
-  return { type: fx ? fx.type : null, ms: fx ? fx.ms : null, shift };
+  return { type: fx ? fx.type : null, ms: fx ? fx.ms : null, shift, dur };
 }
 function bioSplitCapFx(raw) {
   raw = String(raw || ''); let capFx = null;
@@ -13580,9 +13581,9 @@ function bioEnterSolo(msIn) {
   clearTimeout(A.soloTimer); A.soloTimer = setTimeout(() => { img.style.transition = ''; }, ms + 50);
 }
 function bioCapChars(mk) { return mk.capFx && mk.capFx.shift ? Math.round((mk.capFx.shift / 1000) * bioCps()) : 0; }
-function bioCapSwitch(ci, instant) {
+function bioCapSwitch(ci, instant, blank) {
   const A = bioAuto; const E = bioEls(); const cap = E.cap; if (!cap) return;
-  const mk = ci >= 0 ? A.marks[ci] : null; const text = mk ? (mk.caption || '') : (A.baseCap || '');
+  const mk = ci >= 0 ? A.marks[ci] : null; const text = blank ? '' : (mk ? (mk.caption || '') : (A.baseCap || ''));
   clearTimeout(A.capTimer2);
   if (cap.textContent === text) { cap.style.opacity = ''; return; }
   // effet de la légende : celui qu'a réglé Stéphane sur la ligne des légendes ; à défaut, celui de l'image (jamais net quand l'image change net à cause de la ligne 2 : fondu de 1,6 s)
@@ -13599,11 +13600,16 @@ function bioCapSwitch(ci, instant) {
 function bioCapTrack(reading, changed, idx) {
   const A = bioAuto; if (A.solo || !A.marks) return;
   let ci;
-  if (reading && A.speaking) { const pos = A.fshow * A.plainLen; ci = -1; A.marks.forEach((mk, i) => { if (!mk.end && mk.offset + bioCapChars(mk) <= pos + 0.5) ci = i; }); }
+  let blank = false;
+  if (reading && A.speaking) {
+    const pos = A.fshow * A.plainLen; ci = -1; A.marks.forEach((mk, i) => { if (!mk.end && mk.offset + bioCapChars(mk) <= pos + 0.5) ci = i; });
+    if (ci >= 0) { const d = A.marks[ci].capFx && A.marks[ci].capFx.dur; if (d && pos > A.marks[ci].offset + bioCapChars(A.marks[ci]) + (d / 1000) * bioCps()) blank = true; }   // v250 : durée d'affichage écoulée
+  }
   else if (changed) { if (idx >= 0 && A.marks[idx].end) return; ci = idx; }
   else return;
-  if (ci === A.capIdx) return;
-  A.capIdx = ci; bioCapSwitch(ci, !(reading && A.speaking));
+  const key = blank ? ci + 'x' : ci;
+  if (key === A.capIdx) return;
+  A.capIdx = key; bioCapSwitch(ci, !(reading && A.speaking), blank);
 }
 function bioFrame() {
   const A = bioAuto; const split = $('imp-bio-split');
