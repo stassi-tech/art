@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v239';
+const APP_VERSION = 'v240';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -13246,24 +13246,35 @@ function impShowFlowImage(url, label) {
 // reprennent la place). Durée facultative, en secondes : [retour | 1,5] (1,2 s par défaut, comme le split). Sans effet hors bio à deux écrans.
 const BIO_TAG_RE = /\[\s*(?:image|img)\s*:\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]|\[\s*(?:retour|fin)\s*(?:[|:]\s*([^\]]*?)\s*)?\]|\u21a9|\[\s*incrust(?:ation)?\s*:\s*([^\]]*?)\s*\]|(\[\s*(?:incrust(?:ation)?[-\s]*fin|fin[-\s]*incrust(?:ation)?)\s*\])/gi;   // v186 : le signe ↩ (la pastille de l'atelier, parfois collée telle quelle dans le fichier maître) vaut aussi balise de retour
 // v239 (retour Stéphane : « une deuxième ligne de montage pour superposer des images ») : balises [incrust: adresse | taille | position | fondu] puis [incrust-fin].
-// taille = petite | moyenne | pleine ; position = haut-gauche | haut-droite | bas-gauche | bas-droite | centre ; fondu = secondes (0,8 par défaut).
+// v240 (retour Stéphane : « une fonction inclusion et une fonction juxtaposition ») : deux effets. INCLUSION : l'image coupe l'image principale (plein écran), qui reprend à la fin.
+//   [incrust: adresse | inclusion | fondu]
+// JUXTAPOSITION : les deux images sont à l'écran, chacune à sa place et à sa taille (réglées à la souris dans l'atelier) :
+//   [incrust: adresse | juxtaposition | cadre X Y L | principale X Y T | fondu] — cadre = centre (X, Y en % de l'écran) et largeur L (%) de l'image superposée ;
+//   principale = centre (X, Y) et taille T (% de sa taille normale) de l'image principale pendant ce temps. Les anciennes balises « petite / moyenne / pleine + coin » restent lues.
 // L'image est posée PAR-DESSUS l'image principale, de la balise de début à la balise de fin (ou jusqu'au début de la suivante, ou la fin du texte). Ni affichées ni lues.
 function bioParseOv(body) {
-  const parts = String(body || '').split('|').map((x) => x.trim()); const o = { ref: parts.shift() || '', size: 'moyenne', pos: 'bas-droite', ms: null };
+  const parts = String(body || '').split('|').map((x) => x.trim()); const o = { ref: parts.shift() || '', mode: '', ms: null }; let size = '', pos = '', cadre = false;
+  const num = (v) => { const x = parseFloat(String(v).replace(',', '.')); return isNaN(x) ? null : x; };
   parts.forEach((q0) => {
-    const q = q0.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    if (/^(petit|moyen|plein|grand)/.test(q)) o.size = /^petit/.test(q) ? 'petite' : /^moyen/.test(q) ? 'moyenne' : 'pleine';
-    else if (/(haut|bas|centre|milieu)/.test(q)) o.pos = /centre|milieu/.test(q) ? 'centre' : (/haut/.test(q) ? 'haut' : 'bas') + '-' + (/gauche/.test(q) ? 'gauche' : 'droite');
+    const q = q0.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); let m;
+    if (/^incl/.test(q)) o.mode = 'incl'; else if (/^juxta/.test(q)) o.mode = 'juxta';
+    else if ((m = q.match(/^cadre\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s+([\d.,]+)/))) { o.ox = num(m[1]); o.oy = num(m[2]); o.ow = num(m[3]); cadre = true; }
+    else if ((m = q.match(/^princ\w*\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s+([\d.,]+)/))) { o.mx = num(m[1]); o.my = num(m[2]); o.sc = num(m[3]); }
+    else if (/^(petit|moyen|plein|grand)/.test(q)) size = /^petit/.test(q) ? 'petite' : /^moyen/.test(q) ? 'moyenne' : 'pleine';
+    else if (/(haut|bas|centre|milieu)/.test(q)) pos = /centre|milieu/.test(q) ? 'centre' : (/haut/.test(q) ? 'haut' : 'bas') + '-' + (/gauche/.test(q) ? 'gauche' : 'droite');
     else { const d = q.match(/^(\d+(?:[.,]\d+)?)\s*s?$/); if (d) o.ms = Math.round(Math.max(0, Math.min(10, parseFloat(d[1].replace(',', '.')))) * 1000); }
   });
-  return o;
+  if (!cadre && o.mode !== 'incl') { const sz = size || 'moyenne', ps = pos || 'bas-droite'; const ow = sz === 'petite' ? 30 : sz === 'pleine' ? 100 : 48; const h = ow * 0.75;
+    o.ow = ow; o.ox = /gauche/.test(ps) ? 3 + ow / 2 : /droite/.test(ps) ? 97 - ow / 2 : 50; o.oy = /haut/.test(ps) ? 3 + h / 2 : /bas/.test(ps) ? 97 - h / 2 : 50; if (!o.mode && sz === 'pleine') o.mode = 'incl'; }
+  const d = (v, def) => (v == null ? def : v);
+  return { ref: o.ref, mode: o.mode === 'incl' ? 'incl' : 'juxta', ox: d(o.ox, 73), oy: d(o.oy, 79), ow: d(o.ow, 48), mx: d(o.mx, 50), my: d(o.my, 50), sc: d(o.sc, 100), ms: o.ms };
 }
 function bioOvClips(list, endPos) {   // appariement début/fin ; à position égale, une fin passe avant un début
   const L = list.map((x, i) => ({ x, i })).sort((p, q) => p.x.offset - q.x.offset || (!!p.x.ovEnd === !!q.x.ovEnd ? p.i - q.i : (p.x.ovEnd ? -1 : 1))).map((p) => p.x);
   const out = []; let open = null;
   L.forEach((x) => { if (!x.ovEnd) { if (open) out.push(open); open = { s: x, e: null }; } else if (open) { open.e = x; out.push(open); open = null; } });
   if (open) out.push(open);
-  out.forEach((c, i) => { c.a = c.s.offset; c.b = c.e ? c.e.offset : (out[i + 1] ? out[i + 1].s.offset : endPos); c.ref = c.s.ref; c.size = c.s.size; c.pos = c.s.pos; c.ms = c.s.ms; });
+  out.forEach((c, i) => { c.a = c.s.offset; c.b = c.e ? c.e.offset : (out[i + 1] ? out[i + 1].s.offset : endPos); ['ref', 'mode', 'ox', 'oy', 'ow', 'mx', 'my', 'sc', 'ms'].forEach((k) => { c[k] = c.s[k]; }); });
   return out;
 }
 const bioFirstImg = (marks) => (marks || []).find((mk) => !mk.end) || null;
@@ -13307,7 +13318,7 @@ function parseBioMarkup(text) {
     if (before && /^[ \t]*\n/.test(src.slice(end))) end += src.slice(end).match(/^[ \t]*\n/)[0].length;
     else end += src.slice(end).match(/^[ \t]*/)[0].length;
     if (m[4] !== undefined || m[5] !== undefined) { // v239 : image de la ligne 2 (début ou fin)
-      if (m[5] !== undefined) ovm.push({ offset: plain.length, ovEnd: true }); else { const o = bioParseOv(m[4]); if (o.ref) ovm.push({ offset: plain.length, ovEnd: false, ref: o.ref, size: o.size, pos: o.pos, ms: o.ms }); }
+      if (m[5] !== undefined) ovm.push({ offset: plain.length, ovEnd: true }); else { const o = bioParseOv(m[4]); if (o.ref) ovm.push(Object.assign({ offset: plain.length, ovEnd: false }, o)); }
     } else if (m[1] === undefined) { // balise [retour] : l'écran redevient un seul bloc
       const dm = String(m[3] || '').match(/(\d+(?:[.,]\d+)?)/); marks.push({ offset: plain.length, ref: '', caption: '', fx: null, end: true, ms: dm ? Math.round(parseFloat(dm[1].replace(',', '.')) * 1000) : null });
     } else { const cf = bioSplitCapFx((m[2] || '').trim()); marks.push({ offset: plain.length, ref: m[1].trim(), caption: cf.caption, fx: cf.fx }); }
@@ -13622,12 +13633,19 @@ function bioOvHost() {
   let z = par.querySelector(':scope > .imp-bio-ov'); if (!z) { z = document.createElement('div'); z.className = 'imp-bio-ov'; z.setAttribute('aria-hidden', 'true'); par.appendChild(z); }
   return z;
 }
+function bioMainXform(mk, ms) {   // v240 : en juxtaposition, l'image principale se déplace / rétrécit pour laisser la place à l'autre
+  const A = bioAuto; const E = bioEls(); const els = [E.img, E.nx].filter(Boolean);
+  const to = mk ? `translate(${mk.mx - 50}%, ${mk.my - 50}%) scale(${mk.sc / 100})` : 'none'; const from = A.mxCur || 'none'; A.mxCur = to; if (from === to) return;
+  els.forEach((el) => { el.style.transform = to === 'none' ? '' : to; try { if (ms > 0 && el.animate) el.animate([{ transform: from }, { transform: to }], { duration: ms, easing: 'ease' }); } catch (e) { /* ignoré */ } });
+}
 function bioOvShow(c) {
-  const A = bioAuto; const key = c ? [c.ref, c.size, c.pos, c.a].join('|') : ''; if ((A.ovKey || '') === key) return; A.ovKey = key;
+  const A = bioAuto; const key = c ? [c.ref, c.mode, c.ox, c.oy, c.ow, c.mx, c.my, c.sc, c.a].join('|') : ''; if ((A.ovKey || '') === key) return; A.ovKey = key;
   const z = bioOvHost(); if (!z) return; const ms = c ? (c.ms != null ? c.ms : 800) : (A.ovMs != null ? A.ovMs : 800); if (c) A.ovMs = ms;
   [...z.children].forEach((o) => { if (ms <= 0) o.remove(); else { o.style.transition = `opacity ${ms}ms ease`; o.style.opacity = '0'; setTimeout(() => o.remove(), ms + 60); } });
+  bioMainXform(c && c.mode === 'juxta' ? c : null, ms);
   if (!c) return;
-  const el = document.createElement('img'); el.alt = ''; el.className = `imp-bio-ovi s-${c.size} p-${c.pos}`; el.src = imageSourceSized(c.ref, 900);
+  const el = document.createElement('img'); el.alt = ''; el.src = imageSourceSized(c.ref, 900);
+  if (c.mode === 'incl') { el.className = 'imp-bio-ovi incl'; try { const ir = bioEls().img.getBoundingClientRect(), pr = z.getBoundingClientRect(); if (ir.width > 20 && ir.height > 20 && !A.mxCur.startsWith('translate')) { el.style.left = (ir.left - pr.left) + 'px'; el.style.top = (ir.top - pr.top) + 'px'; el.style.width = ir.width + 'px'; el.style.height = ir.height + 'px'; } } catch (e) { /* ignoré */ } } else { el.className = 'imp-bio-ovi jx'; el.style.left = c.ox + '%'; el.style.top = c.oy + '%'; el.style.width = c.ow + '%'; }
   el.style.opacity = ms <= 0 ? '1' : '0'; z.appendChild(el); if (ms > 0) { void el.offsetWidth; el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '1'; }
 }
 function bioOvUpdate(colTop, lineY, reading) {
@@ -13643,7 +13661,8 @@ function bioOvUpdate(colTop, lineY, reading) {
 }
 function bioAutoStop() {
   try { bioSavePos(); } catch (e) { /* ignoré */ }
-  bioAuto.ovKey = ''; bioAuto.ovs = []; document.querySelectorAll('.imp-bio-ov').forEach((z) => { z.textContent = ''; });   // v239 : plus d'image superposée
+  bioAuto.ovKey = ''; bioAuto.ovs = []; bioAuto.mxCur = 'none'; document.querySelectorAll('.imp-bio-ov').forEach((z) => { z.textContent = ''; });
+  ['imp-bio-slide', 'imp-bio-slide-next', 'imp-bio-split-portrait', 'imp-bio-split-portrait-next'].forEach((id) => { const el = $(id); if (el) el.style.transform = ''; });   // v239 : plus d'image superposée
   if (bioAuto.voiceSwap) { impSelectedVoice = bioAuto.voiceSwap.prev; impAutoVoice = null; bioAuto.voiceSwap = null; }   // v187 : on rend la voix d'avant
   bioAuto.sid++; bioAuto.paused = false;
   bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
