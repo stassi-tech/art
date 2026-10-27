@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v237';
+const APP_VERSION = 'v239';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -13244,7 +13244,28 @@ function impShowFlowImage(url, label) {
 // v181 (retour Stéphane : « à la fin, revenir par un balayage sur la photo de l'artiste, comme un cycle ») : seconde balise, [retour] (ou
 // [fin]), à poser avant la dernière phrase : l'écran se REFERME en un seul bloc (l'image du milieu est balayée, le texte et l'artiste
 // reprennent la place). Durée facultative, en secondes : [retour | 1,5] (1,2 s par défaut, comme le split). Sans effet hors bio à deux écrans.
-const BIO_TAG_RE = /\[\s*(?:image|img)\s*:\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]|\[\s*(?:retour|fin)\s*(?:[|:]\s*([^\]]*?)\s*)?\]|\u21a9/gi;   // v186 : le signe ↩ (la pastille de l'atelier, parfois collée telle quelle dans le fichier maître) vaut aussi balise de retour
+const BIO_TAG_RE = /\[\s*(?:image|img)\s*:\s*([^\]|]+?)\s*(?:\|\s*([^\]]*?)\s*)?\]|\[\s*(?:retour|fin)\s*(?:[|:]\s*([^\]]*?)\s*)?\]|\u21a9|\[\s*incrust(?:ation)?\s*:\s*([^\]]*?)\s*\]|(\[\s*(?:incrust(?:ation)?[-\s]*fin|fin[-\s]*incrust(?:ation)?)\s*\])/gi;   // v186 : le signe ↩ (la pastille de l'atelier, parfois collée telle quelle dans le fichier maître) vaut aussi balise de retour
+// v239 (retour Stéphane : « une deuxième ligne de montage pour superposer des images ») : balises [incrust: adresse | taille | position | fondu] puis [incrust-fin].
+// taille = petite | moyenne | pleine ; position = haut-gauche | haut-droite | bas-gauche | bas-droite | centre ; fondu = secondes (0,8 par défaut).
+// L'image est posée PAR-DESSUS l'image principale, de la balise de début à la balise de fin (ou jusqu'au début de la suivante, ou la fin du texte). Ni affichées ni lues.
+function bioParseOv(body) {
+  const parts = String(body || '').split('|').map((x) => x.trim()); const o = { ref: parts.shift() || '', size: 'moyenne', pos: 'bas-droite', ms: null };
+  parts.forEach((q0) => {
+    const q = q0.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (/^(petit|moyen|plein|grand)/.test(q)) o.size = /^petit/.test(q) ? 'petite' : /^moyen/.test(q) ? 'moyenne' : 'pleine';
+    else if (/(haut|bas|centre|milieu)/.test(q)) o.pos = /centre|milieu/.test(q) ? 'centre' : (/haut/.test(q) ? 'haut' : 'bas') + '-' + (/gauche/.test(q) ? 'gauche' : 'droite');
+    else { const d = q.match(/^(\d+(?:[.,]\d+)?)\s*s?$/); if (d) o.ms = Math.round(Math.max(0, Math.min(10, parseFloat(d[1].replace(',', '.')))) * 1000); }
+  });
+  return o;
+}
+function bioOvClips(list, endPos) {   // appariement début/fin ; à position égale, une fin passe avant un début
+  const L = list.map((x, i) => ({ x, i })).sort((p, q) => p.x.offset - q.x.offset || (!!p.x.ovEnd === !!q.x.ovEnd ? p.i - q.i : (p.x.ovEnd ? -1 : 1))).map((p) => p.x);
+  const out = []; let open = null;
+  L.forEach((x) => { if (!x.ovEnd) { if (open) out.push(open); open = { s: x, e: null }; } else if (open) { open.e = x; out.push(open); open = null; } });
+  if (open) out.push(open);
+  out.forEach((c, i) => { c.a = c.s.offset; c.b = c.e ? c.e.offset : (out[i + 1] ? out[i + 1].s.offset : endPos); c.ref = c.s.ref; c.size = c.s.size; c.pos = c.s.pos; c.ms = c.s.ms; });
+  return out;
+}
 const bioFirstImg = (marks) => (marks || []).find((mk) => !mk.end) || null;
 // v179 (retour Stéphane : « une petite table de montage : fondu au noir, fondu enchaîné, split de l'écran, avec des durées au choix ») :
 // une balise peut porter un 3e élément, l'effet d'entrée de l'image : [image: adresse | légende | noir 2] — « enchaîné 2,5 »
@@ -13276,7 +13297,7 @@ function parseBioMarkup(text) {
   let src = String(text || ''); let title = null, exit = null;
   src = src.replace(BIO_TITLE_RE, (m0, g) => { if (!title) title = bioParseTitle(g); return ''; });
   src = src.replace(BIO_EXIT_RE, (m0, g) => { if (!exit) exit = bioParseExit(g); return '\n'; }).replace(/\s+$/, exit ? '' : '$&');
-  let plain = ''; const marks = []; let last = 0; let m;
+  let plain = ''; const marks = []; const ovm = []; let last = 0; let m;
   BIO_TAG_RE.lastIndex = 0;
   while ((m = BIO_TAG_RE.exec(src))) {
     plain += src.slice(last, m.index);
@@ -13285,7 +13306,9 @@ function parseBioMarkup(text) {
     const before = plain.endsWith('\n') || plain === '';
     if (before && /^[ \t]*\n/.test(src.slice(end))) end += src.slice(end).match(/^[ \t]*\n/)[0].length;
     else end += src.slice(end).match(/^[ \t]*/)[0].length;
-    if (m[1] === undefined) { // balise [retour] : l'écran redevient un seul bloc
+    if (m[4] !== undefined || m[5] !== undefined) { // v239 : image de la ligne 2 (début ou fin)
+      if (m[5] !== undefined) ovm.push({ offset: plain.length, ovEnd: true }); else { const o = bioParseOv(m[4]); if (o.ref) ovm.push({ offset: plain.length, ovEnd: false, ref: o.ref, size: o.size, pos: o.pos, ms: o.ms }); }
+    } else if (m[1] === undefined) { // balise [retour] : l'écran redevient un seul bloc
       const dm = String(m[3] || '').match(/(\d+(?:[.,]\d+)?)/); marks.push({ offset: plain.length, ref: '', caption: '', fx: null, end: true, ms: dm ? Math.round(parseFloat(dm[1].replace(',', '.')) * 1000) : null });
     } else { const cf = bioSplitCapFx((m[2] || '').trim()); marks.push({ offset: plain.length, ref: m[1].trim(), caption: cf.caption, fx: cf.fx }); }
     last = end; BIO_TAG_RE.lastIndex = end;
@@ -13308,10 +13331,10 @@ function parseBioMarkup(text) {
       removed.push(mm.index, mm.index + mm[0].length - 1); lastIdx = mm.index + mm[0].length;
     }
     out += plain.slice(lastIdx);
-    marks.forEach((mk) => { mk.offset -= removed.filter((p) => p < mk.offset).length; });
+    marks.concat(ovm).forEach((mk) => { mk.offset -= removed.filter((p) => p < mk.offset).length; });
     plain = out.replace(/\*/g, '');
   }
-  return { plain, marks, ital, title, exit };
+  return { plain, marks, ital, title, exit, ovm, ovs: bioOvClips(ovm, plain.length) };
 }
 // v217 : le rideau noir (page titre au début, fondu au noir à la fin)
 const bioCur = { launch: 0, fade: 0, exit: 0 };
@@ -13345,9 +13368,9 @@ function bioRender(textEl, parsed) {
   const ital = parsed.ital || [];
   const isItal = (p) => ital.some(([a, b]) => p >= a && p < b);
   const cuts = new Set([0, parsed.plain.length]);
-  parsed.marks.forEach((mk) => cuts.add(mk.offset)); ital.forEach(([a, b]) => { cuts.add(a); cuts.add(b); });
+  parsed.marks.forEach((mk) => cuts.add(mk.offset)); (parsed.ovm || []).forEach((mk) => cuts.add(mk.offset)); ital.forEach(([a, b]) => { cuts.add(a); cuts.add(b); });
   const pts = [...cuts].filter((p) => p >= 0 && p <= parsed.plain.length).sort((a, b) => a - b);
-  const markAt = new Map(); parsed.marks.forEach((mk) => { const k = Math.max(0, Math.min(parsed.plain.length, mk.offset)); if (!markAt.has(k)) markAt.set(k, []); markAt.get(k).push(mk); });
+  const markAt = new Map(); parsed.marks.concat(parsed.ovm || []).forEach((mk) => { const k = Math.max(0, Math.min(parsed.plain.length, mk.offset)); if (!markAt.has(k)) markAt.set(k, []); markAt.get(k).push(mk); });
   const placeMarks = (pos) => (markAt.get(pos) || []).forEach((mk) => { const sp = document.createElement('span'); sp.className = 'imp-bio-mark'; sp.setAttribute('aria-hidden', 'true'); textEl.appendChild(sp); mk.el = sp; });
   for (let i = 0; i < pts.length; i++) {
     const a = pts[i]; placeMarks(a);
@@ -13590,10 +13613,37 @@ function bioFrame() {
     else if (A.soloOk) bioEnterSolo();
     else if (A.baseRef) bioShowImage(A.baseRef, A.baseCap);
   }
+  bioOvUpdate(colTop, lineY, reading);
   A.raf = requestAnimationFrame(bioFrame);
+}
+// v239 : l'image de la ligne 2 qui est « en cours » est posée par-dessus l'image principale (même colonne), en fondu
+function bioOvHost() {
+  const E = bioEls(); const par = E.img && E.img.parentElement; if (!par) return null;
+  let z = par.querySelector(':scope > .imp-bio-ov'); if (!z) { z = document.createElement('div'); z.className = 'imp-bio-ov'; z.setAttribute('aria-hidden', 'true'); par.appendChild(z); }
+  return z;
+}
+function bioOvShow(c) {
+  const A = bioAuto; const key = c ? [c.ref, c.size, c.pos, c.a].join('|') : ''; if ((A.ovKey || '') === key) return; A.ovKey = key;
+  const z = bioOvHost(); if (!z) return; const ms = c ? (c.ms != null ? c.ms : 800) : (A.ovMs != null ? A.ovMs : 800); if (c) A.ovMs = ms;
+  [...z.children].forEach((o) => { if (ms <= 0) o.remove(); else { o.style.transition = `opacity ${ms}ms ease`; o.style.opacity = '0'; setTimeout(() => o.remove(), ms + 60); } });
+  if (!c) return;
+  const el = document.createElement('img'); el.alt = ''; el.className = `imp-bio-ovi s-${c.size} p-${c.pos}`; el.src = imageSourceSized(c.ref, 900);
+  el.style.opacity = ms <= 0 ? '1' : '0'; z.appendChild(el); if (ms > 0) { void el.offsetWidth; el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '1'; }
+}
+function bioOvUpdate(colTop, lineY, reading) {
+  const A = bioAuto; const cl = A.ovs || []; if (!cl.length) { if (A.ovKey) bioOvShow(null); return; }
+  let act = -1;
+  if (A.solo) act = -1;   // l'artiste est seul à l'écran : rien par-dessus
+  else if (A.speaking && reading) { const pos = A.fshow * A.plainLen; act = cl.findIndex((c) => pos >= c.a - 0.5 && pos < c.b); }
+  else cl.forEach((c, i) => {
+    if (!c.s.el) return; if (c.s.el.getBoundingClientRect().top - colTop > lineY) return;
+    if (c.e && c.e.el && c.e.el.getBoundingClientRect().top - colTop <= lineY) return; act = i;
+  });
+  bioOvShow(act >= 0 ? cl[act] : null);
 }
 function bioAutoStop() {
   try { bioSavePos(); } catch (e) { /* ignoré */ }
+  bioAuto.ovKey = ''; bioAuto.ovs = []; document.querySelectorAll('.imp-bio-ov').forEach((z) => { z.textContent = ''; });   // v239 : plus d'image superposée
   if (bioAuto.voiceSwap) { impSelectedVoice = bioAuto.voiceSwap.prev; impAutoVoice = null; bioAuto.voiceSwap = null; }   // v187 : on rend la voix d'avant
   bioAuto.sid++; bioAuto.paused = false;
   bioAuto.active = false; bioAuto.speaking = false; if (bioAuto.raf) cancelAnimationFrame(bioAuto.raf); bioAuto.raf = 0;
@@ -13918,10 +13968,11 @@ function bioDebugBox() {
 }
 function bioAutoStart(parsed, baseRef, baseCap, willSpeak) {
   bioAutoStop();
-  Object.assign(bioAuto, { marks: parsed.marks, plainLen: parsed.plain.length, spokenLen: Math.max(1, parsed.plain.length), frac: 0, gotBoundary: false,
+  Object.assign(bioAuto, { ovs: parsed.ovs || [], ovKey: '', marks: parsed.marks, plainLen: parsed.plain.length, spokenLen: Math.max(1, parsed.plain.length), frac: 0, gotBoundary: false,
     startT: performance.now(), pauseUntil: 0, curIdx: -2, baseRef: baseRef || '', baseCap: baseCap || '', shownRef: baseRef || '', speaking: !!willSpeak, willSpeak: !!willSpeak, active: true, userMoved: false, gotBoundaryOrSpoke: false, paused: false, ended: false, solo: false, soloOk: false,
     pending: [], fshow: -1, lastT: 0, holdUntil: 0, userScrollMode: false, userScrollT: 0, dragging: false, resumeOffset: null, seeking: false, ctl: null, map: null, mapBase: 0, lastCi: 0, cand: null, lastCiT: performance.now(), badEv: 0, allowBack: true, t0: performance.now(), log: [], debug: /[?&]debug=bio/.test(location.search) });
   bioAuto.preload = [];
+  (parsed.ovs || []).forEach((c) => { try { const im = new Image(); im.src = imageSourceSized(c.ref, 900); bioAuto.preload.push(im); } catch (e) { /* ignoré */ } });
   parsed.marks.forEach((mk) => { if (mk.end) return; try { const im = new Image(); im.src = imageSourceSized(mk.ref, 900); bioAuto.preload.push(im); } catch (e) { /* ignoré */ } });
   bioDebugBox();
   const col = bioAuto.dual ? $('imp-bio-scroll') : $('imp-bio-split')?.querySelector('.imp-bio-text-col'); if (col) col.scrollTop = 0;
