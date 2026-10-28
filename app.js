@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v253';
+const APP_VERSION = 'v254';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -16307,7 +16307,48 @@ $('open-placement-proto-temp')?.addEventListener('click', () => {
     if (!down) return; clicked = true; const dt = performance.now() - down.t;
     if (dt > 250) slow++; log((dt > 250 ? '⚠ ' : '✓ ') + Math.round(dt) + ' ms  ' + name(e));
   }, true);
+  // v254 : RÉSEAU — toute ressource (fichier Excel, image, script) qui met plus de 1,5 s à arriver est notée avec son nom :
+  // c'est ce qui distingue « le téléphone calcule » (gels) de « le téléphone attend un fichier » (lignes ⏳).
+  try {
+    new PerformanceObserver((list) => list.getEntries().forEach((en) => {
+      if (en.duration > 1500) log('⏳ ' + Math.round(en.duration) + ' ms pour charger ' + decodeURIComponent(en.name).replace(/^https?:\/\//, '').slice(0, 70));
+    })).observe({ type: 'resource', buffered: true });
+  } catch (e) { /* navigateur sans cette mesure */ }
   let last = performance.now();
   (function loop(now) { const gap = now - last; last = now; if (gap > 120 && !document.hidden && gap < 5000) { freezes++; freezeMax = Math.max(freezeMax, gap); log('❄ gel de ' + Math.round(gap) + ' ms'); } requestAnimationFrame(loop); })(performance.now());
   draw();
 })();
+
+// v254 — MISE À JOUR AUTOMATIQUE SUR TÉLÉPHONE.
+// Retour Stéphane : installée sur l'écran d'accueil, l'application restait bloquée sur une ancienne version
+// (v251) alors que Chrome affichait déjà la v252. Raison : un téléphone ne ferme pas vraiment une application
+// qu'on quitte, il la met en veille ; en la rouvrant, il reprend la page là où elle était, sans rien retélécharger.
+// Ici, au chargement puis à chaque retour au premier plan, l'application va regarder (sans cache) quelle est la
+// version publiée ; si elle est plus récente, un bandeau propose de mettre à jour — sans jamais recharger de force,
+// pour ne pas couper un jeu ou un diaporama en cours.
+(function autoUpdateCheck() {
+  const cur = (document.querySelector('script[src*="app.js"]')?.getAttribute('src') || '').match(/[?&]v=(\d+)/);
+  if (!cur) return;
+  let lastCheck = 0, shown = false;
+  async function check() {
+    if (shown || Date.now() - lastCheck < 60000) return;
+    lastCheck = Date.now();
+    try {
+      const r = await fetch(location.pathname + '?verif=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) return;
+      const m = (await r.text()).match(/app\.js\?v=(\d+)/);
+      if (!m || Number(m[1]) <= Number(cur[1])) return;
+      shown = true;
+      const bar = document.createElement('div');
+      bar.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:2147483000;background:#2c3e50;color:#fff;font:14px/1.35 Arial,sans-serif;padding:10px 12px;border-radius:8px;display:flex;gap:10px;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.4);';
+      bar.innerHTML = '<span style="flex:1">Une nouvelle version de MNEMART est disponible.</span><button type="button" style="font:inherit;font-weight:700;padding:8px 12px;border:0;border-radius:6px;background:#d4af37;color:#2c1f0a;">Mettre à jour</button><button type="button" aria-label="Plus tard" style="font:inherit;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:#fff;">✕</button>';
+      const [go, later] = bar.querySelectorAll('button');
+      go.addEventListener('click', () => { location.replace(location.pathname + '?maj=' + Date.now() + location.hash); });
+      later.addEventListener('click', () => bar.remove());
+      document.body.appendChild(bar);
+    } catch (e) { /* pas de réseau : on réessaiera au prochain retour au premier plan */ }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  setTimeout(check, 4000);
+})();
+window.__mnemartBooted = true;   // v254 : repère « tout le programme s'est exécuté jusqu'au bout » (voir le filet de sécurité dans index.html)

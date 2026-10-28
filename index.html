@@ -5,7 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
     <title>MNEMART — Peintures et sculptures en Occident, 15e au 20e siècle</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
+    <script>
+/* v254 — FILET DE SÉCURITÉ : si le programme de l'application rencontre une erreur (surtout sur téléphone, où l'état
+   enregistré diffère de celui de l'ordinateur), un bandeau rouge l'affiche au lieu de laisser des boutons muets. */
+(function () {
+  var box = null, n = 0;
+  function show(msg) {
+    try {
+      if (n++ > 6) return;
+      if (!box) {
+        box = document.createElement('div');
+        box.style.cssText = 'position:fixed;left:6px;right:6px;bottom:64px;max-height:45vh;overflow:auto;z-index:2147483647;background:#7a1010;color:#fff;font:12px/1.35 monospace;padding:8px 10px;border-radius:8px;white-space:pre-wrap;word-break:break-word;';
+        var x = document.createElement('div'); x.textContent = 'ERREUR DANS L\'APPLICATION (touchez pour fermer) — envoyez-moi une capture :'; x.style.fontWeight = '700';
+        box.appendChild(x); box.addEventListener('click', function () { box.remove(); box = null; n = 0; });
+        (document.body || document.documentElement).appendChild(box);
+      }
+      box.appendChild(document.createTextNode('\n• ' + msg));
+    } catch (e) {}
+  }
+  window.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t !== window && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) { show('Fichier non chargé : ' + (t.src || t.href)); return; }
+    show((e.message || 'erreur') + '  [' + String(e.filename || '').split('/').pop() + ':' + e.lineno + ':' + e.colno + ']');
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) { var r = e.reason; show('Promesse rejetée : ' + (r && (r.stack || r.message) || r)); });
+  window.addEventListener('load', function () { setTimeout(function () { if (!window.__mnemartBooted) show('Le programme app.js ne s\'est pas terminé (il s\'est arrêté en cours de route).'); }, 3500); });
+})();
+</script>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
@@ -2239,6 +2266,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=477"></script>
+    <script defer src="app.js?v=478"></script>
   </body>
 </html>
