@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v267';
+const APP_VERSION = 'v268';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -14380,11 +14380,40 @@ function bioInsertCard(text, card, city) {
   const lead = /^\s*(?:\[titre:[^\]]*\]\s*)*/.exec(t)[0];
   return t.slice(0, lead.length) + tag.trimStart() + ' ' + t.slice(lead.length);
 }
+// v268 (retour Stéphane : « mettre les références bibliographiques en dessous de chaque article, ça peut aider les gens ») :
+// un texte peut se terminer par [refs: Auteur, *Titre*, éditeur, année // autre référence // https://…] — jamais lu, jamais affiché dans le texte :
+// le bloc « Pour aller plus loin » s'affiche sous le texte (repliable). Une référence = une ligne (ou séparée par « // ») ; *…* = italique ; une adresse http(s) devient un lien.
+const BIO_REFS_RE = /\s*\[\s*(?:refs?|références?|pour aller plus loin)\s*:\s*([^\]]*)\]\s*/i;
+function bioSplitRefs(text) {
+  let refs = []; const t = String(text || '').replace(BIO_REFS_RE, (m0, g) => { if (!refs.length) refs = String(g || '').split(/\s*\n\s*|\s+\/\/\s+/).map((x) => x.trim()).filter(Boolean); return '\n'; });
+  return { text: refs.length ? t.replace(/\s+$/, '') : String(text || ''), refs };
+}
+let bioRefsOpenPref = null;   // null : on suit la taille de l'écran (replié sur téléphone, ouvert sur ordinateur) ; sinon le choix de la personne
+function bioRefsIsOpen() { return bioRefsOpenPref === null ? !(window.matchMedia && window.matchMedia('(max-width: 800px)').matches) : bioRefsOpenPref; }
+function bioShowRefs(refs) {
+  const box = $('imp-bio-refs'), list = $('imp-bio-refs-list'), tg = $('imp-bio-refs-toggle'); if (!box || !list || !tg) return;
+  list.textContent = '';
+  if (!refs || !refs.length) { box.classList.add('hidden'); return; }
+  refs.forEach((r) => {
+    const li = document.createElement('li');
+    r.split(/(\*[^*\n]+\*|https?:\/\/[^\s)]+)/).forEach((part) => {
+      if (!part) return;
+      if (/^\*[^*\n]+\*$/.test(part)) { const em = document.createElement('em'); em.textContent = part.slice(1, -1); li.appendChild(em); }
+      else if (/^https?:\/\//.test(part)) { const a = document.createElement('a'); a.href = part; a.target = '_blank'; a.rel = 'noopener'; a.textContent = part.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''); li.appendChild(a); }
+      else li.appendChild(document.createTextNode(part));
+    });
+    list.appendChild(li);
+  });
+  const sync = () => { const open = bioRefsIsOpen(); box.classList.toggle('open', open); tg.setAttribute('aria-expanded', open ? 'true' : 'false'); tg.textContent = `${open ? '▾' : '▸'} Pour aller plus loin (${refs.length})`; };
+  tg.onclick = () => { bioRefsOpenPref = !bioRefsIsOpen(); sync(); };
+  sync(); box.classList.remove('hidden');
+}
 function openImpArtistBio(work, force, opts) {
   impClearTimers();
   try { bioAutoStop(); } catch (e) { /* ignoré */ }   // v235 : si un autre film était en cours, sa position est retenue avant de repartir
   // v165 : le texte de l'œuvre (première personne) passe par le même écran « film » que la bio : opts.work = true
-  const isWork = !!(opts && opts.work); const srcText = isWork ? (work.workText || '') : ((work.card || work.mapCard) && !(opts && opts.topic) ? bioInsertCard(work.bio || '', work.card || work.mapCard, work.birthCity) : (work.bio || ''));
+  const isWork = !!(opts && opts.work); const srcRaw = isWork ? (work.workText || '') : ((work.card || work.mapCard) && !(opts && opts.topic) ? bioInsertCard(work.bio || '', work.card || work.mapCard, work.birthCity) : (work.bio || ''));
+  const srcSplit = bioSplitRefs(srcRaw); const srcText = srcSplit.text;   // v268 : « Pour aller plus loin » (références) : retirées du texte lu, affichées sous le texte
   bioAuto.isWork = isWork; bioAuto.topic = (opts && opts.topic) || '';   // v211 : texte « Natures et techniques » (sans portrait ni guillemets)
   const splitEl = $('imp-bio-split');
   const mode = bioWantMode(); const dual = !!mode;
@@ -14410,6 +14439,7 @@ function openImpArtistBio(work, force, opts) {
   const textEl = $('imp-bio-split-text');
   const parsedBio = parseBioMarkup(bioText);
   if (textEl) bioRender(textEl, parsedBio);
+  bioShowRefs(srcSplit.refs);
   $('imp-bio-split')?.classList.remove('hidden');
   // v81 (retour Stéphane, capture d'écran de la bio de Giambologna : « la référence de l'œuvre à
   // droite doit disparaître, ça permettra au texte de se déployer davantage ») : #imp-quiz-grid
@@ -14472,6 +14502,7 @@ function openImpWorkText(work, topicLabel) {
   bioAuto.dual = false; bioSyncButton();
   $('imp-bio-split')?.classList.remove('bio-dual', 'bio-vert', 'bio-film', 'bio-noslide');
   const padT = $('imp-bio-pad-top'), padB = $('imp-bio-pad-bot'); if (padT) padT.style.height = ''; if (padB) padB.style.height = '';
+  bioShowRefs([]);
   const img = $('imp-bio-split-portrait');
   if (img) {
     if (work.image) { img.src = imageSourceSized(work.image, 900); img.classList.remove('hidden'); }
@@ -15646,7 +15677,7 @@ function cinemaRender() {
     });
     if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.evo.length ? 'Aucun diaporama ne correspond.' : 'Aucune histoire des formes n’est encore publiée.'}</div>`;
   } else {
-    if (cinemaCat.arts.length) { const hd = document.createElement('div'); hd.className = 'cinema-cols'; hd.innerHTML = '<span>Biographie de l’artiste</span><span>Présentation rapide de l’œuvre principale</span><span>Commentaire approfondi de l’œuvre</span>'; list.appendChild(hd); }
+    if (cinemaCat.arts.length) { const hd = document.createElement('div'); hd.className = 'cinema-cols'; hd.innerHTML = '<span>Biographie de l’artiste</span><span>Présentation rapide de son œuvre principale</span><span>Commentaire approfondi de son œuvre principale</span>'; list.appendChild(hd); }
     cinemaCat.arts.forEach((e) => {
       if (art === 'peinture' && !e.p) return; if (art === 'sculpture' && !e.s) return; if (q && !e.find.includes(q) && !e.key.includes(q) && !e.wkFind.includes(q)) return;
       if (!q) group((e.key[0] || '#').toUpperCase()); n++;

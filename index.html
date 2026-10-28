@@ -46,7 +46,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=309" />
+    <link rel="stylesheet" href="style.css?v=310" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -852,6 +852,8 @@
                       <p id="imp-bio-split-text" style="font-family:Arial,sans-serif;font-size:1.15rem;line-height:1.65;white-space:pre-line;text-align:justify;"></p>
                       <div id="imp-bio-pad-bot" class="imp-bio-pad"></div>
                     </div>
+                    <!-- v268 : références (« Pour aller plus loin »), sous le texte -->
+                    <div id="imp-bio-refs" class="imp-bio-refs hidden"><button type="button" id="imp-bio-refs-toggle" class="imp-bio-refs-toggle" aria-expanded="false"></button><ul id="imp-bio-refs-list" class="imp-bio-refs-list"></ul></div>
                     <div class="imp-bio-controls" id="imp-bio-controls">
                       <div class="imp-bio-time hidden" id="imp-bio-time"><span id="imp-bio-time-cur">0:00</span><input type="range" id="imp-bio-range" min="0" max="1000" value="0" step="1" aria-label="Position dans le diaporama"><span id="imp-bio-time-tot">0:00</span></div>
                       <div class="imp-bio-note hidden" id="imp-bio-note"></div>
@@ -2278,6 +2280,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=493"></script>
+    <script defer src="app.js?v=494"></script>
   </body>
 </html>

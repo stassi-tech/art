@@ -2960,3 +2960,15 @@ button, [role="button"], .home-mode-button, .primary-button, .secondary-button {
 .cinema-row .cinema-cm .nm { font-weight:600; }
 @media (max-width:520px) { .cinema-cols { font-size:.6rem; letter-spacing:0; } .cinema-row .cinema-cell { padding:6px 5px; font-size:.78rem; gap:3px; } .cinema-row .cinema-cell .go { font-size:.7rem; } }
 @media (max-width:520px) { .cinema-row .cinema-cm .go { display:none; } .cinema-row .cinema-cm { justify-content:center; text-align:center; } .cinema-row .cinema-cm .nm { font-size:.72rem; } }
+
+/* v268 — « Pour aller plus loin » : références sous le texte de la notice */
+.imp-bio-refs { margin:10px 0 0; padding:8px 4px 0; border-top:1px solid rgba(128,128,128,.35); font-family:Arial,sans-serif; flex:0 0 auto; }
+.imp-bio-refs.hidden { display:none; }
+.imp-bio-refs-toggle { background:none; border:0; padding:4px 0; color:inherit; font:600 .92rem Arial,sans-serif; cursor:pointer; opacity:.85; text-align:left; }
+.imp-bio-refs-toggle:hover { opacity:1; }
+.imp-bio-refs-list { display:none; list-style:none; margin:4px 0 2px; padding:0; max-height:24vh; overflow-y:auto; font-size:.86rem; line-height:1.4; scrollbar-width:thin; }
+.imp-bio-refs.open .imp-bio-refs-list { display:block; }
+.imp-bio-refs-list li { margin:0 0 6px; padding-left:12px; text-indent:-12px; opacity:.9; }
+.imp-bio-refs-list li::before { content:"· "; }
+.imp-bio-refs-list a { color:inherit; text-decoration:underline; word-break:break-all; }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-refs-list { max-height:16vh; font-size:.8rem; }
