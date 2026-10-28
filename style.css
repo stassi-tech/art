@@ -2947,3 +2947,11 @@ button, [role="button"], .home-mode-button, .primary-button, .secondary-button {
   .home-mode-button .tooltip-bubble { display:none; }
   .home-mode-button.show-tooltip .tooltip-bubble { display:block; }
 }
+
+/* v266 : « notice précédente / suivante » (diaporamas) et nom de l'artiste + dates au-dessus du titre d'une œuvre */
+.imp-bio-split-by{font-family:Georgia,serif;color:#6b6b6b;font-size:.95rem;letter-spacing:.02em;margin:0 0 6px;padding-right:44px}
+.imp-bio-split-by.hidden{display:none}
+.imp-bio-split.bio-dual .imp-bio-split-by{flex:0 0 auto;padding:0 40px;margin:0 0 4px;text-align:center;font-size:clamp(.85rem,.95vw,1.05rem)}
+.imp-bio-split.bio-dual.bio-vert .imp-bio-split-by{display:none}
+.imp-bio-seek.imp-bio-film{border-style:dashed}
+.imp-bio-seek.imp-bio-film:disabled{opacity:.28;cursor:default}

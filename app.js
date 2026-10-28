@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v265';
+const APP_VERSION = 'v266';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -14404,6 +14404,7 @@ function openImpArtistBio(work, force, opts) {
   if (datesEl) { const dt = isWork ? '' : String(work.artistDates || '').trim().replace(/\s*[-–—]\s*/, '\u00a0–\u00a0'); datesEl.textContent = dt; datesEl.classList.toggle('hidden', !dt); }
   const nameEl = $('imp-bio-split-name');
   if (nameEl) nameEl.textContent = bioAuto.topic ? bioAuto.topic : isWork ? `«\u00a0${work.title}\u00a0»` : formatArtistDisplayName(work).replace(/<[^>]+>/g, '');
+  { const byEl = $('imp-bio-split-by'); if (byEl) { const by = isWork ? String((opts && opts.by) || '') : ''; byEl.textContent = by; byEl.classList.toggle('hidden', !by); } }   // v266 : œuvre → nom de l'artiste et dates au-dessus du titre
   const bioText = srcText || 'Aucune biographie n’est encore disponible pour cet artiste.';
   const textEl = $('imp-bio-split-text');
   const parsedBio = parseBioMarkup(bioText);
@@ -15686,7 +15687,7 @@ function cinemaEnter(label, sub) {
   updateTopBanner('🎬 Diaporama', sub || label || '');
 }
 function cinemaTeardown() {   // remet l'écran Imprégnation comme on l'avait trouvé (sans naviguer)
-  if (!cinemaActive) return; cinemaActive = false;
+  if (!cinemaActive) return; cinemaActive = false; try { cinemaSyncNav(); } catch (err) { /* ignoré */ }
   try { bioAutoStop(); bioCurtainHide(); } catch (e) { /* ignoré */ }
   $('imp-bio-split')?.classList.add('hidden'); $('imp-quiz-grid')?.classList.remove('imp-bio-open'); $('impregnation-panel')?.classList.remove('cinema-mode');
   if (cinemaSaved) { $('imp-ready-screen')?.classList.toggle('hidden', !!cinemaSaved.ready); $('imp-quiz-grid')?.classList.toggle('hidden', !!cinemaSaved.grid); }
@@ -15725,9 +15726,36 @@ function cinemaPlayNow(e, what) {   // appelé directement par le clic (la voix 
     cinemaEnter(e.kind === 'topic' ? e.title : (what === 'work' ? '«\u00a0' + e.wk + '\u00a0»' : e.name), e.kind === 'topic' ? '' : (what === 'work' ? e.name : e.dates));
   }
   if (e.kind === 'topic') openImpTopicText({}, e.id);
-  else if (what === 'work') { const wi = cinemaWorkImage(e); openImpArtistBio({ ...cinemaPseudo(e.row), bio: '', artistImage: '', artistImageCaption: '', artistDates: '', title: (wi && wi.title) || e.wk, workText: e.wkText, ...(wi ? { image: wi.image, date: wi.date } : {}) }, true, { work: true }); }   // v248 : le film de l'œuvre principale
+  else if (what === 'work') { const wi = cinemaWorkImage(e); openImpArtistBio({ ...cinemaPseudo(e.row), bio: '', artistImage: '', artistImageCaption: '', artistDates: '', title: (wi && wi.title) || e.wk, workText: e.wkText, ...(wi ? { image: wi.image, date: wi.date } : {}) }, true, { work: true, by: [e.name, e.dates].filter(Boolean).join(' · ') }); }   // v248 : le film de l'œuvre principale
   else openImpArtistBio(cinemaPseudo(e.row), true);
+  cinemaCur = { e, what: what || '' }; cinemaSyncNav();
 }
+// v266 (retour Stéphane : « une flèche pour aller à la notice suivante, une autre pour la précédente, pour ne pas toujours revenir au menu ») :
+// la liste parcourue est celle de l'écran des diaporamas, avec ses filtres (onglet, art, recherche) ; pour une œuvre, seuls les artistes qui en ont une.
+let cinemaCur = null;
+function cinemaList() {
+  if (!cinemaCat || !cinemaCur) return [];
+  const q = keyName(($('cinema-search') || {}).value || ''); const art = ($('cinema-art') || {}).value || '';
+  const ok = (e) => (cinemaCur.e.kind === 'topic'
+    ? !(art && e.art !== art) && !(q && !keyName(e.title).includes(q))
+    : !(art === 'peinture' && !e.p) && !(art === 'sculpture' && !e.s) && !(q && !e.find.includes(q) && !e.key.includes(q) && !e.wkFind.includes(q)) && (cinemaCur.what !== 'work' || !!e.wk));
+  const all = cinemaCur.e.kind === 'topic' ? cinemaCat.evo : cinemaCat.arts;
+  const f = all.filter(ok);
+  return f.includes(cinemaCur.e) ? f : all.filter((e) => cinemaCur.what !== 'work' || cinemaCur.e.kind === 'topic' || !!e.wk);
+}
+function cinemaSyncNav() {
+  const pb = $('imp-bio-prevfilm'), nb = $('imp-bio-nextfilm'); if (!pb || !nb) return;
+  const list = cinemaActive ? cinemaList() : []; const i = cinemaCur ? list.indexOf(cinemaCur.e) : -1; const show = cinemaActive && list.length > 1 && i >= 0;
+  [pb, nb].forEach((b) => b.classList.toggle('hidden', !show));
+  pb.disabled = !show || i <= 0; nb.disabled = !show || i >= list.length - 1;
+  if (show) [list[i - 1], list[i + 1]].forEach((x) => { try { if (x && x.row && x.row._light) loadTextChunk(x.row._chunk); } catch (err) { /* ignoré */ } });   // on prépare les voisines
+}
+function cinemaStep(dir) {
+  if (!cinemaActive || !cinemaCur) return; const list = cinemaList(); const i = list.indexOf(cinemaCur.e); const nx = list[i + dir]; if (!nx) return;
+  cinemaPlay(nx, cinemaCur.what);
+}
+$('imp-bio-prevfilm')?.addEventListener('click', () => cinemaStep(-1));
+$('imp-bio-nextfilm')?.addEventListener('click', () => cinemaStep(1));
 $('global-cinema-button')?.addEventListener('click', (ev) => { ev.stopPropagation(); if ($('cinema-picker')?.classList.contains('hidden')) openCinemaPicker(); else closeCinemaPicker(); });
 $('menu-item-cinema')?.addEventListener('click', (ev) => { ev.stopPropagation(); closeHamburgerMenu(); openCinemaPicker(); });
 $('cinema-close')?.addEventListener('click', closeCinemaPicker);

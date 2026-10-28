@@ -843,6 +843,7 @@
                     <a id="imp-bio-slide-credit" class="imp-bio-split-credit hidden" href="#" target="_blank" rel="noopener">crédits<span id="imp-bio-slide-credit-text" class="imp-bio-split-credit-text"></span></a>
                   </div>
                   <div class="imp-bio-text-col">
+                    <div id="imp-bio-split-by" class="imp-bio-split-by hidden"></div>
                     <h3 id="imp-bio-split-name" style="font-family:Georgia,serif;margin:0 0 10px;"></h3>
                     <div id="imp-bio-split-dates" class="imp-bio-split-dates hidden"></div>
                     <div id="imp-bio-scroll" class="imp-bio-scroll">
@@ -854,9 +855,11 @@
                     <div class="imp-bio-controls" id="imp-bio-controls">
                       <div class="imp-bio-time hidden" id="imp-bio-time"><span id="imp-bio-time-cur">0:00</span><input type="range" id="imp-bio-range" min="0" max="1000" value="0" step="1" aria-label="Position dans le diaporama"><span id="imp-bio-time-tot">0:00</span></div>
                       <div class="imp-bio-note hidden" id="imp-bio-note"></div>
+                      <button type="button" id="imp-bio-prevfilm" class="imp-bio-seek imp-bio-film hidden" title="Notice précédente" aria-label="Notice précédente"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 5h2.4v14H5zM20 5v14L9 12z" fill="currentColor"/></svg></button>
                       <button type="button" id="imp-bio-back" class="imp-bio-seek hidden" title="Revenir à la phrase précédente" aria-label="Revenir à la phrase précédente"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 6v12l-9-6zM21 6v12l-9-6z" fill="currentColor"/></svg></button>
                       <button type="button" id="imp-bio-toggle" class="imp-bio-toggle hidden">Arrêt</button>
                       <button type="button" id="imp-bio-fwd" class="imp-bio-seek hidden" title="Passer à la phrase suivante" aria-label="Passer à la phrase suivante"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 6v12l9-6zM3 6v12l9-6z" fill="currentColor"/></svg></button>
+                      <button type="button" id="imp-bio-nextfilm" class="imp-bio-seek imp-bio-film hidden" title="Notice suivante" aria-label="Notice suivante"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M16.6 5H19v14h-2.4zM4 5l11 7L4 19z" fill="currentColor"/></svg></button>
                     </div>
                   </div>
                 </div>
@@ -2275,6 +2278,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=491"></script>
+    <script defer src="app.js?v=492"></script>
   </body>
 </html>
