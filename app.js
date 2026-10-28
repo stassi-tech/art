@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v261';
+const APP_VERSION = 'v262';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -15585,7 +15585,7 @@ function cinemaRender() {
       const gA = document.createElement('span'); gA.className = 'go'; gA.textContent = '▶'; bA.append(lA, gA); bA.addEventListener('click', () => cinemaPlay(e)); bA.addEventListener('pointerdown', () => { if (e.row && e.row._light) loadTextChunk(e.row._chunk); }, { passive: true });
       const bW = document.createElement('button'); bW.type = 'button'; bW.className = 'cinema-item cinema-cell cinema-wk'; bW.disabled = !e.wk;
       const lW = document.createElement('span'); lW.className = 'nm'; if (e.wk) { const em = document.createElement('em'); em.textContent = e.wk; lW.appendChild(em); if (e.wkN) { const sm = document.createElement('small'); sm.textContent = `${e.wkN} images`; lW.appendChild(sm); } } else lW.textContent = '—';
-      const gW = document.createElement('span'); gW.className = 'go'; gW.textContent = e.wk ? '▶' : ''; bW.append(lW, gW); if (e.wk) { bW.addEventListener('click', () => cinemaPlay(e, 'work')); bW.addEventListener('pointerdown', () => { if (e.row && e.row._light) loadTextChunk(e.row._chunk); }, { passive: true }); }
+      const gW = document.createElement('span'); gW.className = 'go'; gW.textContent = e.wk ? '▶' : ''; bW.append(lW, gW); if (e.wk) { bW.addEventListener('click', () => cinemaPlay(e, 'work')); bW.addEventListener('pointerdown', () => { if (e.row && e.row._light) loadTextChunk(e.row._chunk); cinemaPrefetchWorkImage(e); }, { passive: true }); }
       row.append(bA, bW); list.appendChild(row);
     });
     if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.arts.length ? 'Aucun artiste ne correspond.' : 'Aucune biographie n’est disponible pour le moment.'}</div>`;
@@ -15634,6 +15634,19 @@ function cinemaPlay(e, what) {   // v261 : maître léger : on charge d'abord le
   }
   cinemaPlayNow(e, what);
 }
+// v262 : le texte d'une œuvre n'a pas toujours de balise [image: …] : dans ce cas le film montre l'image de l'œuvre prise dans le fichier d'œuvres (colonne « Image de l'œuvre »), celle dont le titre correspond à l'œuvre commentée du maître.
+function cinemaWorkImage(e) {
+  try {
+    if (!e || !e.row || !e.wkText) return null;
+    if (bioFirstImg(parseBioMarkup(e.wkText).marks)) return null;   // le texte a ses propres images : on ne touche à rien
+    const pk = keyName(e.row['Prénom']), pa = keyName(e.row['Patronyme']); let found = null;
+    quizRowsResolvedCache.forEach((rows) => { if (found) return; (rows || []).some((w) => { if (w.image && keyName(w.prenom) === pk && keyName(w.patronyme) === pa && deriveWorkText(e.row, w.title, w.location, w.ville)) { found = { image: w.image, title: w.title, date: w.date }; return true; } return false; }); });
+    return found;
+  } catch (err) { return null; }
+}
+function cinemaPrefetchWorkImage(e) {   // au toucher du bouton « œuvre » : on s'assure que le fichier d'œuvres de cet artiste est déjà reçu (silencieux)
+  try { const m = e && e.row && /^textes-(\w+)-(\w+)\.json$/.exec(e.row._chunk || ''); if (m && m[1] !== 'autre' && m[2] !== 'autre') fetchQuizRows(m[1], m[2]).catch(() => {}); } catch (err) { /* ignoré */ }
+}
 function cinemaPlayNow(e, what) {   // appelé directement par le clic (la voix du navigateur exige un geste de l'utilisateur : aucune attente avant le film)
   closeCinemaPicker();
   const gameOn = !cinemaActive && currentPanelName === 'impregnation' && $('imp-quiz-grid') && !$('imp-quiz-grid').classList.contains('hidden');
@@ -15643,7 +15656,7 @@ function cinemaPlayNow(e, what) {   // appelé directement par le clic (la voix 
     cinemaEnter(e.kind === 'topic' ? e.title : (what === 'work' ? '«\u00a0' + e.wk + '\u00a0»' : e.name), e.kind === 'topic' ? '' : (what === 'work' ? e.name : e.dates));
   }
   if (e.kind === 'topic') openImpTopicText({}, e.id);
-  else if (what === 'work') openImpArtistBio({ ...cinemaPseudo(e.row), bio: '', artistImage: '', artistImageCaption: '', artistDates: '', title: e.wk, workText: e.wkText }, true, { work: true });   // v248 : le film de l'œuvre principale
+  else if (what === 'work') { const wi = cinemaWorkImage(e); openImpArtistBio({ ...cinemaPseudo(e.row), bio: '', artistImage: '', artistImageCaption: '', artistDates: '', title: (wi && wi.title) || e.wk, workText: e.wkText, ...(wi ? { image: wi.image, date: wi.date } : {}) }, true, { work: true }); }   // v248 : le film de l'œuvre principale
   else openImpArtistBio(cinemaPseudo(e.row), true);
 }
 $('global-cinema-button')?.addEventListener('click', (ev) => { ev.stopPropagation(); if ($('cinema-picker')?.classList.contains('hidden')) openCinemaPicker(); else closeCinemaPicker(); });
