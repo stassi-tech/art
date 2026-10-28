@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v258';
+const APP_VERSION = 'v259';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -3880,9 +3880,33 @@ function preloadImage(reference, widthPx) {
   const img = new Image();
   img.src = imageSourceSized(reference, widthPx);
 }
+// v259 (Stéphane : « Intrus se charge très lentement » sur téléphone) : dans les fichiers d'œuvres, environ une image sur trois est le fichier
+// ORIGINAL de Wikimedia (« upload.wikimedia.org/…/Nom.jpg?…thumbnail_unscaled », souvent 5 à 30 Mo), et les autres sont des miniatures de 900 à
+// 1280 px, même quand l'image s'affiche à 300 px. L'Intrus en affiche 3 à la fois : plusieurs dizaines de Mo à télécharger par question.
+// Désormais, pour une image Wikimedia en .jpg/.png, on demande à Wikimedia une miniature de la taille utile (les largeurs « standard » qu'il
+// accepte : 250, 330, 500, 960, 1280, 1920), jamais plus grande que la miniature déjà présente dans le fichier Excel. Si Wikimedia refuse
+// (image plus petite que la taille demandée, par exemple), l'image bascule automatiquement sur l'adresse d'origine : rien ne disparaît.
+const WIKI_THUMB_WIDTHS = [250, 330, 500, 960, 1280, 1920];
+const wikiThumbFallback = new Map();   // adresse de miniature demandée -> adresse d'origine (pour le repli en cas d'échec)
+function wikiSizedUrl(url, widthPx) {
+  const m = url.match(/^(https:\/\/(?:upload|thumb)\.wikimedia\.org\/wikipedia\/commons\/)(?:thumb\/)?([0-9a-f]\/[0-9a-f]{2})\/([^/?#]+?)(?:\/(\d+)px-[^/?#]+)?(?:[?#].*)?$/i);
+  if (!m || !/\.(jpe?g|png)$/i.test(m[3])) return url;
+  const need = widthPx * 1.25;   // marge pour les écrans à forte densité
+  const w = WIKI_THUMB_WIDTHS.find((x) => x >= need) || 1920;
+  if (m[4] && w >= Number(m[4])) return url;   // la miniature du fichier Excel est déjà aussi petite : on ne l'agrandit pas
+  const out = `${m[1]}thumb/${m[2]}/${m[3]}/${w}px-${m[3]}`;
+  try { wikiThumbFallback.set(new URL(out).href, url); } catch (e) { /* adresse inattendue */ }
+  return out;
+}
+document.addEventListener('error', (e) => {
+  const t = e.target;
+  if (!t || t.tagName !== 'IMG') return;
+  const original = wikiThumbFallback.get(t.currentSrc || t.src);
+  if (original && t.dataset.wikiFallback !== '1') { t.dataset.wikiFallback = '1'; t.src = original; }
+}, true);
 function imageSourceSized(reference, widthPx) {
   const url = imageSource(reference);
-  if (!/commons\.wikimedia\.org\/wiki\/Special:FilePath\//i.test(url)) return url;
+  if (!/commons\.wikimedia\.org\/wiki\/Special:FilePath\//i.test(url)) return widthPx > 0 ? wikiSizedUrl(url, widthPx) : url;
   const target = Math.max(Math.round(widthPx * 2), 80); // x2 pour les écrans à forte densité
   return `${url.split('?')[0]}?width=${target}`;
 }
