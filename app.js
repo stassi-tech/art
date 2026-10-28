@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v251';
+const APP_VERSION = 'v252';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -16279,4 +16279,35 @@ $('open-placement-proto-temp')?.addEventListener('click', () => {
   if (typeof ResizeObserver === 'function') new ResizeObserver(apply).observe(bar);
   window.addEventListener('resize', apply);
   window.addEventListener('orientationchange', apply);
+})();
+
+// v252 — DIAGNOSTIC TACTILE (uniquement si l'adresse contient ?debug=touch, par ex. mnemart.fr/?debug=touch).
+// Retour Stéphane : « les boutons répondent très mal sur le smartphone ». Plutôt que de deviner, ce petit
+// encadré noir en bas de l'écran note pour chaque tap : ce que le doigt a touché, au bout de combien de
+// millisecondes le « clic » est arrivé, les taps qui n'ont produit AUCUN clic (taps perdus), et les « gels »
+// de l'écran (moments où le téléphone n'a rien pu afficher pendant plus de 120 ms). N'a aucun effet sinon.
+(function touchDiagnostic() {
+  if (!/[?&]debug=touch/.test(location.search)) return;
+  const box = document.createElement('pre');
+  box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:hidden;margin:0;padding:6px 8px;background:rgba(0,0,0,.85);color:#9f9;font:11px/1.35 monospace;z-index:2147483647;pointer-events:none;white-space:pre-wrap;';
+  document.body.appendChild(box);
+  const lines = []; let taps = 0, lost = 0, slow = 0, freezeMax = 0, freezes = 0;
+  const name = (e) => { const t = e.target; if (!t || !t.tagName) return '?'; const b = t.closest ? (t.closest('button,a,[role=button],input,select,label') || t) : t; return (b.id ? '#' + b.id : b.tagName.toLowerCase() + (b.className && typeof b.className === 'string' ? '.' + b.className.split(' ')[0] : '')) + ' « ' + (b.textContent || '').trim().slice(0, 18) + ' »'; };
+  const draw = () => { box.textContent = 'DIAGNOSTIC TOUCH ' + APP_VERSION + ' — taps ' + taps + ', perdus ' + lost + ', clics lents (>250 ms) ' + slow + ', gels ' + freezes + ' (max ' + Math.round(freezeMax) + ' ms)\n' + lines.slice(-12).join('\n'); };
+  const log = (s) => { lines.push(s); draw(); };
+  let down = null, clicked = true, timer = null;
+  document.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return;
+    taps++; down = { t: performance.now(), n: name(e) }; clicked = false;
+    clearTimeout(timer); const d = down;
+    timer = setTimeout(() => { if (!clicked && down === d) { lost++; log('✗ TAP PERDU sur ' + d.n + ' (aucun clic en 800 ms)'); } }, 800);
+  }, true);
+  document.addEventListener('pointercancel', (e) => { log('! pointercancel sur ' + name(e) + ' (le navigateur a annulé le toucher : défilement ?)'); }, true);
+  document.addEventListener('click', (e) => {
+    if (!down) return; clicked = true; const dt = performance.now() - down.t;
+    if (dt > 250) slow++; log((dt > 250 ? '⚠ ' : '✓ ') + Math.round(dt) + ' ms  ' + name(e));
+  }, true);
+  let last = performance.now();
+  (function loop(now) { const gap = now - last; last = now; if (gap > 120 && !document.hidden && gap < 5000) { freezes++; freezeMax = Math.max(freezeMax, gap); log('❄ gel de ' + Math.round(gap) + ' ms'); } requestAnimationFrame(loop); })(performance.now());
+  draw();
 })();
