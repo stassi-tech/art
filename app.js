@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v260';
+const APP_VERSION = 'v261';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -3203,6 +3203,23 @@ function findArtistMasterRow(prenom, patronyme, surnom = '') {
 // prénom/patronyme, donc pas de « Prénom NOM » : on ne met pas leur dernier mot en majuscules et on ne
 // dit pas « X, dit X » à voix haute. Rempli par normaliseRows, lu par formatArtistName.
 const ANONYMOUS_ARTIST_KEYS = new Set();
+// v261 : le texte d'œuvre du maître n'est rattaché QU'À la ligne d'œuvre dont le titre correspond (ancien code de normaliseRows, déplacé ici tel quel
+// pour pouvoir être rejoué quand les textes arrivent après coup : voir ensureWorkTexts).
+function deriveWorkText(masterRow, title, location, ville) {
+  const emblemKey = keyName(masterRow['Œuvre emblématique']);
+  const workTextRaw = String(masterRow["Texte de l'œuvre"] || '').trim();
+  const titleKeyNow = keyName(title);
+  // v134 : quand le maître précise le « Lieu de l'œuvre emblématique » (artistes dont plusieurs lignes portent le
+  // même titre : Cranach, Fra Angelico, Sisley… ou un titre voisin : Mariani, Uccello), le texte n'est rattaché qu'à
+  // LA ligne dont le titre est strictement le même ET dont le lieu contient ce mot-clé : la bonne version.
+  const emblemPlace = keyName(masterRow["Lieu de l'œuvre emblématique"]);
+  if (emblemKey && workTextRaw && titleKeyNow) {
+    if (emblemPlace) {
+      if (titleKeyNow === emblemKey && keyName(`${location} ${ville}`).includes(emblemPlace)) return workTextRaw;
+    } else if (titleKeyNow === emblemKey || (emblemKey.length >= 12 && (titleKeyNow.startsWith(emblemKey) || emblemKey.startsWith(titleKeyNow)))) return workTextRaw;
+  }
+  return '';
+}
 function normaliseRows(rows) {
   return rows.map((row, rowIndex) => {
     // "image de l oeuvre" : nom de colonne du nouveau modèle ŒUVRES (restructuration V11, fichier
@@ -3465,18 +3482,7 @@ function normaliseRows(rows) {
       // Le texte n'est rattaché QU'À la ligne d'œuvre dont le titre correspond (comparaison sans accents ni
       // ponctuation, et tolérante à un titre plus long que celui noté au maître) : les autres œuvres du même
       // artiste n'ont donc pas de haut-parleur. Rien à saisir dans les 14 fichiers d'œuvres.
-      const emblemKey = keyName(masterRow['Œuvre emblématique']);
-      const workTextRaw = String(masterRow["Texte de l'œuvre"] || '').trim();
-      const titleKeyNow = keyName(title);
-      // v134 : quand le maître précise le « Lieu de l'œuvre emblématique » (artistes dont plusieurs lignes portent le
-      // même titre : Cranach, Fra Angelico, Sisley… ou un titre voisin : Mariani, Uccello), le texte n'est rattaché qu'à
-      // LA ligne dont le titre est strictement le même ET dont le lieu contient ce mot-clé : la bonne version.
-      const emblemPlace = keyName(masterRow["Lieu de l'œuvre emblématique"]);
-      if (emblemKey && workTextRaw && titleKeyNow) {
-        if (emblemPlace) {
-          if (titleKeyNow === emblemKey && keyName(`${location} ${ville}`).includes(emblemPlace)) workText = workTextRaw;
-        } else if (titleKeyNow === emblemKey || (emblemKey.length >= 12 && (titleKeyNow.startsWith(emblemKey) || emblemKey.startsWith(titleKeyNow)))) workText = workTextRaw;
-      }
+      workText = deriveWorkText(masterRow, title, location, ville);
     }
 
     // v126 : ni prénom ni patronyme (même après la jointure) mais un surnom = artiste de convention :
@@ -3502,7 +3508,8 @@ function normaliseRows(rows) {
       date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       associates, artistDates, materials, nature, natureAll: natureFull, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
       artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText, mapCard, birthCity,
-      row: rowIndex + 2
+      row: rowIndex + 2,
+      ...(masterRow && masterRow._light ? { _mr: masterRow } : {})   // v261 : fichier maître léger : les textes arrivent plus tard (voir ensureWorkTexts)
     };
   }).filter((question) => question && (question.image || question.artist || question.date || question.location || question.title));
 }
@@ -8859,6 +8866,35 @@ function upperPatronymeCore(p) {
 // l'était pas encore, chacun retéléchargeait et relisait le gros fichier maître (plus de 500 Ko) : jusqu'à 13 lectures identiques en
 // parallèle, qui occupaient le téléphone plusieurs secondes d'affilée (boutons qui ne répondent pas). Désormais tous les appels
 // partagent UNE seule lecture ; une nouvelle n'est refaite que si le fichier maître est réimporté (artistListPromise remis à zéro).
+// v261 : fichiers de textes par art et par siècle (voir l'atelier de textes, bouton « Préparer pour le site »). Même règle de nom que l'atelier.
+function textChunkName(artRaw, secRaw) {
+  const toks = String(artRaw || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').split(/[,;\/]/).map((t) => t.trim());
+  let art = 'autre'; for (const t of toks) { if (/^peint/.test(t)) { art = 'peinture'; break; } if (/^sculpt/.test(t)) { art = 'sculpture'; break; } }
+  const m = String(secRaw || '').match(/(\d{1,2})\s*(?:e|è|ème|eme|er)/i); const sec = m ? m[1] + 'e' : 'autre';
+  return `textes-${art}-${sec}.json`;
+}
+const textChunkCache = new Map();   // nom de morceau -> promesse { "Prénom|Patronyme": { b, w } }
+function loadTextChunk(name) {
+  if (!textChunkCache.has(name)) {
+    const pr = fetch(`textes/${name}?v=${DATA_CACHE_BUST}`).then((resp) => { if (!resp.ok) throw new Error('morceau introuvable'); return resp.json(); }).then((j) => (j && j.artistes) || {})
+      .catch(() => { textChunkCache.delete(name); return null; });   // échec : on ne retient pas l'échec, un prochain essai pourra réussir
+    textChunkCache.set(name, pr);
+  }
+  return textChunkCache.get(name);
+}
+async function ensureRowTexts(r) {   // remplit Bio / Texte de l'œuvre d'une ligne du maître léger (une seule fois)
+  if (!r || !r._light || r._textsReady) return !!(r && r._textsReady);
+  if (!r._hasBio && !r._hasWork) { r._textsReady = true; return true; }
+  const m = await loadTextChunk(r._chunk); if (!m) return false;
+  const t = m[r._tkey] || {}; r['Bio'] = String(t.b || '').trim(); r["Texte de l'œuvre"] = String(t.w || '').trim(); r._textsReady = true; return true;
+}
+// Les lignes d'œuvres (jeux, Imprégnation) portent bio / workText : avec le maître léger ils sont vides au départ ; on les remplit pour ces lignes-là seulement.
+async function ensureWorkTexts(rows) {
+  const todo = rows.filter((w) => w && w._mr && !w._txDone); if (!todo.length) return;
+  const masters = [...new Set(todo.map((w) => w._mr))];
+  await Promise.all(masters.map((m) => ensureRowTexts(m)));
+  todo.forEach((w) => { const m = w._mr; if (!m._textsReady) return; w.bio = String(m['Bio'] || '').trim(); w.workText = deriveWorkText(m, w.title, w.location, w.ville); w._txDone = true; });
+}
 let artistListPromise = null;
 function loadArtistListIfNeeded() {
   if (artistListLoaded) return Promise.resolve(true);
@@ -8932,6 +8968,20 @@ async function loadArtistListOnce() {
         const key = keyName(`${r['Prénom'] || ''} ${r['Patronyme'] || ''}`);
         const bio = bioByKey.get(key);
         if (bio && !String(r['Bio'] || '').trim()) r['Bio'] = bio; // v128 : colonne « Bio » de l'onglet principal prioritaire
+      });
+    }
+    // v261 (fichier maître LÉGER) : les textes des bios et des œuvres ne sont plus dans le maître mais dans « textes/textes-<art>-<siècle>.json ».
+    // Le maître léger porte les colonnes « A une bio » / « A un texte d'œuvre » (et le nombre d'images de chaque texte) ; chaque ligne retient son morceau
+    // (_chunk, calculé ICI sur les valeurs du maître, avant que la liste ne complète Art(s) et Siècle(s)) et sa clé dans ce morceau (_tkey, avant la mise en majuscules).
+    // Avec l'ANCIEN maître (colonnes Bio / Texte de l'œuvre présentes), rien ne change : les textes sont lus dedans, comme avant.
+    if (rows.length && Object.prototype.hasOwnProperty.call(rows[0], 'A une bio')) {
+      rows.forEach((r) => {
+        r._light = true;
+        r._tkey = `${String(r['Prénom'] == null ? '' : r['Prénom']).trim()}|${String(r['Patronyme'] == null ? '' : r['Patronyme']).trim()}`;
+        r._chunk = textChunkName(r['Art(s)'], r['Siècle(s)']);
+        r._hasBio = String(r['A une bio'] || '').trim() !== '';
+        r._hasWork = String(r["A un texte d'œuvre"] || '').trim() !== '';
+        r['Bio'] = ''; r["Texte de l'œuvre"] = '';
       });
     }
     // v132 : les artistes qui n'ont QUE des œuvres du 14e (siècle mis de côté) restent dans artistListRows
@@ -12957,6 +13007,7 @@ $('imp-start-button')?.addEventListener('click', async () => {
     // de l'œuvre) lui attache un texte à la première personne, lu par son haut-parleur — c'est la propriété
     // work.workText posée dans fetchQuizRows. Le filtre s'applique en dernier, après art/siècle/zone/niveau/artistes ;
     // s'il ne reste rien, on le dit plutôt que de lancer silencieusement des œuvres sans commentaire.
+    try { await ensureWorkTexts(pool); } catch (e) { /* maître léger : textes indisponibles, les œuvres s'affichent sans bio */ }   // v261
     if ($('imp-only-commented')?.checked) {
       const commented = pool.filter((r) => r.workText);
       if (!commented.length) { feedback.textContent = "Aucune œuvre commentée pour ce choix : élargissez l'art, le siècle, la zone ou le niveau."; return; }
@@ -15487,15 +15538,16 @@ async function cinemaCatalog() {
   evo.sort((a, b) => a.art.localeCompare(b.art) || keyName(a.title).localeCompare(keyName(b.title)));
   const arts = [];
   (artistListRows || []).forEach((r) => {
-    if (r._retired || !String(r['Bio'] || '').trim()) return;
+    if (r._retired || !(r._light ? r._hasBio : String(r['Bio'] || '').trim())) return;
     const g = (k) => String(r[k] == null ? '' : r[k]).trim();
     const pre = g('Prénom'), pat = g('Patronyme'), sur = g('Surnom'); const civil = [pre, pat].filter(Boolean).join(' ');
     const name = civil ? formatArtistName(civil) : sur; if (!name) return;
     const b = g('Année de naissance'), d = g('Année de mort'); const dates = (b && d && !/inconnu/i.test(`${b} ${d}`)) ? `${b} – ${d}` : '';
     const a = g('Art(s)').toLowerCase();
-    const parsed = parseBioMarkup(g('Bio'));
-    const wkTitle = g('Œuvre emblématique'), wkText = g("Texte de l'œuvre");   // v248 : l'œuvre principale commentée de l'artiste
-    arts.push({ kind: 'artist', wk: wkText ? wkTitle : '', wkText, wkN: wkText ? parseBioMarkup(wkText).marks.filter((m) => m.ref).length : 0, wkFind: keyName(wkTitle), row: r, name: civil && sur ? `${name}, dit ${sur}` : name, dates, p: a.includes('peinture'), s: a.includes('sculpture'), n: parsed.marks.filter((m) => m.ref).length, key: keyName(pat || sur || pre), find: keyName(`${pre} ${pat} ${sur}`) });
+    // v261 : maître léger = pas de texte ici ; le nombre d'images vient de deux colonnes du maître (« Images bio », « Images œuvre »), le texte est chargé au clic
+    const parsed = r._light ? { marks: { filter: () => ({ length: Number(r['Images bio']) || 0 }) } } : parseBioMarkup(g('Bio'));
+    const wkTitle = g('Œuvre emblématique'), wkText = r._light ? (r._hasWork ? '1' : '') : g("Texte de l'œuvre");   // v248 : l'œuvre principale commentée de l'artiste
+    arts.push({ kind: 'artist', wk: wkText ? wkTitle : '', wkText, wkN: wkText ? (r._light ? Number(r['Images œuvre']) || 0 : parseBioMarkup(wkText).marks.filter((m) => m.ref).length) : 0, wkFind: keyName(wkTitle), row: r, name: civil && sur ? `${name}, dit ${sur}` : name, dates, p: a.includes('peinture'), s: a.includes('sculpture'), n: parsed.marks.filter((m) => m.ref).length, key: keyName(pat || sur || pre), find: keyName(`${pre} ${pat} ${sur}`) });
   });
   arts.sort((a, b) => a.key.localeCompare(b.key));
   cinemaCat = { evo, arts }; return cinemaCat;
@@ -15530,10 +15582,10 @@ function cinemaRender() {
       const bA = document.createElement('button'); bA.type = 'button'; bA.className = 'cinema-item cinema-cell';
       const lA = document.createElement('span'); lA.className = 'nm'; lA.textContent = e.name; const mA = [e.dates, e.n ? `${e.n} images` : ''].filter(Boolean).join(' · ');
       if (mA) { const sm = document.createElement('small'); sm.textContent = mA; lA.appendChild(sm); }
-      const gA = document.createElement('span'); gA.className = 'go'; gA.textContent = '▶'; bA.append(lA, gA); bA.addEventListener('click', () => cinemaPlay(e));
+      const gA = document.createElement('span'); gA.className = 'go'; gA.textContent = '▶'; bA.append(lA, gA); bA.addEventListener('click', () => cinemaPlay(e)); bA.addEventListener('pointerdown', () => { if (e.row && e.row._light) loadTextChunk(e.row._chunk); }, { passive: true });
       const bW = document.createElement('button'); bW.type = 'button'; bW.className = 'cinema-item cinema-cell cinema-wk'; bW.disabled = !e.wk;
       const lW = document.createElement('span'); lW.className = 'nm'; if (e.wk) { const em = document.createElement('em'); em.textContent = e.wk; lW.appendChild(em); if (e.wkN) { const sm = document.createElement('small'); sm.textContent = `${e.wkN} images`; lW.appendChild(sm); } } else lW.textContent = '—';
-      const gW = document.createElement('span'); gW.className = 'go'; gW.textContent = e.wk ? '▶' : ''; bW.append(lW, gW); if (e.wk) bW.addEventListener('click', () => cinemaPlay(e, 'work'));
+      const gW = document.createElement('span'); gW.className = 'go'; gW.textContent = e.wk ? '▶' : ''; bW.append(lW, gW); if (e.wk) { bW.addEventListener('click', () => cinemaPlay(e, 'work')); bW.addEventListener('pointerdown', () => { if (e.row && e.row._light) loadTextChunk(e.row._chunk); }, { passive: true }); }
       row.append(bA, bW); list.appendChild(row);
     });
     if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.arts.length ? 'Aucun artiste ne correspond.' : 'Aucune biographie n’est disponible pour le moment.'}</div>`;
@@ -15571,7 +15623,18 @@ function cinemaTeardown() {   // remet l'écran Imprégnation comme on l'avait t
   if (cinemaSaved) { $('imp-ready-screen')?.classList.toggle('hidden', !!cinemaSaved.ready); $('imp-quiz-grid')?.classList.toggle('hidden', !!cinemaSaved.grid); }
 }
 function cinemaExit() { const prev = cinemaPrev || 'welcome'; cinemaTeardown(); showPanel(prev); }
-function cinemaPlay(e, what) {   // appelé directement par le clic (la voix du navigateur exige un geste de l'utilisateur : aucune attente avant le film)
+function cinemaPlay(e, what) {   // v261 : maître léger : on charge d'abord le texte de cet artiste (un seul petit fichier, souvent déjà reçu au toucher) puis on lance le film
+  if (e.row && e.row._light && !e.row._textsReady) {
+    ensureRowTexts(e.row).then((ok) => {
+      if (!ok || !(e.row['Bio'] || e.row["Texte de l'œuvre"])) { alert('Ce texte n’est pas disponible pour le moment (connexion ?). Réessayez dans un instant.'); return; }
+      if (e.kind === 'artist') e.wkText = e.row._hasWork ? String(e.row["Texte de l'œuvre"] || '').trim() : '';
+      cinemaPlayNow(e, what);
+    });
+    return;
+  }
+  cinemaPlayNow(e, what);
+}
+function cinemaPlayNow(e, what) {   // appelé directement par le clic (la voix du navigateur exige un geste de l'utilisateur : aucune attente avant le film)
   closeCinemaPicker();
   const gameOn = !cinemaActive && currentPanelName === 'impregnation' && $('imp-quiz-grid') && !$('imp-quiz-grid').classList.contains('hidden');
   if (!gameOn) {
