@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v259';
+const APP_VERSION = 'v260';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -11303,6 +11303,10 @@ function initBackgroundMosaic() {
 // que la page d'accueil (plus rapide, sans dépendre de Wikimedia) plutôt que les œuvres réelles de
 // la session — purement décorative, elle n'a jamais eu besoin de montrer le contenu exact à venir.
 function populateSessionMosaic() {
+  // v260 : la mosaïque est toujours la même (15 images fixes) et déjà construite depuis l'accueil : inutile de la détruire et de la
+  // recréer (re-décodage de 15 images floutées) à chaque écran « Ce jeu vous attend » ; on la garde, en retirant juste l'éventuelle vignette « touchée ».
+  const c = $('bg-mosaic');
+  if (c && c.querySelectorAll('.bg-tile').length === BG_MOSAIC_FILES.length) { c.querySelectorAll('.bg-tile.touched').forEach((t) => t.classList.remove('touched')); return; }
   initBackgroundMosaic();
 }
 function wireBgMosaicTiles() {
@@ -14479,32 +14483,45 @@ const INTRUS_STOPWORDS = new Set(['le', 'la', 'les', 'de', 'du', 'des', 'un', 'u
 function intrusTitleWords(title) {
   return String(title || '').toLowerCase().replace(/[«»"',.]/g, '').split(/\s+/).filter((w) => w.length > 3 && !INTRUS_STOPWORDS.has(w));
 }
+// v260 (Intrus : « une seconde où on se demande ce qui se passe » au clic sur « Commencer le jeu ») : pour CHACUNE des 10 questions, cette
+// fonction reparcourait les ~3 000 œuvres en recalculant à chaque fois les mêmes choses (clé auteur+titre, mots du titre, déplaçable ou non,
+// architecture ou non). On calcule maintenant ces informations UNE fois par œuvre (mémorisées), et les 10 questions les réutilisent.
+const intrusInfoMemo = new WeakMap();
+function intrusInfo(r) {
+  let i = intrusInfoMemo.get(r);
+  if (!i) {
+    const ak = famNormalize(r.artist);
+    i = { ak, ck: `${ak}|${famNormalize(r.title)}`, words: intrusTitleWords(r.title), mov: isMovableWork(r), arch: isArchitecturalWork(r), hasTitle: !!(r.title && r.title.trim()) };
+    intrusInfoMemo.set(r, i);
+  }
+  return i;
+}
 function pickIntrusDistractors(correct, pool, requireDistinctArtist) {
   // Rendre le choix plus exigeant : on préfère des intrus qui partagent un mot significatif du
-  // titre (ex. « paysage »), sinon des œuvres d'un AUTRE artiste (pour ne pas trivialiser un
+  // titre (ex. « paysage »), sinon des œuvres d'un AUTRE artiste (pour ne pas trivialiser un
   // choix limité au nom du peintre), sinon n'importe quoi d'autre du réservoir.
-  const contentKey = (r) => `${famNormalize(r.artist)}|${famNormalize(r.title)}`;
-  const correctKey = contentKey(correct);
+  const ci = intrusInfo(correct);
+  const correctKey = ci.ck;
   const usedKeys = new Set([correctKey]);
-  const usedArtists = new Set([famNormalize(correct.artist)]);
-  const correctWords = new Set(intrusTitleWords(correct.title));
+  const usedArtists = new Set([ci.ak]);
+  const correctWords = new Set(ci.words);
   // On exclut d'emblée les œuvres sans titre exploitable (choix ambigu, illisible dans la liste)
   // et tout doublon de contenu (même couple auteur+titre, même si ce sont deux lignes distinctes).
-  let others = pool.filter((r) => r !== correct && r.title && r.title.trim() && contentKey(r) !== correctKey && sameMovability(r, correct)); // v122 : jamais de mélange déplaçable / non déplaçable
+  let others = pool.filter((r) => { if (r === correct) return false; const i = intrusInfo(r); return i.hasTitle && i.ck !== correctKey && i.mov === ci.mov; }); // v122 : jamais de mélange déplaçable / non déplaçable
   // Quand seul le nom de l'artiste sera affiché (pas de titre pour distinguer), il FAUT trois
-  // artistes différents, sinon deux « Monet » pourraient se retrouver face à face.
-  if (requireDistinctArtist) others = others.filter((r) => !usedArtists.has(famNormalize(r.artist)));
-  { const sameKind = others.filter((r) => isArchitecturalWork(r) === isArchitecturalWork(correct)); if (sameKind.length >= 2) others = sameKind; } // v136 : pas d'architecture face à une sculpture
-  let candidates = correctWords.size ? others.filter((r) => intrusTitleWords(r.title).some((w) => correctWords.has(w))) : [];
+  // artistes différents, sinon deux « Monet » pourraient se retrouver face à face.
+  if (requireDistinctArtist) others = others.filter((r) => !usedArtists.has(intrusInfo(r).ak));
+  { const sameKind = others.filter((r) => intrusInfo(r).arch === ci.arch); if (sameKind.length >= 2) others = sameKind; } // v136 : pas d'architecture face à une sculpture
+  let candidates = correctWords.size ? others.filter((r) => intrusInfo(r).words.some((w) => correctWords.has(w))) : [];
   const picked = [];
   const drawFrom = (list) => {
-    const copy = list.filter((r) => !picked.includes(r) && !usedKeys.has(contentKey(r)) && (!requireDistinctArtist || !usedArtists.has(famNormalize(r.artist))));
+    const copy = list.filter((r) => !picked.includes(r) && !usedKeys.has(intrusInfo(r).ck) && (!requireDistinctArtist || !usedArtists.has(intrusInfo(r).ak)));
     while (picked.length < 2 && copy.length) {
       const idx = Math.floor(Math.random() * copy.length);
       const chosen = copy.splice(idx, 1)[0];
       picked.push(chosen);
-      usedKeys.add(contentKey(chosen));
-      usedArtists.add(famNormalize(chosen.artist));
+      usedKeys.add(intrusInfo(chosen).ck);
+      usedArtists.add(intrusInfo(chosen).ak);
     }
   };
   drawFrom(candidates);
