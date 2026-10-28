@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v266';
+const APP_VERSION = 'v267';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -8951,9 +8951,9 @@ function loadTextChunk(name) {
 }
 async function ensureRowTexts(r) {   // remplit Bio / Texte de l'œuvre d'une ligne du maître léger (une seule fois)
   if (!r || !r._light || r._textsReady) return !!(r && r._textsReady);
-  if (!r._hasBio && !r._hasWork) { r._textsReady = true; return true; }
+  if (!r._hasBio && !r._hasWork && !r._hasComm) { r._textsReady = true; return true; }
   const m = await loadTextChunk(r._chunk); if (!m) return false;
-  const t = m[r._tkey] || {}; r['Bio'] = String(t.b || '').trim(); r["Texte de l'œuvre"] = String(t.w || '').trim(); r._textsReady = true; return true;
+  const t = m[r._tkey] || {}; r['Bio'] = String(t.b || '').trim(); r["Texte de l'œuvre"] = String(t.w || '').trim(); r["Commentaire de l'œuvre"] = String(t.c || '').trim(); r._textsReady = true; return true;
 }
 // Les lignes d'œuvres (jeux, Imprégnation) portent bio / workText : avec le maître léger ils sont vides au départ ; on les remplit pour ces lignes-là seulement.
 async function ensureWorkTexts(rows) {
@@ -9048,7 +9048,8 @@ async function loadArtistListOnce() {
         r._chunk = textChunkName(r['Art(s)'], r['Siècle(s)']);
         r._hasBio = String(r['A une bio'] || '').trim() !== '';
         r._hasWork = String(r["A un texte d'œuvre"] || '').trim() !== '';
-        r['Bio'] = ''; r["Texte de l'œuvre"] = '';
+        r._hasComm = String(r["A un commentaire d'œuvre"] || '').trim() !== '';   // v267 : commentaire approfondi de l'œuvre (3e personne), 3e colonne du menu des diaporamas
+        r['Bio'] = ''; r["Texte de l'œuvre"] = ''; r["Commentaire de l'œuvre"] = '';
       });
     }
     // v132 : les artistes qui n'ont QUE des œuvres du 14e (siècle mis de côté) restent dans artistListRows
@@ -15616,8 +15617,9 @@ async function cinemaCatalog() {
     const a = g('Art(s)').toLowerCase();
     // v261 : maître léger = pas de texte ici ; le nombre d'images vient de deux colonnes du maître (« Images bio », « Images œuvre »), le texte est chargé au clic
     const parsed = r._light ? { marks: { filter: () => ({ length: Number(r['Images bio']) || 0 }) } } : parseBioMarkup(g('Bio'));
-    const wkTitle = g('Œuvre emblématique'), wkText = r._light ? (r._hasWork ? '1' : '') : g("Texte de l'œuvre");   // v248 : l'œuvre principale commentée de l'artiste
-    arts.push({ kind: 'artist', wk: wkText ? wkTitle : '', wkText, wkN: wkText ? (r._light ? Number(r['Images œuvre']) || 0 : parseBioMarkup(wkText).marks.filter((m) => m.ref).length) : 0, wkFind: keyName(wkTitle), row: r, name: civil && sur ? `${name}, dit ${sur}` : name, dates, p: a.includes('peinture'), s: a.includes('sculpture'), n: parsed.marks.filter((m) => m.ref).length, key: keyName(pat || sur || pre), find: keyName(`${pre} ${pat} ${sur}`) });
+    const wkTitle = g('Œuvre emblématique'), wkText = r._light ? (r._hasWork ? '1' : '') : g("Texte de l'œuvre");
+    const cmText = r._light ? (r._hasComm ? '1' : '') : g("Commentaire de l'œuvre");   // v267   // v248 : l'œuvre principale commentée de l'artiste
+    arts.push({ kind: 'artist', wk: wkText ? wkTitle : '', wkText, cm: cmText ? wkTitle : '', cmText, cmN: cmText && !r._light ? parseBioMarkup(cmText).marks.filter((m) => m.ref).length : 0, wkN: wkText ? (r._light ? Number(r['Images œuvre']) || 0 : parseBioMarkup(wkText).marks.filter((m) => m.ref).length) : 0, wkFind: keyName(wkTitle), row: r, name: civil && sur ? `${name}, dit ${sur}` : name, dates, p: a.includes('peinture'), s: a.includes('sculpture'), n: parsed.marks.filter((m) => m.ref).length, key: keyName(pat || sur || pre), find: keyName(`${pre} ${pat} ${sur}`) });
   });
   arts.sort((a, b) => a.key.localeCompare(b.key));
   cinemaCat = { evo, arts }; return cinemaCat;
@@ -15644,7 +15646,7 @@ function cinemaRender() {
     });
     if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.evo.length ? 'Aucun diaporama ne correspond.' : 'Aucune histoire des formes n’est encore publiée.'}</div>`;
   } else {
-    if (cinemaCat.arts.length) { const hd = document.createElement('div'); hd.className = 'cinema-cols'; hd.innerHTML = '<span>Artiste</span><span>Œuvre principale</span>'; list.appendChild(hd); }
+    if (cinemaCat.arts.length) { const hd = document.createElement('div'); hd.className = 'cinema-cols'; hd.innerHTML = '<span>Biographie de l’artiste</span><span>Présentation rapide de l’œuvre principale</span><span>Commentaire approfondi de l’œuvre</span>'; list.appendChild(hd); }
     cinemaCat.arts.forEach((e) => {
       if (art === 'peinture' && !e.p) return; if (art === 'sculpture' && !e.s) return; if (q && !e.find.includes(q) && !e.key.includes(q) && !e.wkFind.includes(q)) return;
       if (!q) group((e.key[0] || '#').toUpperCase()); n++;
@@ -15656,7 +15658,11 @@ function cinemaRender() {
       const bW = document.createElement('button'); bW.type = 'button'; bW.className = 'cinema-item cinema-cell cinema-wk'; bW.disabled = !e.wk;
       const lW = document.createElement('span'); lW.className = 'nm'; if (e.wk) { const em = document.createElement('em'); em.textContent = e.wk; lW.appendChild(em); if (e.wkN) { const sm = document.createElement('small'); sm.textContent = `${e.wkN} images`; lW.appendChild(sm); } } else lW.textContent = '—';
       const gW = document.createElement('span'); gW.className = 'go'; gW.textContent = e.wk ? '▶' : ''; bW.append(lW, gW); if (e.wk) { bW.addEventListener('click', () => cinemaPlay(e, 'work')); bW.addEventListener('pointerdown', () => { if (e.row && e.row._light) loadTextChunk(e.row._chunk); cinemaPrefetchWorkImage(e); }, { passive: true }); }
-      row.append(bA, bW); list.appendChild(row);
+      const bC = document.createElement('button'); bC.type = 'button'; bC.className = 'cinema-item cinema-cell cinema-cm'; bC.disabled = !e.cm;   // v267 : 3e colonne
+      const lC = document.createElement('span'); lC.className = 'nm'; if (e.cm) { lC.textContent = 'Commentaire'; if (e.cmN) { const sm = document.createElement('small'); sm.textContent = `${e.cmN} images`; lC.appendChild(sm); } } else lC.textContent = '—';
+      const gC = document.createElement('span'); gC.className = 'go'; gC.textContent = e.cm ? '▶' : ''; bC.append(lC, gC);
+      if (e.cm) { bC.addEventListener('click', () => cinemaPlay(e, 'comment')); bC.addEventListener('pointerdown', () => { if (e.row && e.row._light) loadTextChunk(e.row._chunk); cinemaPrefetchWorkImage(e); }, { passive: true }); }
+      row.append(bA, bW, bC); list.appendChild(row);
     });
     if (!n) list.innerHTML = `<div class="cinema-empty">${cinemaCat.arts.length ? 'Aucun artiste ne correspond.' : 'Aucune biographie n’est disponible pour le moment.'}</div>`;
   }
@@ -15696,8 +15702,8 @@ function cinemaExit() { const prev = cinemaPrev || 'welcome'; cinemaTeardown(); 
 function cinemaPlay(e, what) {   // v261 : maître léger : on charge d'abord le texte de cet artiste (un seul petit fichier, souvent déjà reçu au toucher) puis on lance le film
   if (e.row && e.row._light && !e.row._textsReady) {
     ensureRowTexts(e.row).then((ok) => {
-      if (!ok || !(e.row['Bio'] || e.row["Texte de l'œuvre"])) { alert('Ce texte n’est pas disponible pour le moment (connexion ?). Réessayez dans un instant.'); return; }
-      if (e.kind === 'artist') e.wkText = e.row._hasWork ? String(e.row["Texte de l'œuvre"] || '').trim() : '';
+      if (!ok || !(e.row['Bio'] || e.row["Texte de l'œuvre"] || e.row["Commentaire de l'œuvre"])) { alert('Ce texte n’est pas disponible pour le moment (connexion ?). Réessayez dans un instant.'); return; }
+      if (e.kind === 'artist') { e.wkText = e.row._hasWork ? String(e.row["Texte de l'œuvre"] || '').trim() : ''; e.cmText = e.row._hasComm ? String(e.row["Commentaire de l'œuvre"] || '').trim() : ''; }
       cinemaPlayNow(e, what);
     });
     return;
@@ -15705,10 +15711,11 @@ function cinemaPlay(e, what) {   // v261 : maître léger : on charge d'abord le
   cinemaPlayNow(e, what);
 }
 // v263 : le texte d'une œuvre n'a pas toujours de balise [image: …] : dans ce cas le film montre l'image de l'œuvre prise dans le fichier d'œuvres (colonne « Image de l'œuvre »), celle dont le titre correspond à l'œuvre commentée du maître.
-function cinemaWorkImage(e) {
+function cinemaWorkImage(e, txt) {
   try {
-    if (!e || !e.row || !e.wkText) return null;
-    if (bioFirstImg(parseBioMarkup(e.wkText).marks)) return null;   // le texte a ses propres images : on ne touche à rien
+    txt = txt || e.wkText;
+    if (!e || !e.row || !txt) return null;
+    if (bioFirstImg(parseBioMarkup(txt).marks)) return null;   // le texte a ses propres images : on ne touche à rien
     const pk = keyName(e.row['Prénom']), pa = keyName(e.row['Patronyme']); let found = null;
     quizRowsResolvedCache.forEach((rows) => { if (found) return; (rows || []).some((w) => { if (w.image && keyName(w.prenom) === pk && keyName(w.patronyme) === pa && deriveWorkText(e.row, w.title, w.location, w.ville)) { found = { image: w.image, title: w.title, date: w.date }; return true; } return false; }); });
     return found;
@@ -15723,10 +15730,10 @@ function cinemaPlayNow(e, what) {   // appelé directement par le clic (la voix 
   if (!gameOn) {
     const inOther = !cinemaActive && ['intrus', 'reconstitution', 'vraifaux', 'famille', 'chrono', 'quiz'].includes(currentPanelName);
     if (inOther && !confirm('Le diaporama va interrompre l’exercice en cours. Continuer ?')) return;
-    cinemaEnter(e.kind === 'topic' ? e.title : (what === 'work' ? '«\u00a0' + e.wk + '\u00a0»' : e.name), e.kind === 'topic' ? '' : (what === 'work' ? e.name : e.dates));
+    cinemaEnter(e.kind === 'topic' ? e.title : ((what === 'work' || what === 'comment') ? '«\u00a0' + e.wk + '\u00a0»' : e.name), e.kind === 'topic' ? '' : ((what === 'work' || what === 'comment') ? e.name : e.dates));
   }
   if (e.kind === 'topic') openImpTopicText({}, e.id);
-  else if (what === 'work') { const wi = cinemaWorkImage(e); openImpArtistBio({ ...cinemaPseudo(e.row), bio: '', artistImage: '', artistImageCaption: '', artistDates: '', title: (wi && wi.title) || e.wk, workText: e.wkText, ...(wi ? { image: wi.image, date: wi.date } : {}) }, true, { work: true, by: [e.name, e.dates].filter(Boolean).join(' · ') }); }   // v248 : le film de l'œuvre principale
+  else if (what === 'work' || what === 'comment') { const wtx = what === 'comment' ? e.cmText : e.wkText; const wi = cinemaWorkImage(e, wtx); openImpArtistBio({ ...cinemaPseudo(e.row), bio: '', artistImage: '', artistImageCaption: '', artistDates: '', title: (wi && wi.title) || e.wk, workText: wtx, ...(wi ? { image: wi.image, date: wi.date } : {}) }, true, { work: true, by: [e.name, e.dates].filter(Boolean).join(' · ') }); }   // v248 : le film de l'œuvre principale
   else openImpArtistBio(cinemaPseudo(e.row), true);
   cinemaCur = { e, what: what || '' }; cinemaSyncNav();
 }
@@ -15738,10 +15745,10 @@ function cinemaList() {
   const q = keyName(($('cinema-search') || {}).value || ''); const art = ($('cinema-art') || {}).value || '';
   const ok = (e) => (cinemaCur.e.kind === 'topic'
     ? !(art && e.art !== art) && !(q && !keyName(e.title).includes(q))
-    : !(art === 'peinture' && !e.p) && !(art === 'sculpture' && !e.s) && !(q && !e.find.includes(q) && !e.key.includes(q) && !e.wkFind.includes(q)) && (cinemaCur.what !== 'work' || !!e.wk));
+    : !(art === 'peinture' && !e.p) && !(art === 'sculpture' && !e.s) && !(q && !e.find.includes(q) && !e.key.includes(q) && !e.wkFind.includes(q)) && (cinemaCur.what === 'comment' ? !!e.cm : (cinemaCur.what !== 'work' || !!e.wk)));
   const all = cinemaCur.e.kind === 'topic' ? cinemaCat.evo : cinemaCat.arts;
   const f = all.filter(ok);
-  return f.includes(cinemaCur.e) ? f : all.filter((e) => cinemaCur.what !== 'work' || cinemaCur.e.kind === 'topic' || !!e.wk);
+  return f.includes(cinemaCur.e) ? f : all.filter((e) => cinemaCur.e.kind === 'topic' || (cinemaCur.what === 'comment' ? !!e.cm : (cinemaCur.what !== 'work' || !!e.wk)));
 }
 function cinemaSyncNav() {
   const pb = $('imp-bio-prevfilm'), nb = $('imp-bio-nextfilm'); if (!pb || !nb) return;
