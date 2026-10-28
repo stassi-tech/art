@@ -25,10 +25,19 @@
   }
   window.addEventListener('error', function (e) {
     var t = e.target;
-    if (t && t !== window && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) { show('Fichier non chargé : ' + (t.src || t.href)); return; }
+    if (t && t !== window) {   /* erreur de chargement d'un fichier (et non du programme) */
+      if (t.tagName === 'SCRIPT' || t.tagName === 'LINK') show('Fichier non chargé : ' + (t.src || t.href));
+      else if (/[?&]debug=touch/.test(location.search)) show('Image non chargée : ' + String(t.currentSrc || t.src || t.tagName).slice(0, 90));   /* une image qui manque n'empêche rien : affichée seulement en mode diagnostic */
+      return;
+    }
     show((e.message || 'erreur') + '  [' + String(e.filename || '').split('/').pop() + ':' + e.lineno + ':' + e.colno + ']');
   }, true);
-  window.addEventListener('unhandledrejection', function (e) { var r = e.reason; show('Promesse rejetée : ' + (r && (r.stack || r.message) || r)); });
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e.reason;
+    /* Une « promesse rejetée » sans aucun message (reason = undefined) est un petit bruit sans conséquence (ex. une lecture audio refusée par le téléphone) : on ne l'affiche pas, sauf en mode diagnostic (?debug=touch). */
+    if (!r || (!r.message && !r.stack)) { if (/[?&]debug=touch/.test(location.search)) show('Promesse rejetée sans message (' + String(r) + ')'); return; }
+    show('Promesse rejetée : ' + (r.stack || r.message));
+  });
   window.addEventListener('load', function () { setTimeout(function () { if (!window.__mnemartBooted) show('Le programme app.js ne s\'est pas terminé (il s\'est arrêté en cours de route).'); }, 3500); });
 })();
 </script>
@@ -2266,6 +2275,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=478"></script>
+    <script defer src="app.js?v=479"></script>
   </body>
 </html>
