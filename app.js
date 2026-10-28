@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v264';
+const APP_VERSION = 'v265';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1205,6 +1205,22 @@ function getGlobalVoice() {
   const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith('fr'));
   return voices.find((v) => v.name === prefs.voiceName) || null;
 }
+// v265 (retour Stéphane, PC, voix « Automatique » : « Adam » lu avec le m alors que le mot est réglé dans l'atelier) : sans voix choisie, le navigateur parle avec SA voix française
+// par défaut, que l'application ne connaissait pas — elle n'appliquait donc que l'écriture commune, pas celle réglée pour cette voix. Désormais l'application désigne elle-même
+// cette voix (la voix française par défaut du navigateur) : c'est elle qui parle, et ce sont ses réglages de l'atelier qui s'appliquent.
+function impDefaultFrVoice() {
+  try {
+    const fr = (window.speechSynthesis ? speechSynthesis.getVoices() : []).filter((v) => /^fr/i.test(v.lang || ''));
+    return fr.find((v) => v.default && /^fr[-_]FR$/i.test(v.lang)) || fr.find((v) => /^fr[-_]FR$/i.test(v.lang)) || fr.find((v) => v.default) || fr[0] || null;
+  } catch (e) { return null; }
+}
+try {
+  if (window.speechSynthesis && !speechSynthesis.__voiceWrapped) {
+    const origSpeak = speechSynthesis.speak.bind(speechSynthesis);
+    speechSynthesis.speak = function (u) { try { if (u && !u.voice && /^fr/i.test(u.lang || 'fr-FR')) { const dv = impDefaultFrVoice(); if (dv) u.voice = dv; } } catch (e) { /* ignoré */ } return origSpeak(u); };
+    speechSynthesis.__voiceWrapped = true;
+  }
+} catch (e) { /* ignoré */ }
 function populateGlobalVoiceSelect() {
   const select = $('pref-voice');
   if (!select) return;
@@ -3001,7 +3017,7 @@ const PRONUNCIATION_BY_VOICE = {
 function currentPronunciationOverrides() {
   try {
     const norm = (t) => String(t || '').toLowerCase().replace(/[()\-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-    let name = norm((getGlobalPrefs() || {}).voiceName) || norm(typeof impAutoVoice !== 'undefined' && impAutoVoice ? impAutoVoice.name : '');   // v187 : voix choisie automatiquement
+    let name = norm((getGlobalPrefs() || {}).voiceName) || norm(typeof impAutoVoice !== 'undefined' && impAutoVoice ? impAutoVoice.name : '') || norm(typeof impSelectedVoice !== 'undefined' && impSelectedVoice ? impSelectedVoice.name : '') || norm((impDefaultFrVoice() || {}).name);   // v187 : voix choisie automatiquement ; v265 : sinon la voix française par défaut du navigateur
     if (!name) {
       // Aucune voix choisie dans les réglages : sur un téléphone qui n'a que les deux voix françaises,
       // c'est l'une d'elles qui parle, donc on applique leurs réglages.
