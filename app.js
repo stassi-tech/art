@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v262';
+const APP_VERSION = 'v263';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -3067,6 +3067,46 @@ function cachedRegExp(source, flags) {
   r.lastIndex = 0;
   return r;
 }
+// v263 (retour Stéphane : « j'ai réglé "sœur" au singulier, mais le pluriel est faux : tous les noms communs, singulier ou pluriel, se prononcent pareil ») :
+// la table de prononciation (atelier) est écrite mot par mot. Pour chaque mot simple de la table, on déduit donc l'autre nombre (sœur ↔ sœurs, vœu ↔ vœux,
+// élément ↔ éléments…) et il se lit comme le mot réglé. Règles : (1) une écriture réglée à la main pour la voix en cours passe toujours avant ;
+// (2) si seul un des deux est réglé pour cette voix, l'autre l'imite ; (3) si les deux sont dans la table commune, le singulier sert de référence ;
+// (4) seuls les mots écrits en MINUSCULES sont concernés : les noms propres (Adam / Adams) gardent leur écriture. Un mot absent de la table n'est pas déduit s'il est dans PLURAL_SANS_DEDUCTION.
+// Nom commun ou nom propre ? Écrit en minuscules → nom commun ; en majuscule initiale → nom commun seulement en début de phrase ET si l'écriture réglée commence par une minuscule (« Sœurs jumelles »). Renvoie l'écriture à poser, ou null (nom propre : on ne touche pas).
+function nounCase(m, off, str, val) {
+  if (m[0] === m[0].toLowerCase() && m[0] !== m[0].toUpperCase()) return val;
+  if (!val || !/^\p{Ll}/u.test(val)) return null;
+  if (!/(^|[.!?…:»\n])\s*$/.test(str.slice(Math.max(0, off - 12), off)) && off > 12) return null;
+  return val.charAt(0).toUpperCase() + val.slice(1);
+}
+const PLURAL_SANS_DEDUCTION = new Set(['fine']);
+const pronunciationVariantsCache = new Map();
+function pronunciationVariants(vo) {
+  if (pronunciationVariantsCache.has(vo || null)) return pronunciationVariantsCache.get(vo || null);
+  const own = (w) => !!vo && Object.prototype.hasOwnProperty.call(vo, w);
+  const eff = (w) => (own(w) ? vo[w] : PRONUNCIATION_FIXES[w]);
+  const inTable = (w) => Object.prototype.hasOwnProperty.call(PRONUNCIATION_FIXES, w);
+  const simple = /^[a-zà-ÿœæ]{3,}$/;
+  const toPlural = (w) => (/(s|x|z)$/.test(w) ? null : /(eau|eu|œu)$/.test(w) ? w + 'x' : /al$/.test(w) ? w.slice(0, -2) + 'aux' : w + 's');
+  const toSingular = (w) => (/(ss|us|is|as|os)$/.test(w) || /x$/.test(w) && !/(eaux|eux|œux|aux)$/.test(w) ? null : /aux$/.test(w) ? w.slice(0, -3) + 'al' : /(eaux|eux|œux)$/.test(w) ? w.slice(0, -1) : /s$/.test(w) ? w.slice(0, -1) : null);
+  const follow = new Map(), derived = [];
+  Object.keys(PRONUNCIATION_FIXES).forEach((w) => {
+    if (!simple.test(w) || PLURAL_SANS_DEDUCTION.has(w)) return;
+    const pl = toPlural(w);
+    if (pl && simple.test(pl)) {   // w est un singulier : son pluriel pl l'imite
+      if (inTable(pl)) {
+        if (own(pl)) { if (!own(w)) follow.set(w, vo[pl]); }
+        else follow.set(pl, eff(w));
+      } else if (eff(w) !== '' && eff(w) != null) derived.push([pl, eff(w)]);
+      return;
+    }
+    const sg = toSingular(w);   // w est un pluriel : son singulier l'imite, sauf si ce singulier est lui-même dans la table (traité à sa place)
+    if (sg && simple.test(sg) && !inTable(sg) && !PLURAL_SANS_DEDUCTION.has(sg) && eff(w) !== '' && eff(w) != null) derived.push([sg, eff(w)]);
+  });
+  const res = { follow, derived };
+  pronunciationVariantsCache.set(vo || null, res);
+  return res;
+}
 function fixSpeechPronunciation(text) {
   // Le texte entre parenthèses (ex. un nom de musée alternatif) reste utile à l'écran mais
   // alourdit la lecture à voix haute : on le retire ici, avant toute autre correction, pour que
@@ -3154,14 +3194,25 @@ function fixSpeechPronunciation(text) {
   // casse, Unicode, avec contrôles de frontières), un simple « le texte contient-il ce mot ? » élimine d'emblée les absents. Réservé aux mots faits de
   // lettres simples (sans caractère spécial d'expression régulière) ; le texte en minuscules est recalculé dès qu'une correction le modifie.
   let lowOut = out.toLowerCase();
+  const variants = pronunciationVariants(voiceOverrides);
   Object.entries(PRONUNCIATION_FIXES).forEach(([wrong, baseRight]) => {
     const isPrefix = wrong.endsWith('*');
     const stem = isPrefix ? wrong.slice(0, -1) : wrong;
     const hasOverride = voiceOverrides && Object.prototype.hasOwnProperty.call(voiceOverrides, wrong);
     const right = hasOverride ? voiceOverrides[wrong] : baseRight;
-    if (hasOverride && right === '') return; // '' = cette voix lit le mot tel quel
+    const fol = variants.follow.get(wrong);   // v263 : en minuscules (nom commun), ce mot imite son singulier / pluriel
+    if (hasOverride && right === '' && fol === undefined) return; // '' = cette voix lit le mot tel quel
     if (/^[a-zà-ÿ0-9 '’-]+$/.test(stem) && !lowOut.includes(stem)) return;
-    const next = out.replace(cachedRegExp(`${NB}${stem}${isPrefix ? '' : NA}`, 'giu'), right);
+    const next = out.replace(cachedRegExp(`${NB}${stem}${isPrefix ? '' : NA}`, 'giu'), fol === undefined ? right : (m, off, str) => {
+      const lw = nounCase(m, off, str, fol);
+      if (lw === null) return right === '' ? m : right;
+      return fol === '' ? m : lw;
+    });
+    if (next !== out) { out = next; lowOut = out.toLowerCase(); }
+  });
+  variants.derived.forEach(([word, right]) => {   // v263 : l'autre nombre d'un mot réglé, absent de la table (sœur → sœurs…), en minuscules seulement
+    if (!lowOut.includes(word)) return;
+    const next = out.replace(cachedRegExp(`${NB}${word}${NA}`, 'giu'), (m, off, str) => { const lw = nounCase(m, off, str, right); return lw === null ? m : lw; });
     if (next !== out) { out = next; lowOut = out.toLowerCase(); }
   });
   return out;
@@ -9426,6 +9477,8 @@ $('global-home-button')?.addEventListener('click', () => {
 const isStandaloneApp = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
 if (isStandaloneApp) $('global-back-button')?.classList.remove('hidden');
 $('global-back-button')?.addEventListener('click', () => {
+  // v263 (retour Stéphane : « après un diaporama, la flèche du bandeau me ramène au menu ; il faudrait retomber sur la liste des diaporamas ») :
+  if (cinemaActive) { cinemaExit(); openCinemaPicker(); return; }
   // v113 (retour Stéphane, voir le commentaire complet sur global-home-button juste au-dessus) :
   // depuis la salle d'exposition/la visionneuse, la flèche doit ramener au menu des exercices —
   // même destination que #scale-close-museum et le geste du sac à dos — plutôt que de laisser
@@ -15634,7 +15687,7 @@ function cinemaPlay(e, what) {   // v261 : maître léger : on charge d'abord le
   }
   cinemaPlayNow(e, what);
 }
-// v262 : le texte d'une œuvre n'a pas toujours de balise [image: …] : dans ce cas le film montre l'image de l'œuvre prise dans le fichier d'œuvres (colonne « Image de l'œuvre »), celle dont le titre correspond à l'œuvre commentée du maître.
+// v263 : le texte d'une œuvre n'a pas toujours de balise [image: …] : dans ce cas le film montre l'image de l'œuvre prise dans le fichier d'œuvres (colonne « Image de l'œuvre »), celle dont le titre correspond à l'œuvre commentée du maître.
 function cinemaWorkImage(e) {
   try {
     if (!e || !e.row || !e.wkText) return null;
@@ -15670,9 +15723,11 @@ $('cinema-art')?.addEventListener('change', cinemaRender);
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && $('cinema-picker') && !$('cinema-picker').classList.contains('hidden')) closeCinemaPicker(); });
 
 window.addEventListener('popstate', (event) => {
+  const wasCinema = cinemaActive;   // v263 : retour arrière du téléphone / du navigateur depuis un diaporama → la liste des diaporamas
   suppressHistoryPush = true;
   showPanel(event.state?.panel || 'welcome');
   suppressHistoryPush = false;
+  if (wasCinema) openCinemaPicker();
 });
 
 // Le lien « Créez un compte » du texte d'accueil met en évidence le vrai bloc « Mon compte »
