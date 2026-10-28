@@ -6,7 +6,23 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v256';
+const APP_VERSION = 'v257';
+// v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
+// sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
+// de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
+// résultat exact (c'est ce que la norme demande à localeCompare), mais bien plus rapide.
+(function fastLocaleCompare() {
+  try {
+    const orig = String.prototype.localeCompare; const cache = new Map();
+    String.prototype.localeCompare = function (that, locales, options) {
+      if ((locales !== undefined && typeof locales !== 'string') || (options !== undefined && (options === null || typeof options !== 'object'))) return orig.call(this, that, locales, options);
+      const k = (locales || '') + '|' + (options ? JSON.stringify(options) : '');
+      let c = cache.get(k);
+      if (!c) { try { c = new Intl.Collator(locales, options); } catch (e) { return orig.call(this, that, locales, options); } cache.set(k, c); }
+      return c.compare(String(this), String(that));
+    };
+  } catch (e) { /* on garde le comportement d'origine */ }
+})();
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -936,7 +952,17 @@ function artistMatchesCurrentField(row) {
   }
   return true;
 }
-async function populateArtistSuggestions() {
+// v257 : chaque case cochée (champ, niveau, siècle…) redemande cette liste de ~500 artistes. Plusieurs taps rapprochés (cas normal sur
+// téléphone) la reconstruisaient autant de fois ; les appels arrivant à moins de 180 ms d'écart sont maintenant regroupés en UN seul.
+let populateArtistSuggestionsPending = null;
+function populateArtistSuggestions() {
+  if (populateArtistSuggestionsPending) return populateArtistSuggestionsPending;
+  populateArtistSuggestionsPending = new Promise((resolve) => {
+    setTimeout(() => { populateArtistSuggestionsPending = null; populateArtistSuggestionsNow().then(resolve, resolve); }, 180);
+  });
+  return populateArtistSuggestionsPending;
+}
+async function populateArtistSuggestionsNow() {
   const list = $('pf-artist-clickable-list');
   const status = $('pf-artist-list-status');
   if (!list) return;
@@ -3123,8 +3149,17 @@ function fixSpeechPronunciation(text) {
   });
   return out;
 }
+// v257 : keyName est appelée des dizaines de milliers de fois à chaque case cochée (comparaisons de noms, filtres) ; son résultat ne dépend que
+// du texte reçu, on le mémorise donc (jusqu'à 30 000 textes) plutôt que de refaire les 6 transformations à chaque appel.
+const keyNameMemo = new Map();
 function keyName(value) {
-  return String(value || '').trim().toLocaleLowerCase('fr-FR').replace(/œ/g, 'oe').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const raw = typeof value === 'string' ? value : String(value || '');
+  const hit = keyNameMemo.get(raw);
+  if (hit !== undefined) return hit;
+  const out = raw.trim().toLocaleLowerCase('fr-FR').replace(/œ/g, 'oe').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  if (keyNameMemo.size > 30000) keyNameMemo.clear();
+  keyNameMemo.set(raw, out);
+  return out;
 }
 function findColumn(row, names) {
   const keys = Object.keys(row);
@@ -16304,10 +16339,10 @@ $('open-placement-proto-temp')?.addEventListener('click', () => {
   const box = document.createElement('pre');
   box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:hidden;margin:0;padding:6px 8px;background:rgba(0,0,0,.85);color:#9f9;font:11px/1.35 monospace;z-index:2147483647;pointer-events:none;white-space:pre-wrap;';
   document.body.appendChild(box);
-  const lines = []; let taps = 0, lost = 0, slow = 0, freezeMax = 0, freezes = 0;
+  const lines = []; let taps = 0, lost = 0, cancelled = 0, slow = 0, freezeMax = 0, freezes = 0;
   const name = (e) => { const t = e.target; if (!t || !t.tagName) return '?'; const b = t.closest ? (t.closest('button,a,[role=button],input,select,label') || t) : t; return (b.id ? '#' + b.id : b.tagName.toLowerCase() + (b.className && typeof b.className === 'string' ? '.' + b.className.split(' ')[0] : '')) + ' « ' + (b.textContent || '').trim().slice(0, 18) + ' »'; };
-  const draw = () => { box.textContent = 'DIAGNOSTIC TOUCH ' + APP_VERSION + ' — taps ' + taps + ', perdus ' + lost + ', clics lents (>250 ms) ' + slow + ', gels ' + freezes + ' (max ' + Math.round(freezeMax) + ' ms)\n' + lines.slice(-12).join('\n'); };
-  const log = (s) => { lines.push(s); draw(); };
+  const draw = () => { box.textContent = 'DIAGNOSTIC TOUCH ' + APP_VERSION + ' — taps ' + taps + ', perdus ' + lost + ', défilements ' + cancelled + ', clics lents (>250 ms) ' + slow + ', gels ' + freezes + ' (max ' + Math.round(freezeMax) + ' ms)\n' + lines.slice(-12).join('\n'); };
+  const log = (s) => { lines.push('[' + (performance.now() / 1000).toFixed(1) + ' s] ' + s); draw(); };
   let down = null, clicked = true, timer = null;
   document.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse') return;
@@ -16315,7 +16350,7 @@ $('open-placement-proto-temp')?.addEventListener('click', () => {
     clearTimeout(timer); const d = down;
     timer = setTimeout(() => { if (!clicked && down === d) { lost++; log('✗ TAP PERDU sur ' + d.n + ' (aucun clic en 800 ms)'); } }, 800);
   }, true);
-  document.addEventListener('pointercancel', (e) => { log('! pointercancel sur ' + name(e) + ' (le navigateur a annulé le toucher : défilement ?)'); }, true);
+  document.addEventListener('pointercancel', (e) => { clicked = true; cancelled++; log('↕ toucher annulé par le navigateur sur ' + name(e) + ' (c\'était un défilement, pas un tap)'); }, true);
   document.addEventListener('click', (e) => {
     if (!down) return; clicked = true; const dt = performance.now() - down.t;
     if (dt > 250) slow++; log((dt > 250 ? '⚠ ' : '✓ ') + Math.round(dt) + ' ms  ' + name(e));
