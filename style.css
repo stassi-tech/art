@@ -50,7 +50,7 @@ body[data-ambiance="bauhaus"].in-exercise .app-shell {
   background-size:100% 6px; background-repeat:no-repeat;
 }
 body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn { background:#55555a; color:#f4f1ea; border-color:#77777c; }
-body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn:hover:not(:disabled) { background:#68686e; border-color:#f2c318; }
+@media (hover:hover) { body[data-ambiance="bauhaus"].in-exercise .intrus-choice-btn:hover:not(:disabled) { background:#68686e; border-color:#f2c318; } }
 body[data-ambiance="bauhaus"] .primary-button, body[data-ambiance="bauhaus"] .home-mode-button { background-image:url('assets/bauhaus-bouton.jpg');
   background:#fff; color:#1a1a18; border-color:#c1272d;
 }
@@ -155,9 +155,11 @@ body { margin:0; color:var(--ink); background:radial-gradient(circle at top righ
 body.dragging-topbar .bg-mosaic { pointer-events:none; }
 body.dragging-topbar { touch-action:none; user-select:none; }
 .bg-tile { position:relative; overflow:hidden; background:#c9c1ae; cursor:pointer; }
-.bg-tile.touched, .bg-tile:hover { z-index:2; box-shadow:inset 0 0 0 3px var(--accent); }
+.bg-tile.touched { z-index:2; box-shadow:inset 0 0 0 3px var(--accent); }
+@media (hover:hover) { .bg-tile:hover { z-index:2; box-shadow:inset 0 0 0 3px var(--accent); } }
 .bg-tile img { width:100%; height:100%; object-fit:cover; display:block; filter:blur(6px) grayscale(.3); opacity:.45; transform:scale(1.15); transition:filter .35s, opacity .35s, transform .35s; -webkit-user-drag:none; user-select:none; pointer-events:none; }
-.bg-tile:hover img, .bg-tile.touched img { filter:blur(0) grayscale(0); opacity:1; transform:scale(1.3); }
+.bg-tile.touched img { filter:blur(0) grayscale(0); opacity:1; transform:scale(1.3); }
+@media (hover:hover) { .bg-tile:hover img { filter:blur(0) grayscale(0); opacity:1; transform:scale(1.3); } }
 button, input { font:inherit; }
 
 .app-shell { width:min(1600px, calc(100% - 32px)); margin:0 auto; padding:56px 0 20px; display:flex; align-items:stretch; gap:26px; min-height:100vh; pointer-events:none; position:relative; z-index:1; }
@@ -182,9 +184,9 @@ body.gallery-focus-active .app-shell { z-index:200; }
 h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 
 .import-button,.folder-button,.primary-button,.secondary-button { display:inline-flex; align-items:center; justify-content:center; cursor:pointer; border-radius:5px; border:0; padding:13px 17px; text-align:center; font-family:Arial,sans-serif; font-size:1rem; font-weight:700; transition:transform .15s, background .15s; }
-.import-button,.primary-button { color:white; background:var(--cta); } .import-button:hover,.primary-button:hover { background:var(--cta-dark); transform:translateY(-1px); } .import-button input,.folder-button input,.primary-button input[type="file"] { display:none; }
-.folder-button { color:var(--ink); background:transparent; border:1px solid var(--border); }.folder-button:hover { background:#fff; transform:translateY(-1px); }
-.secondary-button { color:var(--accent); background:transparent; border:1px solid var(--accent); } .secondary-button:hover { background:#fff; color:var(--accent-dark); border-color:var(--accent-dark); }.secondary-button:disabled { cursor:not-allowed; opacity:.45; }
+.import-button,.primary-button { color:white; background:var(--cta); } @media (hover:hover) { .import-button:hover, .primary-button:hover { background:var(--cta-dark); transform:translateY(-1px); } } .import-button input,.folder-button input,.primary-button input[type="file"] { display:none; }
+.folder-button { color:var(--ink); background:transparent; border:1px solid var(--border); }@media (hover:hover) { .folder-button:hover { background:#fff; transform:translateY(-1px); } }
+.secondary-button { color:var(--accent); background:transparent; border:1px solid var(--accent); } @media (hover:hover) { .secondary-button:hover { background:#fff; color:var(--accent-dark); border-color:var(--accent-dark); } }.secondary-button:disabled { cursor:not-allowed; opacity:.45; }
 
 .welcome-panel { max-width:640px; width:100%; margin:auto; padding:30px 46px; text-align:center; background:rgba(255,253,249,.97); border:1px solid var(--border); box-shadow:0 16px 35px rgba(54,45,31,.08); border-radius:8px; position:relative; z-index:1; }
 
@@ -196,7 +198,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
    hors du mode fenêtre superposée (elle ne sert à rien sur une page normale). */
 .modal-close-x { display:none; }
 .config-popup-mode .modal-close-x { display:flex; position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--paper); border:1px solid var(--border); color:var(--ink); font-size:1rem; align-items:center; justify-content:center; cursor:pointer; z-index:5; box-shadow:0 1px 4px rgba(0,0,0,.15); }
-.config-popup-mode .modal-close-x:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); }
+@media (hover:hover) { .config-popup-mode .modal-close-x:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); } }
 .config-popup-mode .settings-title-band { padding-right:60px; }
 /* Panneaux "hauts" (plusieurs accordéons empilés) : marge fixe en haut plutôt que centrage
    vertical automatique, sinon leur partie supérieure dépasse au-dessus de l'écran et tout
@@ -290,13 +292,13 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .fam-title-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
 .fam-title-row .fam-num-badge { flex:0 0 28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; font-family:Arial,sans-serif; font-weight:700; font-size:.9rem; display:flex; align-items:center; justify-content:center; }
 .fam-title-row .fam-drop-slot { flex:1; min-height:40px; padding:9px 12px; border:2px dashed #cfc8bc; border-radius:4px; font-family:Arial,sans-serif; font-size:.9rem; display:flex; align-items:center; cursor:pointer; color:var(--muted); transition:border-color .15s, background .15s; }
-.fam-title-row .fam-drop-slot:hover { border-color:var(--accent); background:#f7f2ea; }
+@media (hover:hover) { .fam-title-row .fam-drop-slot:hover { border-color:var(--accent); background:#f7f2ea; } }
 .fam-title-row .fam-drop-slot.filled { border-style:solid; color:var(--ink); font-weight:700; }
 .fam-title-row .fam-drop-slot.vf-was-wrong { border-color:var(--wrong); color:var(--wrong); text-decoration:line-through; }
 .fam-title-row .fam-drop-slot.vf-updated { border-color:var(--ok); color:var(--ok); text-decoration:none; }
 .fam-labels-pool { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
 .fam-label-chip { padding:8px 14px; border:1px solid var(--accent); border-radius:20px; background:#fff; color:var(--accent); font-family:Arial,sans-serif; font-size:.85rem; font-weight:700; cursor:pointer; transition:background .15s; touch-action:none; }
-.fam-label-chip:hover:not(:disabled) { background:#f7f2ea; }
+@media (hover:hover) { .fam-label-chip:hover:not(:disabled) { background:#f7f2ea; } }
 .fam-label-chip.picked { background:var(--accent); color:#fff; }
 .fam-label-chip:disabled { opacity:.35; cursor:not-allowed; }
 .fam-image-cell.correct { border-color:var(--ok); }
@@ -314,9 +316,9 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .loupe-progressive-icons { display:flex; gap:4px; align-items:center; }
 .loupe-progressive-icon { border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; line-height:1; border:1px solid rgba(255,255,255,.65); touch-action:none; transition:filter .15s, opacity .15s, transform .15s; }
 .loupe-progressive-icon.lit { background:rgba(0,0,0,.72); color:#fff; filter:none; opacity:1; }
-.loupe-progressive-icon.lit:hover { transform:scale(1.08); }
+@media (hover:hover) { .loupe-progressive-icon.lit:hover { transform:scale(1.08); } }
 .loupe-progressive-icon.greyed { background:rgba(70,70,70,.55); color:#ccc; filter:grayscale(1); opacity:.75; }
-.loupe-progressive-icon.greyed:hover { opacity:.95; }
+@media (hover:hover) { .loupe-progressive-icon.greyed:hover { opacity:.95; } }
 /* Flèche indiquant un chemin de découverte progressif (plusieurs paliers de zoom possibles) —
    discrète, juste sous les icônes. */
 .loupe-progressive-arrow { display:none; font-size:.7rem; color:rgba(255,255,255,.75); margin-left:2px; }
@@ -367,26 +369,27 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .training-exercise-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:6px; }
 .training-exercise-grid .home-mode-button { padding:12px 8px; position:relative; }
 .quiz-final-button { width:100%; margin-top:12px; padding:13px 10px; position:relative; background:var(--accent); }
-.quiz-final-button:hover { background:var(--accent-dark, #16293f); }
+@media (hover:hover) { .quiz-final-button:hover { background:var(--accent-dark, #16293f); } }
 .exercise-num { display:block; font-family:Arial,sans-serif; font-weight:700; font-size:.62rem; text-transform:uppercase; letter-spacing:.05em; opacity:.75; margin-bottom:2px; }
 .exercise-summary { display:block; font-family:Arial,sans-serif; font-weight:400; font-size:.68rem; opacity:.85; margin-top:2px; }
 .exercise-summary-edit { display:none; position:absolute; top:2px; right:2px; width:34px; height:34px; font-size:1rem; cursor:pointer; opacity:.95; background:rgba(255,255,255,.92); border-radius:50%; align-items:center; justify-content:center; box-shadow:0 1px 4px rgba(0,0,0,.25); z-index:2; }
 .exercise-summary:not(:empty) + .exercise-summary-edit { display:flex; }
-.exercise-summary-edit:hover, .exercise-summary-edit:active { opacity:1; background:#fff; }
+.exercise-summary-edit:active { opacity:1; background:#fff; }
+@media (hover:hover) { .exercise-summary-edit:hover { opacity:1; background:#fff; } }
 .score-filter-btn.inactive { background:transparent; color:var(--cta); }
-.score-filter-btn.inactive:hover { background:#f7f2ea; }
+@media (hover:hover) { .score-filter-btn.inactive:hover { background:#f7f2ea; } }
 .intrus-mode-btn.inactive { background:transparent; color:var(--cta); }
-.intrus-mode-btn.inactive:hover { background:#f7f2ea; }
+@media (hover:hover) { .intrus-mode-btn.inactive:hover { background:#f7f2ea; } }
 .intrus-choice-list { display:grid; gap:12px; }
 .intrus-choice-btn { display:block; width:100%; text-align:left; padding:14px 16px; border:1px solid var(--border); border-radius:6px; background:var(--paper); color:var(--ink); font-family:Arial,sans-serif; font-size:.95rem; cursor:pointer; transition:border-color .15s, background .15s; }
-.intrus-choice-btn:hover:not(:disabled) { border-color:var(--accent); background:#f7f2ea; }
+@media (hover:hover) { .intrus-choice-btn:hover:not(:disabled) { border-color:var(--accent); background:#f7f2ea; } }
 .intrus-choice-btn img { width:100%; height:140px; object-fit:contain; background:#1b1c1e; border-radius:4px; display:block; margin-bottom:8px; }
 .intrus-choice-btn.correct { border-color:var(--ok); background:#eaf6f0; }
 .intrus-choice-btn.wrong { border-color:var(--wrong); background:#fbeceb; }
 .intrus-choice-btn:disabled { cursor:not-allowed; }
 .intrus-image-choices { position:relative; display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; width:100%; height:100%; }
 .intrus-image-choice { border:2px solid transparent; border-radius:6px; padding:6px; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s; min-width:0; }
-.intrus-image-choice:hover:not(:disabled) { border-color:var(--accent); background:rgba(255,255,255,.06); }
+@media (hover:hover) { .intrus-image-choice:hover:not(:disabled) { border-color:var(--accent); background:rgba(255,255,255,.06); } }
 /* v65 (document du 29 sept, INTRUS item 4 : « l'image de correction quand la réponse est fausse
    ne s'affiche pas ») : bug réel confirmé par mesure (Playwright + getComputedStyle), pas
    seulement à la réponse fausse en fait — À CHAQUE réponse, juste/fausse. #intrus-prompt-card
@@ -474,25 +477,24 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
    sombre propre à chaque ambiance (vert, bleu, brun...), ce qui rendait ces boutons trop pâles /
    peu visibles selon le thème — signalé par Stéphane ( « mets les boutons 1 2 3 en blanc » ). */
 .intrus-answer-choice { flex:1; padding:14px; border:2px solid var(--cta); border-radius:6px; background:#fff; color:#1a1a1a; font-family:Arial,sans-serif; font-weight:700; font-size:1.1rem; cursor:pointer; transition:background .15s, color .15s; }
-.intrus-answer-choice:hover:not(:disabled) { background:var(--cta); color:#fff; }
+@media (hover:hover) { .intrus-answer-choice:hover:not(:disabled) { background:var(--cta); color:#fff; } }
 .intrus-answer-choice:disabled { cursor:not-allowed; opacity:.6; }
 .correction-details, #intrus-correction-details { display:grid; grid-template-columns:max-content 1fr; column-gap:14px; row-gap:4px; align-items:baseline; margin-top:16px; }
 #intrus-correction-details .correction-label { grid-column:1; font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; }
 #intrus-correction-details .correction-value { grid-column:1/-1; font-size:1.05rem; font-weight:700; color:var(--ink); line-height:1.3; margin-bottom:14px; }
 .home-mode-button { position:relative; padding:20px; border:1px solid var(--cta); border-radius:4px; background:var(--cta); color:#fff; cursor:pointer; text-align:center; transition:background .15s; }
-.home-mode-button:hover { background:var(--cta-dark); border-color:var(--cta-dark); }
+@media (hover:hover) { .home-mode-button:hover { background:var(--cta-dark); border-color:var(--cta-dark); } }
 .home-mode-button .label { display:block; font-family:Arial,sans-serif; font-size:.98rem; font-weight:700; color:#fff; margin-bottom:4px; }
 .home-mode-button .desc { display:block; font-family:Georgia,"Times New Roman",serif; font-size:.83rem; color:var(--muted); font-style:italic; }
 .tooltip-bubble { position:absolute; left:50%; bottom:calc(100% + 10px); transform:translateX(-50%) translateY(4px); width:240px; background:var(--ink); color:#fff; font-family:Arial,sans-serif; font-size:.76rem; font-weight:400; font-style:normal; line-height:1.45; padding:10px 12px; border-radius:5px; opacity:0; pointer-events:none; transition:opacity .15s, transform .15s; z-index:20; }
 .tooltip-bubble::after { content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:6px solid transparent; border-top-color:var(--ink); }
-.home-mode-button:hover .tooltip-bubble,
-.home-mode-button:focus-visible .tooltip-bubble,
-.home-mode-button.show-tooltip .tooltip-bubble { opacity:1; transform:translateX(-50%) translateY(0); }
+.home-mode-button:focus-visible .tooltip-bubble, .home-mode-button.show-tooltip .tooltip-bubble { opacity:1; transform:translateX(-50%) translateY(0); }
+@media (hover:hover) { .home-mode-button:hover .tooltip-bubble { opacity:1; transform:translateX(-50%) translateY(0); } }
 .intro-banner { background:#f3e6c9; color:var(--ink); padding:14px 20px; border-radius:6px; font-family:Arial,sans-serif; font-size:.92rem; font-weight:700; line-height:1.42; text-align:justify; margin-bottom:14px; }
 #training-hub-panel .home-tagline { font-size:1.25rem; margin-bottom:12px; }
 #training-hub-panel .intro-banner { font-size:.95rem; line-height:1.48; padding:16px 20px; margin-bottom:16px; }
 .intro-banner a { color:var(--accent-dark); text-decoration:underline; }
-.intro-banner a:hover { color:var(--accent); }
+@media (hover:hover) { .intro-banner a:hover { color:var(--accent); } }
 @keyframes introPulse { 0%,100% { box-shadow:0 0 0 0 rgba(31,58,95,.6); } 50% { box-shadow:0 0 0 8px rgba(31,58,95,0); } }
 .intro-highlight { animation:introPulse 1s ease-in-out 3; }
 @keyframes introIconPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.35; transform:scale(1.25); } }
@@ -506,9 +508,9 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
    cas où les comptes ne sont pas configurés (firebaseReady === false). */
 .account-hub-slot { display:flex; flex-direction:column; align-items:center; gap:6px; }
 .account-hub-slot.is-disabled { cursor:default; opacity:.6; }
-.account-hub-slot.is-disabled:hover { background:var(--cta); border-color:var(--cta); }
+@media (hover:hover) { .account-hub-slot.is-disabled:hover { background:var(--cta); border-color:var(--cta); } }
 .account-connect-switch { position:relative; display:inline-flex; align-items:center; width:42px; height:22px; border-radius:11px; background:rgba(255,255,255,.35); border:1px solid rgba(255,255,255,.6); transition:background .2s, border-color .2s; flex-shrink:0; }
-.account-connect-switch:hover { background:rgba(255,255,255,.5); }
+@media (hover:hover) { .account-connect-switch:hover { background:rgba(255,255,255,.5); } }
 .account-connect-switch.is-connected { background:var(--ok); border-color:var(--ok); }
 .account-connect-knob { position:absolute; top:1px; left:1px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.35); transition:transform .2s; }
 .account-connect-switch.is-connected .account-connect-knob { transform:translateX(20px); }
@@ -531,7 +533,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .rubriques-tested { font-size:.74rem; color:var(--muted); font-weight:400; }
 .account-page-footnote { margin-top:26px; }
 .delete-score-button { border:none; background:none; color:var(--wrong); cursor:pointer; font-size:1rem; padding:2px 5px; margin-left:4px; border-radius:50%; line-height:1; }
-.delete-score-button:hover { background:rgba(197,79,56,.15); }
+@media (hover:hover) { .delete-score-button:hover { background:rgba(197,79,56,.15); } }
 .evolution-up { color:var(--ok); font-weight:700; }
 .evolution-down { color:var(--wrong); font-weight:700; }
 .evolution-flat { color:var(--muted); }
@@ -552,7 +554,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .choices-group .modal-hint { margin:6px 0 0; }
 .accordion-group { margin-bottom:10px; }
 .accordion-toggle { display:block; width:100%; text-align:left; padding:14px 16px; border:1px solid var(--border); border-radius:6px; background:var(--paper); color:var(--ink); font-family:Arial,sans-serif; font-weight:700; font-size:.95rem; cursor:pointer; transition:border-color .15s, background .15s; }
-.accordion-toggle:hover { border-color:var(--accent); background:#f7f2ea; }
+@media (hover:hover) { .accordion-toggle:hover { border-color:var(--accent); background:#f7f2ea; } }
 .accordion-toggle.accordion-toggle-done { border-color:var(--accent); color:var(--accent-dark); }
 .accordion-body { padding:14px 4px 4px; text-align:left; }
 .accordion-body .rubrique-option { padding:6px 0; }
@@ -578,7 +580,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .bottom-gallery { position:fixed; bottom:0; left:0; right:0; z-index:190; display:flex; gap:10px; overflow-x:auto; align-items:flex-end; background:var(--paper); padding:10px 12px 6px; box-shadow:0 -2px 8px rgba(0,0,0,.1); border-top:3px solid var(--cta); }
 .bottom-gallery-item { flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; border:0; background:none; padding:0 0 6px; position:relative; }
 .bottom-gallery-item img { width:60px; height:60px; object-fit:cover; border-radius:4px; border:3px solid #fff; box-shadow:0 3px 6px rgba(0,0,0,.35); transition:transform .15s, box-shadow .15s; background:#fff; }
-.bottom-gallery-item:hover img { transform:translateY(-3px) scale(1.05); box-shadow:0 6px 10px rgba(0,0,0,.4); }
+@media (hover:hover) { .bottom-gallery-item:hover img { transform:translateY(-3px) scale(1.05); box-shadow:0 6px 10px rgba(0,0,0,.4); } }
 .bottom-gallery-item::after { content:''; display:block; width:70%; height:5px; margin:2px auto 0; background:rgba(0,0,0,.12); border-radius:50%; filter:blur(1.5px); }
 .bottom-gallery-item span { font-size:.65rem; color:var(--muted); font-family:Arial,sans-serif; white-space:nowrap; }
 @media (max-width:640px) {
@@ -606,7 +608,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
   .global-topbar-button { width:24px; height:24px; font-size:.78rem; }
 }
 .global-topbar-button { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:var(--paper); font-size:.9rem; cursor:pointer; flex:0 0 auto; }
-.global-topbar-button:hover { background:#f7f2ea; }
+@media (hover:hover) { .global-topbar-button:hover { background:#f7f2ea; } }
 /* Le bouton salle s'élargit pour montrer les artistes en cours d'exposition (comme les boutons de
    jeux le font pour leur propre sélection) — vide, il garde sa taille normale d'icône seule. */
 #global-exhibition-button:has(#exhibition-button-label:not(:empty)) { width:auto; display:inline-flex; align-items:center; gap:4px; padding:0 8px; }
@@ -615,7 +617,7 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .hamburger-menu { position:absolute; top:52px; right:16px; left:auto; background:var(--paper); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 30px rgba(0,0,0,.18); min-width:240px; padding:8px; }
 body.lefty .hamburger-menu { right:auto; left:16px; }
 .hamburger-item { display:block; width:100%; text-align:left; padding:12px 14px; border-radius:6px; border:0; background:transparent; cursor:pointer; font-family:Arial,sans-serif; font-size:.92rem; color:var(--ink); }
-.hamburger-item:hover { background:#f7f2ea; }
+@media (hover:hover) { .hamburger-item:hover { background:#f7f2ea; } }
 /* Ces 4 entrées font double emploi avec les boutons du bandeau sur grand écran (masquées par
    défaut) — elles ne servent que sur petit écran, où ces boutons disparaissent du bandeau faute
    de place (voir @media max-width:640px plus bas). */
@@ -625,9 +627,9 @@ body.lefty .hamburger-menu { right:auto; left:16px; }
 }
 .home-icon-button { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:6px; border:1px solid var(--border); background:#e9e5dc; color:#8a837a; font-size:.95rem; cursor:pointer; opacity:.8; filter:grayscale(1); transition:opacity .15s, background .15s; }
 .exercise-icon-button { background:var(--accent); border-color:var(--accent); color:#fff; opacity:1; filter:none; width:38px; height:38px; border-radius:50%; font-size:1.05rem; }
-.exercise-icon-button:hover { background:var(--accent-dark); border-color:var(--accent-dark); }
+@media (hover:hover) { .exercise-icon-button:hover { background:var(--accent-dark); border-color:var(--accent-dark); } }
 .exercise-icon-hub { background:var(--cta); border-color:var(--cta); }
-.exercise-icon-hub:hover { background:var(--cta-dark); border-color:var(--cta-dark); }
+@media (hover:hover) { .exercise-icon-hub:hover { background:var(--cta-dark); border-color:var(--cta-dark); } }
 /* Retour de Stéphane : le bouton "retour au menu des jeux", jusqu'ici une simple icône 🏠 ronde et
    colorée, devient un vrai bouton texte — fond blanc, texte bien visible — posé sur la même ligne
    que "Voir/Arrêter la correction complète" (même hauteur/police, cf. le style inline de ce dernier
@@ -636,16 +638,16 @@ body.lefty .hamburger-menu { right:auto; left:16px; }
    .exercise-correction-toggle-button plus bas) doivent être plus grands et plus visibles (un
    vrai entourage bien marqué autour de chaque cartouche), tout en restant sur la même ligne. */
 .exercise-hub-text-button { display:inline-flex; align-items:center; justify-content:center; padding:12px 20px; font-size:.92rem; font-weight:700; font-family:Arial,sans-serif; border-radius:6px; border:2px solid var(--cta); background:#fff; color:var(--cta-dark); cursor:pointer; transition:background .15s, color .15s; }
-.exercise-hub-text-button:hover { background:var(--cta); color:#fff; }
+@media (hover:hover) { .exercise-hub-text-button:hover { background:var(--cta); color:#fff; } }
 /* Partagé avec les 4 boutons "Voir/Arrêter la correction complète" (imp/intrus/recon/vf) pour
    qu'ils s'agrandissent et s'entourent exactement comme le bouton ci-dessus, sans toucher au
    style de base .secondary-button utilisé ailleurs dans l'appli. */
 .exercise-correction-toggle-button { padding:12px 20px; font-size:.92rem; border-width:2px; }
 .exercise-icon-scores { background:#8a2be2; border-color:#8a2be2; }
-.exercise-icon-scores:hover { background:#6f1fb8; border-color:#6f1fb8; }
-.home-icon-button:hover { opacity:1; background:#f7f2ea; }
+@media (hover:hover) { .exercise-icon-scores:hover { background:#6f1fb8; border-color:#6f1fb8; } }
+@media (hover:hover) { .home-icon-button:hover { opacity:1; background:#f7f2ea; } }
 .quiz-action-row-single { grid-template-columns:1fr; }
-.grey-button:hover { background:#d8d0c0 !important; }
+@media (hover:hover) { .grey-button:hover { background:#d8d0c0 !important; } }
 .modal-nav-row { display:flex; gap:10px; margin-top:20px; }
 .modal-actions { display:flex; gap:10px; margin-top:20px; }
 .modal-actions .secondary-button, .modal-actions .primary-button { flex:1; }
@@ -659,7 +661,7 @@ body.lefty .hamburger-menu { right:auto; left:16px; }
 .artist-list-mode-row .secondary-button { flex:1; }
 .artist-list-mode-row .secondary-button.active-mode { background:var(--accent); border-color:var(--accent); color:#fff; }
 .link-label { color:var(--accent); font-weight:700; cursor:pointer; text-decoration:underline; font-family:Arial,sans-serif; font-size:.92rem; }
-.link-label:hover { color:var(--accent-dark); }
+@media (hover:hover) { .link-label:hover { color:var(--accent-dark); } }
 
 .modal-overlay { position:fixed; inset:0; background:rgba(36,49,63,.6); display:flex; align-items:center; justify-content:center; z-index:250; padding:20px; }
 .modal-box { background:var(--paper); border-radius:10px; padding:30px; max-width:440px; width:100%; text-align:left; box-shadow:0 24px 60px rgba(0,0,0,.32); max-height:85vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
@@ -714,7 +716,7 @@ body.lefty .quiz-grid .answer-card { order:1; }
 .artwork-card img { display:block; max-width:100%; max-height:min(820px, 74vh); width:auto; height:auto; object-fit:contain; }
 .image-message { position:absolute; inset:auto 20px 20px; color:white; background:rgba(20,20,20,.8); padding:12px; font-family:Arial,sans-serif; font-size:.9rem; }
 .artwork-source-link { position:absolute; right:12px; bottom:10px; color:rgba(255,255,255,.75); background:rgba(20,20,20,.55); padding:4px 9px; border-radius:4px; font-family:Arial,sans-serif; font-size:.7rem; text-decoration:none; }
-.artwork-source-link:hover { color:#fff; background:rgba(20,20,20,.8); }
+@media (hover:hover) { .artwork-source-link:hover { color:#fff; background:rgba(20,20,20,.8); } }
 /* v73 (Imprégnation, retour Stéphane 29/09 : « supprime la tablette ») : badge du déroulé fluide
    automatique (Lieu / Ensemble) — remplace l'ancien bandeau de vignettes cliquables. En haut à
    gauche (symétrique du lien crédits, en bas à droite) pour ne jamais se superposer à un titre
@@ -768,7 +770,7 @@ body.lefty .quiz-grid .answer-card { order:1; }
 .imp-bio-split-caption { font-family:Georgia,"Times New Roman",serif; font-style:italic; font-size:.78rem; color:#c9c9c9; text-align:center; }
 /* v152 : crédits de l'image (portrait ou œuvre) sous la légende, dans l'écran de bio. */
 .imp-bio-split-credit { display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:4px; font-family:Arial,sans-serif; font-size:.72rem; color:#b5b5b5; text-decoration:none; text-align:center; }
-.imp-bio-split-credit:hover { color:#fff; text-decoration:underline; }
+@media (hover:hover) { .imp-bio-split-credit:hover { color:#fff; text-decoration:underline; } }
 .imp-bio-split-credit.hidden { display:none; }
 .imp-bio-split-credit-text { font-size:.68rem; color:#9a9a9a; }
 .imp-bio-split-credit-text:empty { display:none; }
@@ -783,13 +785,14 @@ body.lefty .quiz-grid .answer-card { order:1; }
 #imp-quiz-grid.imp-bio-open { grid-template-columns:1fr; }
 #imp-quiz-grid.imp-bio-open .answer-card { display:none; }
 #imp-bio-split-close { display:flex; position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--paper); border:1px solid var(--border); color:var(--ink); font-size:1rem; align-items:center; justify-content:center; cursor:pointer; z-index:5; box-shadow:0 1px 4px rgba(0,0,0,.15); }
-#imp-bio-split-close:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); }
+@media (hover:hover) { #imp-bio-split-close:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); } }
 .imp-artist-name-button { background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; font-weight:inherit; cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:3px; }
-.imp-artist-name-button:hover { color:var(--accent); }
+@media (hover:hover) { .imp-artist-name-button:hover { color:var(--accent); } }
 .imp-nm-end { white-space:nowrap; }
 /* v129 : petits haut-parleurs (bio de l'artiste / histoire de l'œuvre) à côté du nom et du titre. */
 .imp-speaker-btn { background:rgba(255,255,255,.92); color:#222; border:1px solid rgba(0,0,0,.28); border-radius:.4em; padding:.18em .38em; margin:0 0 0 .4em; font-size:.8em; line-height:1; cursor:pointer; opacity:1; vertical-align:middle; box-shadow:0 1px 3px rgba(0,0,0,.28); }
-.imp-speaker-btn:hover, .imp-speaker-btn:focus-visible { background:#fff; border-color:rgba(0,0,0,.55); transform:scale(1.12); }
+.imp-speaker-btn:focus-visible { background:#fff; border-color:rgba(0,0,0,.55); transform:scale(1.12); }
+@media (hover:hover) { .imp-speaker-btn:hover { background:#fff; border-color:rgba(0,0,0,.55); transform:scale(1.12); } }
 /* v129 : LISTE par ville */
 .city-view-head { display:flex; flex-wrap:wrap; align-items:center; gap:.6em; margin:.4em 0 .8em; }
 .city-view-name { font-size:1.2em; }
@@ -873,26 +876,26 @@ body.lefty .quiz-grid .answer-card { order:1; }
 .field-row { display:flex; gap:8px; align-items:stretch; }
 .field-row input { flex:1; min-width:0; }
 .field-label-button { flex-shrink:0; min-width:64px; border-radius:4px; border:1px solid #cfc8bc; background:var(--paper); color:var(--ink); cursor:pointer; font-family:Arial,sans-serif; font-size:.82rem; font-weight:700; transition:background .15s, border-color .15s; }
-.field-label-button:hover { background:#f7f2ea; border-color:var(--accent); }
+@media (hover:hover) { .field-label-button:hover { background:#f7f2ea; border-color:var(--accent); } }
 .field-label-button.field-target-active { background:#fdeb8f; border-color:var(--accent); }
 body.lefty .field-row { flex-direction:row-reverse; }
 .mic-nav-row { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
 .mic-nav-row .primary-button { flex:1; }
 .nav-arrow-button { flex:0 0 auto; width:38px; height:38px; border-radius:50%; border:1px solid var(--accent); background:var(--accent); color:#fff; font-size:1rem; font-weight:700; cursor:pointer; transition:background .15s; }
-.nav-arrow-button:hover:not(:disabled) { background:var(--accent-dark); }
+@media (hover:hover) { .nav-arrow-button:hover:not(:disabled) { background:var(--accent-dark); } }
 .nav-arrow-button:disabled { opacity:.35; cursor:not-allowed; }
 /* Icône « voir la correction complète » : discrète tant qu'elle n'est pas activée, nettement
    marquée une fois enclenchée — pour qu'on se souvienne qu'elle reste active d'une page à
    l'autre tant qu'on ne la désactive pas soi-même. */
 .full-correction-toggle { margin-left:auto; width:30px; height:30px; border-radius:50%; border:1px solid var(--border); background:var(--paper); font-size:.95rem; cursor:pointer; opacity:.6; }
-.full-correction-toggle:hover { opacity:1; }
+@media (hover:hover) { .full-correction-toggle:hover { opacity:1; } }
 .full-correction-toggle.active { background:var(--accent); border-color:var(--accent); opacity:1; box-shadow:0 0 0 3px rgba(0,0,0,.08); }
 #imp-progress-row { display:flex; align-items:center; }
 #vf-progress-row { display:flex; align-items:center; gap:10px; }
 #intrus-progress-row { display:flex; align-items:center; gap:10px; }
 #recon-progress-row { display:flex; align-items:center; gap:10px; }
 .mic-icon-button { flex-shrink:0; width:44px; height:44px; border-radius:50%; border:1px solid #cfc8bc; background:var(--paper); color:var(--ink); cursor:pointer; font-size:1.1rem; transition:background .15s, border-color .15s; }
-.mic-icon-button:hover:not(:disabled) { background:#f7f2ea; border-color:var(--accent); }
+@media (hover:hover) { .mic-icon-button:hover:not(:disabled) { background:#f7f2ea; border-color:var(--accent); } }
 .mic-icon-button:disabled { cursor:not-allowed; opacity:.4; }
 .mic-icon-button.listening { background:var(--accent); border-color:var(--accent); color:#fff; animation:mic-pulse 1.1s ease-in-out infinite; }
 #scale-voice-control-button.listening { background:var(--accent); border-color:var(--accent); animation:mic-pulse 1.1s ease-in-out infinite; }
@@ -905,12 +908,12 @@ body.lefty .field-row { flex-direction:row-reverse; }
 .mic-tooltip .rubrique-option { color:#fff; padding:0 0 10px; font-size:.8rem; }
 .mic-tooltip .rubrique-option input { width:16px; height:16px; }
 .mic-tooltip .secondary-button { color:#fff; border-color:#fff; padding:6px 14px; font-size:.78rem; }
-.mic-tooltip .secondary-button:hover { background:rgba(255,255,255,.12); color:#fff; border-color:#fff; }
+@media (hover:hover) { .mic-tooltip .secondary-button:hover { background:rgba(255,255,255,.12); color:#fff; border-color:#fff; } }
 /* Barre de navigation persistante : toujours visible (question comme correction), pour ne
    jamais bloquer la personne sans moyen d'avancer ou de revenir en arrière. */
 .quiz-bottom-bar { display:flex; align-items:center; gap:10px; margin-top:16px; }
 .nav-bottom-button { flex:1; border-radius:5px; border:1px solid var(--border); background:transparent; color:var(--ink); padding:11px 10px; font-family:Arial,sans-serif; font-size:.88rem; font-weight:700; cursor:pointer; transition:background .15s; }
-.nav-bottom-button:hover:not(:disabled) { background:#f7f2ea; }
+@media (hover:hover) { .nav-bottom-button:hover:not(:disabled) { background:#f7f2ea; } }
 .nav-bottom-button:disabled { opacity:.35; cursor:not-allowed; }
 .quiz-bottom-bar .primary-button { flex-shrink:0; padding:11px 24px; }
 body.is-corrected .quiz-bottom-bar .primary-button { display:none; }
@@ -934,9 +937,9 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 .artist-table { width:100%; border-collapse:collapse; font-family:Arial,sans-serif; font-size:.85rem; }
 .artist-table th { position:sticky; top:0; background:var(--paper); text-align:left; padding:8px 10px; border-bottom:2px solid var(--border); font-size:.75rem; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); }
 .artist-table td { padding:6px 10px; border-bottom:1px solid var(--border); }
-.artist-table tr:hover td { background:#f7f2ea; }
+@media (hover:hover) { .artist-table tr:hover td { background:#f7f2ea; } }
 .artist-table th.sortable-col { cursor:pointer; user-select:none; }
-.artist-table th.sortable-col:hover { color:var(--accent); }
+@media (hover:hover) { .artist-table th.sortable-col:hover { color:var(--accent); } }
 .artist-list-search-input { width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--paper); font-family:Arial,sans-serif; font-size:.92rem; color:var(--ink); margin-top:10px; }
 .artist-list-search-input:focus { outline:2px solid var(--accent); outline-offset:1px; }
 .artist-list-filters { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
@@ -958,7 +961,7 @@ body.is-corrected .topbar-nav-button { display:inline-flex; flex:0 0 auto; width
 }
 .other-works-panel-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; align-items:end; }
 .other-works-panel-list .other-work-card-big { width:auto; text-align:center; border:2px solid transparent; border-radius:8px; background:none; padding:8px; cursor:pointer; font:inherit; transition:border-color .15s, background .15s; }
-.other-works-panel-list .other-work-card-big:hover { background:#f7f2ea; border-color:var(--accent); }
+@media (hover:hover) { .other-works-panel-list .other-work-card-big:hover { background:#f7f2ea; border-color:var(--accent); } }
 /* On ne force plus une hauteur fixe avec fond sombre en repli (ça ajoutait des bandes noires
    autour de toute image dont les proportions ne remplissaient pas le cadre) : chaque image garde
    sa taille naturelle, juste plafonnée pour ne pas déborder de l'écran. */
@@ -1758,7 +1761,7 @@ body[data-ambiance="gothique"] #scale-focus-view { background:#101d70; }
 .other-works-title { font-family:Arial,sans-serif; font-size:.78rem; font-weight:700; color:#9aa3ab; text-transform:uppercase; letter-spacing:.03em; margin-bottom:12px; }
 .other-works-list { display:flex; flex-wrap:wrap; gap:12px; }
 .other-work-card { width:108px; text-align:center; border:2px solid transparent; border-radius:6px; background:none; padding:4px; cursor:pointer; font:inherit; transition:border-color .15s, background .15s; }
-.other-work-card:hover { background:#f7f2ea; }
+@media (hover:hover) { .other-work-card:hover { background:#f7f2ea; } }
 .other-work-card.active { border-color:var(--accent); background:#f7f2ea; }
 .other-work-card img { width:100%; height:90px; object-fit:cover; border-radius:4px; display:block; margin-bottom:6px; background:#1b1c1e; }
 .other-work-caption { display:block; font-family:Arial,sans-serif; font-size:.7rem; line-height:1.3; color:var(--muted); margin:0; }
@@ -1776,7 +1779,7 @@ body.has-other-works .correction-label { font-size:.76rem; }
 
 .navigation { display:flex; justify-content:space-between; gap:10px; margin-top:16px; }
 .nav-button { flex:1; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; border-radius:4px; border:1px solid var(--border); background:transparent; color:var(--ink); padding:9px 10px; font-family:Arial,sans-serif; font-size:.88rem; font-weight:700; transition:background .15s; }
-.nav-button:hover:not(:disabled) { background:#f7f2ea; }
+@media (hover:hover) { .nav-button:hover:not(:disabled) { background:#f7f2ea; } }
 .nav-button:disabled { cursor:not-allowed; opacity:.4; }
 
 .results-panel { margin-top:40px; }.results-panel h2 { font-size:2rem; }.results-panel p { color:var(--muted); }
@@ -2348,7 +2351,7 @@ body.stephane-test-decor .scale-wall-pillar {
   background:#2b2c2e; color:#f2f2f2; border:1px solid #454647; border-radius:4px; padding:6px 12px;
   font-family:inherit; font-size:.85rem; cursor:pointer;
 }
-#placement-proto-topbar button:hover { background:#3a3b3d; }
+@media (hover:hover) { #placement-proto-topbar button:hover { background:#3a3b3d; } }
 #placement-proto-page-label { font-size:.95rem; }
 #placement-proto-add-room { margin-left:auto; }
 
@@ -2411,7 +2414,7 @@ body.stephane-test-decor .scale-wall-pillar {
   display:flex; align-items:center; gap:8px; background:#232426; border:1px solid #3a3b3d;
   border-radius:4px; padding:6px; cursor:grab; touch-action:none;
 }
-.placement-proto-card:hover { border-color:#565758; }
+@media (hover:hover) { .placement-proto-card:hover { border-color:#565758; } }
 .placement-proto-card img { width:38px; height:38px; object-fit:cover; border-radius:2px; flex:0 0 auto; }
 .placement-proto-card-label { color:#ddd; font-size:.72rem; line-height:1.25; }
 .placement-proto-card.placement-proto-dragging { opacity:.35; }
@@ -2457,7 +2460,7 @@ body.stephane-test-decor .scale-wall-pillar {
 #placement-proto-generate {
   margin-left:12px; background:#3d6a3d !important; border-color:#2e522e !important;
 }
-#placement-proto-generate:hover { background:#4a7d4a !important; }
+@media (hover:hover) { #placement-proto-generate:hover { background:#4a7d4a !important; } }
 
 /* Rond de couleur par salle (retour Stéphane : « il faut déjà pouvoir décider de la couleur de la
    salle ») — posé dans le coin haut-droit de chaque feuille, juste au-dessus de son bord. */
@@ -2465,7 +2468,7 @@ body.stephane-test-decor .scale-wall-pillar {
   position:absolute; top:-30px; right:0; width:20px; height:20px; border-radius:50%;
   border:2px solid #cfcfcf; cursor:pointer; padding:0;
 }
-.placement-proto-sheet-ambiance-btn:hover { border-color:#fff; }
+@media (hover:hover) { .placement-proto-sheet-ambiance-btn:hover { border-color:#fff; } }
 .placement-proto-ambiance-popover {
   position:fixed; z-index:1000; background:#232426; border:1px solid #454647; border-radius:6px;
   box-shadow:0 8px 20px rgba(0,0,0,.5); padding:6px; min-width:200px; max-height:70vh; overflow-y:auto;
@@ -2474,7 +2477,7 @@ body.stephane-test-decor .scale-wall-pillar {
   display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; color:#eee;
   font-family:Arial,sans-serif; font-size:.82rem; padding:6px 8px; border-radius:4px; cursor:pointer; text-align:left;
 }
-.placement-proto-ambiance-option:hover { background:#3a3b3d; }
+@media (hover:hover) { .placement-proto-ambiance-option:hover { background:#3a3b3d; } }
 .placement-proto-ambiance-swatch {
   width:16px; height:16px; border-radius:50%; border:1px solid rgba(255,255,255,.35); flex:0 0 auto;
 }
@@ -2514,7 +2517,7 @@ body.stephane-test-decor .scale-wall-pillar {
   font-size:.75rem; padding:3px 8px; border:1px solid #8a7f6a; border-radius:4px; background:#f4f1ea;
   color:#2a2a2a; cursor:pointer; flex:0 0 auto;
 }
-.placement-proto-saved-row button:hover { background:#fff; }
+@media (hover:hover) { .placement-proto-saved-row button:hover { background:#fff; } }
 
 /* Bouton « 💾 Enregistrer » du bandeau — même style neutre que les autres commandes du bandeau
    (fermer, +Ajouter une salle), à la différence du bouton vert « Générer l'exposition ». */
@@ -2663,11 +2666,11 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .imp-bio-split.bio-dual:not(.bio-film) #imp-bio-scroll { -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 4%, #000 94%, transparent 100%); mask-image:linear-gradient(to bottom, transparent 0, #000 4%, #000 94%, transparent 100%); }
 .imp-bio-split.bio-dual .imp-bio-controls { display:flex; flex:0 0 auto; justify-content:center; align-items:center; gap:12px; padding-top:12px; }
 .imp-bio-seek { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; padding:0; color:var(--ink); background:transparent; border:1px solid currentColor; border-radius:50%; cursor:pointer; opacity:.9; }
-.imp-bio-seek:hover { background:rgba(128,128,128,.18); opacity:1; }
+@media (hover:hover) { .imp-bio-seek:hover { background:rgba(128,128,128,.18); opacity:1; } }
 .imp-bio-seek.hidden { display:none; }
 .imp-bio-toggle { display:inline-flex; align-items:center; gap:8px; }
 .imp-bio-toggle { font:600 1rem Arial,sans-serif; color:var(--ink); background:transparent; border:1px solid currentColor; border-radius:999px; padding:9px 26px; cursor:pointer; opacity:.9; }
-.imp-bio-toggle:hover { background:rgba(255,255,255,.12); opacity:1; }
+@media (hover:hover) { .imp-bio-toggle:hover { background:rgba(255,255,255,.12); opacity:1; } }
 .imp-bio-toggle.hidden { display:none; }
 /* v164 : sur PC, le cadre de la bio occupe toute la hauteur disponible (comme sur la maquette) */
 @media (min-width:1000px) {
@@ -2699,12 +2702,12 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
    téléphone : un peu moins de place pour le texte, un peu plus pour les images
    ============================================================ */
 .imp-bio-split .imp-bio-split-credit { position:absolute; left:auto; right:8px; bottom:8px; top:auto; margin:0; padding:2px 9px; width:auto; display:inline-flex; flex-direction:row; gap:0; font:600 .68rem Arial,sans-serif; letter-spacing:.02em; color:rgba(255,255,255,.78); background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.28); border-radius:999px; text-decoration:none; z-index:4; opacity:.75; transition:opacity .15s; }
-.imp-bio-split .imp-bio-split-credit:hover { opacity:1; color:#fff; text-decoration:none; background:rgba(0,0,0,.8); }
+@media (hover:hover) { .imp-bio-split .imp-bio-split-credit:hover { opacity:1; color:#fff; text-decoration:none; background:rgba(0,0,0,.8); } }
 .imp-bio-split .imp-bio-split-credit.hidden { display:none; }
 .imp-bio-split .imp-bio-split-credit .imp-bio-split-credit-text { display:none; }
 .imp-bio-split.bio-dual .imp-bio-controls { background:#000; margin:12px -22px -14px -26px; padding:10px 12px; border-top:1px solid rgba(255,255,255,.18); }
 .imp-bio-split.bio-dual .imp-bio-controls .imp-bio-seek, .imp-bio-split.bio-dual .imp-bio-controls .imp-bio-toggle { color:#fff; opacity:1; }
-.imp-bio-split.bio-dual .imp-bio-controls .imp-bio-seek:hover, .imp-bio-split.bio-dual .imp-bio-controls .imp-bio-toggle:hover { background:rgba(255,255,255,.18); }
+@media (hover:hover) { .imp-bio-split.bio-dual .imp-bio-controls .imp-bio-seek:hover, .imp-bio-split.bio-dual .imp-bio-controls .imp-bio-toggle:hover { background:rgba(255,255,255,.18); } }
 .imp-bio-split.bio-dual.bio-vert .imp-bio-controls { margin:6px -16px -6px -16px; padding:6px 10px; }
 .imp-bio-split.bio-dual.bio-vert .imp-bio-photo-col { flex:0 0 35%; }
 .imp-bio-split.bio-dual.bio-vert .imp-bio-slide-col { flex:0 0 34%; }
@@ -2729,11 +2732,11 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .qc-artists-chosen { display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center; }
 .qc-artist-chip { display:inline-flex; align-items:center; gap:6px; font-family:Arial,sans-serif; font-size:.82rem; font-weight:700; letter-spacing:.02em; color:var(--ink); background:#f6efdd; border:1px solid var(--border); border-radius:999px; padding:4px 6px 4px 12px; }
 .qc-artist-chip button { border:0; background:transparent; cursor:pointer; font-size:.95rem; line-height:1; color:var(--muted); padding:2px 5px; border-radius:50%; }
-.qc-artist-chip button:hover { background:rgba(0,0,0,.08); color:var(--ink); }
+@media (hover:hover) { .qc-artist-chip button:hover { background:rgba(0,0,0,.08); color:var(--ink); } }
 
 /* v189 — lien « 👤 » (compte) dans la fenêtre de fin d'exercice */
 .results-account-link { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; vertical-align:middle; margin-left:4px; border-radius:6px; border:1px solid var(--border); background:var(--paper); font-size:.9rem; cursor:pointer; }
-.results-account-link:hover { background:#f7f2ea; }
+@media (hover:hover) { .results-account-link:hover { background:#f7f2ea; } }
 
 /* v190 — 3e encadré = phrase récapitulative, texte courant dans le cadre beige */
 .qc-artists-chosen { display:block; font-family:Georgia,serif; font-size:.95rem; line-height:1.5; color:var(--ink); text-align:center; }
@@ -2865,7 +2868,7 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .cinema-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .cinema-head h2 { margin:0; font-family:Georgia,serif; font-size:1.25rem; }
 .cinema-x { width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:var(--paper); cursor:pointer; font-size:.95rem; }
-.cinema-x:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); }
+@media (hover:hover) { .cinema-x:hover { background:var(--wrong); color:#fff; border-color:var(--wrong); } }
 .cinema-intro { margin:6px 0 10px; font-size:.82rem; color:var(--muted); line-height:1.4; }
 .cinema-tabs { display:flex; gap:6px; margin-bottom:8px; }
 .cinema-tab { flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--paper); cursor:pointer; font-size:.9rem; font-weight:700; color:var(--muted); }
@@ -2876,7 +2879,8 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .cinema-list { overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1 1 auto; min-height:120px; border-top:1px solid var(--border); padding-top:4px; }
 .cinema-group { position:sticky; top:0; background:var(--paper); font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:8px 4px 3px; }
 .cinema-item { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:9px 8px; border:0; border-bottom:1px solid rgba(0,0,0,.07); background:transparent; cursor:pointer; font-family:inherit; font-size:.95rem; color:var(--ink); }
-.cinema-item:hover, .cinema-item:focus-visible { background:#f7f2ea; outline:none; }
+.cinema-item:focus-visible { background:#f7f2ea; outline:none; }
+@media (hover:hover) { .cinema-item:hover { background:#f7f2ea; outline:none; } }
 .cinema-item .nm { font-weight:600; min-width:0; }
 .cinema-item small { display:block; font-weight:400; color:var(--muted); font-size:.74rem; margin-top:1px; }
 .cinema-item .go { flex:0 0 auto; font-size:.8rem; color:var(--muted); white-space:nowrap; }
@@ -2922,7 +2926,24 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .cinema-cols, .cinema-row { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 .cinema-cols { font-size:.7rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:2px 8px 4px; }
 .cinema-row .cinema-cell { border:1px solid rgba(0,0,0,.09); border-radius:8px; margin:0 0 5px; background:#fff; min-width:0; }
-.cinema-row .cinema-cell:hover:not(:disabled), .cinema-row .cinema-cell:focus-visible { background:#f7f2ea; }
+.cinema-row .cinema-cell:focus-visible { background:#f7f2ea; }
+@media (hover:hover) { .cinema-row .cinema-cell:hover:not(:disabled) { background:#f7f2ea; } }
 .cinema-row .cinema-cell:disabled { opacity:.45; cursor:default; }
 .cinema-row .cinema-wk em { font-style:italic; font-weight:600; }
 @media (max-width:420px) { .cinema-row .cinema-cell { padding:7px 6px; font-size:.84rem; gap:4px; } }
+
+/* v251 — Boutons sur smartphone.
+   1) Tous les effets « au survol » (:hover) sont maintenant réservés aux appareils qui ont une vraie
+      souris (@media (hover:hover)). Sur iPhone, un tap peut sinon être interprété comme un simple
+      « survol » quand le survol change l'affichage (bulle d'aide des boutons d'accueil, couleurs,
+      léger décalage) : le premier tap ne fait rien d'autre que « survoler », et il faut taper une
+      seconde fois pour que le bouton réagisse — d'où l'impression de boutons qui répondent mal.
+      Le survol reste collant aussi après un tap : le bouton à la même place à la question suivante
+      restait coloré comme s'il était déjà enfoncé.
+   2) À la place, un retour visuel immédiat au doigt (:active), pour sentir que le tap est pris. */
+button, [role="button"], .home-mode-button, .primary-button, .secondary-button { -webkit-tap-highlight-color:rgba(0,0,0,.12); -webkit-touch-callout:none; }
+@media (hover:none) {
+  button:not(:disabled):active, [role="button"]:active, .home-mode-button:active { filter:brightness(.88); transition:none; }
+  .home-mode-button .tooltip-bubble { display:none; }
+  .home-mode-button.show-tooltip .tooltip-bubble { display:block; }
+}
