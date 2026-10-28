@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v257';
+const APP_VERSION = 'v258';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -3056,6 +3056,17 @@ function frOrdinal(n) {
   if (w.endsWith('e')) return w.slice(0, -1) + 'ième';
   return w + 'ième';
 }
+// v258 (profilage de l'Intrus sur téléphone : ~1,2 s de calcul rien qu'ici au clic sur « Intrus ») : fixSpeechPronunciation reconstruisait,
+// à CHAQUE texte lu, une expression régulière par mot de la table de prononciation (plusieurs centaines, avec options Unicode lourdes).
+// Compiler une expression régulière coûte bien plus cher que de l'appliquer : on les mémorise, une fois compilées, par (modèle, options).
+const regExpMemo = new Map();
+function cachedRegExp(source, flags) {
+  const k = flags + '/' + source;
+  let r = regExpMemo.get(k);
+  if (!r) { r = new RegExp(source, flags); regExpMemo.set(k, r); }
+  r.lastIndex = 0;
+  return r;
+}
 function fixSpeechPronunciation(text) {
   // Le texte entre parenthèses (ex. un nom de musée alternatif) reste utile à l'écran mais
   // alourdit la lecture à voix haute : on le retire ici, avant toute autre correction, pour que
@@ -3124,28 +3135,34 @@ function fixSpeechPronunciation(text) {
   out = out.replace(/(?<![\p{L}\p{N}])(plus)(?=\s+(?:(?:rien|jamais|personne|aucune?|nulle?|guère)(?![\p{L}\p{N}])|d['’]|de\s))/giu, (m, w) => PLU(w));
   // v226 (retour Stéphane : « si le mot est en majuscules ou en minuscules, il doit se prononcer pareil ») : toute lettre capitale compte (\p{Lu}), pas seulement
   // A-Z et À-Ý — sinon un mot avec « Œ », « Š », « Ł »… (ŒUVRE, KUBIŠTA) restait en majuscules et la voix l'épelait, sans passer par la table.
-  out = out.replace(new RegExp(`${NB}\\p{Lu}{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
+  out = out.replace(cachedRegExp(`${NB}\\p{Lu}{3,}${NA}`, 'gu'), (word) => word.charAt(0) + word.slice(1).toLowerCase());
   Object.entries(NATIONALITY_AWARE_FIXES).forEach(([wrong, { exceptFor, otherwise }]) => {
     if (exceptFor.test(currentSpeechNationality)) return; // nationalité exceptée : on ne touche pas
-    out = out.replace(new RegExp(`${NB}${wrong}${NA}`, 'giu'), otherwise);
+    out = out.replace(cachedRegExp(`${NB}${wrong}${NA}`, 'giu'), otherwise);
   });
   // v149 (« Ginevra de’ Benci : ne pas marquer d'arrêt ») : l'apostrophe de l'italien « de' » provoque une pause
   // dans certaines voix — on la retire (« de Benci »), comme on le ferait à l'oral.
-  out = out.replace(new RegExp(`${NB}([Dd]e)[’']\\s*`, 'gu'), '$1 ');
+  out = out.replace(cachedRegExp(`${NB}([Dd]e)[’']\\s*`, 'gu'), '$1 ');
   // v169 (retour Stéphane : « il dit toujours C-Arezzonico ») : les titres s'écrivent « Ca' Rezzonico » / « Ca’ d’Oro »
   // (avec espace, parfois apostrophe courbe), alors que la table de prononciation connaît « ca'rezzonico » et « ca'd'oro »
   // (sans espace, validés à l'atelier). Faute de correspondance, la voix lisait « Ca' » comme deux lettres. On ramène
   // donc d'abord toutes ces écritures à la forme de la table.
-  out = out.replace(new RegExp(`${NB}Ca[’'\`´]?\\s*(?=Rezzonico${NA}|d[’'\`´]?\\s*Oro${NA})`, 'giu'), "Ca'");
-  out = out.replace(new RegExp(`${NB}(Ca')d[’'\`´]?\\s*Oro${NA}`, 'giu'), "$1d'Oro");
+  out = out.replace(cachedRegExp(`${NB}Ca[’'\`´]?\\s*(?=Rezzonico${NA}|d[’'\`´]?\\s*Oro${NA})`, 'giu'), "Ca'");
+  out = out.replace(cachedRegExp(`${NB}(Ca')d[’'\`´]?\\s*Oro${NA}`, 'giu'), "$1d'Oro");
   const voiceOverrides = currentPronunciationOverrides();
+  // v258 : sur ~300 mots de la table, la plupart sont absents du texte à lire. Avant de lancer l'expression régulière (coûteuse : insensible à la
+  // casse, Unicode, avec contrôles de frontières), un simple « le texte contient-il ce mot ? » élimine d'emblée les absents. Réservé aux mots faits de
+  // lettres simples (sans caractère spécial d'expression régulière) ; le texte en minuscules est recalculé dès qu'une correction le modifie.
+  let lowOut = out.toLowerCase();
   Object.entries(PRONUNCIATION_FIXES).forEach(([wrong, baseRight]) => {
     const isPrefix = wrong.endsWith('*');
     const stem = isPrefix ? wrong.slice(0, -1) : wrong;
     const hasOverride = voiceOverrides && Object.prototype.hasOwnProperty.call(voiceOverrides, wrong);
     const right = hasOverride ? voiceOverrides[wrong] : baseRight;
     if (hasOverride && right === '') return; // '' = cette voix lit le mot tel quel
-    out = out.replace(new RegExp(`${NB}${stem}${isPrefix ? '' : NA}`, 'giu'), right);
+    if (/^[a-zà-ÿ0-9 '’-]+$/.test(stem) && !lowOut.includes(stem)) return;
+    const next = out.replace(cachedRegExp(`${NB}${stem}${isPrefix ? '' : NA}`, 'giu'), right);
+    if (next !== out) { out = next; lowOut = out.toLowerCase(); }
   });
   return out;
 }
@@ -9846,8 +9863,16 @@ function famSelectedTypes() {
 }
 const FAM_TYPE_LABELS = { artist: 'Artiste', word: 'Mot commun dans les titres', century: 'Siècle', museum: 'Musée / lieu' };
 
+const famNormalizeMemo = new Map();   // v258 : résultat ne dépendant que du texte -> mémorisé (appelée des milliers de fois pour indexer titres et noms)
 function famNormalize(s) {
-  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[«»"',.]/g, '').trim();
+  const raw = typeof s === 'string' ? s : String(s || '');
+  let out = famNormalizeMemo.get(raw);
+  if (out === undefined) {
+    out = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[«»"',.]/g, '').trim();
+    if (famNormalizeMemo.size > 30000) famNormalizeMemo.clear();
+    famNormalizeMemo.set(raw, out);
+  }
+  return out;
 }
 function famAnswerMatches(input, correct, type) {
   const a = famNormalize(input);
