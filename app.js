@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v255';
+const APP_VERSION = 'v256';
 // v170 : lien personnel vers l'atelier de prononciation (Mon compte). Il n'est pas public : il se « déverrouille » sur un
 // appareil en ouvrant l'appli une fois avec ?atelier=1 à la fin de l'adresse (?atelier=0 pour le re-cacher). Le choix est
 // mémorisé dans ce navigateur seulement ; sur les autres appareils, le lien reste invisible.
@@ -8732,7 +8732,7 @@ $('artist-list-refresh')?.addEventListener('click', async () => {
   quizRowsCache.clear(); quizRowsResolvedCache.clear(); quizFileCache.clear();
   titleSearchIndex = null; titleSearchIndexCacheSize = -1;
   museumIndexRows = null; cityViewKey = null;
-  artistListLoaded = false; artistListAutoDone = false; natureTextsPromise = null; NATURE_TEXTS = null;
+  artistListLoaded = false; artistListPromise = null; artistListAutoDone = false; natureTextsPromise = null; NATURE_TEXTS = null;
   DATA_CACHE_BUST = Date.now();
   const ok = await loadArtistListComplete();
   if (!ok) { status.textContent = "L'actualisation a échoué (connexion internet ?)."; return; }
@@ -8778,7 +8778,20 @@ function upperPatronymeCore(p) {
     return w.toLocaleUpperCase('fr-FR');
   }).join('');
 }
-async function loadArtistListIfNeeded() {
+// v256 (diagnostic Stéphane sur iPhone : « gel de 992 ms, 1442 ms… » dès l'accueil) : au démarrage, le compteur de l'accueil lance
+// en même temps 12 chargements de fichiers d'œuvres, et CHACUN demandait « la liste des artistes est-elle chargée ? » — comme elle ne
+// l'était pas encore, chacun retéléchargeait et relisait le gros fichier maître (plus de 500 Ko) : jusqu'à 13 lectures identiques en
+// parallèle, qui occupaient le téléphone plusieurs secondes d'affilée (boutons qui ne répondent pas). Désormais tous les appels
+// partagent UNE seule lecture ; une nouvelle n'est refaite que si le fichier maître est réimporté (artistListPromise remis à zéro).
+let artistListPromise = null;
+function loadArtistListIfNeeded() {
+  if (artistListLoaded) return Promise.resolve(true);
+  if (!artistListPromise) {
+    artistListPromise = loadArtistListOnce().then((ok) => { if (!ok) artistListPromise = null; return ok; }, (e) => { artistListPromise = null; throw e; });
+  }
+  return artistListPromise;
+}
+async function loadArtistListOnce() {
   if (artistListLoaded) return true;
   try {
     if (!window.XLSX) throw new Error('Le module de lecture Excel n’a pas été chargé.');
@@ -15528,7 +15541,7 @@ async function updateHomeStatsCounter() {
     counterEl.textContent = "plusieurs milliers d'œuvres et de nombreux artistes";
   }
 }
-setTimeout(updateHomeStatsCounter, 400);
+setTimeout(updateHomeStatsCounter, 1500);   // v256 : un peu plus tard (400 → 1500 ms), pour laisser l'accueil répondre aux premiers taps
 
 // ============================================================================================
 // v112 (PROTOTYPE, discussion en cours avec Stéphane — voir #placement-proto, index.html, pour le
