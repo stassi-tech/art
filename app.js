@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v268';
+const APP_VERSION = 'v269';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1897,13 +1897,17 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v269 (atelier de prononciation, export du 30 oct 22:18) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'dalle bande nere': 'dallé bandé néré',  // v269 : atelier du 30 oct
+  'gallery of art': 'gallery of artt',  // v269 : atelier du 30 oct
+  'hilma af klint': 'hilma have-klint',  // v269 : atelier du 30 oct
   // v235 (atelier de prononciation, export du 26 oct 11:51) : expressions de plusieurs mots, placées AVANT les mots seuls
-  'moyen âge': 'moyen-âge',  // v264 : atelier du 28 oct
-  'fonte gaia': 'fonté gaya',
-  'la barcaccia': 'barkâ-tchia',
-  'fucci': 'foutchi',  // v264 : atelier du 28 oct
-  'héraclès': 'héraclèsse',  // v264 : atelier du 28 oct
-  'quercia': 'kouértchia',  // v264 : atelier du 28 oct
+  'moyen âge': 'moyen-âge',  // v269 : atelier du 30 oct
+  'fonte gaia': 'fonté gaya',  // v269 : atelier du 30 oct
+  'la barcaccia': 'barkâ-tchia',  // v269 : atelier du 30 oct
+  'fucci': 'foutchi',  // v269 : atelier du 30 oct
+  'héraclès': 'héraclèsse',  // v269 : atelier du 30 oct
+  'quercia': 'kouértchia',  // v269 : atelier du 30 oct
   'corinthien': 'corinthien',  // v264 : atelier du 28 oct
   'entablement': 'entablement',  // v264 : atelier du 28 oct
   'maggiore': 'maggiore',  // v264 : atelier du 28 oct
@@ -1914,18 +1918,18 @@ const PRONUNCIATION_FIXES = {
   'bakst': 'bakstte',
   'guidi': 'gwidi',
   'ilya': 'riya',
-  'fountain': 'fonntaine', // v152 (atelier 16 oct)
+  'fountain': 'fonntaine',  // v269 : atelier du 30 oct
   'osmer': 'osmère',
   'ariette': 'ariette',
   'xxiii': 'vingt-trois',
   'brueghel': 'breuguel',
-  'guglielmo': 'goulyélmo', // v152 (atelier 16 oct)
-  'tino di camaino': 'tino di kama-i-no', // v152 (atelier 16 oct)
+  'guglielmo': 'goulyélmo',  // v269 : atelier du 30 oct
+  'tino di camaino': 'tino di kama-i-no',  // v269 : atelier du 30 oct
   // « van lo » tout court restait mal prononcé (« vané lo ») : le simple « n » de « van » se
   // nasalise en français (comme dans « vent »), puis le moteur ajoutait un « é » en bout de
   // syllabe. Doubler le « n » (« vanne ») bloque cette nasalisation — comme dans « Anne », qui se
   // prononce bien « ane » et pas « an(e) » nasalisé — et donne enfin le son attendu.
-  'carle van loo': 'carle vaN lô', // v152 (atelier 16 oct)
+  'carle van loo': 'carle vaN lô',  // v269 : atelier du 30 oct
   'watteau': 'vatteau',
   // « Simon » se lisait à l'anglaise (« Saïmon », comme le prénom anglais) plutôt qu'à la
   // française (« Simon », comme dans « Simone ») — certaines voix semblent reconnaître ce prénom
@@ -1934,7 +1938,7 @@ const PRONUNCIATION_FIXES = {
   // plus déclencher cette reconnaissance, tout en se prononçant pareil une fois lu en français.
   'simon vouet': 'symon vouet',
   'reichler': 'raïchlère',
-  'jacopo': 'djiacopo', // v152 (atelier 16 oct)
+  'jacopo': 'djiacopo',  // v269 : atelier du 30 oct
   'serpotta': 'serpotta',
   'giusto di menabuoi': 'djousto di ménabwoï',
   'egon': 'égone',
@@ -1946,123 +1950,123 @@ const PRONUNCIATION_FIXES = {
   'permoser': 'permozère',
   'rusconi': 'rousconi',
   'gossaert': 'rossart',
-  'bocklin': 'beuklinne', // v152 (atelier 16 oct)
-  'arcimboldo': 'archimmeboldo', // v155 (atelier 16 oct, série finale)
+  'bocklin': 'beuklinne',  // v269 : atelier du 30 oct
+  'arcimboldo': 'archimmeboldo',  // v269 : atelier du 30 oct
   'gellee': 'gelé',
   'gellée': 'gelé',
-  'barocci': 'barottchi', // v152 (atelier 16 oct)
+  'barocci': 'barottchi',  // v269 : atelier du 30 oct
   'filippo della valle': 'filippo della vallé',
-  'flaxman': 'flaksmane', // v152 (atelier 16 oct)
+  'flaxman': 'flaksmane',  // v269 : atelier du 30 oct
   'fabritius': 'fabritsiousse',
   'bartolomeo': 'bartoloméo',
-  'gibson': 'gibssone', // v152 (atelier 16 oct)
-  'pollaiolo': 'pollaïeuolo', // v152 (atelier 16 oct)
+  'gibson': 'gibssone',  // v269 : atelier du 30 oct
+  'pollaiolo': 'pollaïeuolo',  // v269 : atelier du 30 oct
   'juan gris': 'jouane griss',
-  'bandini': 'bândini', // v152 (atelier 16 oct)
-  'masaccio': 'mazatchio',
+  'bandini': 'bândini',  // v269 : atelier du 30 oct
+  'masaccio': 'mazatchio',  // v269 : atelier du 30 oct
   'michel-ange': 'mikélange',
   'sabin': 'sabine',
   'antéa': 'antéa',
   'antea': 'antéa',
-  'kirchner': 'kircheneur',
+  'kirchner': 'kircheneur',  // v269 : atelier du 30 oct
   'kisling': 'kissling',
   'bernadino': 'bérnadino',
   // Repéré à nouveau malgré 'vérmeur' : le moteur semble parfois avaler le second "r" final —
   // 'vérmère' calque la finale sur un mot français très courant ("mère"), dont le "r" final se
   // prononce toujours de façon fiable.
-  'vermeer': 'vermère', // v152 (atelier 16 oct)
-  'kalf': 'kalfe', // v152 (atelier 16 oct)
+  'vermeer': 'vermère',  // v269 : atelier du 30 oct
+  'kalf': 'kalfe',  // v269 : atelier du 30 oct
   'edvard': 'édvard',
-  'campione': 'campionné', // v152 (atelier 16 oct)
+  'campione': 'campionné',  // v269 : atelier du 30 oct
   'ercole': 'ércolé',
   'gaudens': 'gaudenss',
-  'leone': 'léonné', // v152 (atelier 16 oct)
+  'leone': 'léonné',  // v269 : atelier du 30 oct
   'allan ramsay': 'allanne ramsay',
   'champaigne': 'champagne',
-  'boccioni': 'botchyoni', // v152 (atelier 16 oct)
+  'boccioni': 'botchyoni',  // v269 : atelier du 30 oct
   'dordrecht': 'dordrekt',
   'horaces': 'oraces',
-  'mochi': 'môki', // v152 (atelier 16 oct)
+  'mochi': 'môki',  // v269 : atelier du 30 oct
   'pacher': 'pareur',
   'guardi': 'gouardi',
   'straub': 'chtraob',
   'agnolo': 'aniolo',
   'faydherbe': 'féderbe',
-  'emmaüs': 'émmaüs', // v152 (atelier 16 oct)
+  'emmaüs': 'émmaüs',  // v269 : atelier du 30 oct
   'emmaus': 'émaûs', // v152 (atelier 16 oct)
-  'thomas ball': 'thomass boll', // v152 (atelier 16 oct)
+  'thomas ball': 'thomass boll',  // v269 : atelier du 30 oct
   // v157 : expression anglaise (portraits de famille). Seule l'EXPRESSION est réécrite : le mot « conversation » seul,
   // en français, n'est pas touché. Le * couvre aussi « conversation pieces » (la fin « s » est conservée).
   'conversation piece*': 'konveuséïchenne pîce',
   // v159 : « Royal Collection » (collection de la Couronne britannique) lue à l'anglaise ; le mot « collection » seul reste français.
   'royal collection*': 'Roïeul Keulèkchenne',
   'sœur': 'seur',
-  'werefkin': 'véréfkine',
+  'werefkin': 'véréfkine',  // v269 : atelier du 30 oct
   'coysevox': 'cozevo',
   'manneken pis': 'mannekenne piss',
   'copley': 'kopli',
   'vuillard': 'vuiyar',
   'damian forment': 'damianne formente', // v150 (atelier 15 oct, validé à l'oreille) ; avant : 'damianne formènnte' // v152 (atelier 16 oct)
-  'damián forment': 'damianne formente', // v128 : « prononcer le ENT » (avec l'accent du fichier, la clé sans accent ne s'appliquait pas) // v152 (atelier 16 oct)
+  'damián forment': 'damianne formente',  // v269 : atelier du 30 oct
   'ambrogio lorenzetti': 'ambbrogio loréndzéti', // v152 (atelier 16 oct)
-  'borghese': 'borguêzze', // v152 (atelier 16 oct)
+  'borghese': 'borguêzze',  // v269 : atelier du 30 oct
   'borghèse': 'borguêzze', // v152 (atelier 16 oct)
-  'bernini': 'bêrnini', // v152 (atelier 16 oct)
+  'bernini': 'bêrnini',  // v269 : atelier du 30 oct
   'teniers': 'ténié',
-  'cumes': 'cûmes', // v152 (atelier 16 oct)
+  'cumes': 'cûmes',  // v269 : atelier du 30 oct
   // "pas zé" (retour de Stéphane) : la finale "-ueze" se faisait apparemment entendre comme un
   // "é" accentué plutôt qu'un e muet. "-èze" calque la finale sur des mots français courants
   // (ex. "obèse") dont le e final reste bien muet.
   'velasquez': 'vélaskèze',
-  'gentileschi': 'djentilésski', // v152 (atelier 16 oct)
-  'chassériau': 'Chassériau', // v155 (atelier 16 oct, série finale)
+  'gentileschi': 'djentilésski',  // v269 : atelier du 30 oct
+  'chassériau': 'Chassériau',  // v269 : atelier du 30 oct
   'malevitch': 'Malévitch',
-  'poyer': 'Pôyé', // v152 (atelier 16 oct)
+  'poyer': 'Pôyé',  // v269 : atelier du 30 oct
   'chœur': 'keur',
-  'adam': 'Adan', // v128 : « Adam = dan, comme une dent » — la finale « -ant » est un « an » sûr (« Adan » restait lu « adane »)
+  'adam': 'Adan',  // v269 : atelier du 30 oct
   // v198 : « Kunsthaus » / « Kunsthalle » doivent passer AVANT le préfixe générique « kunst* », sinon celui-ci les transformait en premier et leur écriture validée ne s'appliquait jamais
-  'kunsthaus': 'kounsthaosse',
-  'kunsthalle': 'kounst-halleu',
+  'kunsthaus': 'kounsthaosse',  // v269 : atelier du 30 oct
+  'kunsthalle': 'kounst-halleu',  // v269 : atelier du 30 oct
   'kunst*': 'kounst',
   // v116 (docx 29 sept, tableau PRONONCIATION) : réécritures phonétiques ajoutées d'après les
   // indications de Stéphane (les noms déjà présents plus haut — Sœurs, Adam, Kunst…, Rijn… — n'ont pas
   // été redoublés).
   'chaïm': 'raïme',
   'chaim': 'raïme',
-  'berruguete': 'bèrrouguété', // v152 (atelier 16 oct)
+  'berruguete': 'bèrrouguété',  // v269 : atelier du 30 oct
   'san bernardo alle terme': 'san bernardo allé termé',
-  'baccio': 'batchio', // v150 (atelier 15 oct : « j'entends bak-chio, il faut dire bat-chio ») ; avant : 'batchio'
+  'baccio': 'batchio',  // v269 : atelier du 30 oct
   'milon de crotone': 'milon de crotonne',
   'large colour prints': 'larj keulor prinnts',
-  'loggetta': 'lodjêta', // v128 (docx 9 oct : « Loggetta = lojéta ») // v155 (atelier 16 oct, série finale)
+  'loggetta': 'lodjêta',  // v269 : atelier du 30 oct
   'andrea bolgi': 'andréa boldji',
   'juan de juni': 'rouane dé rouni',
-  'élément': 'élément',
+  'élément': 'élément',  // v269 : atelier du 30 oct
   'tempera': 'tanpéra',
-  'escorial': 'Esskôrial', // v152 (atelier 16 oct)
+  'escorial': 'Esskôrial',  // v269 : atelier du 30 oct
   'vespucci': 'Vespoutchi',
   'transfiguration': 'transfigurassion',
   'sacrements': 'sakremans',
-  'cosmè': 'Kossmè', // v152 (atelier 16 oct)
+  'cosmè': 'Kossmè',  // v269 : atelier du 30 oct
   'fiore': 'Fioré',
-  'schifanoia': 'Skifanno-ya', // v152 (atelier 16 oct)
+  'schifanoia': 'Skifanno-ya',  // v269 : atelier du 30 oct
   'bouts': 'Bout',
   'alte': 'Alté',
   'gemäldegalerie': 'Guémeldegalery',
   'linaioli': 'Linayoli',
   'botticelli': 'Bottitchelli',
   'groeninge': 'Grouningue',
-  'francesca': 'Frantchésska', // v152 (atelier 16 oct)
-  'gentile': 'djentilé', // v152 (atelier 16 oct)
-  'vecchietta': 'Vékietta', // v152 (atelier 16 oct)
+  'francesca': 'Frantchésska',  // v269 : atelier du 30 oct
+  'gentile': 'djentilé',  // v269 : atelier du 30 oct
+  'vecchietta': 'Vékietta',  // v269 : atelier du 30 oct
   'patmos': 'Patmoss',
   'verrocchio': 'Verrokio',
   'ecce': 'Étché',
   'condottiere': 'condotière',
   'condottière': 'condotière',
   'rogier': 'Roger',
-  'angelico': 'Anddgéliko', // v152 (atelier 16 oct)
-  'ursins': 'ûrsin', // v152 (atelier 16 oct)
+  'angelico': 'Anddgéliko',  // v269 : atelier du 30 oct
+  'ursins': 'ûrsin',  // v269 : atelier du 30 oct
   'ciarda': 'Tcharda',
   'dürer': 'dureur',
   'durer': 'dureur',
@@ -2070,54 +2074,54 @@ const PRONUNCIATION_FIXES = {
   'benozzo': 'Bénotso',
   'gozzoli': 'Gotsoli',
   'simone': 'Simoné',
-  'cione': 'tchiôné', // v152 (atelier 16 oct)
+  'cione': 'tchiôné',  // v269 : atelier du 30 oct
   'lorenzetti': 'loréndzéti', // v128 : le « z » italien se dit « dz » (comme dans « piazza », « Gozzoli »)
   'orsanmichele': 'Orsanmikélé',
-  'santa croce': 'Santa Crotché', // v152 (atelier 16 oct)
-  'cimabue': 'Tchimaboué', // v152 (atelier 16 oct)
-  'menabuoi': 'Ménabwo-y', // v152 (atelier 16 oct)
-  'duccio': 'Doutchio', // v152 (atelier 16 oct)
-  'buoninsegna': 'Bwonine-ségna', // v152 (atelier 16 oct)
-  'firenze': 'Firennzé', // v152 (atelier 16 oct)
+  'santa croce': 'Santa Crotché',  // v269 : atelier du 30 oct
+  'cimabue': 'Tchimaboué',  // v269 : atelier du 30 oct
+  'menabuoi': 'Ménabwo-y',  // v269 : atelier du 30 oct
+  'duccio': 'Doutchio',  // v269 : atelier du 30 oct
+  'buoninsegna': 'Bwonine-ségna',  // v269 : atelier du 30 oct
+  'firenze': 'Firennzé',  // v269 : atelier du 30 oct
   'modena': 'Modéna',
   'aretino': 'Arétino',
   'altichiero': 'Altikiero',
-  'giobbe': 'djiobbé', // v152 (atelier 16 oct)
+  'giobbe': 'djiobbé',  // v269 : atelier du 30 oct
   'brera': 'Bréra',
   'procris': 'Pro criss',
   'bacchante': 'Bakante',
   'canova': 'Kanova',
-  'méphistophélès': 'méfistofélesse', // v152 (atelier 16 oct)
-  'jason': 'Jazont',
+  'méphistophélès': 'méfistofélesse',  // v269 : atelier du 30 oct
+  'jason': 'Jazont',  // v269 : atelier du 30 oct
   'thorvaldsen': 'Thordvalsenne',
-  'tate britain': 'Téte Britenn', // v152 (atelier 16 oct)
-  'mcneill': 'Macknil', // v152 (atelier 16 oct)
-  'jongkind': 'jonkinnd', // v152 (atelier 16 oct)
-  'fine': 'Faillne', // v155 (atelier 16 oct, série finale)
-  'oxbow': 'oxbo', // v152 (atelier 16 oct)
+  'tate britain': 'Téte Britenn',  // v269 : atelier du 30 oct
+  'mcneill': 'Macknil',  // v269 : atelier du 30 oct
+  'jongkind': 'jonkinnd',  // v269 : atelier du 30 oct
+  'fine': 'Faillne',  // v269 : atelier du 30 oct
+  'oxbow': 'oxbo',  // v269 : atelier du 30 oct
   'jaleo': 'raléo',
-  'repin': 'Riépine',
+  'repin': 'Riépine',  // v269 : atelier du 30 oct
   'waterhouse': 'WaterHaouse',
   'hayez': 'Aiez',
   'hodler': 'Hodleur',
-  'epsom': 'éppsomm', // v152 (atelier 16 oct)
-  'haussmann': 'Hossmann', // v152 (atelier 16 oct)
+  'epsom': 'éppsomm',  // v269 : atelier du 30 oct
+  'haussmann': 'Hossmann',  // v269 : atelier du 30 oct
   'rügen': 'Ruguéne',
   'böcklin': 'beuklinne', // v152 (atelier 16 oct)
   'edwin': 'Edwine',
-  'iceberg': 'Iceberg',
+  'iceberg': 'Iceberg',  // v269 : atelier du 30 oct
   'tahitiennes': 'Tahissiennes',
   'phryné': 'Friné',
   'vallotton': 'Valloton',
-  'gismonda': 'DjismonDa', // v116 (docx 29 sept : « Gismonda = jismonda ») // v155 (atelier 16 oct, série finale)
+  'gismonda': 'DjismonDa',  // v269 : atelier du 30 oct
   'léonidas': 'Léonidasse',
-  'caliban': 'Calibant', // v152 (atelier 16 oct)
+  'caliban': 'Calibant',  // v269 : atelier du 30 oct
   'hylas': 'Ilasse',
   'thétis': 'Thétisse',
-  'carlyle': 'CarlâÏlle', // v155 (atelier 16 oct, série finale)
-  'alyscamps': 'Aliscant',
+  'carlyle': 'CarlâÏlle',  // v269 : atelier du 30 oct
+  'alyscamps': 'Aliscant',  // v269 : atelier du 30 oct
   'poisson': 'Pouasson',
-  'vœu': 'veut', // v152 (atelier 16 oct)
+  'vœu': 'veut',  // v269 : atelier du 30 oct
   'bernin': 'Bèrnin',
   // Nouvelle liste de retours (chiffres romains, noms d'artistes et lieux réels des fichiers,
   // vérifiés dans les données avant d'écrire chaque correction).
@@ -2133,19 +2137,19 @@ const PRONUNCIATION_FIXES = {
   'zurbaran': 'zurbaranne',
   // "Samson et Dalila", "Samson et le Philistin" : le nom biblique se nasalisait entièrement
   // ("an", "on"), perdant le m et le n. Les doubler bloque la nasalisation, comme pour "vanne".
-  'samson': 'sansont', // v152 (atelier 16 oct)
+  'samson': 'sansont',  // v269 : atelier du 30 oct
   // Annibale Carrache : la finale italienne doit rester un "é" audible, pas un e muet à la française.
   'annibale': 'annibalé',
   // Rembrandt van Rijn : le digramme néerlandais "ij" se lit "aille"/"i" selon les moteurs — jamais
   // comme un "j" français. Rembrandt seul seul restait correct (le "dt" final s'avale naturellement
   // à la française) donc pas touché ici.
-  'rijn': 'riinne', // v152 (atelier 16 oct)
+  'rijn': 'riinne',  // v269 : atelier du 30 oct
   // Musée d'art Nelson-Atkins (Kansas City) : le "s" final anglais de "Atkins" restait muet.
-  'atkins': 'atkiinnse', // v152 (atelier 16 oct)
+  'atkins': 'atkiinnse',  // v269 : atelier du 30 oct
   // Bernardo Strozzi : le double "z" italien se prononce "ts", pas comme un "z" français.
-  'strozzi': 'strozzi', // v152 (atelier 16 oct)
+  'strozzi': 'strozzi',  // v269 : atelier du 30 oct
   // Metropolitan Museum of Art : le "n" final anglais se perdait dans la nasalisation française.
-  'metropolitan': 'métropolitanne', // v152 (atelier 16 oct)
+  'metropolitan': 'métropolitanne',  // v269 : atelier du 30 oct
   // Piet Mondrian : prénom néerlandais (se prononce "pite"), pas le "pyè" que donnerait la lecture
   // à la française d'un "et" final.
   'piet': 'pitte',
@@ -2159,242 +2163,242 @@ const PRONUNCIATION_FIXES = {
   // Saint-Germain-en-Laye : "Laye" se prononce "lè", pas épelé ou lu autrement.
   'laye': 'lè',
   // Mount Rushmore : nom anglais, "mount" ne se prononce pas comme le mot français "mont".
-  'mount': 'maount', // v152 (atelier 16 oct) // v155 (atelier 16 oct, série finale)
+  'mount': 'maount',  // v269 : atelier du 30 oct
   // Juan de Pareja (portrait peint par Vélasquez) : confirmé par Stéphane. Règle qu'il a donnée
   // pour l'espagnol — le "j" (jota, un son guttural absent du français) s'approche par un "r"
   // français, le son le plus proche dans notre alphabet — d'où "Rouanne" (Juan) et "Parera"
   // (Pareja). Double "nn" + "e" final sur "Rouanne" pour éviter la nasalisation du françois
   // "an" (même astuce que zurbaranne/kanonne/sammesonne ci-dessus) : on veut "rwane", pas "rwan"
   // nasalisé comme la ville de Rouen.
-  'juan de pareja': 'rouanne de paréra', // v152 (atelier 16 oct)
+  'juan de pareja': 'rouanne de paréra',  // v269 : atelier du 30 oct
   // Pajarito (« petit oiseau » en espagnol) : même règle jota→r. Repère laissé par Stéphane sans
   // certitude sur l'œuvre exacte — corrigé au cas où ce nom apparaît quelque part dans les
   // données (surnom, titre...), sans effet sinon.
-  'pajarito': 'pararrito', // v152 (atelier 16 oct)
+  'pajarito': 'pararrito',  // v269 : atelier du 30 oct
   // v128 (docx 9 oct, tableau PRONONCIATION) : réécritures phonétiques d'après les indications de Stéphane.
   'baie': 'bè', // « Baie de Naples »
   'sangallo': 'Sangalo', // on entendait « sangalio »
   'schwerin': 'Schwérinne', // « n » prononcé
-  'algardi': 'algardi', // v152 (atelier 16 oct)
+  'algardi': 'algardi',  // v269 : atelier du 30 oct
   'sebastiano': 'Sébastiano',
   'cáceres': 'Cassérèsse', // v150 (atelier 15 oct, validé à l'oreille) ; avant : 'Cacérés' // v155 (atelier 16 oct, série finale)
-  'caceres': 'Cassérèsse', // v155 (atelier 16 oct, série finale)
+  'caceres': 'Cassérèsse',  // v269 : atelier du 30 oct
   'houston': 'Youstonne',
-  'pollux': 'Pollux', // v150 : « u comme rue »
+  'pollux': 'Pollux',  // v269 : atelier du 30 oct
   'giacomo': 'Djacomo',
   'piazza': 'Piadza',
   // v149 (docx 15 oct, PRONONCIATION) : nouvelles réécritures phonétiques d'après les indications de Stéphane.
   'della robbia': 'della Robbiya',
   'bellechose': 'belle chose', // « ch pas k »
-  'venise': 'Venis', // « z pas ch » // v152 (atelier 16 oct)
+  'venise': 'Venis',  // v269 : atelier du 30 oct
   'veneziano': 'vénétziano', // v150 (atelier 15 oct)
   'ginevra': 'Djinèvra',
-  'benci': 'Béntchi', // v150 (atelier 15 oct) // v155 (atelier 16 oct, série finale)
+  'benci': 'Béntchi',  // v269 : atelier du 30 oct
   'weyden': 'védène', // « dén »
   'simon': 'Si-mon', // « pas saïmon » (les cas particuliers, ex. « Simon Vouet », sont traités plus haut)
-  'marmion': 'Marmion', // « pas marmillon »
+  'marmion': 'Marmion',  // v269 : atelier du 30 oct
   'puccio': 'Poutchio', // « chio pas xio »
   // Consigne de Vrai/Faux : « si vous les repérez » — le « z » final ne doit pas s'entendre.
   'repérez': 'repéré',
-  'institute of arts': 'Institute of Artz', // v152 (atelier 16 oct, validé à l'oreille)
-  'rijksmuseum': 'riksmûseom', // v152 (atelier 16 oct, validé à l'oreille)
-  'canaletto': 'kanâlétto', // v155 (atelier 16 oct, validé à l'oreille)
+  'institute of arts': 'Institute of Artz',  // v269 : atelier du 30 oct
+  'rijksmuseum': 'riksmûseom',  // v269 : atelier du 30 oct
+  'canaletto': 'kanâlétto',  // v269 : atelier du 30 oct
   // v168 : « Médicis » (avec accent, comme dans les textes) : sans écriture commune, l'écriture propre à certaines voix ne s'appliquerait pas.
   'médicis': 'Médicis',
   'medicis': 'Medicis',
-  'salute': 'salouté', // v155 (atelier 16 oct, validé à l'oreille)
+  'salute': 'salouté',  // v269 : atelier du 30 oct
   // v168 (atelier de prononciation, export du 16 oct 21:51) : écritures communes à toutes les voix. La dernière écriture
   // d'une même clé l'emporte ; les écritures propres à une voix sont dans PRONUNCIATION_BY_VOICE plus bas.
-  'adam': 'Adan',
-  'algardi': 'algardi',
+  'adam': 'Adan',  // v269 : atelier du 30 oct
+  'algardi': 'algardi',  // v269 : atelier du 30 oct
   'ambrogio lorenzetti': 'ambbrogio loréndzéti',
-  'angelico': 'Anddgéliko',
-  'arcimboldo': 'archimmeboldo',
-  'atkins': 'atkiinnse',
-  'bandini': 'bândini',
-  'barocci': 'barottchi',
-  'benci': 'Béntchi',
-  'bernini': 'bêrnini',
-  'berruguete': 'bèrrouguété',
-  'boccioni': 'botchyoni',
-  'bocklin': 'beuklinne',
-  'borghese': 'borguêzze',
-  'buoninsegna': 'Bwonine-ségna',
-  'ca\'d\'oro': 'ka\'dôro',
-  'ca\'rezzonico': 'ka\'rrétzzonico',
-  'caceres': 'Cassérèsse',
-  'caliban': 'Calibant',
-  'campione': 'campionné',
-  'canaletto': 'kanâlétto',
-  'carle van loo': 'carle vaN lô',
-  'carlyle': 'CarlâÏlle',
-  'chassériau': 'Chassériau',
-  'cimabue': 'Tchimaboué',
-  'cione': 'tchiôné',
-  'cosmè': 'Kossmè',
-  'cumes': 'cûmes',
-  'damián forment': 'damianne formente',
-  'duccio': 'Doutchio',
-  'emmaüs': 'émmaüs',
-  'epsom': 'éppsomm',
-  'escorial': 'Esskôrial',
-  'fine': 'Faillne',
-  'firenze': 'Firennzé',
-  'flaxman': 'flaksmane',
-  'fountain': 'fonntaine',
-  'francesca': 'Frantchésska',
-  'gentile': 'djentilé',
-  'gentileschi': 'djentilésski',
-  'gibson': 'gibssone',
-  'giobbe': 'djiobbé',
-  'gismonda': 'DjismonDa',
-  'guglielmo': 'goulyélmo',
-  'haussmann': 'Hossmann',
-  'institute of arts': 'Institute of Artz',
-  'jacopo': 'djiacopo',
-  'jongkind': 'jonkinnd',
-  'juan de pareja': 'rouanne de paréra',
-  'kalf': 'kalfe',
-  'leone': 'léonné',
-  'loggetta': 'lodjêta',
-  'mcneill': 'Macknil',
-  'menabuoi': 'Ménabwo-y',
-  'méphistophélès': 'méfistofélesse',
-  'metropolitan': 'métropolitanne',
-  'mochi': 'môki',
-  'oxbow': 'oxbo',
-  'pajarito': 'pararrito',
-  'pollaiolo': 'pollaïeuolo',
-  'poyer': 'Pôyé',
-  'rijksmuseum': 'riksmûseom',
-  'rijn': 'riinne',
-  'salute': 'salouté',
-  'samson': 'sansont',
-  'santa croce': 'Santa Crotché',
-  'schifanoia': 'Skifanno-ya',
-  'strozzi': 'strozzi',
-  'tate britain': 'Téte Britenn',
-  'thomas ball': 'thomass boll',
-  'tino di camaino': 'tino di kama-i-no',
-  'titien': 'TISSIEN',
-  'ursins': 'ûrsin',
-  'vecchietta': 'Vékietta',
-  'venise': 'Venis',
-  'vermeer': 'vermère',
-  'vœu': 'veut',
+  'angelico': 'Anddgéliko',  // v269 : atelier du 30 oct
+  'arcimboldo': 'archimmeboldo',  // v269 : atelier du 30 oct
+  'atkins': 'atkiinnse',  // v269 : atelier du 30 oct
+  'bandini': 'bândini',  // v269 : atelier du 30 oct
+  'barocci': 'barottchi',  // v269 : atelier du 30 oct
+  'benci': 'Béntchi',  // v269 : atelier du 30 oct
+  'bernini': 'bêrnini',  // v269 : atelier du 30 oct
+  'berruguete': 'bèrrouguété',  // v269 : atelier du 30 oct
+  'boccioni': 'botchyoni',  // v269 : atelier du 30 oct
+  'bocklin': 'beuklinne',  // v269 : atelier du 30 oct
+  'borghese': 'borguêzze',  // v269 : atelier du 30 oct
+  'buoninsegna': 'Bwonine-ségna',  // v269 : atelier du 30 oct
+  'ca\'d\'oro': 'ka\'dôro',  // v269 : atelier du 30 oct
+  'ca\'rezzonico': 'ka\'rrétzzonico',  // v269 : atelier du 30 oct
+  'caceres': 'Cassérèsse',  // v269 : atelier du 30 oct
+  'caliban': 'Calibant',  // v269 : atelier du 30 oct
+  'campione': 'campionné',  // v269 : atelier du 30 oct
+  'canaletto': 'kanâlétto',  // v269 : atelier du 30 oct
+  'carle van loo': 'carle vaN lô',  // v269 : atelier du 30 oct
+  'carlyle': 'CarlâÏlle',  // v269 : atelier du 30 oct
+  'chassériau': 'Chassériau',  // v269 : atelier du 30 oct
+  'cimabue': 'Tchimaboué',  // v269 : atelier du 30 oct
+  'cione': 'tchiôné',  // v269 : atelier du 30 oct
+  'cosmè': 'Kossmè',  // v269 : atelier du 30 oct
+  'cumes': 'cûmes',  // v269 : atelier du 30 oct
+  'damián forment': 'damianne formente',  // v269 : atelier du 30 oct
+  'duccio': 'Doutchio',  // v269 : atelier du 30 oct
+  'emmaüs': 'émmaüs',  // v269 : atelier du 30 oct
+  'epsom': 'éppsomm',  // v269 : atelier du 30 oct
+  'escorial': 'Esskôrial',  // v269 : atelier du 30 oct
+  'fine': 'Faillne',  // v269 : atelier du 30 oct
+  'firenze': 'Firennzé',  // v269 : atelier du 30 oct
+  'flaxman': 'flaksmane',  // v269 : atelier du 30 oct
+  'fountain': 'fonntaine',  // v269 : atelier du 30 oct
+  'francesca': 'Frantchésska',  // v269 : atelier du 30 oct
+  'gentile': 'djentilé',  // v269 : atelier du 30 oct
+  'gentileschi': 'djentilésski',  // v269 : atelier du 30 oct
+  'gibson': 'gibssone',  // v269 : atelier du 30 oct
+  'giobbe': 'djiobbé',  // v269 : atelier du 30 oct
+  'gismonda': 'DjismonDa',  // v269 : atelier du 30 oct
+  'guglielmo': 'goulyélmo',  // v269 : atelier du 30 oct
+  'haussmann': 'Hossmann',  // v269 : atelier du 30 oct
+  'institute of arts': 'Institute of Artz',  // v269 : atelier du 30 oct
+  'jacopo': 'djiacopo',  // v269 : atelier du 30 oct
+  'jongkind': 'jonkinnd',  // v269 : atelier du 30 oct
+  'juan de pareja': 'rouanne de paréra',  // v269 : atelier du 30 oct
+  'kalf': 'kalfe',  // v269 : atelier du 30 oct
+  'leone': 'léonné',  // v269 : atelier du 30 oct
+  'loggetta': 'lodjêta',  // v269 : atelier du 30 oct
+  'mcneill': 'Macknil',  // v269 : atelier du 30 oct
+  'menabuoi': 'Ménabwo-y',  // v269 : atelier du 30 oct
+  'méphistophélès': 'méfistofélesse',  // v269 : atelier du 30 oct
+  'metropolitan': 'métropolitanne',  // v269 : atelier du 30 oct
+  'mochi': 'môki',  // v269 : atelier du 30 oct
+  'oxbow': 'oxbo',  // v269 : atelier du 30 oct
+  'pajarito': 'pararrito',  // v269 : atelier du 30 oct
+  'pollaiolo': 'pollaïeuolo',  // v269 : atelier du 30 oct
+  'poyer': 'Pôyé',  // v269 : atelier du 30 oct
+  'rijksmuseum': 'riksmûseom',  // v269 : atelier du 30 oct
+  'rijn': 'riinne',  // v269 : atelier du 30 oct
+  'salute': 'salouté',  // v269 : atelier du 30 oct
+  'samson': 'sansont',  // v269 : atelier du 30 oct
+  'santa croce': 'Santa Crotché',  // v269 : atelier du 30 oct
+  'schifanoia': 'Skifanno-ya',  // v269 : atelier du 30 oct
+  'strozzi': 'strozzi',  // v269 : atelier du 30 oct
+  'tate britain': 'Téte Britenn',  // v269 : atelier du 30 oct
+  'thomas ball': 'thomass boll',  // v269 : atelier du 30 oct
+  'tino di camaino': 'tino di kama-i-no',  // v269 : atelier du 30 oct
+  'titien': 'TISSIEN',  // v269 : atelier du 30 oct
+  'ursins': 'ûrsin',  // v269 : atelier du 30 oct
+  'vecchietta': 'Vékietta',  // v269 : atelier du 30 oct
+  'venise': 'Venis',  // v269 : atelier du 30 oct
+  'vermeer': 'vermère',  // v269 : atelier du 30 oct
+  'vœu': 'veut',  // v269 : atelier du 30 oct
   // v177 (atelier de prononciation, export du 17 oct 15:21) : nouveaux mots communs.
-  'courtauld': 'courto',
-  'kunsthaus': 'kounsthaosse',
-  'neue': 'neuyeu',
-  'odilon': 'odilon',
-  'of art': 'artte',
-  'singer sargent': 'sinngger sargente', // atelier 18 oct 08:26 (avant : 'singer sargente' ; les voix qui préfèrent l'ancienne écriture l'ont dans leur propre table)
-  'edward burne-jones': 'Edward BeURNE-Jones', // atelier 18 oct 08:26
+  'courtauld': 'courto',  // v269 : atelier du 30 oct
+  'kunsthaus': 'kounsthaosse',  // v269 : atelier du 30 oct
+  'neue': 'neuyeu',  // v269 : atelier du 30 oct
+  'odilon': 'odilon',  // v269 : atelier du 30 oct
+  'of art': 'artte',  // v269 : atelier du 30 oct
+  'singer sargent': 'sinngger sargente',  // v269 : atelier du 30 oct
+  'edward burne-jones': 'Edward BeURNE-Jones',  // v269 : atelier du 30 oct
   'l\'avis': 'l\'avis',  // identité : sert de support aux écritures propres à certaines voix
   'l’avis': 'l’avis',  // idem, apostrophe courbe
   // v175 (atelier de prononciation, export du 17 oct 14:45) : écritures communes à toutes les voix. La dernière écriture d'une
   // même clé l'emporte. Les mots sans écriture commune mais propres à certaines voix reçoivent ici leur forme d'origine (« lire tel quel »),
   // faute de quoi l'écriture propre à la voix ne s'appliquerait pas.
-  'adam': 'Adan',
-  'algardi': 'algardi',
-  'alyscamps': 'Aliscant',
-  'angelico': 'Anddgéliko',
-  'arcimboldo': 'archimmeboldo',
-  'atkins': 'atkiinnse',
-  'baccio': 'batchio',
-  'bandini': 'bândini',
-  'barocci': 'barottchi',
-  'benci': 'Béntchi',
-  'bernini': 'bêrnini',
-  'berruguete': 'bèrrouguété',
-  'boccioni': 'botchyoni',
-  'bocklin': 'beuklinne',
-  'borghese': 'borguêzze',
-  'buoninsegna': 'Bwonine-ségna',
-  'ca\'d\'oro': 'ka\'dôro',
-  'ca\'rezzonico': 'ka\'rrétzzonico',
-  'caceres': 'Cassérèsse',
-  'caliban': 'Calibant',
-  'campione': 'campionné',
-  'canaletto': 'kanâlétto',
-  'carle van loo': 'carle vaN lô',
-  'carlyle': 'CarlâÏlle',
-  'chassériau': 'Chassériau',
-  'cimabue': 'Tchimaboué',
-  'cione': 'tchiôné',
-  'cosmè': 'Kossmè',
-  'cumes': 'cûmes',
-  'damián forment': 'damianne formente',
-  'duccio': 'Doutchio',
-  'élément': 'élément',
-  'emmaüs': 'émmaüs',
-  'epsom': 'éppsomm',
-  'escorial': 'Esskôrial',
-  'fine': 'Faillne',
-  'firenze': 'Firennzé',
-  'flaxman': 'flaksmane',
-  'fountain': 'fonntaine',
-  'francesca': 'Frantchésska',
-  'gentile': 'djentilé',
-  'gentileschi': 'djentilésski',
-  'gibson': 'gibssone',
-  'giobbe': 'djiobbé',
-  'gismonda': 'DjismonDa',
-  'guglielmo': 'goulyélmo',
-  'haussmann': 'Hossmann',
+  'adam': 'Adan',  // v269 : atelier du 30 oct
+  'algardi': 'algardi',  // v269 : atelier du 30 oct
+  'alyscamps': 'Aliscant',  // v269 : atelier du 30 oct
+  'angelico': 'Anddgéliko',  // v269 : atelier du 30 oct
+  'arcimboldo': 'archimmeboldo',  // v269 : atelier du 30 oct
+  'atkins': 'atkiinnse',  // v269 : atelier du 30 oct
+  'baccio': 'batchio',  // v269 : atelier du 30 oct
+  'bandini': 'bândini',  // v269 : atelier du 30 oct
+  'barocci': 'barottchi',  // v269 : atelier du 30 oct
+  'benci': 'Béntchi',  // v269 : atelier du 30 oct
+  'bernini': 'bêrnini',  // v269 : atelier du 30 oct
+  'berruguete': 'bèrrouguété',  // v269 : atelier du 30 oct
+  'boccioni': 'botchyoni',  // v269 : atelier du 30 oct
+  'bocklin': 'beuklinne',  // v269 : atelier du 30 oct
+  'borghese': 'borguêzze',  // v269 : atelier du 30 oct
+  'buoninsegna': 'Bwonine-ségna',  // v269 : atelier du 30 oct
+  'ca\'d\'oro': 'ka\'dôro',  // v269 : atelier du 30 oct
+  'ca\'rezzonico': 'ka\'rrétzzonico',  // v269 : atelier du 30 oct
+  'caceres': 'Cassérèsse',  // v269 : atelier du 30 oct
+  'caliban': 'Calibant',  // v269 : atelier du 30 oct
+  'campione': 'campionné',  // v269 : atelier du 30 oct
+  'canaletto': 'kanâlétto',  // v269 : atelier du 30 oct
+  'carle van loo': 'carle vaN lô',  // v269 : atelier du 30 oct
+  'carlyle': 'CarlâÏlle',  // v269 : atelier du 30 oct
+  'chassériau': 'Chassériau',  // v269 : atelier du 30 oct
+  'cimabue': 'Tchimaboué',  // v269 : atelier du 30 oct
+  'cione': 'tchiôné',  // v269 : atelier du 30 oct
+  'cosmè': 'Kossmè',  // v269 : atelier du 30 oct
+  'cumes': 'cûmes',  // v269 : atelier du 30 oct
+  'damián forment': 'damianne formente',  // v269 : atelier du 30 oct
+  'duccio': 'Doutchio',  // v269 : atelier du 30 oct
+  'élément': 'élément',  // v269 : atelier du 30 oct
+  'emmaüs': 'émmaüs',  // v269 : atelier du 30 oct
+  'epsom': 'éppsomm',  // v269 : atelier du 30 oct
+  'escorial': 'Esskôrial',  // v269 : atelier du 30 oct
+  'fine': 'Faillne',  // v269 : atelier du 30 oct
+  'firenze': 'Firennzé',  // v269 : atelier du 30 oct
+  'flaxman': 'flaksmane',  // v269 : atelier du 30 oct
+  'fountain': 'fonntaine',  // v269 : atelier du 30 oct
+  'francesca': 'Frantchésska',  // v269 : atelier du 30 oct
+  'gentile': 'djentilé',  // v269 : atelier du 30 oct
+  'gentileschi': 'djentilésski',  // v269 : atelier du 30 oct
+  'gibson': 'gibssone',  // v269 : atelier du 30 oct
+  'giobbe': 'djiobbé',  // v269 : atelier du 30 oct
+  'gismonda': 'DjismonDa',  // v269 : atelier du 30 oct
+  'guglielmo': 'goulyélmo',  // v269 : atelier du 30 oct
+  'haussmann': 'Hossmann',  // v269 : atelier du 30 oct
   'houston': 'Youston',
-  'iceberg': 'Iceberg',
-  'institute of arts': 'Institute of Artz',
-  'jacopo': 'djiacopo',
-  'jason': 'Jazont',
-  'jongkind': 'jonkinnd',
-  'juan de pareja': 'rouanne de paréra',
-  'kalf': 'kalfe',
-  'kirchner': 'kircheneur',
-  'lancashire': 'leng-kkasheur',
-  'leone': 'léonné',
-  'loggetta': 'lodjêta',
-  'marmion': 'Marmion',
-  'masaccio': 'mazatchio',
-  'mcneill': 'Macknil',
-  'menabuoi': 'Ménabwo-y',
-  'méphistophélès': 'méfistofélesse',
-  'metropolitan': 'métropolitanne',
-  'mochi': 'môki',
-  'mount': 'maount',
-  'orlov': 'orlof',
-  'oxbow': 'oxbo',
-  'pajarito': 'pararrito',
-  'pollaiolo': 'pollaïeuolo',
-  'pollux': 'Pollux',
-  'poyer': 'Pôyé',
-  'repin': 'Riépine',
-  'rijksmuseum': 'riksmûseom',
-  'rijn': 'riinne',
-  'salute': 'salouté',
-  'samson': 'sansont',
-  'santa croce': 'Santa Crotché',
-  'schifanoia': 'Skifanno-ya',
-  'strozzi': 'strozzi',
-  'tate britain': 'Téte Britenn',
-  'thomas ball': 'thomass boll',
-  'tino di camaino': 'tino di kama-i-no',
-  'titien': 'TISSIEN',
-  'tretiakov': 'tré-tiakof',
-  'ursins': 'ûrsin',
-  'vecchietta': 'Vékietta',
-  'venise': 'Venis',
-  'vermeer': 'vermère',
-  'vœu': 'veut',
+  'iceberg': 'Iceberg',  // v269 : atelier du 30 oct
+  'institute of arts': 'Institute of Artz',  // v269 : atelier du 30 oct
+  'jacopo': 'djiacopo',  // v269 : atelier du 30 oct
+  'jason': 'Jazont',  // v269 : atelier du 30 oct
+  'jongkind': 'jonkinnd',  // v269 : atelier du 30 oct
+  'juan de pareja': 'rouanne de paréra',  // v269 : atelier du 30 oct
+  'kalf': 'kalfe',  // v269 : atelier du 30 oct
+  'kirchner': 'kircheneur',  // v269 : atelier du 30 oct
+  'lancashire': 'leng-kkasheur',  // v269 : atelier du 30 oct
+  'leone': 'léonné',  // v269 : atelier du 30 oct
+  'loggetta': 'lodjêta',  // v269 : atelier du 30 oct
+  'marmion': 'Marmion',  // v269 : atelier du 30 oct
+  'masaccio': 'mazatchio',  // v269 : atelier du 30 oct
+  'mcneill': 'Macknil',  // v269 : atelier du 30 oct
+  'menabuoi': 'Ménabwo-y',  // v269 : atelier du 30 oct
+  'méphistophélès': 'méfistofélesse',  // v269 : atelier du 30 oct
+  'metropolitan': 'métropolitanne',  // v269 : atelier du 30 oct
+  'mochi': 'môki',  // v269 : atelier du 30 oct
+  'mount': 'maount',  // v269 : atelier du 30 oct
+  'orlov': 'orlof',  // v269 : atelier du 30 oct
+  'oxbow': 'oxbo',  // v269 : atelier du 30 oct
+  'pajarito': 'pararrito',  // v269 : atelier du 30 oct
+  'pollaiolo': 'pollaïeuolo',  // v269 : atelier du 30 oct
+  'pollux': 'Pollux',  // v269 : atelier du 30 oct
+  'poyer': 'Pôyé',  // v269 : atelier du 30 oct
+  'repin': 'Riépine',  // v269 : atelier du 30 oct
+  'rijksmuseum': 'riksmûseom',  // v269 : atelier du 30 oct
+  'rijn': 'riinne',  // v269 : atelier du 30 oct
+  'salute': 'salouté',  // v269 : atelier du 30 oct
+  'samson': 'sansont',  // v269 : atelier du 30 oct
+  'santa croce': 'Santa Crotché',  // v269 : atelier du 30 oct
+  'schifanoia': 'Skifanno-ya',  // v269 : atelier du 30 oct
+  'strozzi': 'strozzi',  // v269 : atelier du 30 oct
+  'tate britain': 'Téte Britenn',  // v269 : atelier du 30 oct
+  'thomas ball': 'thomass boll',  // v269 : atelier du 30 oct
+  'tino di camaino': 'tino di kama-i-no',  // v269 : atelier du 30 oct
+  'titien': 'TISSIEN',  // v269 : atelier du 30 oct
+  'tretiakov': 'tré-tiakof',  // v269 : atelier du 30 oct
+  'ursins': 'ûrsin',  // v269 : atelier du 30 oct
+  'vecchietta': 'Vékietta',  // v269 : atelier du 30 oct
+  'venise': 'Venis',  // v269 : atelier du 30 oct
+  'vermeer': 'vermère',  // v269 : atelier du 30 oct
+  'vœu': 'veut',  // v269 : atelier du 30 oct
   'bolton': 'bolton',  // identité : sert de support aux écritures propres à certaines voix
   'giusto di menabuoi': 'giusto di menabuoi',  // identité : sert de support aux écritures propres à certaines voix
   'immobiles': 'immobiles',  // identité : sert de support aux écritures propres à certaines voix
   'valmondois': 'valmondois',  // identité : sert de support aux écritures propres à certaines voix
-  'werefkin': 'véréfkine',  // identité : sert de support aux écritures propres à certaines voix
+  'werefkin': 'véréfkine',  // v269 : atelier du 30 oct
   // atelier 18 oct 16:13 : corrections de la table commune
-  'menabuoi': 'Ménabwo-y',
-  'tino di camaino': 'tino di kama-i-no',
-  'werefkin': 'véréfkine',
+  'menabuoi': 'Ménabwo-y',  // v269 : atelier du 30 oct
+  'tino di camaino': 'tino di kama-i-no',  // v269 : atelier du 30 oct
+  'werefkin': 'véréfkine',  // v269 : atelier du 30 oct
   'houston': 'Youstonne',
   // variantes accentuées (celles du texte) : l'atelier n'a gardé que la variante sans accent, on lui applique la même écriture validée
   'böcklin': 'beuklinne',
@@ -2404,26 +2408,26 @@ const PRONUNCIATION_FIXES = {
   'pan': 'pan',  // identité : sert de support aux écritures propres à certaines voix
   'yale': 'yale',  // identité : sert de support aux écritures propres à certaines voix
   // atelier 19 oct 00:08 : nouveaux mots (écriture commune à toutes les voix)
-  'jungle': 'junngle',
-  'kunsthalle': 'kounst-halleu',
-  'lembachhaus': 'lemmbak-haousse',
-  'munch': 'münk',
-  'slevogt': 'sléfokt',
+  'jungle': 'junngle',  // v269 : atelier du 30 oct
+  'kunsthalle': 'kounst-halleu',  // v269 : atelier du 30 oct
+  'lembachhaus': 'lemmbak-haousse',  // v269 : atelier du 30 oct
+  'munch': 'münk',  // v269 : atelier du 30 oct
+  'slevogt': 'sléfokt',  // v269 : atelier du 30 oct
   'beckmann': 'beckmann',  // identité : sert de support aux écritures propres à certaines voix
   // v216 (atelier de prononciation, export du 21 oct 21:36) : nouveaux mots, écritures communes à toutes les voix.
-  'bellano': 'béllano',
-  'fiesole': 'fiésole',
-  'gattamelata': 'gattamélata',
-  'signoria': 'signorilla',
+  'bellano': 'béllano',  // v269 : atelier du 30 oct
+  'fiesole': 'fiésole',  // v269 : atelier du 30 oct
+  'gattamelata': 'gattamélata',  // v269 : atelier du 30 oct
+  'signoria': 'signorilla',  // v269 : atelier du 30 oct
   // v226 (atelier de prononciation, export du 23 oct 01:06) : nouveaux mots communs, et supports (identité) des écritures propres à certaines voix.
-  'brunelleschi': 'brounélleski',
-  'chigi': 'kidji',
-  'gian': 'djiane',
-  'melchiorre': 'melkioré',
-  'raggi': 'râdji',
-  'troubetzkoi': 'troubetz-koye',
-  'troubetzkoy': 'troubetz-koye',  // v230 : même mot, écrit avec « y » comme dans le fichier maître et les textes (la correction n'existait que pour « troubetzkoi »)
-  'troubetzkoï': 'troubetz-koye',  // v230 : et avec le tréma
+  'brunelleschi': 'brounélleski',  // v269 : atelier du 30 oct
+  'chigi': 'kidji',  // v269 : atelier du 30 oct
+  'gian': 'djiane',  // v269 : atelier du 30 oct
+  'melchiorre': 'melkioré',  // v269 : atelier du 30 oct
+  'raggi': 'râdji',  // v269 : atelier du 30 oct
+  'troubetzkoi': 'troubetz-koye',  // v269 : atelier du 30 oct
+  'troubetzkoy': 'troubetz-koye',  // v269 : atelier du 30 oct
+  'troubetzkoï': 'troubetz-koye',  // v269 : atelier du 30 oct
   'anguier': 'anguier',  // identité : sert de support aux écritures propres à certaines voix
   'fabriano': 'fabriano',  // idem
   'ghirlandaio': 'ghirlandaio',  // idem
@@ -2434,9 +2438,9 @@ const PRONUNCIATION_FIXES = {
   'tuby': 'tuby',  // idem
   'zacharie': 'zacharie',  // idem
   // v233 (atelier de prononciation, export du 24 oct 2026 15:54, vitesse 0,85) : écritures communes à toutes les voix (116 mots). La dernière écriture d'une même clé l'emporte.
-  'huesca': 'ouéska',  // nouveau mot
-  'poniatowski': 'poniatovsski',  // nouveau mot
-  'rauch': 'raure',  // nouveau mot
+  'huesca': 'ouéska',  // v269 : atelier du 30 oct
+  'poniatowski': 'poniatovsski',  // v269 : atelier du 30 oct
+  'rauch': 'raure',  // v269 : atelier du 30 oct
   'alvear': 'alvear',  // identité : support des écritures propres aux voix
   'cavalli': 'cavalli',  // identité : support des écritures propres aux voix
   'donatello': 'donatello',  // identité : support des écritures propres aux voix
@@ -2444,123 +2448,141 @@ const PRONUNCIATION_FIXES = {
   'linden': 'linden',  // identité : support des écritures propres aux voix
   'rogers': 'rogers',  // identité : support des écritures propres aux voix
   'vasari': 'vasari',  // identité : support des écritures propres aux voix
-  'adam': 'Adan',
-  'algardi': 'algardi',
-  'alyscamps': 'Aliscant',
-  'angelico': 'Anddgéliko',
-  'arcimboldo': 'archimmeboldo',
-  'atkins': 'atkiinnse',
-  'baccio': 'batchio',
-  'bandini': 'bândini',
-  'barocci': 'barottchi',
-  'bellano': 'béllano',
-  'benci': 'Béntchi',
-  'bernini': 'bêrnini',
-  'berruguete': 'bèrrouguété',
-  'boccioni': 'botchyoni',
-  'bocklin': 'beuklinne',
-  'borghese': 'borguêzze',
-  'brunelleschi': 'brounélleski',
-  'buoninsegna': 'Bwonine-ségna',
-  'ca\'d\'oro': 'ka\'dôro',
-  'ca\'rezzonico': 'ka\'rrétzzonico',
-  'caceres': 'Cassérèsse',
-  'caliban': 'Calibant',
-  'campione': 'campionné',
-  'canaletto': 'kanâlétto',
-  'carle van loo': 'carle vaN lô',
-  'carlyle': 'CarlâÏlle',
-  'chassériau': 'Chassériau',
-  'chigi': 'kidji',
-  'cimabue': 'Tchimaboué',
-  'cione': 'tchiôné',
-  'cosmè': 'Kossmè',
-  'courtauld': 'courto',
-  'cumes': 'cûmes',
-  'damián forment': 'damianne formente',
-  'duccio': 'Doutchio',
-  'edward burne-jones': 'Edward BeURNE-Jones',
-  'élément': 'élément',
-  'emmaüs': 'émmaüs',
-  'epsom': 'éppsomm',
-  'escorial': 'Esskôrial',
-  'fiesole': 'fiésole',
-  'fine': 'Faillne',
-  'firenze': 'Firennzé',
-  'flaxman': 'flaksmane',
-  'fountain': 'fonntaine',
-  'francesca': 'Frantchésska',
-  'gattamelata': 'gattamélata',
-  'gentile': 'djentilé',
-  'gentileschi': 'djentilésski',
-  'gian': 'djiane',
-  'gibson': 'gibssone',
-  'giobbe': 'djiobbé',
-  'gismonda': 'DjismonDa',
-  'guglielmo': 'goulyélmo',
-  'haussmann': 'Hossmann',
-  'iceberg': 'Iceberg',
-  'institute of arts': 'Institute of Artz',
-  'jacopo': 'djiacopo',
-  'jason': 'Jazont',
-  'jongkind': 'jonkinnd',
-  'juan de pareja': 'rouanne de paréra',
-  'jungle': 'junngle',
-  'kalf': 'kalfe',
-  'kirchner': 'kircheneur',
-  'kunsthalle': 'kounst-halleu',
-  'kunsthaus': 'kounsthaosse',
-  'lancashire': 'leng-kkasheur',
-  'lembachhaus': 'lemmbak-haousse',
-  'leone': 'léonné',
-  'loggetta': 'lodjêta',
-  'marmion': 'Marmion',
-  'masaccio': 'mazatchio',
-  'mcneill': 'Macknil',
-  'melchiorre': 'melkioré',
-  'menabuoi': 'Ménabwo-y',
-  'méphistophélès': 'méfistofélesse',
-  'metropolitan': 'métropolitanne',
-  'mochi': 'môki',
-  'mount': 'maount',
-  'munch': 'münk',
-  'neue': 'neuyeu',
-  'odilon': 'odilon',
-  'of art': 'artte',
-  'orlov': 'orlof',
-  'oxbow': 'oxbo',
-  'pajarito': 'pararrito',
-  'pollaiolo': 'pollaïeuolo',
-  'pollux': 'Pollux',
-  'poyer': 'Pôyé',
-  'raggi': 'râdji',
-  'repin': 'Riépine',
-  'rijksmuseum': 'riksmûseom',
-  'rijn': 'riinne',
-  'salute': 'salouté',
-  'samson': 'sansont',
-  'santa croce': 'Santa Crotché',
-  'schifanoia': 'Skifanno-ya',
-  'signoria': 'signorilla',
-  'singer sargent': 'sinngger sargente',
-  'slevogt': 'sléfokt',
-  'strozzi': 'strozzi',
-  'tate britain': 'Téte Britenn',
-  'thomas ball': 'thomass boll',
-  'tino di camaino': 'tino di kama-i-no',
-  'titien': 'TISSIEN',
-  'tretiakov': 'tré-tiakof',
-  'troubetzkoi': 'troubetz-koye',
-  'ursins': 'ûrsin',
-  'vecchietta': 'Vékietta',
-  'venise': 'Venis',
-  'vermeer': 'vermère',
-  'vœu': 'veut',
-  'werefkin': 'véréfkine',
+  'adam': 'Adan',  // v269 : atelier du 30 oct
+  'algardi': 'algardi',  // v269 : atelier du 30 oct
+  'alyscamps': 'Aliscant',  // v269 : atelier du 30 oct
+  'angelico': 'Anddgéliko',  // v269 : atelier du 30 oct
+  'arcimboldo': 'archimmeboldo',  // v269 : atelier du 30 oct
+  'atkins': 'atkiinnse',  // v269 : atelier du 30 oct
+  'baccio': 'batchio',  // v269 : atelier du 30 oct
+  'bandini': 'bândini',  // v269 : atelier du 30 oct
+  'barocci': 'barottchi',  // v269 : atelier du 30 oct
+  'bellano': 'béllano',  // v269 : atelier du 30 oct
+  'benci': 'Béntchi',  // v269 : atelier du 30 oct
+  'bernini': 'bêrnini',  // v269 : atelier du 30 oct
+  'berruguete': 'bèrrouguété',  // v269 : atelier du 30 oct
+  'boccioni': 'botchyoni',  // v269 : atelier du 30 oct
+  'bocklin': 'beuklinne',  // v269 : atelier du 30 oct
+  'borghese': 'borguêzze',  // v269 : atelier du 30 oct
+  'brunelleschi': 'brounélleski',  // v269 : atelier du 30 oct
+  'buoninsegna': 'Bwonine-ségna',  // v269 : atelier du 30 oct
+  'ca\'d\'oro': 'ka\'dôro',  // v269 : atelier du 30 oct
+  'ca\'rezzonico': 'ka\'rrétzzonico',  // v269 : atelier du 30 oct
+  'caceres': 'Cassérèsse',  // v269 : atelier du 30 oct
+  'caliban': 'Calibant',  // v269 : atelier du 30 oct
+  'campione': 'campionné',  // v269 : atelier du 30 oct
+  'canaletto': 'kanâlétto',  // v269 : atelier du 30 oct
+  'carle van loo': 'carle vaN lô',  // v269 : atelier du 30 oct
+  'carlyle': 'CarlâÏlle',  // v269 : atelier du 30 oct
+  'chassériau': 'Chassériau',  // v269 : atelier du 30 oct
+  'chigi': 'kidji',  // v269 : atelier du 30 oct
+  'cimabue': 'Tchimaboué',  // v269 : atelier du 30 oct
+  'cione': 'tchiôné',  // v269 : atelier du 30 oct
+  'cosmè': 'Kossmè',  // v269 : atelier du 30 oct
+  'courtauld': 'courto',  // v269 : atelier du 30 oct
+  'cumes': 'cûmes',  // v269 : atelier du 30 oct
+  'damián forment': 'damianne formente',  // v269 : atelier du 30 oct
+  'duccio': 'Doutchio',  // v269 : atelier du 30 oct
+  'edward burne-jones': 'Edward BeURNE-Jones',  // v269 : atelier du 30 oct
+  'élément': 'élément',  // v269 : atelier du 30 oct
+  'emmaüs': 'émmaüs',  // v269 : atelier du 30 oct
+  'epsom': 'éppsomm',  // v269 : atelier du 30 oct
+  'escorial': 'Esskôrial',  // v269 : atelier du 30 oct
+  'fiesole': 'fiésole',  // v269 : atelier du 30 oct
+  'fine': 'Faillne',  // v269 : atelier du 30 oct
+  'firenze': 'Firennzé',  // v269 : atelier du 30 oct
+  'flaxman': 'flaksmane',  // v269 : atelier du 30 oct
+  'fountain': 'fonntaine',  // v269 : atelier du 30 oct
+  'francesca': 'Frantchésska',  // v269 : atelier du 30 oct
+  'gattamelata': 'gattamélata',  // v269 : atelier du 30 oct
+  'gentile': 'djentilé',  // v269 : atelier du 30 oct
+  'gentileschi': 'djentilésski',  // v269 : atelier du 30 oct
+  'gian': 'djiane',  // v269 : atelier du 30 oct
+  'gibson': 'gibssone',  // v269 : atelier du 30 oct
+  'giobbe': 'djiobbé',  // v269 : atelier du 30 oct
+  'gismonda': 'DjismonDa',  // v269 : atelier du 30 oct
+  'guglielmo': 'goulyélmo',  // v269 : atelier du 30 oct
+  'haussmann': 'Hossmann',  // v269 : atelier du 30 oct
+  'iceberg': 'Iceberg',  // v269 : atelier du 30 oct
+  'institute of arts': 'Institute of Artz',  // v269 : atelier du 30 oct
+  'jacopo': 'djiacopo',  // v269 : atelier du 30 oct
+  'jason': 'Jazont',  // v269 : atelier du 30 oct
+  'jongkind': 'jonkinnd',  // v269 : atelier du 30 oct
+  'juan de pareja': 'rouanne de paréra',  // v269 : atelier du 30 oct
+  'jungle': 'junngle',  // v269 : atelier du 30 oct
+  'kalf': 'kalfe',  // v269 : atelier du 30 oct
+  'kirchner': 'kircheneur',  // v269 : atelier du 30 oct
+  'kunsthalle': 'kounst-halleu',  // v269 : atelier du 30 oct
+  'kunsthaus': 'kounsthaosse',  // v269 : atelier du 30 oct
+  'lancashire': 'leng-kkasheur',  // v269 : atelier du 30 oct
+  'lembachhaus': 'lemmbak-haousse',  // v269 : atelier du 30 oct
+  'leone': 'léonné',  // v269 : atelier du 30 oct
+  'loggetta': 'lodjêta',  // v269 : atelier du 30 oct
+  'marmion': 'Marmion',  // v269 : atelier du 30 oct
+  'masaccio': 'mazatchio',  // v269 : atelier du 30 oct
+  'mcneill': 'Macknil',  // v269 : atelier du 30 oct
+  'melchiorre': 'melkioré',  // v269 : atelier du 30 oct
+  'menabuoi': 'Ménabwo-y',  // v269 : atelier du 30 oct
+  'méphistophélès': 'méfistofélesse',  // v269 : atelier du 30 oct
+  'metropolitan': 'métropolitanne',  // v269 : atelier du 30 oct
+  'mochi': 'môki',  // v269 : atelier du 30 oct
+  'mount': 'maount',  // v269 : atelier du 30 oct
+  'munch': 'münk',  // v269 : atelier du 30 oct
+  'neue': 'neuyeu',  // v269 : atelier du 30 oct
+  'odilon': 'odilon',  // v269 : atelier du 30 oct
+  'of art': 'artte',  // v269 : atelier du 30 oct
+  'orlov': 'orlof',  // v269 : atelier du 30 oct
+  'oxbow': 'oxbo',  // v269 : atelier du 30 oct
+  'pajarito': 'pararrito',  // v269 : atelier du 30 oct
+  'pollaiolo': 'pollaïeuolo',  // v269 : atelier du 30 oct
+  'pollux': 'Pollux',  // v269 : atelier du 30 oct
+  'poyer': 'Pôyé',  // v269 : atelier du 30 oct
+  'raggi': 'râdji',  // v269 : atelier du 30 oct
+  'repin': 'Riépine',  // v269 : atelier du 30 oct
+  'rijksmuseum': 'riksmûseom',  // v269 : atelier du 30 oct
+  'rijn': 'riinne',  // v269 : atelier du 30 oct
+  'salute': 'salouté',  // v269 : atelier du 30 oct
+  'samson': 'sansont',  // v269 : atelier du 30 oct
+  'santa croce': 'Santa Crotché',  // v269 : atelier du 30 oct
+  'schifanoia': 'Skifanno-ya',  // v269 : atelier du 30 oct
+  'signoria': 'signorilla',  // v269 : atelier du 30 oct
+  'singer sargent': 'sinngger sargente',  // v269 : atelier du 30 oct
+  'slevogt': 'sléfokt',  // v269 : atelier du 30 oct
+  'strozzi': 'strozzi',  // v269 : atelier du 30 oct
+  'tate britain': 'Téte Britenn',  // v269 : atelier du 30 oct
+  'thomas ball': 'thomass boll',  // v269 : atelier du 30 oct
+  'tino di camaino': 'tino di kama-i-no',  // v269 : atelier du 30 oct
+  'titien': 'TISSIEN',  // v269 : atelier du 30 oct
+  'tretiakov': 'tré-tiakof',  // v269 : atelier du 30 oct
+  'troubetzkoi': 'troubetz-koye',  // v269 : atelier du 30 oct
+  'ursins': 'ûrsin',  // v269 : atelier du 30 oct
+  'vecchietta': 'Vékietta',  // v269 : atelier du 30 oct
+  'venise': 'Venis',  // v269 : atelier du 30 oct
+  'vermeer': 'vermère',  // v269 : atelier du 30 oct
+  'vœu': 'veut',  // v269 : atelier du 30 oct
+  'werefkin': 'véréfkine',  // v269 : atelier du 30 oct
   // v235 (atelier de prononciation, export du 26 oct 11:51) : écritures communes à toutes les voix ; la dernière écriture d'une même clé l'emporte.
-  'barcaccia': 'bârkâtchia',
-  'jets': 'jet',
-  'pistoia': 'pisto-ya',
+  'barcaccia': 'bârkâtchia',  // v269 : atelier du 30 oct
+  'jets': 'jet',  // v269 : atelier du 30 oct
+  'pistoia': 'pisto-ya',  // v269 : atelier du 30 oct
+  'aertsen': 'ertsenne',  // v269 : atelier du 30 oct
+  'bonafede': 'bonafédé',  // v269 : atelier du 30 oct
+  'cacus': 'cacusse',  // v269 : atelier du 30 oct
+  'caracciolo': 'caratchiolo',  // v269 : atelier du 30 oct
+  'chellini': 'kéllini',  // v269 : atelier du 30 oct
+  'fembohaus': 'fémbohaouse',  // v269 : atelier du 30 oct
+  'frediano': 'frédiano',  // v269 : atelier du 30 oct
+  'galluzzo': 'galoutzo',  // v269 : atelier du 30 oct
+  'gaudier-brzeska': 'gaudier-bjéska',  // v269 : atelier du 30 oct
+  'lescot': 'laissecot',  // v269 : atelier du 30 oct
+  'maigny': 'magni',  // v269 : atelier du 30 oct
+  'moyen-âge': 'moyen-âge',  // v269 : atelier du 30 oct
+  'ordonez': 'ordognèze',  // v269 : atelier du 30 oct
+  'poblet': 'poblète',  // v269 : atelier du 30 oct
+  'poznan': 'poznane',  // v269 : atelier du 30 oct
+  'rochester': 'rochesstère',  // v269 : atelier du 30 oct
+  'tavera': 'tâvérâ',  // v269 : atelier du 30 oct
+  'trenta': 'trénta',  // v269 : atelier du 30 oct
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2586,12 +2608,14 @@ function deArtist(name) {
 // (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
 // Voix du smartphone (« français France » et « français Canada ») : tables réglées à l'oreille dans l'atelier de prononciation (export du 26 oct 11:51, v235).
 const PHONE_PRONUNCIATION = {
-  // v264 : export de l'atelier du 28 oct 11:32 ; les écritures « conservées » sont absentes de l'export.
+  // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
   'adam': 'Adant',
+  'aertsen': 'értsenne',
   'bandini': 'bandini',
   'barcaccia': 'bârkatchia',
   'carlyle': 'Carlyle',
   'epsom': 'éppsom',
+  'gallery of art': '',
   'guidi': 'guidi',
   'menabuoi': 'Ménaboy',
   'odilon': '',
@@ -2604,11 +2628,13 @@ const PHONE_PRONUNCIATION = {
   'schwerin': 'Schvéérinne',  // conservée (mot absent de l'export)
 };
 const PHONE_PRONUNCIATION_CA = {
-  // v264 : export de l'atelier du 28 oct 11:32 ; les écritures « conservées » sont absentes de l'export.
+  // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
   'adam': 'Adant',
+  'aertsen': 'értsenne',
   'bandini': 'bandini',
   'carlyle': 'Carlyle',
   'epsom': 'éppsom',
+  'gallery of art': '',
   'guidi': 'guidi',
   'menabuoi': 'Ménaboy',
   'odilon': '',
@@ -2625,7 +2651,7 @@ const PRONUNCIATION_BY_VOICE = {
   'français canada': PHONE_PRONUNCIATION_CA,
   // Une table par voix, repérée par un morceau de son nom. Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'alvear': 'âlvéar',
     'anguier': 'en-guier',
@@ -2639,13 +2665,18 @@ const PRONUNCIATION_BY_VOICE = {
     'corinthien': 'korein-tien',
     'donatello': 'dona-télo',
     'edward burne-jones': 'Edward BeURNE-Jônnsse',
+    'élément': 'éléman',
     'entablement': 'en-ta-blement',
     'epsom': 'épsomm',
     'fabriano': 'fâbriano',
     'fonte gaia': 'fonté gayâ',
+    'gallery of art': 'gallery of arte',
+    'gaudier-brzeska': 'gaudier-biéska',
     'gentile': 'Génntilé',
     'ghirlandaio': 'ghirlandaillo',
+    'hardouin': 'hardou-un',
     'héraclès': 'héraclès',
+    'hilma af klint': 'heelma-âv-klint',
     'immobiles': 'imo-biles',
     'jefferson': 'jeffersone',
     'juan': 'ruanne',
@@ -2653,7 +2684,9 @@ const PRONUNCIATION_BY_VOICE = {
     'l\'avis': 'laavi',
     'la barcaccia': 'barkâtchia',
     'lancashire': 'leng-kasheur',
+    'laurana': 'lauranâ',
     'lembachhaus': 'lemmbake-haousse',
+    'lescot': 'laisscot',
     'linden': 'lyn-den',
     'maggiore': 'madjioré',
     'maiano': 'mayano',
@@ -2661,11 +2694,14 @@ const PRONUNCIATION_BY_VOICE = {
     'menabuoi': 'Ménabwo-ylle',
     'michelangelo': 'mikel-angelo',
     'moyen âge': 'moyenn-age',
+    'moyen-âge': 'moyenn-age',
     'munch': 'mun-ke',
     'odilon': 'odilont',
+    'ordonez': 'ordonièze',
     'pan': 'pans',
     'pisanello': 'pizanélo',
     'pollux': 'Pollûkss',
+    'pomone': 'pomô-nne',
     'pyotr': 'piotre',
     'quercia': 'quercia',
     'raggi': 'râd-ji',
@@ -2682,19 +2718,20 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
     'yale': 'yèle',
     'zacharie': 'zakari',
-    'élément': 'éléman',
     'médicis': 'médississe',  // conservée (mot absent de l'export)
   },
   'charline': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
     'giusto di menabuoi': 'djousto di ménabwoille',
     'jefferson': 'jeffersone',
     'jongkind': 'jonkinnde',
+    'lescot': 'laisscot',
     'menabuoi': 'Ménabwo-ylle',
     'munch': 'mun-ke',
     'pollaiolo': '',
@@ -2704,11 +2741,11 @@ const PRONUNCIATION_BY_VOICE = {
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venize',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
   'julie': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
+    'aertsen': 'ertsen',
     'alvear': 'alvéar',
     'anguier': 'en-guier',
     'arcimboldo': 'archimeboldo',
@@ -2721,21 +2758,28 @@ const PRONUNCIATION_BY_VOICE = {
     'corinthien': 'korein-tien',
     'donatello': 'dona-télo',
     'edward burne-jones': 'Edward BeURNE-Jônnsse',
+    'élément': 'éléman',
     'entablement': 'en-ta-blement',
     'epsom': 'épsomm',
     'fabriano': 'fâbriano',
     'fiesole': 'fié-sole',
     'fonte gaia': 'fonté gayâ',
+    'gallery of art': 'gallery of arte',
+    'gaudier-brzeska': 'gaudier-biéska',
     'gentile': 'Génntilé',
     'ghirlandaio': 'ghirlandaillo',
+    'hardouin': 'hardou-un',
     'héraclès': 'héraclès',
+    'hilma af klint': 'heelma-âv-klint',
     'immobiles': 'imo-biles',
     'jefferson': 'jeffersone',
     'juan': 'ruanne',
     'kröller-müller': 'kreulerr-müller',
     'l\'avis': 'laavi',
     'la barcaccia': 'barkâtchia',
+    'laurana': 'lauranâ',
     'lembachhaus': 'lemmbake-haousse',
+    'lescot': 'laisscot',
     'linden': 'lyn-den',
     'maggiore': 'madjioré',
     'maiano': 'mayano',
@@ -2743,10 +2787,13 @@ const PRONUNCIATION_BY_VOICE = {
     'menabuoi': 'Ménabwo-ylle',
     'michelangelo': 'mikel-angelo',
     'moyen âge': 'moyenn-age',
+    'moyen-âge': 'moyenn-age',
     'munch': 'mun-ke',
     'odilon': 'odilont',
+    'ordonez': 'ordonièze',
     'pan': 'pans',
     'pisanello': 'pizanélo',
+    'pomone': 'pomô-nne',
     'pyotr': 'piotre',
     'quercia': 'quercia',
     'raggi': 'râd-ji',
@@ -2763,11 +2810,10 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
     'yale': 'yèle',
     'zacharie': 'zakari',
-    'élément': 'éléman',
     'médicis': 'médississe',  // conservée (mot absent de l'export)
   },
   'paul': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'alvear': 'âlvéar',
     'anguier': 'en-guier',
@@ -2780,20 +2826,27 @@ const PRONUNCIATION_BY_VOICE = {
     'corinthien': 'korein-tien',
     'donatello': 'dona-télo',
     'edward burne-jones': 'Edward BeURNE-Jônnsse',
+    'élément': 'éléman',
     'entablement': 'en-ta-blement',
     'epsom': 'épsomm',
     'fabriano': 'fâbriano',
     'fonte gaia': 'fonté gayâ',
+    'gallery of art': 'gallery of arte',
+    'gaudier-brzeska': 'gaudier-biéska',
     'gentile': 'Génntilé',
     'ghirlandaio': 'ghirlandaillo',
+    'hardouin': 'hardou-un',
     'héraclès': 'héraclès',
+    'hilma af klint': 'heelma-âv-klint',
     'immobiles': 'imo-biles',
     'jefferson': 'jeffersone',
     'juan': 'ruanne',
     'kröller-müller': 'kreulerr-müller',
     'l\'avis': 'laavi',
     'la barcaccia': 'barkâtchia',
+    'laurana': 'lauranâ',
     'lembachhaus': 'lemmbake-haousse',
+    'lescot': 'laisscot',
     'linden': 'lyn-den',
     'maggiore': 'madjioré',
     'maiano': 'mayano',
@@ -2801,10 +2854,13 @@ const PRONUNCIATION_BY_VOICE = {
     'menabuoi': 'Ménabwo-ylle',
     'michelangelo': 'mikel-angelo',
     'moyen âge': 'moyenn-age',
+    'moyen-âge': 'moyenn-age',
     'munch': 'mun-ke',
     'odilon': 'odilont',
+    'ordonez': 'ordonièze',
     'pan': 'pans',
     'pisanello': 'pizanélo',
+    'pomone': 'pomô-nne',
     'pyotr': 'piotre',
     'quercia': 'quercia',
     'raggi': 'râd-ji',
@@ -2821,13 +2877,13 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
     'yale': 'yèle',
     'zacharie': 'zakari',
-    'élément': 'éléman',
     'médicis': 'médississe',  // conservée (mot absent de l'export)
   },
   'gerard': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
@@ -2838,12 +2894,12 @@ const PRONUNCIATION_BY_VOICE = {
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
   'sylvie': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
@@ -2851,12 +2907,12 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
   'jean': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
@@ -2864,12 +2920,12 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
   'antoine': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
@@ -2877,12 +2933,12 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
   'thierry': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
@@ -2891,12 +2947,12 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
   'denise': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
@@ -2904,12 +2960,12 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
   'henri': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
@@ -2917,12 +2973,12 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
   'ariane': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
@@ -2931,12 +2987,12 @@ const PRONUNCIATION_BY_VOICE = {
     'tate britain': 'Tétte Britenn',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
   'fabrice': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
@@ -2946,19 +3002,20 @@ const PRONUNCIATION_BY_VOICE = {
     'tate britain': 'Tétte Britenn',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
   'vivienne': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'ca\'d\'oro': 'ka\'dôorro',
     'clésinger': 'clésin-jey',
     'edward burne-jones': 'Edward burne-jones',
     'edwin': 'Edwin',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'fabriano': 'fabrianos',
     'gellee': 'ge llée',
     'gentile': 'Génnti-léy',
     'giobbe': 'djobey',
+    'hilma af klint': 'hilma-av-klint',
     'immobiles': 'imo-biles',
     'jason': 'Jazon',
     'jets': 'jè',
@@ -2973,20 +3030,21 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'titien': 'TITIEN',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
     'gellée': 'ge llée',  // conservée (mot absent de l'export)
   },
   'rémy': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'ca\'d\'oro': 'ka\'dôorro',
     'clésinger': 'clésin-jey',
     'edward burne-jones': 'Edward burne-jones',
     'edwin': 'Edwin',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'fiesole': 'fiésolé',
     'gellee': 'gellée',
     'gentile': 'Génnti-léy',
     'giobbe': 'giobbé',
+    'hilma af klint': 'hilma-av-klint',
     'immobiles': 'imo-biles',
     'jets': 'jè',
     'lancashire': 'lancashire',
@@ -2999,19 +3057,18 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'titien': 'TITIEN',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
     'gellée': 'gellée',  // conservée (mot absent de l'export)
   },
   'eloise': {
-    // atelier 28 oct 11:32 : table complète de la voix (remplace les écritures précédentes)
+    // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'edward burne-jones': 'Edward BeURNE-JôNtze',
+    'élément': 'éléman',
     'emmaüs': 'émaüsse',
     'gentile': 'Génntilé',
     'schifanoia': 'Skifannôya',
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'élément': 'éléman',
   },
 };
 function currentPronunciationOverrides() {
