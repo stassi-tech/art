@@ -2923,7 +2923,7 @@ body[data-ambiance="space"] #chrono-instruction, body[data-ambiance="space"] #ch
 .imp-bio-ovi.incl { left:0; top:0; width:100%; height:100%; transform:none; object-fit:contain; background:#0b0c0e; filter:none; border-radius:0; }
 
 /* v248 : liste « artiste | œuvre principale » : deux cases côte à côte sur chaque ligne */
-.cinema-cols, .cinema-row { display:grid; grid-template-columns:1fr 1.15fr .8fr; gap:6px; }
+.cinema-cols, .cinema-row { display:grid; grid-template-columns:1fr 1.15fr; gap:6px; }
 .cinema-cols { font-size:.7rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:2px 8px 4px; }
 .cinema-row .cinema-cell { border:1px solid rgba(0,0,0,.09); border-radius:8px; margin:0 0 5px; background:#fff; min-width:0; }
 .cinema-row .cinema-cell:focus-visible { background:#f7f2ea; }
