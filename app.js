@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v269';
+const APP_VERSION = 'v271';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -4058,6 +4058,8 @@ let currentPanelName = null, suppressHistoryPush = false;
 // v234 (cinéma) : déclarés ici, avant showPanel, pour que showPanel puisse les lire dès le démarrage
 let cinemaCat = null, cinemaTab = 'art', cinemaActive = false, cinemaOpening = false, cinemaSaved = null, cinemaPrev = 'welcome';
 function showPanel(name) {
+  // v271 : l'écran Imprégnation n'a de sens qu'avec une série d'œuvres choisie (ou pour le diaporama) ; sans elle (retour arrière du téléphone, page rechargée…), on ouvre son écran de réglages plutôt qu'un écran vide.
+  if (name === 'impregnation' && !cinemaOpening && !cinemaActive) { let n = 1; try { n = IMP_SESSION.length; } catch (e) { /* pas encore initialisée */ } if (!n) name = 'impregnation-setup'; }
   try { bioPauseNow(); } catch (e) { /* ignoré */ }   // v235 : on quitte l'écran du film → pause, et la position est retenue
   if (cinemaActive && !cinemaOpening) cinemaTeardown();   // v234 : on quitte le cinéma dès qu'on change d'écran autrement que par lui
   // Coupe systématiquement toute voix en cours ET tous les minuteurs différés de chaque
@@ -13196,6 +13198,12 @@ function impShowCurrent() {
   impPaused = false;
   $('imp-pause-button').textContent = '⏸';
   const work = IMP_SESSION[impIndex];
+  if (!work) {   // v270 (capture de Stéphane sur smartphone : « Cannot read properties of undefined (reading 'image') ») : l'écran Imprégnation pouvait s'afficher sans exercice en cours (liste vide ou position hors liste) ; on n'essaie plus de montrer une œuvre qui n'existe pas
+    impPaused = false; $('imp-pause-button').textContent = '⏸';
+    if (impIndex > 0 && IMP_SESSION.length) { impIndex = IMP_SESSION.length - 1; impShowCurrent(); return; }
+    if (!cinemaActive) { $('imp-quiz-grid')?.classList.add('hidden'); $('imp-ready-screen')?.classList.remove('hidden'); }
+    return;
+  }
   $('imp-progress-label').textContent = `Œuvre ${impIndex + 1} / ${IMP_SESSION.length}`;
   updateTopBanner('Imprégnation', `Œuvre ${impIndex + 1}/${IMP_SESSION.length}`, impFieldLabel);
   $('imp-progress-bar').style.width = `${(impIndex / Math.max(IMP_SESSION.length - 1, 1)) * 100}%`;
@@ -14593,11 +14601,12 @@ $('imp-bio-split-close')?.addEventListener('click', closeImpArtistBio);
 // jeu, ex. fieldOn()), mais showFullCorrection ne vaut plus jamais que false désormais, plus aucun
 // bouton ne pouvant l'activer.
 $('imp-pause-button')?.addEventListener('click', () => {
+  if (!IMP_SESSION.length) return;   // v270 : rien à mettre en pause quand aucun exercice n'est en cours
   impPaused = !impPaused;
   $('imp-pause-button').textContent = impPaused ? '▶' : '⏸';
   if (impPaused) { impClearTimers(); speechSynthesis.cancel(); } else impShowCurrent();
 });
-$('imp-prev-button')?.addEventListener('click', () => { if (impIndex > 0) { impIndex--; impShowCurrent(); } });
+$('imp-prev-button')?.addEventListener('click', () => { if (impIndex > 0 && IMP_SESSION.length) { impIndex--; impShowCurrent(); } });
 $('imp-next-button')?.addEventListener('click', () => { if (impIndex < IMP_SESSION.length - 1) { impIndex++; impShowCurrent(); } });
 // Touche Entrée : avance aussi à l'œuvre suivante quand on est sur Imprégnation, en plus du
 // clic sur la flèche → (le raccourci Entrée générique ne cible que les boutons .primary-button,
