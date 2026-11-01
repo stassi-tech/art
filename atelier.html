@@ -189,7 +189,7 @@ details summary{cursor:pointer;font-weight:600}
   </aside>
 
   <main>
-    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v7</small></h1>
+    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v9</small></h1>
     <p class="sub">Choisissez une voix : elle lit toute la liste. Quand un mot est mal dit, appuyez sur <b>Stop</b> (ou sur la barre Espace). Ce mot s'ouvre alors ici pour être corrigé.</p>
     <div class="novoice" id="novoice">Aucune voix française n'est disponible dans ce navigateur pour le moment (réessayez dans quelques secondes, ou utilisez Chrome / Edge).</div>
 
@@ -222,7 +222,12 @@ details summary{cursor:pointer;font-weight:600}
       <span class="st" id="syncState"></span>
       <div id="syncIn" style="display:flex;gap:6px;flex-wrap:wrap">
         <input type="text" id="syncEmail" name="mn-sync-id" inputmode="email" placeholder="e-mail du compte Mnemart" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" style="flex:1 1 150px;min-width:0">
-        <input type="text" id="syncPass" name="mn-sync-cle" placeholder="mot de passe" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" style="flex:1 1 110px;min-width:0;-webkit-text-security:disc;text-security:disc">
+        <span style="position:relative;flex:1 1 130px;min-width:0;display:flex">
+          <input type="text" id="syncPass" name="mn-sync-cle" placeholder="mot de passe" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other" style="flex:1 1 auto;min-width:0;padding-right:34px;-webkit-text-security:disc;text-security:disc">
+          <button type="button" id="syncEye" aria-label="Afficher le mot de passe" title="Afficher / masquer le mot de passe" aria-pressed="false" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);width:30px;height:30px;padding:0;border:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted,#667)">
+            <svg id="syncEyeSvg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/><line id="syncEyeBar" x1="3" y1="3" x2="21" y2="21" style="display:none"/></svg>
+          </button>
+        </span>
         <button id="syncLogin">Se connecter</button>
       </div>
       <div id="syncOut" style="display:none"><button id="syncLogout">Se déconnecter</button></div>
@@ -1076,13 +1081,21 @@ function setSyncLabel(kind, extra){
   el.textContent = msg; if (kind==='ok') el.classList.add('ok'); else if (kind!=='off' && kind!=='work') el.classList.add('warn');
   const lo = $('syncOut'), li = $('syncIn'); if (lo) lo.style.display = syncUser ? '' : 'none'; if (li) li.style.display = syncUser ? 'none' : '';
 }
+const errTxt = (step,e)=> step + ' : ' + ((e && e.code) || '') + ((e && e.message) ? ' — ' + String(e.message).slice(0,160) : '');
+const b64enc = t=>btoa(unescape(encodeURIComponent(t))), b64dec = t=>decodeURIComponent(escape(atob(t)));
+const remoteJson = d=>{ try { return d && (d.json || (d.b64 ? b64dec(d.b64) : '')) || ''; } catch(e){ return ''; } };
 async function pushNow(){
   if (!syncRef || !syncUser) return;
   const j = payload(); if (j === lastPushed) return;
   try {
-    await syncRef.set({ json:j, updated:firebase.firestore.FieldValue.serverTimestamp(), from:(navigator.userAgent.match(/Android|iPhone|iPad|Windows|Macintosh|Linux/)||['?'])[0] });
+    const meta = { updated:firebase.firestore.FieldValue.serverTimestamp(), from:(navigator.userAgent.match(/Android|iPhone|iPad|Windows|Macintosh|Linux/)||['?'])[0] };
+    try { await syncRef.set(Object.assign({ json:j }, meta)); }
+    catch(e1){
+      if (!(e1 && e1.code==='invalid-argument')) throw e1;
+      await syncRef.set(Object.assign({ b64:b64enc(j) }, meta));   // v9 : 2e essai, texte encodé en base64 (écarte un caractère que Firestore refuserait)
+    }
     lastPushed = j; setSyncLabel('ok', 'mise à jour à ' + new Date().toTimeString().slice(0,5));
-  } catch(e){ setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', e && (e.code||e.message)); }
+  } catch(e){ setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', errTxt('envoi des essais (' + j.length + ' caractères)', e)); }
 }
 function schedulePush(){ clearTimeout(pushT); pushT = setTimeout(pushNow, 900); }
 function applyRemote(json){
@@ -1095,16 +1108,18 @@ function applyRemote(json){
 async function startSync(user){
   syncUser = user; setSyncLabel('work');
   syncRef = fbDb.collection('users').doc(user.uid).collection('atelier').doc('etat');
+  let step = 'lecture du compte';
   try {
     const snap = await syncRef.get();
-    if (snap.exists && snap.data().json) { lastPushed = snap.data().json; applyRemote(lastPushed); }
+    if (snap.exists && remoteJson(snap.data())) { lastPushed = remoteJson(snap.data()); applyRemote(lastPushed); }
+    step = 'envoi des essais';
     await pushNow();
     syncUnsub = syncRef.onSnapshot(s=>{
       if (s.metadata.hasPendingWrites || !s.exists) return;
-      const j = s.data().json; if (!j || j === lastPushed) return;
+      const j = remoteJson(s.data()); if (!j || j === lastPushed) return;
       lastPushed = j; applyRemote(j); schedulePush();
-    }, e=>setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', e && (e.code||e.message)));
-  } catch(e){ setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', e && (e.code||e.message)); }
+    }, e=>setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', errTxt('suivi des changements', e)));
+  } catch(e){ setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', errTxt(step, e)); }
 }
 function initSync(){
   if (location.protocol === 'file:') { setSyncLabel('file'); const li = $('syncIn'); if (li) li.style.display = 'none'; return; }
@@ -1119,11 +1134,19 @@ function initSync(){
   $('syncLogin').onclick = async ()=>{
     const em = $('syncEmail').value.trim(), pw = $('syncPass').value;
     if (!em || !pw) { toast('Entrez l\'adresse e-mail et le mot de passe de votre compte Mnemart'); return; }
-    try { await fbAuth.signInWithEmailAndPassword(em, pw); $('syncPass').value = ''; }
+    try { await fbAuth.signInWithEmailAndPassword(em, pw); $('syncPass').value = ''; setPassVisible(false); }
     catch(e){ toast(e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||e.code==='auth/user-not-found' ? 'Adresse ou mot de passe incorrect' : 'Connexion impossible : ' + (e.code||e.message)); }
   };
   $('syncLogout').onclick = ()=>fbAuth.signOut();
 }
+function setPassVisible(v){
+  const i = $('syncPass'), st = v ? 'none' : 'disc';
+  i.style.webkitTextSecurity = st; i.style.textSecurity = st;
+  $('syncEyeBar').style.display = v ? '' : 'none';
+  $('syncEye').setAttribute('aria-pressed', v ? 'true' : 'false');
+  $('syncEye').setAttribute('aria-label', v ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+}
+$('syncEye').onclick = ()=>{ setPassVisible($('syncPass').style.webkitTextSecurity === 'disc' || $('syncPass').style.textSecurity === 'disc'); $('syncPass').focus(); };
 try { restoreLocked(); autoLock(); } catch(e){}
 initSync();
 loadVoices(); setTimeout(loadVoices, 600); phraseUpdate();
