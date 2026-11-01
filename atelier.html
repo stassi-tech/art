@@ -189,7 +189,7 @@ details summary{cursor:pointer;font-weight:600}
   </aside>
 
   <main>
-    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v9</small></h1>
+    <h1>Atelier de prononciation <small style="font-size:.6em;font-weight:600;color:var(--muted);margin-left:6px" title="Numéro de version de cet outil : il augmente à chaque modification">v10</small></h1>
     <p class="sub">Choisissez une voix : elle lit toute la liste. Quand un mot est mal dit, appuyez sur <b>Stop</b> (ou sur la barre Espace). Ce mot s'ouvre alors ici pour être corrigé.</p>
     <div class="novoice" id="novoice">Aucune voix française n'est disponible dans ce navigateur pour le moment (réessayez dans quelques secondes, ou utilisez Chrome / Edge).</div>
 
@@ -1083,18 +1083,27 @@ function setSyncLabel(kind, extra){
 }
 const errTxt = (step,e)=> step + ' : ' + ((e && e.code) || '') + ((e && e.message) ? ' — ' + String(e.message).slice(0,160) : '');
 const b64enc = t=>btoa(unescape(encodeURIComponent(t))), b64dec = t=>decodeURIComponent(escape(atob(t)));
-const remoteJson = d=>{ try { return d && (d.json || (d.b64 ? b64dec(d.b64) : '')) || ''; } catch(e){ return ''; } };
+// v10 : l'état complet dépassait 1 Mo (limite d'un document Firebase) : on l'envoie compressé (gzip + base64), ce qui le ramène à quelques dizaines de Ko
+const canGz = ()=> typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+async function viaStream(stream, bytes){ const w = stream.writable.getWriter(); w.write(bytes); w.close(); return new Uint8Array(await new Response(stream.readable).arrayBuffer()); }
+async function gzEnc(t){ const u = await viaStream(new CompressionStream('gzip'), new TextEncoder().encode(t)); let bin = ''; for (let i=0;i<u.length;i+=8192) bin += String.fromCharCode.apply(null, u.subarray(i,i+8192)); return btoa(bin); }
+async function gzDec(b){ const bin = atob(b), u = new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) u[i] = bin.charCodeAt(i); return new TextDecoder().decode(await viaStream(new DecompressionStream('gzip'), u)); }
+const remoteJson = async d=>{ try { if (!d) return ''; if (d.gz) return await gzDec(d.gz); return d.json || (d.b64 ? b64dec(d.b64) : '') || ''; } catch(e){ return ''; } };
 async function pushNow(){
   if (!syncRef || !syncUser) return;
   const j = payload(); if (j === lastPushed) return;
   try {
     const meta = { updated:firebase.firestore.FieldValue.serverTimestamp(), from:(navigator.userAgent.match(/Android|iPhone|iPad|Windows|Macintosh|Linux/)||['?'])[0] };
-    try { await syncRef.set(Object.assign({ json:j }, meta)); }
-    catch(e1){
-      if (!(e1 && e1.code==='invalid-argument')) throw e1;
-      await syncRef.set(Object.assign({ b64:b64enc(j) }, meta));   // v9 : 2e essai, texte encodé en base64 (écarte un caractère que Firestore refuserait)
+    let sent = j.length;
+    if (canGz()) { const g = await gzEnc(j); sent = g.length; await syncRef.set(Object.assign({ gz:g }, meta)); }
+    else {
+      try { await syncRef.set(Object.assign({ json:j }, meta)); }
+      catch(e1){
+        if (!(e1 && e1.code==='invalid-argument')) throw e1;
+        await syncRef.set(Object.assign({ b64:b64enc(j) }, meta));
+      }
     }
-    lastPushed = j; setSyncLabel('ok', 'mise à jour à ' + new Date().toTimeString().slice(0,5));
+    lastPushed = j; setSyncLabel('ok', 'mise à jour à ' + new Date().toTimeString().slice(0,5) + ', ' + Math.max(1, Math.round(sent/1024)) + ' Ko envoyés');
   } catch(e){ setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', errTxt('envoi des essais (' + j.length + ' caractères)', e)); }
 }
 function schedulePush(){ clearTimeout(pushT); pushT = setTimeout(pushNow, 900); }
@@ -1111,12 +1120,12 @@ async function startSync(user){
   let step = 'lecture du compte';
   try {
     const snap = await syncRef.get();
-    if (snap.exists && remoteJson(snap.data())) { lastPushed = remoteJson(snap.data()); applyRemote(lastPushed); }
+    if (snap.exists) { const rj = await remoteJson(snap.data()); if (rj) { lastPushed = rj; applyRemote(lastPushed); } }
     step = 'envoi des essais';
     await pushNow();
-    syncUnsub = syncRef.onSnapshot(s=>{
+    syncUnsub = syncRef.onSnapshot(async s=>{
       if (s.metadata.hasPendingWrites || !s.exists) return;
-      const j = remoteJson(s.data()); if (!j || j === lastPushed) return;
+      const j = await remoteJson(s.data()); if (!j || j === lastPushed) return;
       lastPushed = j; applyRemote(j); schedulePush();
     }, e=>setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', errTxt('suivi des changements', e)));
   } catch(e){ setSyncLabel(e && e.code==='permission-denied' ? 'noaccess' : 'err', errTxt(step, e)); }
