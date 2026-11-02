@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v276';
+const APP_VERSION = 'v277';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -4554,7 +4554,9 @@ function resetVerdictSquare(id) {
 // Variante liaison Artiste/Œuvre (Vrai/Faux, rubrique Auteur) : plusieurs façons d'annoncer que
 // l'artiste proposé est bien, ou n'est pas, celui qui a réalisé l'œuvre — toujours suivi de la
 // confirmation du bon nom pour rester informatif quelle que soit la formule tirée.
-function spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, title) {
+// v277 (retour Stéphane) : « Malheureusement » ne convient que si le joueur s'est trompé (erreur
+// manquée) ; quand il a bien repéré l'erreur (spotted = true), la voix dit « Effectivement ».
+function spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, title, spotted = false) {
   if (isBonne) {
     return pickSynonym([
       `C’est bien ${trueValue} qui a ${artVerb} ${artWord}.`,
@@ -4566,7 +4568,7 @@ function spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, 
   return pickSynonym([
     `Ce n’est pas ${wrongValue} qui a ${artVerb} ${artWord}, mais bien ${trueValue}.`,
     `${wrongValue} n’est pas l’auteur de ${artWord}, mais bien ${trueValue}.`,
-    `Malheureusement, ${wrongValue} n’est pas l’artiste à l’origine de ${artWord}, mais bien ${trueValue}.`,
+    `${spotted ? 'Effectivement' : 'Malheureusement'}, ${wrongValue} n’est pas l’artiste à l’origine de ${artWord}, mais bien ${trueValue}.`,
     `Le créateur de « ${title} » n’est pas ${wrongValue}, mais bien ${trueValue}.`,
   ]);
 }
@@ -11042,12 +11044,12 @@ $('vf-validate-button')?.addEventListener('click', async () => {
   // est omis.
   const artVerb = q.correct?.artType === 'sculpture' ? 'sculpté' : 'peint';
   const VF_RUBRIQUE_LABELS = { artist: "l'artiste", title: 'le titre', date: 'la date', materials: 'le matériau', dimensions: 'les dimensions', location: 'le lieu' };
-  function vfFieldCorrectionContent(key, isBonne, wrongValue, trueValue) {
+  function vfFieldCorrectionContent(key, isBonne, wrongValue, trueValue, spotted = false) {
     switch (key) {
       // v81 (doc « Commentaires vocaux ») : plusieurs formulations possibles pour la liaison
       // artiste/œuvre, voir spokenLiaisonArtiste.
       case 'artist':
-        return spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, q.correct.title);
+        return spokenLiaisonArtiste(isBonne, trueValue, wrongValue, artVerb, artWord, q.correct.title, spotted);
       case 'title':
         return isBonne ? `Le titre est bien « ${trueValue} ».` : `Le titre n'est pas « ${wrongValue} », mais bien « ${trueValue} ».`;
       case 'date':
@@ -11092,7 +11094,7 @@ $('vf-validate-button')?.addEventListener('click', async () => {
     if (actuallyWrong && playerSaysFalse) {
       // Repérée : « [Pour X,] exact, <formule tirée au hasard>. <détail> » (v81, doc « Commentaires
       // vocaux » : SPEECH_SYNONYMS.refFausseBonne varie la formule d'une fois à l'autre).
-      const content = vfFieldCorrectionContent(key, false, wrongValue, trueValue);
+      const content = vfFieldCorrectionContent(key, false, wrongValue, trueValue, true);
       const start = rubriquePrefix ? 'exact' : 'Exact';
       return `${rubriquePrefix}${start}, ${pickSynonym(SPEECH_SYNONYMS.refFausseBonne)}. ${content}`;
     }
