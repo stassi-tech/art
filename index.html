@@ -26,7 +26,12 @@
   window.addEventListener('error', function (e) {
     var t = e.target;
     if (t && t !== window) {   /* erreur de chargement d'un fichier (et non du programme) */
-      if (t.tagName === 'SCRIPT' || t.tagName === 'LINK') show('Fichier non chargé : ' + (t.src || t.href));
+      if (t.tagName === 'SCRIPT' || t.tagName === 'LINK') {
+        var u = String(t.src || t.href);
+        /* v275 : « apis.google.com/js/api.js » est le petit assistant de connexion que Firebase charge de lui-même ; s'il n'arrive pas (réseau faible, bloqueur), l'application fonctionne quand même et Firebase signale seul tout vrai problème de connexion : bandeau réservé au mode diagnostic (?debug=touch). */
+        if (/^https:\/\/apis\.google\.com\//.test(u) && !/[?&]debug=touch/.test(location.search)) return;
+        show('Fichier non chargé : ' + u);
+      }
       else if (/[?&]debug=touch/.test(location.search)) show('Image non chargée : ' + String(t.currentSrc || t.src || t.tagName).slice(0, 90));   /* une image qui manque n'empêche rien : affichée seulement en mode diagnostic */
       return;
     }

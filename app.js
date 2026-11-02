@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v274';
+const APP_VERSION = 'v276';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1897,6 +1897,8 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v276 (atelier de prononciation, export du 2 nov 14:15) : nouvelle expression de plusieurs mots, placée AVANT les mots seuls
+  'delle grazie': 'déllé gratzié',  // v276 : atelier du 2 nov
   // v269 (atelier de prononciation, export du 30 oct 22:18) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'dalle bande nere': 'dallé bandé néré',  // v269 : atelier du 30 oct
   'gallery of art': 'gallery of artt',  // v269 : atelier du 30 oct
@@ -1942,7 +1944,7 @@ const PRONUNCIATION_FIXES = {
   'reichler': 'raïchlère',
   'jacopo': 'djiacopo',  // v269 : atelier du 30 oct
   'serpotta': 'serpotta',
-  'giusto di menabuoi': 'djousto di ménabwoï',
+  'giusto di menabuoi': 'djousto di ména-boïe',  // v276 : atelier du 2 nov (remplace l'écriture « identité » : les voix qui le disent mal ont leur écriture propre)
   'egon': 'égone',
   'paris bordone': 'pariss bordoné',
   'vittore': 'vittoré',
@@ -2010,7 +2012,7 @@ const PRONUNCIATION_FIXES = {
   'vuillard': 'vuiyar',
   'damian forment': 'damianne formente', // v150 (atelier 15 oct, validé à l'oreille) ; avant : 'damianne formènnte' // v152 (atelier 16 oct)
   'damián forment': 'damianne formente',  // v269 : atelier du 30 oct
-  'ambrogio lorenzetti': 'ambbrogio loréndzéti', // v152 (atelier 16 oct)
+  'ambrogio lorenzetti': 'ambrogio loréndzéti',  // v276 : atelier du 2 nov
   'borghese': 'borguêzze',  // v269 : atelier du 30 oct
   'borghèse': 'borguêzze', // v152 (atelier 16 oct)
   'bernini': 'bêrnini',  // v269 : atelier du 30 oct
@@ -2213,7 +2215,7 @@ const PRONUNCIATION_FIXES = {
   // d'une même clé l'emporte ; les écritures propres à une voix sont dans PRONUNCIATION_BY_VOICE plus bas.
   'adam': 'Adan',  // v269 : atelier du 30 oct
   'algardi': 'algardi',  // v269 : atelier du 30 oct
-  'ambrogio lorenzetti': 'ambbrogio loréndzéti',
+  'ambrogio lorenzetti': 'ambrogio loréndzéti',  // v276 : atelier du 2 nov
   'angelico': 'Anddgéliko',  // v269 : atelier du 30 oct
   'arcimboldo': 'archimmeboldo',  // v269 : atelier du 30 oct
   'atkins': 'atkiinnse',  // v269 : atelier du 30 oct
@@ -2393,7 +2395,7 @@ const PRONUNCIATION_FIXES = {
   'vermeer': 'vermère',  // v269 : atelier du 30 oct
   'vœu': 'veut',  // v269 : atelier du 30 oct
   'bolton': 'bolton',  // identité : sert de support aux écritures propres à certaines voix
-  'giusto di menabuoi': 'giusto di menabuoi',  // identité : sert de support aux écritures propres à certaines voix
+  'giusto di menabuoi': 'djousto di ména-boïe',  // v276 : atelier du 2 nov (remplace l'écriture « identité » : les voix qui le disent mal ont leur écriture propre)
   'immobiles': 'immobiles',  // identité : sert de support aux écritures propres à certaines voix
   'valmondois': 'valmondois',  // identité : sert de support aux écritures propres à certaines voix
   'werefkin': 'véréfkine',  // v269 : atelier du 30 oct
@@ -2596,6 +2598,8 @@ const PRONUNCIATION_FIXES = {
   'medardo': 'médardo',  // v274 : atelier du 1er nov
   'porcellino': 'porchelliino',  // v274 : atelier du 1er nov
   'sansepolcro': 'sansépolcro',  // v274 : atelier du 1er nov
+  // v276 : le verbe « ils forment » (les voix disaient « formant » ou « formenT »). Placé APRÈS « damian forment » / « damián forment » (qui sont traités avant) : le sculpteur garde sa prononciation, seul le verbe seul est corrigé.
+  'forment': 'forme',  // v276 : correction demandée le 2 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2621,6 +2625,7 @@ function deArtist(name) {
 // (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
 // Voix du smartphone (« français France » et « français Canada ») : tables réglées à l'oreille dans l'atelier de prononciation (export du 26 oct 11:51, v235).
 const PHONE_PRONUNCIATION = {
+  'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
   // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
   'adam': 'Adant',
   'aertsen': 'értsenne',
@@ -2641,6 +2646,7 @@ const PHONE_PRONUNCIATION = {
   'schwerin': 'Schvéérinne',  // conservée (mot absent de l'export)
 };
 const PHONE_PRONUNCIATION_CA = {
+  'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
   // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
   'adam': 'Adant',
   'aertsen': 'értsenne',
@@ -2664,6 +2670,8 @@ const PRONUNCIATION_BY_VOICE = {
   'français canada': PHONE_PRONUNCIATION_CA,
   // Une table par voix, repérée par un morceau de son nom. Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
+    'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
+    'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'alvear': 'âlvéar',
@@ -2742,7 +2750,7 @@ const PRONUNCIATION_BY_VOICE = {
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
-    'giusto di menabuoi': 'djousto di ménabwoille',
+    'giusto di menabuoi': 'djousto di ménabw-oï',  // v276 : atelier du 2 nov
     'jefferson': 'jeffersone',
     'jongkind': 'jonkinnde',
     'lescot': 'laisscot',
@@ -2758,6 +2766,8 @@ const PRONUNCIATION_BY_VOICE = {
     'noli me tangere': 'nôli mé tangéré',  // v274 : atelier du 1er nov
   },
   'julie': {
+    'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
+    'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'aertsen': 'ertsen',
@@ -2829,6 +2839,8 @@ const PRONUNCIATION_BY_VOICE = {
     'noli me tangere': 'nôli mé tangéré',  // v274 : atelier du 1er nov
   },
   'paul': {
+    'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
+    'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'alvear': 'âlvéar',
@@ -2896,6 +2908,7 @@ const PRONUNCIATION_BY_VOICE = {
     'médicis': 'médississe',  // conservée (mot absent de l'export)
   },
   'gerard': {
+    'giusto di menabuoi': 'djousto di ménabw-oï',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
@@ -2912,6 +2925,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'sylvie': {
+    'giusto di menabuoi': 'djousto di ménabw-oy',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
@@ -2925,6 +2939,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'jean': {
+    'giusto di menabuoi': 'djousto di ménabw-oy',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
@@ -2938,6 +2953,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'antoine': {
+    'giusto di menabuoi': 'djousto di ménabw-oy',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
@@ -2951,6 +2967,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
   },
   'thierry': {
+    'giusto di menabuoi': 'djousto di ménabw-oy',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'adam': 'Adant',
     'edward burne-jones': 'Edward BeURNE-JôNtze',
