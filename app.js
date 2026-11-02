@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v277';
+const APP_VERSION = 'v278';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -3301,7 +3301,13 @@ function fixSpeechPronunciation(text) {
   // lettres simples (sans caractère spécial d'expression régulière) ; le texte en minuscules est recalculé dès qu'une correction le modifie.
   let lowOut = out.toLowerCase();
   const variants = pronunciationVariants(voiceOverrides);
-  Object.entries(PRONUNCIATION_FIXES).forEach(([wrong, baseRight]) => {
+  // v278 (retour Stéphane : « Pomone est bon dans l'atelier mais Hortense dit encore pomoné ») : un mot que l'atelier valide « tel quel » pour la plupart des voix et réécrit
+  // seulement pour quelques-unes (pomone, hardouin, laurana…) n'a pas d'entrée dans la table commune, donc la boucle ci-dessous ne le voyait jamais et l'écriture propre à la
+  // voix n'était jamais appliquée. On ajoute donc à la boucle les mots que la table de la voix en cours possède et que la table commune n'a pas (ils s'appliquent
+  // uniquement à cette voix : pour les autres voix, ils n'existent pas dans la liste).
+  const fixEntries = Object.entries(PRONUNCIATION_FIXES);
+  if (voiceOverrides) Object.keys(voiceOverrides).forEach((w) => { if (!Object.prototype.hasOwnProperty.call(PRONUNCIATION_FIXES, w)) fixEntries.push([w, w]); });
+  fixEntries.forEach(([wrong, baseRight]) => {
     const isPrefix = wrong.endsWith('*');
     const stem = isPrefix ? wrong.slice(0, -1) : wrong;
     const hasOverride = voiceOverrides && Object.prototype.hasOwnProperty.call(voiceOverrides, wrong);
