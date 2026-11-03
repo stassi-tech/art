@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v278';
+const APP_VERSION = 'v279';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -2295,7 +2295,7 @@ const PRONUNCIATION_FIXES = {
   'kunsthaus': 'kounsthaosse',  // v269 : atelier du 30 oct
   'neue': 'neuyeu',  // v269 : atelier du 30 oct
   'odilon': 'odilon',  // v269 : atelier du 30 oct
-  'of art': 'artte',  // v269 : atelier du 30 oct
+  'of art': 'off artte',  // v269 : atelier du 30 oct
   'singer sargent': 'sinngger sargente',  // v269 : atelier du 30 oct
   'edward burne-jones': 'Edward BeURNE-Jones',  // v269 : atelier du 30 oct
   'l\'avis': 'l\'avis',  // identité : sert de support aux écritures propres à certaines voix
@@ -2534,7 +2534,7 @@ const PRONUNCIATION_FIXES = {
   'munch': 'münk',  // v269 : atelier du 30 oct
   'neue': 'neuyeu',  // v269 : atelier du 30 oct
   'odilon': 'odilon',  // v269 : atelier du 30 oct
-  'of art': 'artte',  // v269 : atelier du 30 oct
+  'of art': 'off artte',  // v269 : atelier du 30 oct
   'orlov': 'orlof',  // v269 : atelier du 30 oct
   'oxbow': 'oxbo',  // v269 : atelier du 30 oct
   'pajarito': 'pararrito',  // v269 : atelier du 30 oct
@@ -4192,8 +4192,13 @@ function commonsFilePageUrl(imageUrl) {
   // Reconstruit l'adresse de la page Commons (avec les crédits complets) à partir de l'URL
   // d'image stockée dans le fichier Excel, qu'il s'agisse du fichier original ou d'une miniature
   // (.../thumb/x/xx/Nom_du_fichier.jpg/1280px-Nom_du_fichier.jpg).
-  const match = imageUrl.match(/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+?)(?:\/\d+px-[^/]+)?(?:\?.*)?$/i);
+  const match = imageUrl.match(/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+?)(?:\/[^/]*?\d+px-[^/]+)?(?:\?.*)?$/i);
   if (match) return `https://commons.wikimedia.org/wiki/File:${match[1]}`;
+  // v279 : miniatures de TIFF/PDF (« .../thumb/…/Nom.tif/lossy-page1-960px-Nom.tif.jpg ») : le préfixe « lossy-page1- » est
+  // maintenant accepté par l'expression ci-dessus. Image hébergée sur une Wikipédia (et non Commons), ex. « …/wikipedia/de/4/40/Nom.jpg » :
+  // on renvoie la page « Datei:/File: » de cette Wikipédia (crédits lus par la même API, sur ce site).
+  const local = imageUrl.match(/wikipedia\/([a-z]{2,3})\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+?)(?:\/[^/]*?\d+px-[^/]+)?(?:\?.*)?$/i);
+  if (local && local[1] !== 'commons') return `https://${local[1].toLowerCase()}.wikipedia.org/wiki/File:${local[2]}`;
   // v152 : adresse déjà celle d'une page Commons (ex. « .../wiki/Creator:X#/media/File:Nom.jpg »).
   const page = imageUrl.match(/commons\.wikimedia\.org\/.*?File:([^?#&\s]+)/i);
   if (page) return `https://commons.wikimedia.org/wiki/File:${page[1]}`;
@@ -4220,10 +4225,11 @@ function showImpBioCredit(imageRef, linkId, textId) {
   if (!pageUrl) { link.classList.add('hidden'); return; }
   link.href = pageUrl; link.classList.remove('hidden');
   const fileTitle = decodeURIComponent(pageUrl.split('/wiki/File:')[1] || '').replace(/_/g, ' ');
+  const creditHost = (pageUrl.match(/^https:\/\/([a-z.]+\.org)\//) || [])[1] || 'commons.wikimedia.org';
   if (!fileTitle) return;
   const apply = (label) => { if (!link.classList.contains('hidden') && link.href === pageUrl) { text.textContent = label; link.title = label ? `Crédits et licence : ${label} (ouvre la page Wikimedia Commons)` : 'Crédits et licence de l\u2019image (ouvre la page Wikimedia Commons)'; } };
   if (commonsCreditCache[fileTitle] !== undefined) { apply(commonsCreditCache[fileTitle]); return; }
-  const api = `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=extmetadata&titles=${encodeURIComponent('File:' + fileTitle)}`;
+  const api = `https://${creditHost}/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=extmetadata&titles=${encodeURIComponent('File:' + fileTitle)}`;
   fetch(api).then((r) => r.json()).then((data) => {
     const page = Object.values((data.query && data.query.pages) || {})[0];
     const meta = (page && page.imageinfo && page.imageinfo[0] && page.imageinfo[0].extmetadata) || {};
