@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v279';
+const APP_VERSION = 'v280';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1897,6 +1897,10 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v280 (atelier de prononciation, export du 5 nov 22:29) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'del carmine': 'dél carminé',  // v280 : atelier du 5 nov
+  'georg raphael donner': 'guéorgue raphael donnère',  // v280 : atelier du 5 nov
+  'grünes gewölbe': 'grunesse gueveulbe',  // v280 : atelier du 5 nov
   // v276 (atelier de prononciation, export du 2 nov 14:15) : nouvelle expression de plusieurs mots, placée AVANT les mots seuls
   'delle grazie': 'déllé gratzié',  // v276 : atelier du 2 nov
   // v269 (atelier de prononciation, export du 30 oct 22:18) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
@@ -2600,6 +2604,43 @@ const PRONUNCIATION_FIXES = {
   'sansepolcro': 'sansépolcro',  // v274 : atelier du 1er nov
   // v276 : le verbe « ils forment » (les voix disaient « formant » ou « formenT »). Placé APRÈS « damian forment » / « damián forment » (qui sont traités avant) : le sculpteur garde sa prononciation, seul le verbe seul est corrigé.
   'forment': 'forme',  // v276 : correction demandée le 2 nov
+  // v280 (atelier de prononciation, export du 5 nov 22:29) : écritures communes à toutes les voix ; nouveaux mots.
+  'asdod': 'achdode',  // v280 : atelier du 5 nov
+  'bracci': 'bratchi',  // v280 : atelier du 5 nov
+  'breisach': 'braille-zak',  // v280 : atelier du 5 nov
+  'brescia': 'bréchia',  // v280 : atelier du 5 nov
+  'buen': 'bouen',  // v280 : atelier du 5 nov
+  'burgoyne': 'bérgogne',  // v280 : atelier du 5 nov
+  'chiavelli': 'kiavéli',  // v280 : atelier du 5 nov
+  'chiavello': 'kiavélo',  // v280 : atelier du 5 nov
+  'congonhas': 'kôngônyasse',  // v280 : atelier du 5 nov
+  'corradini': 'corrâdini',  // v280 : atelier du 5 nov
+  'dalton': 'daltonn',  // v280 : atelier du 5 nov
+  'embankment': 'embék-menthe',  // v280 : atelier du 5 nov
+  'gardens': 'gardénse',  // v280 : atelier du 5 nov
+  'heiligenstadt': 'aie-li-guen-statt',  // v280 : atelier du 5 nov
+  'iii': 'Trois',  // v280 : atelier du 5 nov
+  'juana': 'rouana',  // v280 : atelier du 5 nov
+  'kendal': 'kénndal',  // v280 : atelier du 5 nov
+  'kniller': 'nilère',  // v280 : atelier du 5 nov
+  'lebanon': 'libanone',  // v280 : atelier du 5 nov
+  'maja': 'mara',  // v280 : atelier du 5 nov
+  'manzanares': 'manzanaresse',  // v280 : atelier du 5 nov
+  'marsyas': 'marsiasse',  // v280 : atelier du 5 nov
+  'nienstedten': 'Niinn-chtètt\'n',  // v280 : atelier du 5 nov
+  'pazzi': 'pâtzi',  // v280 : atelier du 5 nov
+  'pucci': 'poutchi',  // v280 : atelier du 5 nov
+  'riccio': 'ritchio',  // v280 : atelier du 5 nov
+  'ruskin': 'reuskine',  // v280 : atelier du 5 nov
+  'schiacciato': 'skatchiato',  // v280 : atelier du 5 nov
+  'schiavoni': 'skiavoni',  // v280 : atelier du 5 nov
+  'schongauer': 'chon-go-heur',  // v280 : atelier du 5 nov
+  'tite-live': 'tite-lyve',  // v280 : atelier du 5 nov
+  'v': 'cinq',  // v280 : atelier du 5 nov
+  'valle': 'vallé',  // v280 : atelier du 5 nov
+  'vincoli': 'vinncoli',  // v280 : atelier du 5 nov
+  'x': 'dix',  // v280 : atelier du 5 nov
+  'zwinger': 'zwinger',  // v280 : atelier du 5 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2741,6 +2782,13 @@ const PRONUNCIATION_BY_VOICE = {
     'zacharie': 'zakari',
     'médicis': 'médississe',  // conservée (mot absent de l'export)
     'noli me tangere': 'nôli mé tangéré',  // v274 : atelier du 1er nov
+    'burgoyne': 'ber-gogne',  // v280 : atelier du 5 nov
+    'congonhas': 'konne-gonniasse',  // v280 : atelier du 5 nov
+    'gardens': 'gardhénnece',  // v280 : atelier du 5 nov
+    'georg raphael donner': 'guéorg raphael donnère',  // v280 : atelier du 5 nov
+    'ludgarde': 'lude-guarde',  // v280 : atelier du 5 nov
+    'valle': 'vâlé',  // v280 : atelier du 5 nov
+    'zwinger': 'tsvinne-guer',  // v280 : atelier du 5 nov
   },
   'charline': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -2764,6 +2812,8 @@ const PRONUNCIATION_BY_VOICE = {
     'venise': 'Venize',
     'werefkin': 'vérefkine',
     'noli me tangere': 'nôli mé tangéré',  // v274 : atelier du 1er nov
+    'burgoyne': 'bér-gogne',  // v280 : atelier du 5 nov
+    'zwinger': 'tsvinn-guer',  // v280 : atelier du 5 nov
   },
   'julie': {
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
@@ -2837,6 +2887,13 @@ const PRONUNCIATION_BY_VOICE = {
     'zacharie': 'zakari',
     'médicis': 'médississe',  // conservée (mot absent de l'export)
     'noli me tangere': 'nôli mé tangéré',  // v274 : atelier du 1er nov
+    'burgoyne': 'ber-gogne',  // v280 : atelier du 5 nov
+    'congonhas': 'konne-gonniasse',  // v280 : atelier du 5 nov
+    'gardens': 'gardhénnece',  // v280 : atelier du 5 nov
+    'georg raphael donner': 'guéorg raphael donnère',  // v280 : atelier du 5 nov
+    'ludgarde': 'lude-guarde',  // v280 : atelier du 5 nov
+    'valle': 'vâlé',  // v280 : atelier du 5 nov
+    'zwinger': 'tsvinne-guer',  // v280 : atelier du 5 nov
   },
   'paul': {
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
@@ -2906,6 +2963,13 @@ const PRONUNCIATION_BY_VOICE = {
     'yale': 'yèle',
     'zacharie': 'zakari',
     'médicis': 'médississe',  // conservée (mot absent de l'export)
+    'burgoyne': 'bergogne',  // v280 : atelier du 5 nov
+    'congonhas': 'konne-gonniasse',  // v280 : atelier du 5 nov
+    'gardens': 'gardhénnece',  // v280 : atelier du 5 nov
+    'georg raphael donner': 'guéorg raphael donnère',  // v280 : atelier du 5 nov
+    'ludgarde': 'lude-guarde',  // v280 : atelier du 5 nov
+    'valle': 'vâlé',  // v280 : atelier du 5 nov
+    'zwinger': 'tsvinne-guer',  // v280 : atelier du 5 nov
   },
   'gerard': {
     'giusto di menabuoi': 'djousto di ménabw-oï',  // v276 : atelier du 2 nov
@@ -2937,6 +3001,7 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
+    'burgoyne': 'bér-gogne',  // v280 : atelier du 5 nov
   },
   'jean': {
     'giusto di menabuoi': 'djousto di ménabw-oy',  // v276 : atelier du 2 nov
@@ -3064,6 +3129,7 @@ const PRONUNCIATION_BY_VOICE = {
     'titien': 'TITIEN',
     'werefkin': 'vérefkine',
     'gellée': 'ge llée',  // conservée (mot absent de l'export)
+    'nienstedten': 'Niinn-chtètène',  // v280 : atelier du 5 nov
   },
   'rémy': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3091,6 +3157,7 @@ const PRONUNCIATION_BY_VOICE = {
     'titien': 'TITIEN',
     'werefkin': 'vérefkine',
     'gellée': 'gellée',  // conservée (mot absent de l'export)
+    'nienstedten': 'Niinn-chtètène',  // v280 : atelier du 5 nov
   },
   'eloise': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3185,7 +3252,7 @@ function nounCase(m, off, str, val) {
   if (!/(^|[.!?…:»\n])\s*$/.test(str.slice(Math.max(0, off - 12), off)) && off > 12) return null;
   return val.charAt(0).toUpperCase() + val.slice(1);
 }
-const PLURAL_SANS_DEDUCTION = new Set(['fine']);
+const PLURAL_SANS_DEDUCTION = new Set(['fine', 'gardens', 'marsyas', 'congonhas', 'manzanares']);  // v280 : ces mots finissent par « s » mais sont des noms propres (pas de singulier à déduire)
 const pronunciationVariantsCache = new Map();
 function pronunciationVariants(vo) {
   if (pronunciationVariantsCache.has(vo || null)) return pronunciationVariantsCache.get(vo || null);
