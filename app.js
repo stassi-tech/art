@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v280';
+const APP_VERSION = 'v281';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -13665,6 +13665,7 @@ function bioParseOv(body) {
     else if ((m = q.match(/^cadre\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s+([\d.,]+)/))) { o.ox = num(m[1]); o.oy = num(m[2]); o.ow = num(m[3]); cadre = true; }
     else if ((m = q.match(/^princ\w*\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s+([\d.,]+)/))) { o.mx = num(m[1]); o.my = num(m[2]); o.sc = num(m[3]); }
     else if ((m = q.match(/^detail\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s+([\d.,]+)/))) { o.zx = num(m[1]); o.zy = num(m[2]); o.zz = num(m[3]); }
+    else if ((m = q.match(/^zone\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s+(-?[\d.,]+)\s+(-?[\d.,]+)/))) { o.zn = [num(m[1]), num(m[2]), num(m[3]), num(m[4])]; }   // v281 : « zone X1 Y1 X2 Y2 » = détail rectangulaire de format libre (% de l'image)
     else if (/^(petit|moyen|plein|grand)/.test(q)) size = /^petit/.test(q) ? 'petite' : /^moyen/.test(q) ? 'moyenne' : 'pleine';
     else if (/(haut|bas|centre|milieu)/.test(q)) pos = /centre|milieu/.test(q) ? 'centre' : (/haut/.test(q) ? 'haut' : 'bas') + '-' + (/gauche/.test(q) ? 'gauche' : 'droite');
     else { const f = bioParseFx(q0); if (f) { o.fxt = f.type; o.ms = f.type === 'cut' ? 0 : (f.ms != null ? Math.max(0, Math.min(10000, f.ms)) : null); } }   // v242 : « enchaîné 1 » / « noir 1,5 » / « coupe » (ou juste une durée)
@@ -13672,7 +13673,13 @@ function bioParseOv(body) {
   if (!cadre && o.mode !== 'incl') { const sz = size || 'moyenne', ps = pos || 'bas-droite'; const ow = sz === 'petite' ? 30 : sz === 'pleine' ? 100 : 48; const h = ow * 0.75;
     o.ow = ow; o.ox = /gauche/.test(ps) ? 3 + ow / 2 : /droite/.test(ps) ? 97 - ow / 2 : 50; o.oy = /haut/.test(ps) ? 3 + h / 2 : /bas/.test(ps) ? 97 - h / 2 : 50; if (!o.mode && sz === 'pleine') o.mode = 'incl'; }
   const d = (v, def) => (v == null ? def : v);
-  return { ref: o.ref, mode: o.mode === 'incl' ? 'incl' : 'juxta', ox: d(o.ox, 73), oy: d(o.oy, 79), ow: d(o.ow, 48), mx: d(o.mx, 50), my: d(o.my, 50), sc: d(o.sc, 100), zx: d(o.zx, 50), zy: d(o.zy, 50), zz: Math.max(1, Math.min(10, d(o.zz, 1))), ms: o.ms, fxt: o.fxt || 'fade' };
+  const zn = bioZone(o.zn);
+  return { zn, ref: o.ref, mode: o.mode === 'incl' ? 'incl' : 'juxta', ox: d(o.ox, 73), oy: d(o.oy, 79), ow: d(o.ow, 48), mx: d(o.mx, 50), my: d(o.my, 50), sc: d(o.sc, 100), zx: d(o.zx, 50), zy: d(o.zy, 50), zz: Math.max(1, Math.min(10, d(o.zz, 1))), ms: o.ms, fxt: o.fxt || 'fade' };
+}
+function bioZone(a) {   // v281 : zone de détail [x1, y1, x2, y2] en % de l'image, ou null si absente / incorrecte
+  if (!Array.isArray(a) || a.length !== 4 || a.some((x) => x == null || !isFinite(x))) return null;
+  let [x1, y1, x2, y2] = a.map((x) => Math.max(0, Math.min(100, x))); if (x2 < x1) [x1, x2] = [x2, x1]; if (y2 < y1) [y1, y2] = [y2, y1];
+  return (x2 - x1 < 1 || y2 - y1 < 1) ? null : [x1, y1, x2, y2];
 }
 function bioOvClips(list, endPos) {   // appariement début/fin ; à position égale, une fin passe avant un début
   const L = list.map((x, i) => ({ x, i })).sort((p, q) => p.x.offset - q.x.offset || (!!p.x.ovEnd === !!q.x.ovEnd ? p.i - q.i : (p.x.ovEnd ? -1 : 1))).map((p) => p.x);
@@ -14090,7 +14097,7 @@ function bioMainXform(mk, ms) {   // v240 : en juxtaposition, l'image principale
   els.forEach((el) => { el.style.transform = to === 'none' ? '' : to; try { if (ms > 0 && el.animate) el.animate([{ transform: from }, { transform: to }], { duration: ms, easing: 'ease' }); } catch (e) { /* ignoré */ } });
 }
 function bioOvShow(c) {
-  const A = bioAuto; const key = c ? [c.ref, c.mode, c.ox, c.oy, c.ow, c.mx, c.my, c.sc, c.zx, c.zy, c.zz, c.fxt, c.ms, c.a].join('|') : ''; if ((A.ovKey || '') === key) return; A.ovKey = key;
+  const A = bioAuto; const key = c ? [c.ref, c.mode, c.ox, c.oy, c.ow, c.mx, c.my, c.sc, c.zx, c.zy, c.zz, c.zn, c.fxt, c.ms, c.a].join('|') : ''; if ((A.ovKey || '') === key) return; A.ovKey = key;
   // v242 : trois façons de passer de l'image principale à celle de la ligne 2 (et retour) : fondu enchaîné (défaut), fondu au noir, coupe
   const type = c ? (c.fxt || 'fade') : (A.ovFxT || 'fade'); if (c) A.ovFxT = type;
   const clipMs = c ? ((c.b - c.a) / bioCps()) * 1000 : 0;   // durée approximative de l'image sur la ligne 2 : le fondu par défaut ne dépasse pas sa moitié
@@ -14123,7 +14130,7 @@ function bioCapApply(E, sameCap, cov, setFn) {
 }
 // détail : pour un agrandissement, on demande une image plus grande (1920 px) ; si elle n'existe pas à cette taille, on retombe sur la taille habituelle
 function bioOvSrc(c) {
-  const z = c.zz || 1; let u = imageSourceSized(c.ref, z > 1.3 ? Math.min(1920, Math.round(900 * z)) : 900);
+  const z = c.zn ? Math.min(10, 100 / Math.max(2, c.zn[2] - c.zn[0])) : (c.zz || 1); let u = imageSourceSized(c.ref, z > 1.3 ? Math.min(1920, Math.round(900 * z)) : 900);
   if (z > 1.3) u = u.replace(/\/(\d{2,4})px-([^\/]+)$/, (m, w, n) => (+w < 1920 ? '/1920px-' + n : m));
   return u;
 }
@@ -14137,16 +14144,18 @@ function bioOvRun(c, ms) {
   [...z.children].forEach((o) => { if (ms <= 0) o.remove(); else { o.style.transition = `opacity ${ms}ms ease`; o.style.opacity = '0'; setTimeout(() => o.remove(), ms + 60); } });
   bioMainXform(c && c.mode === 'juxta' ? c : null, ms);
   if (!c) { bioOvCredit(null); return; }
-  const zoomed = (c.zz || 1) > 1.001; const img = document.createElement('img'); img.alt = ''; img.src = bioOvSrc(c); img.onerror = () => { img.onerror = null; img.src = imageSourceSized(c.ref, 900); };
+  const zoomed = !!c.zn || (c.zz || 1) > 1.001; const img = document.createElement('img'); img.alt = ''; img.src = bioOvSrc(c); img.onerror = () => { img.onerror = null; img.src = imageSourceSized(c.ref, 900); };
   let el = img;
   if (zoomed) {   // v241 : « détail » = on ne montre qu'une partie de l'image, agrandie (cadre qui cache le reste)
     el = document.createElement('div'); el.appendChild(img); img.className = 'ovin'; const zz = c.zz, zx = c.zx, zy = c.zy;
     img.style.left = (50 - zx * zz) + '%'; img.style.top = (50 - zy * zz) + '%'; img.style.width = (zz * 100) + '%';
+    const zn = c.zn, zwid = zn ? zn[2] - zn[0] : 100, zhei = zn ? zn[3] - zn[1] : 100;
+    if (zn) { img.style.width = (10000 / zwid) + '%'; img.style.height = (10000 / zhei) + '%'; img.style.left = (-zn[0] * 100 / zwid) + '%'; img.style.top = (-zn[1] * 100 / zhei) + '%'; }   // v281 : zone libre : l'image est agrandie pour que le rectangle remplisse le cadre, dont le format est celui du rectangle
     if (c.mode === 'incl') {   // v246 : le détail se cadre sur l'image elle-même : un cadre de la taille de l'image (ajustée à l'écran, centrée), comme l'image principale
-      const fr = document.createElement('div'); fr.className = 'ovfr'; el.removeChild(img); fr.appendChild(img); el.appendChild(fr); img.style.height = 'auto';
-      const fit = () => { const W = el.clientWidth, H = el.clientHeight; if (!img.naturalWidth || !W || !H) return; const k = Math.min(W / img.naturalWidth, H / img.naturalHeight), fw = img.naturalWidth * k, fh = img.naturalHeight * k; fr.style.left = ((W - fw) / 2) + 'px'; fr.style.top = ((H - fh) / 2) + 'px'; fr.style.width = fw + 'px'; fr.style.height = fh + 'px'; };
+      const fr = document.createElement('div'); fr.className = 'ovfr'; el.removeChild(img); fr.appendChild(img); el.appendChild(fr); if (!zn) img.style.height = 'auto';
+      const fit = () => { const W = el.clientWidth, H = el.clientHeight; if (!img.naturalWidth || !W || !H) return; const nw = img.naturalWidth * zwid / 100, nh = img.naturalHeight * zhei / 100, k = Math.min(W / nw, H / nh), fw = nw * k, fh = nh * k; fr.style.left = ((W - fw) / 2) + 'px'; fr.style.top = ((H - fh) / 2) + 'px'; fr.style.width = fw + 'px'; fr.style.height = fh + 'px'; };
       el._fit = fit; img.onload = fit;
-    } else { el.style.aspectRatio = '4 / 3'; img.onload = () => { if (img.naturalWidth > 0) el.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight; }; }
+    } else { el.style.aspectRatio = '4 / 3'; img.onload = () => { if (img.naturalWidth > 0) el.style.aspectRatio = (img.naturalWidth * zwid) + ' / ' + (img.naturalHeight * zhei); }; }
   }
   if (c.mode === 'incl') { el.className = 'imp-bio-ovi incl' + (zoomed ? ' zw' : ''); try { const im = bioEls().img; let L, T, W, H; if (im.offsetParent && im.offsetParent === z.offsetParent) { L = im.offsetLeft - z.offsetLeft; T = im.offsetTop - z.offsetTop; W = im.offsetWidth; H = im.offsetHeight; } else { const ir = im.getBoundingClientRect(), pr = z.getBoundingClientRect(); L = ir.left - pr.left; T = ir.top - pr.top; W = ir.width; H = ir.height; } /* v241 : tailles réelles, hors animation de retour de l'image principale */ if (W > 20 && H > 20) { el.style.left = L + 'px'; el.style.top = T + 'px'; el.style.width = W + 'px'; el.style.height = H + 'px'; } } catch (e) { /* ignoré */ } } else { el.className = 'imp-bio-ovi jx' + (zoomed ? ' zw' : ''); el.style.left = c.ox + '%'; el.style.top = c.oy + '%'; el.style.width = c.ow + '%'; }
   el.style.opacity = ms <= 0 ? '1' : '0'; z.appendChild(el); if (el._fit) el._fit(); if (ms > 0) { void el.offsetWidth; el.style.transition = `opacity ${ms}ms ease`; el.style.opacity = '1'; }
@@ -14159,7 +14168,7 @@ function bioOvCredit(c) {
   if (!a) { a = document.createElement('a'); a.id = 'imp-bio-ov-credit'; a.className = 'imp-bio-split-credit imp-bio-ovcr hidden'; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = 'cr\u00e9dits<span id="imp-bio-ov-credit-text" class="imp-bio-split-credit-text"></span><span id="imp-bio-ov-credit-dt"></span>'; }   // v246 : même pastille « crédits » que les autres, en bas
   if (a.parentElement !== par) par.appendChild(a);
   showImpBioCredit(c ? c.ref : null, 'imp-bio-ov-credit', 'imp-bio-ov-credit-text');
-  const dt = $('imp-bio-ov-credit-dt'); if (dt) dt.textContent = c && c.zz > 1.001 ? '\u00a0\u00b7 d\u00e9tail' : '';
+  const dt = $('imp-bio-ov-credit-dt'); if (dt) dt.textContent = c && (c.zn || c.zz > 1.001) ? '\u00a0\u00b7 d\u00e9tail' : '';
 }
 function bioOvUpdate(colTop, lineY, reading) {
   const A = bioAuto; const cl = A.ovs || []; if (A.capHold && !A.ovCurIncl && (A.ovHideDone || 0) < performance.now() && performance.now() - (A.capHoldAt || 0) > 1500) bioCapRelease();   // v243 : sécurité, une légende ne reste jamais retenue sans image superposée
