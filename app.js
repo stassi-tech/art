@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v281';
+const APP_VERSION = 'v282';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -13903,6 +13903,8 @@ function bioShowImage(ref, caption, fx, mi) {
   const fxMs = fxType === 'cut' ? fxMs0 : bioAdaptMs(mi, fxMs0);
   const fid = ++bioAuto.fid; bioDbg('affiche', ref.slice(-30), fxType, fxMs0 + '→' + fxMs + 'ms');
   if (fxType === 'cut' || (fxMs <= 0 && fxType === 'fade')) { // coupe : changement net
+    { const dl = cov ? bioOvCoverDelay(mi) : 0;   // v282 : l'image de la ligne 2 arrive EN MÊME TEMPS que cette image principale : on garde l'ancienne image dessous pendant le fondu (elle se fond dans l'image de la ligne 2), puis on change net, à l'abri sous elle
+      if (dl > 0) { bioAuto.shownRef = ref; setTimeout(() => { if (fid !== bioAuto.fid || bioAuto.shownRef !== ref) return; img.src = imageSourceSized(ref, 900); showImpBioCredit(ref, E.link, E.txt); }, dl); return; } }
     img.src = imageSourceSized(ref, 900); bioAuto.shownRef = ref; bioCapApply(E, sameCap, cov, () => { showImpBioCredit(ref, E.link, E.txt); }); return;
   }
   if (fxType === 'black') { // fondu au noir : l'image s'éteint (1ʳᵉ moitié), puis la nouvelle apparaît (2ᵉ moitié)
@@ -14121,6 +14123,17 @@ function bioOvCoverInfo(mi, ref) {
   if (mk && A.ovs) clip = A.ovs.find((c) => c.mode === 'incl' && mk.offset >= c.a - 0.5 && mk.offset <= c.b + 0.5) || null;
   if (!clip && (A.ovCurIncl || (A.ovHideDone || 0) > now)) clip = { ref: A.ovCurIncl ? A.ovCurRef : A.ovLastRef };
   return clip ? { same: bioOvKey(clip.ref) === bioOvKey(ref) } : null;
+}
+// v282 (retour Stéphane : « le fondu doit remonter d'une ligne ») : une image de la ligne 2 (inclusion, fondu enchaîné) qui commence en même temps qu'une nouvelle image principale :
+// l'ancienne image principale reste en place sous elle jusqu'à la fin du fondu, au lieu de céder la place à la nouvelle image (qu'on voyait alors un instant avant que la ligne 2 ne la recouvre).
+// Renvoie le délai (ms) avant de changer l'image principale, 0 si le changement net peut se faire tout de suite.
+function bioOvCoverDelay(mi) {
+  const A = bioAuto; const mk = mi != null && mi >= 0 ? A.marks[mi] : null; if (!mk || !A.ovs) return 0;
+  const c = A.ovs.find((x) => x.mode === 'incl' && mk.offset >= x.a - 0.5 && mk.offset <= x.b + 0.5); if (!c || (c.fxt || 'fade') !== 'fade') return 0;
+  const now = performance.now(); let rem = 0;
+  if (A.ovCurIncl && A.ovInDone && bioOvKey(A.ovCurRef) === bioOvKey(c.ref)) rem = A.ovInDone - now;   // l'image de la ligne 2 est déjà en train d'apparaître : il reste ce temps
+  else if (c.a >= mk.offset - 4) { const clipMs = ((c.b - c.a) / bioCps()) * 1000; rem = c.ms != null ? c.ms : Math.round(Math.max(800, Math.min(BIO_OV_FADE_MS, isFinite(clipMs) && clipMs > 0 ? clipMs * 0.5 : BIO_OV_FADE_MS))); }   // elle va apparaître à l'instant : durée complète du fondu
+  return rem > 80 ? Math.min(rem, 10000) + 30 : 0;
 }
 function bioCapRelease() { const A = bioAuto; clearTimeout(A.capRelT); const f = A.capHold; A.capHold = null; if (f) f(); }
 function bioCapApply(E, sameCap, cov, setFn) {
