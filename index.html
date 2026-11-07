@@ -28,6 +28,8 @@
     if (t && t !== window) {   /* erreur de chargement d'un fichier (et non du programme) */
       if (t.tagName === 'SCRIPT' || t.tagName === 'LINK') {
         var u = String(t.src || t.href);
+        /* v284 : un script ou une feuille de style qui ne vient NI de la page, NI de jsdelivr, NI de gstatic (Firebase), est ajouté par une extension du navigateur (ex. « filtering.adblock360.com », vu en capture) : ce n'est pas un fichier de l'application, on ne l'affiche qu'en mode diagnostic (?debug=touch) */
+        try { var hh = new URL(u, location.href).hostname; if (hh !== location.hostname && !/^(cdn\.jsdelivr\.net|www\.gstatic\.com|apis\.google\.com)$/.test(hh) && !/[?&]debug=touch/.test(location.search)) return; } catch (e2) {}
         /* v275 : « apis.google.com/js/api.js » est le petit assistant de connexion que Firebase charge de lui-même ; s'il n'arrive pas (réseau faible, bloqueur), l'application fonctionne quand même et Firebase signale seul tout vrai problème de connexion : bandeau réservé au mode diagnostic (?debug=touch). */
         if (/^https:\/\/apis\.google\.com\//.test(u) && !/[?&]debug=touch/.test(location.search)) return;
         show('Fichier non chargé : ' + u);
@@ -2287,6 +2289,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=503"></script>
+    <script defer src="app.js?v=504"></script>
   </body>
 </html>
