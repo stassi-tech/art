@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v282';
+const APP_VERSION = 'v283';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -116,6 +116,8 @@ if (document.readyState !== 'loading') {
     show(`ERREUR JS : ${event.message}${loc}`, 'error');
   });
   window.addEventListener('unhandledrejection', (event) => {
+    // v283 : un « Failed to fetch » venu d'un script étranger au programme (pile sans app.js, lignes de la page elle-même : typique d'une extension du navigateur) n'est pas un bug de l'application : on ne l'affiche pas (sauf avec ?debug=touch)
+    { const r = event.reason; if (r && /Failed to fetch/.test(r.message || '') && typeof r.stack === 'string' && /\(https?:\/\/[^)\s]*\/:\d+:\d+\)/.test(r.stack) && !/app\.js/.test(r.stack) && !/[?&]debug=touch/.test(location.search)) return; }
     show(`PROMESSE REJETÉE : ${event.reason && event.reason.message ? event.reason.message : event.reason}`, 'error');
   });
   // Exposée globalement pour que le reste du code (voir enterCloserPlan) puisse aussi y déposer un

@@ -41,6 +41,8 @@
     var r = e.reason;
     /* Une « promesse rejetée » sans aucun message (reason = undefined) est un petit bruit sans conséquence (ex. une lecture audio refusée par le téléphone) : on ne l'affiche pas, sauf en mode diagnostic (?debug=touch). */
     if (!r || (!r.message && !r.stack)) { if (/[?&]debug=touch/.test(location.search)) show('Promesse rejetée sans message (' + String(r) + ')'); return; }
+    /* v283 : « Failed to fetch » venu d'un script étranger au programme (pile sans app.js, lignes de la page : typique d'une extension du navigateur) : pas un bug de l'application, affiché seulement en mode diagnostic */
+    if (/Failed to fetch/.test(r.message || '') && typeof r.stack === 'string' && /\(https?:\/\/[^)\s]*\/:\d+:\d+\)/.test(r.stack) && !/app\.js/.test(r.stack) && !/[?&]debug=touch/.test(location.search)) return;
     show('Promesse rejetée : ' + (r.stack || r.message));
   });
   window.addEventListener('load', function () { setTimeout(function () { if (!window.__mnemartBooted) show('Le programme app.js ne s\'est pas terminé (il s\'est arrêté en cours de route).'); }, 3500); });
@@ -51,7 +53,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=311" />
+    <link rel="stylesheet" href="style.css?v=312" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -2285,6 +2287,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=502"></script>
+    <script defer src="app.js?v=503"></script>
   </body>
 </html>

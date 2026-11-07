@@ -76,7 +76,7 @@ body[data-ambiance="space"] .primary-button, body[data-ambiance="space"] .home-m
 body[data-ambiance="versailles"] { --accent:#d8b25c; --accent-dark:#8a6a24; --cta:#7a1418; --cta-dark:#560e10; }
 body[data-ambiance="versailles"] .bg-tile:nth-child(odd)::before { background:#960018; }
 body[data-ambiance="versailles"] .bg-tile:nth-child(even)::before { background:#d4af37; }
-body[data-ambiance="versailles"].in-exercise { --ink:#f2ece0; --paper:#5c1015; }
+body[data-ambiance="versailles"].in-exercise { --ink:#f2ece0; --paper:#5c1015; --canvas:#4a0c11; --border:#8a2a30; }   /* v283 : --canvas et --border manquaient : sur smartphone, les références (#imp-correction-details) prenaient le fond crème par défaut sous le texte crème → texte invisible */
 body[data-ambiance="versailles"].in-exercise { background:#5c1015 url('assets/versailles-fond.jpg') center/cover no-repeat; }
 body[data-ambiance="versailles"].in-exercise .app-shell { background:transparent; }
 body[data-ambiance="versailles"] .primary-button, body[data-ambiance="versailles"] .home-mode-button {
