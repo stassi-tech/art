@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v284';
+const APP_VERSION = 'v285';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1899,6 +1899,8 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v285 (atelier de prononciation, export du 7 nov 23:46) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'sant\'agnese in agone': 'sant-agnésé-iN-agoné',  // v285 : atelier du 7 nov
   // v280 (atelier de prononciation, export du 5 nov 22:29) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'del carmine': 'dél carminé',  // v280 : atelier du 5 nov
   'georg raphael donner': 'guéorgue raphael donnère',  // v280 : atelier du 5 nov
@@ -2643,6 +2645,34 @@ const PRONUNCIATION_FIXES = {
   'vincoli': 'vinncoli',  // v280 : atelier du 5 nov
   'x': 'dix',  // v280 : atelier du 5 nov
   'zwinger': 'zwinger',  // v280 : atelier du 5 nov
+  // v285 (atelier de prononciation, export du 7 nov 23:46) : écritures communes à toutes les voix ; nouveaux mots.
+  'annunziata': 'ânoune-tziâttâ',  // v285 : atelier du 7 nov
+  'baroccio': 'bârotchio',  // v285 : atelier du 7 nov
+  'bentivoglio': 'béntivolio',  // v285 : atelier du 7 nov
+  'costanza': 'costânntza',  // v285 : atelier du 7 nov
+  'cranach': 'kranare',  // v285 : atelier du 7 nov
+  'dioclétien': 'dioclé-sien',  // v285 : atelier du 7 nov
+  'erbach': 'érbare',  // v285 : atelier du 7 nov
+  'gemmingen': 'guéminnguéne',  // v285 : atelier du 7 nov
+  'genovesi': 'djénovési',  // v285 : atelier du 7 nov
+  'graeff': 'grêff',  // v285 : atelier du 7 nov
+  'grunewald': 'grunevald',  // v285 : atelier du 7 nov
+  'grünewald': 'grunevald',  // v285 : atelier du 7 nov
+  'hagenauer': 'haguénauer',  // v285 : atelier du 7 nov
+  'issenheim': 'issen-aïe-me',  // v285 : atelier du 7 nov
+  'kronach': 'kronare',  // v285 : atelier du 7 nov
+  'lebrija': 'lébrira',  // v285 : atelier du 7 nov
+  'maler': 'malère',  // v285 : atelier du 7 nov
+  'marienkirche': 'mariannekircheu',  // v285 : atelier du 7 nov
+  'micheli': 'mikèli',  // v285 : atelier du 7 nov
+  'montanes': 'montagnèsse',  // v285 : atelier du 7 nov
+  'palazzo': 'pâlâtzo',  // v285 : atelier du 7 nov
+  'pinturicchio': 'pine-tourikio',  // v285 : atelier du 7 nov
+  'rubeus': 'roubéusse',  // v285 : atelier du 7 nov
+  'schlüter': 'schlutère',  // v285 : atelier du 7 nov
+  'scipione': 'tchipioné',  // v285 : atelier du 7 nov
+  'stuppach': 'chtoupare',  // v285 : atelier du 7 nov
+  'wartemberg': 'vartembergue',  // v285 : atelier du 7 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2791,6 +2821,17 @@ const PRONUNCIATION_BY_VOICE = {
     'ludgarde': 'lude-guarde',  // v280 : atelier du 5 nov
     'valle': 'vâlé',  // v280 : atelier du 5 nov
     'zwinger': 'tsvinne-guer',  // v280 : atelier du 5 nov
+    'algardi': 'âlgardi',  // v285 : atelier du 7 nov
+    'annunziata': 'ânoune-tziatâ',  // v285 : atelier du 7 nov
+    'bentivoglio': 'bentivolio',  // v285 : atelier du 7 nov
+    'costanza': 'costantza',  // v285 : atelier du 7 nov
+    'erbach': 'er-bar',  // v285 : atelier du 7 nov
+    'gemmingen': 'guémine-guéne',  // v285 : atelier du 7 nov
+    'grunewald': 'grunevalde',  // v285 : atelier du 7 nov
+    'grünewald': 'grunevalde',  // v285 : atelier du 7 nov
+    'montanes': 'montagnesse',  // v285 : atelier du 7 nov
+    'scipione': 'tchipio-né',  // v285 : atelier du 7 nov
+    'wartemberg': 'vartem-berg',  // v285 : atelier du 7 nov
   },
   'charline': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -2896,6 +2937,17 @@ const PRONUNCIATION_BY_VOICE = {
     'ludgarde': 'lude-guarde',  // v280 : atelier du 5 nov
     'valle': 'vâlé',  // v280 : atelier du 5 nov
     'zwinger': 'tsvinne-guer',  // v280 : atelier du 5 nov
+    'algardi': 'âlgardi',  // v285 : atelier du 7 nov
+    'annunziata': 'ânoune-tziattâ',  // v285 : atelier du 7 nov
+    'bentivoglio': 'bentivolio',  // v285 : atelier du 7 nov
+    'costanza': 'costantza',  // v285 : atelier du 7 nov
+    'erbach': 'er-bar',  // v285 : atelier du 7 nov
+    'gemmingen': 'guémine-guéne',  // v285 : atelier du 7 nov
+    'grunewald': 'grunevalde',  // v285 : atelier du 7 nov
+    'grünewald': 'grunevalde',  // v285 : atelier du 7 nov
+    'montanes': 'montagnesse',  // v285 : atelier du 7 nov
+    'scipione': 'tchipio-né',  // v285 : atelier du 7 nov
+    'wartemberg': 'vartem-berg',  // v285 : atelier du 7 nov
   },
   'paul': {
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
@@ -2972,6 +3024,17 @@ const PRONUNCIATION_BY_VOICE = {
     'ludgarde': 'lude-guarde',  // v280 : atelier du 5 nov
     'valle': 'vâlé',  // v280 : atelier du 5 nov
     'zwinger': 'tsvinne-guer',  // v280 : atelier du 5 nov
+    'algardi': 'âlgardi',  // v285 : atelier du 7 nov
+    'annunziata': 'ânoune-tziattâ',  // v285 : atelier du 7 nov
+    'bentivoglio': 'bentivolio',  // v285 : atelier du 7 nov
+    'costanza': 'costantza',  // v285 : atelier du 7 nov
+    'erbach': 'er-bar',  // v285 : atelier du 7 nov
+    'gemmingen': 'guémine-guéne',  // v285 : atelier du 7 nov
+    'grunewald': 'grunevalde',  // v285 : atelier du 7 nov
+    'grünewald': 'grunevalde',  // v285 : atelier du 7 nov
+    'montanes': 'montagnesse',  // v285 : atelier du 7 nov
+    'scipione': 'tchipio-né',  // v285 : atelier du 7 nov
+    'wartemberg': 'vartem-berg',  // v285 : atelier du 7 nov
   },
   'gerard': {
     'giusto di menabuoi': 'djousto di ménabw-oï',  // v276 : atelier du 2 nov
@@ -3018,6 +3081,7 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
+    'annunziata': 'ânoune-tziattâ',  // v285 : atelier du 7 nov
   },
   'antoine': {
     'giusto di menabuoi': 'djousto di ménabw-oy',  // v276 : atelier du 2 nov
@@ -3132,6 +3196,8 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
     'gellée': 'ge llée',  // conservée (mot absent de l'export)
     'nienstedten': 'Niinn-chtètène',  // v280 : atelier du 5 nov
+    'issenheim': 'issénaïeme',  // v285 : atelier du 7 nov
+    'pinturicchio': 'pin-tourikio',  // v285 : atelier du 7 nov
   },
   'rémy': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3160,6 +3226,7 @@ const PRONUNCIATION_BY_VOICE = {
     'werefkin': 'vérefkine',
     'gellée': 'gellée',  // conservée (mot absent de l'export)
     'nienstedten': 'Niinn-chtètène',  // v280 : atelier du 5 nov
+    'pinturicchio': 'pin-tourikio',  // v285 : atelier du 7 nov
   },
   'eloise': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3171,6 +3238,7 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
+    'montanes': 'mont',  // v285 : atelier du 7 nov
   },
 };
 function currentPronunciationOverrides() {
@@ -3254,7 +3322,7 @@ function nounCase(m, off, str, val) {
   if (!/(^|[.!?…:»\n])\s*$/.test(str.slice(Math.max(0, off - 12), off)) && off > 12) return null;
   return val.charAt(0).toUpperCase() + val.slice(1);
 }
-const PLURAL_SANS_DEDUCTION = new Set(['fine', 'gardens', 'marsyas', 'congonhas', 'manzanares']);  // v280 : ces mots finissent par « s » mais sont des noms propres (pas de singulier à déduire)
+const PLURAL_SANS_DEDUCTION = new Set(['fine', 'gardens', 'marsyas', 'congonhas', 'manzanares', 'rubeus']);  // v285 : ces mots finissent par « s » mais sont des noms propres (pas de singulier à déduire)
 const pronunciationVariantsCache = new Map();
 function pronunciationVariants(vo) {
   if (pronunciationVariantsCache.has(vo || null)) return pronunciationVariantsCache.get(vo || null);
