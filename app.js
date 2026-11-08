@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v285';
+const APP_VERSION = 'v287';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1899,6 +1899,10 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v287 (atelier de prononciation, export du 8 nov 23:39) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'buen retiro': 'buen rétiro',  // v287 : atelier du 8 nov
+  'en plein air': 'en plainair',  // v287 : atelier du 8 nov
+  'karel van mander': 'karèl van mandère',  // v287 : atelier du 8 nov
   // v285 (atelier de prononciation, export du 7 nov 23:46) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'sant\'agnese in agone': 'sant-agnésé-iN-agoné',  // v285 : atelier du 7 nov
   // v280 (atelier de prononciation, export du 5 nov 22:29) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
@@ -2645,6 +2649,8 @@ const PRONUNCIATION_FIXES = {
   'vincoli': 'vinncoli',  // v280 : atelier du 5 nov
   'x': 'dix',  // v280 : atelier du 5 nov
   'zwinger': 'zwinger',  // v280 : atelier du 5 nov
+  // v286 (retour Stéphane) : « fémurs » au pluriel était lu « fémurés » ; on l'écrit comme le singulier, avec un e muet.
+  'fémurs': 'fémure',  // v286
   // v285 (atelier de prononciation, export du 7 nov 23:46) : écritures communes à toutes les voix ; nouveaux mots.
   'annunziata': 'ânoune-tziâttâ',  // v285 : atelier du 7 nov
   'baroccio': 'bârotchio',  // v285 : atelier du 7 nov
@@ -2673,6 +2679,25 @@ const PRONUNCIATION_FIXES = {
   'scipione': 'tchipioné',  // v285 : atelier du 7 nov
   'stuppach': 'chtoupare',  // v285 : atelier du 7 nov
   'wartemberg': 'vartembergue',  // v285 : atelier du 7 nov
+  // v287 (atelier de prononciation, export du 8 nov 23:39) : écritures communes à toutes les voix ; nouveaux mots.
+  'as': 'asse',  // v287 : atelier du 8 nov
+  'bath': 'bath',  // v287 : atelier du 8 nov
+  'bauhaus': 'bohausse',  // v287 : atelier du 8 nov
+  'cockburn': 'cockbeurn',  // v287 : atelier du 8 nov
+  'devon': 'dévonn',  // v287 : atelier du 8 nov
+  'hobbema': 'hobéma',  // v287 : atelier du 8 nov
+  'hokusai': 'hokousaille',  // v287 : atelier du 8 nov
+  'llerena': 'liéréna',  // v287 : atelier du 8 nov
+  'mater': 'matère',  // v287 : atelier du 8 nov
+  'plympton': 'plimptonn',  // v287 : atelier du 8 nov
+  'ruysdael': 'ruizdèl',  // v287 : atelier du 8 nov
+  'salisbury': 'solsburi',  // v287 : atelier du 8 nov
+  'siddons': 'sidonnse',  // v287 : atelier du 8 nov
+  'suffolk': 'saffok',  // v287 : atelier du 8 nov
+  'vedute': 'védouté',  // v287 : atelier du 8 nov
+  'weill': 'veille',  // v287 : atelier du 8 nov
+  'wurtzbourg': 'vurtsbourgue',  // v287 : atelier du 8 nov
+  'xativa': 'râtivâ',  // v287 : atelier du 8 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2832,6 +2857,9 @@ const PRONUNCIATION_BY_VOICE = {
     'montanes': 'montagnesse',  // v285 : atelier du 7 nov
     'scipione': 'tchipio-né',  // v285 : atelier du 7 nov
     'wartemberg': 'vartem-berg',  // v285 : atelier du 7 nov
+    'bath': 'bâf',  // v287 : atelier du 8 nov
+    'karel van mander': 'karèl van man-dère',  // v287 : atelier du 8 nov
+    'wurtzbourg': 'vurtsbourgg',  // v287 : atelier du 8 nov
   },
   'charline': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -2857,6 +2885,7 @@ const PRONUNCIATION_BY_VOICE = {
     'noli me tangere': 'nôli mé tangéré',  // v274 : atelier du 1er nov
     'burgoyne': 'bér-gogne',  // v280 : atelier du 5 nov
     'zwinger': 'tsvinn-guer',  // v280 : atelier du 5 nov
+    'bath': 'bâf',  // v287 : atelier du 8 nov
   },
   'julie': {
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
@@ -2948,6 +2977,9 @@ const PRONUNCIATION_BY_VOICE = {
     'montanes': 'montagnesse',  // v285 : atelier du 7 nov
     'scipione': 'tchipio-né',  // v285 : atelier du 7 nov
     'wartemberg': 'vartem-berg',  // v285 : atelier du 7 nov
+    'bath': 'bâf',  // v287 : atelier du 8 nov
+    'karel van mander': 'karèl van man-dère',  // v287 : atelier du 8 nov
+    'wurtzbourg': 'vurtsbourgg',  // v287 : atelier du 8 nov
   },
   'paul': {
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
@@ -3035,6 +3067,9 @@ const PRONUNCIATION_BY_VOICE = {
     'montanes': 'montagnesse',  // v285 : atelier du 7 nov
     'scipione': 'tchipio-né',  // v285 : atelier du 7 nov
     'wartemberg': 'vartem-berg',  // v285 : atelier du 7 nov
+    'bath': 'bâf',  // v287 : atelier du 8 nov
+    'karel van mander': 'karèl van man-dère',  // v287 : atelier du 8 nov
+    'wurtzbourg': 'vurtsbourgg',  // v287 : atelier du 8 nov
   },
   'gerard': {
     'giusto di menabuoi': 'djousto di ménabw-oï',  // v276 : atelier du 2 nov
