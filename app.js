@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v287';
+const APP_VERSION = 'v288';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1899,6 +1899,13 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v288 (atelier de prononciation, export du 10 nov 09:32) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'die brucke': 'di bruckeu',  // v288 : atelier du 10 nov
+  'madame x': 'madame ikse',  // v288 : atelier du 10 nov
+  'palais du te': 'palais du Té',  // v288 : atelier du 10 nov
+  'perseus arming': 'persius armingg',  // v288 : atelier du 10 nov
+  'prouts neck': 'praowtse nek',  // v288 : atelier du 10 nov
+  'sarah bernhardt': 'sara bernar',  // v288 : atelier du 10 nov
   // v287 (atelier de prononciation, export du 8 nov 23:39) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'buen retiro': 'buen rétiro',  // v287 : atelier du 8 nov
   'en plein air': 'en plainair',  // v287 : atelier du 8 nov
@@ -2698,6 +2705,37 @@ const PRONUNCIATION_FIXES = {
   'weill': 'veille',  // v287 : atelier du 8 nov
   'wurtzbourg': 'vurtsbourgue',  // v287 : atelier du 8 nov
   'xativa': 'râtivâ',  // v287 : atelier du 8 nov
+  // v288 (atelier de prononciation, export du 10 nov 09:32) : écritures communes à toutes les voix ; nouveaux mots.
+  'antéros': 'antérosse',  // v288 : atelier du 10 nov
+  'artemis': 'artémisse',  // v288 : atelier du 10 nov
+  'aschaffenburg': 'achafenn-bourk',  // v288 : atelier du 10 nov
+  'birchington': 'bertchingtonn',  // v288 : atelier du 10 nov
+  'blucher': 'bluchère',  // v288 : atelier du 10 nov
+  'buffon': 'bufon',  // v288 : atelier du 10 nov
+  'camelot': 'camelote',  // v288 : atelier du 10 nov
+  'cellini': 'chélini',  // v288 : atelier du 10 nov
+  'charlottenburg': 'charlottenn-bourgue',  // v288 : atelier du 10 nov
+  'chirico': 'kiriko',  // v288 : atelier du 10 nov
+  'coronis': 'coronice',  // v288 : atelier du 10 nov
+  'éros': 'érosse',  // v288 : atelier du 10 nov
+  'farren': 'ferrène',  // v288 : atelier du 10 nov
+  'farthing': 'farzingg',  // v288 : atelier du 10 nov
+  'holman': 'holmann',  // v288 : atelier du 10 nov
+  'ivančice': 'I-vane-tchitsé',  // v288 : atelier du 10 nov
+  'kemble': 'kemm-beul',  // v288 : atelier du 10 nov
+  'leszczynska': 'lézinska',  // v288 : atelier du 10 nov
+  'manneken-pis': 'maneken-pisse',  // v288 : atelier du 10 nov
+  'meschede': 'méchéde',  // v288 : atelier du 10 nov
+  'montevarchi': 'monntévarki',  // v288 : atelier du 10 nov
+  'omenoni': 'oménoni',  // v288 : atelier du 10 nov
+  'pinkie': 'pinn-ki',  // v288 : atelier du 10 nov
+  'pollice': 'politché',  // v288 : atelier du 10 nov
+  'sanssouci': 'sans souci',  // v288 : atelier du 10 nov
+  'shaftesbury': 'chaftsbeuri',  // v288 : atelier du 10 nov
+  'southampton': 'southampton',  // v288 : atelier du 10 nov
+  'tennyson': 'ténissone',  // v288 : atelier du 10 nov
+  'waldeck': 'valdèk',  // v288 : atelier du 10 nov
+  'wittelsbach': 'vittelsbak',  // v288 : atelier du 10 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2761,6 +2799,8 @@ const PHONE_PRONUNCIATION_CA = {
   'ursins': 'ursin',
   'venise': 'Veunize',
   'schwerin': 'Schvéérinne',  // conservée (mot absent de l'export)
+  // v288 (atelier de prononciation, export du 10 nov 09:32) : nouveaux mots pour cette voix.
+  'southampton': 'saowf-hemptonn',  // v288 : atelier du 10 nov
 };
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
 const PRONUNCIATION_BY_VOICE = {
@@ -2860,6 +2900,16 @@ const PRONUNCIATION_BY_VOICE = {
     'bath': 'bâf',  // v287 : atelier du 8 nov
     'karel van mander': 'karèl van man-dère',  // v287 : atelier du 8 nov
     'wurtzbourg': 'vurtsbourgg',  // v287 : atelier du 8 nov
+    // v288 (atelier de prononciation, export du 10 nov 09:32) : nouveaux mots pour cette voix.
+    'charlottenburg': 'charlottenn-bourgg',  // v288 : atelier du 10 nov
+    'die brucke': 'di brukeu',  // v288 : atelier du 10 nov
+    'madame x': 'madame ykse',  // v288 : atelier du 10 nov
+    'manneken-pis': 'manekenn-pisse',  // v288 : atelier du 10 nov
+    'montevarchi': 'montévarki',  // v288 : atelier du 10 nov
+    'pinkie': 'pinne-ki',  // v288 : atelier du 10 nov
+    'southampton': 'saowf-hemptonn',  // v288 : atelier du 10 nov
+    'waldeck': 'val-dèk',  // v288 : atelier du 10 nov
+    'wittelsbach': 'vittelsbake',  // v288 : atelier du 10 nov
   },
   'charline': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -2886,6 +2936,8 @@ const PRONUNCIATION_BY_VOICE = {
     'burgoyne': 'bér-gogne',  // v280 : atelier du 5 nov
     'zwinger': 'tsvinn-guer',  // v280 : atelier du 5 nov
     'bath': 'bâf',  // v287 : atelier du 8 nov
+    // v288 (atelier de prononciation, export du 10 nov 09:32) : nouveaux mots pour cette voix.
+    'southampton': 'saowf-hempetonn',  // v288 : atelier du 10 nov
   },
   'julie': {
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
@@ -2980,6 +3032,16 @@ const PRONUNCIATION_BY_VOICE = {
     'bath': 'bâf',  // v287 : atelier du 8 nov
     'karel van mander': 'karèl van man-dère',  // v287 : atelier du 8 nov
     'wurtzbourg': 'vurtsbourgg',  // v287 : atelier du 8 nov
+    // v288 (atelier de prononciation, export du 10 nov 09:32) : nouveaux mots pour cette voix.
+    'charlottenburg': 'charlottenn-bourgg',  // v288 : atelier du 10 nov
+    'die brucke': 'di brukeu',  // v288 : atelier du 10 nov
+    'madame x': 'madame ykse',  // v288 : atelier du 10 nov
+    'manneken-pis': 'manekenne-pisse',  // v288 : atelier du 10 nov
+    'montevarchi': 'montévarki',  // v288 : atelier du 10 nov
+    'pinkie': 'pinne-ki',  // v288 : atelier du 10 nov
+    'southampton': 'saowf-hemptonn',  // v288 : atelier du 10 nov
+    'waldeck': 'val-dèk',  // v288 : atelier du 10 nov
+    'wittelsbach': 'vittelsbake',  // v288 : atelier du 10 nov
   },
   'paul': {
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
@@ -3070,6 +3132,16 @@ const PRONUNCIATION_BY_VOICE = {
     'bath': 'bâf',  // v287 : atelier du 8 nov
     'karel van mander': 'karèl van man-dère',  // v287 : atelier du 8 nov
     'wurtzbourg': 'vurtsbourgg',  // v287 : atelier du 8 nov
+    // v288 (atelier de prononciation, export du 10 nov 09:32) : nouveaux mots pour cette voix.
+    'charlottenburg': 'charlottenn-bourgg',  // v288 : atelier du 10 nov
+    'die brucke': 'di brukeu',  // v288 : atelier du 10 nov
+    'madame x': 'madame ykse',  // v288 : atelier du 10 nov
+    'manneken-pis': 'manekenne-pisse',  // v288 : atelier du 10 nov
+    'montevarchi': 'montévarki',  // v288 : atelier du 10 nov
+    'pinkie': 'pinne-ki',  // v288 : atelier du 10 nov
+    'southampton': 'saowf-hemptonn',  // v288 : atelier du 10 nov
+    'waldeck': 'val-dèk',  // v288 : atelier du 10 nov
+    'wittelsbach': 'vittelsbake',  // v288 : atelier du 10 nov
   },
   'gerard': {
     'giusto di menabuoi': 'djousto di ménabw-oï',  // v276 : atelier du 2 nov
@@ -3102,6 +3174,8 @@ const PRONUNCIATION_BY_VOICE = {
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
     'burgoyne': 'bér-gogne',  // v280 : atelier du 5 nov
+    // v288 (atelier de prononciation, export du 10 nov 09:32) : nouveaux mots pour cette voix.
+    'southampton': 'saowf-hamp-tonn',  // v288 : atelier du 10 nov
   },
   'jean': {
     'giusto di menabuoi': 'djousto di ménabw-oy',  // v276 : atelier du 2 nov
@@ -3117,6 +3191,8 @@ const PRONUNCIATION_BY_VOICE = {
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
     'annunziata': 'ânoune-tziattâ',  // v285 : atelier du 7 nov
+    // v288 (atelier de prononciation, export du 10 nov 09:32) : nouveaux mots pour cette voix.
+    'southampton': 'saowf-hamp-tonn',  // v288 : atelier du 10 nov
   },
   'antoine': {
     'giusto di menabuoi': 'djousto di ménabw-oy',  // v276 : atelier du 2 nov
