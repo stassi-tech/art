@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v293';
+const APP_VERSION = 'v295';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -3797,6 +3797,7 @@ function normaliseRows(rows) {
     if (titreFrKey) {
       title = stripQuotes(row[titreFrKey]);
       cycle = cycleKey ? stripQuotes(row[cycleKey]) : '';
+      if (/^https?:\/\//i.test(cycle)) cycle = '';   // v294 : une adresse d'image mise par erreur dans la colonne « Cycle » n'est pas un nom d'ensemble : on ne l'écrit pas
       titleOriginal = titreOrigKey ? stripQuotes(row[titreOrigKey]) : '';
     } else {
       const legacyTitleKey = findColumn(row, ["titre de l oeuvre", 'titre oeuvre', 'titre', 'title', 'œuvre', 'oeuvre']);
@@ -8612,7 +8613,9 @@ function showBottomGallery(work) {
   // Nouvelle vignette : une photo supplémentaire du même cycle/ensemble (colonne « Images du
   // cycle » du fichier maître — ex. une autre fresque de la même chapelle, un autre folio du même
   // manuscrit), jusqu'ici récupérée depuis le fichier Excel mais jamais montrée nulle part.
-  if (work.cycleImage) items.push({ url: work.cycleImage, label: 'Cycle', caption: work.cycle ? `Autre vue de l'ensemble « ${work.cycle} »` : "Autre vue de l'ensemble" });
+  if (work.cycleImage) items.push({ url: work.cycleImage, label: 'Cycle', caption: work.cycleCaption1 || (work.cycle ? `Autre vue de l'ensemble « ${work.cycle} »` : "Autre vue de l'ensemble") });
+  // v295 : 2e image d'ensemble (ex. polyptyque fermé), avec sa légende
+  if (work.cycleImage2) items.push({ url: work.cycleImage2, label: 'Cycle 2', caption: work.cycleCaption2 || (work.cycle ? `Autre vue de l'ensemble « ${work.cycle} »` : "Autre vue de l'ensemble") });
   if (!items.length) { bar.classList.add('hidden'); bar.innerHTML = ''; return; }
   bar.innerHTML = items.map((item) => `<button type="button" class="bottom-gallery-item" data-url="${escapeHtml(item.url)}" data-caption="${escapeHtml(item.caption)}">
     <img src="${escapeHtml(imageSourceSized(item.url, 100))}" alt="" /><span>${escapeHtml(item.label)}</span>
@@ -13626,7 +13629,7 @@ function impShowCurrent() {
     // désormais d'abord le contexte plus large (l'ensemble dont l'œuvre fait partie) avant de dire
     // où elle se trouve précisément, dans les deux sens (texte affiché, ordre des champs plus bas
     // pour la voix et pour le déroulé d'images) plutôt que l'inverse.
-    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: false /* v116 (docx 29 sept) : rubrique Ensemble retirée (écrite ET lue) ; remplacée à terme par un petit commentaire oral à la 1ʳᵉ personne */ },
+    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: !!work.cycle && (showFullCorrection || !anyFieldChecked) /* v294 (retour Stéphane : « après Dimensions, une rubrique Ensemble avec l'indication de la colonne M, et l'image de la colonne N qui apparaît à ce moment-là ») : rubrique rétablie (écrite ET lue) ; l'image du cycle se montre quand la voix lit cette rubrique (voir impSpeakSegment) */ },
     { key: 'location', label: 'Lieu de conservation actuel', value: workFlag(work) ? `${escapeHtml(work.location)} <span title="${escapeHtml(workCountryName(work))}">${workFlag(work)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
   ].filter((f) => f.on);
 
@@ -13703,14 +13706,19 @@ function impShowCurrent() {
     // v149 : pour le Lieu, on enchaîne l'image du lieu puis celle du sous-lieu (si les deux existent ; une seule
     // suffit à s'afficher), et on n'affiche AUCUN badge « Lieu de conservation » par-dessus (« pour une place
     // publique, c'est bizarre : on ne met rien, le texte des références suffit »). Le badge reste pour le cycle.
-    const flowImages = flowField?.key === 'cycle' ? [work.cycleImage].filter(Boolean) : [];
+    // v295 (retour Stéphane, polyptyques : « deux images, polyptyque ouvert puis fermé, avec une légende ; on arrête l'imprégnation pour
+    // l'ouvrir et le fermer ») : l'« Image 2 du cycle » (colonne P) est maintenant montrée après la 1re, chacune avec sa légende (colonnes O et Q)
+    // en guise de badge (à défaut, « Ensemble »). Voir aussi la pause avant le segment suivant, plus bas.
+    const flowImages = flowField?.key === 'cycle'
+      ? [{ url: work.cycleImage, label: work.cycleCaption1 }, { url: work.cycleImage2, label: work.cycleCaption2 }].filter((o) => o.url)
+      : [];
     const estimatedSegDurMs = Math.max(1200, (text.length / 10) * 1000) + 400;
     const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
     if (flowImages.length) {
       const badge = flowField.label;
-      flowImages.forEach((url, k) => {
+      flowImages.forEach((o, k) => {
         // 2e image : après le fondu enchaîné de la 1re (2 s) + ~3 s d'affichage
-        impTimers.push(setTimeout(() => impShowFlowImage(url, badge), flowDelayMs + k * 5000));
+        impTimers.push(setTimeout(() => impShowFlowImage(o.url, o.label || badge), flowDelayMs + k * 5000));
       });
     }
     // v215 (retour Stéphane : « au départ, sur auteur, titre, date, l'image de l'œuvre ; sur nature et matériau, l'image du sous-lieu ; sur
@@ -13745,9 +13753,13 @@ function impShowCurrent() {
     // commence le lieu ») : si le segment suivant est celui du lieu de conservation et que l'image du lieu existe, on la lance dès la fin de la voix
     // (fondu de 2 s) et on laisse ~2,5 s avant que la voix du lieu démarre.
     const earlyPlan = stageImgPlan.filter((pl) => pl.seg === i + 1 && pl.key === 'location' && speechSegments[i + 1].findIndex((f) => f.key === 'location') <= 0);
+    // v295 : avec 2 images d'ensemble (ouvert / fermé), la lecture s'arrête le temps de les voir toutes les deux (la dernière : 2 s de fondu + 2 s)
+    const segStartedAt = Date.now();
+    const cycleHoldMs = flowImages.length > 1 ? flowDelayMs + (flowImages.length - 1) * 5000 + 4000 : 0;
     impSpeak(text, () => {
       if (earlyPlan.length && myRunStage === impRunId) earlyPlan.forEach((pl) => { pl.early = true; impShowFlowImage(pl.url, ''); });
-      impTimers.push(setTimeout(() => impSpeakSegment(i + 1), earlyPlan.length ? Math.max(gapMs, 2500) : gapMs));
+      const holdMs = Math.max(0, cycleHoldMs - (Date.now() - segStartedAt));
+      impTimers.push(setTimeout(() => impSpeakSegment(i + 1), Math.max(holdMs, earlyPlan.length ? Math.max(gapMs, 2500) : gapMs)));
     }, false, midStageOpts);
   }
   // v128 (docx 9 oct, IMPREGNATION : « la voix doit donner la consigne sur la première page ; c'est bon pour
