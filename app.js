@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v301';
+const APP_VERSION = 'v302';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -12130,6 +12130,92 @@ function impPersonPhrase(name) {   // « Pape Jules II » → « le pape Jules I
   const n = String(name || '').trim();
   return /^(pape|cardinal)\s/i.test(n) ? `le ${impLowerFirst(n)}` : n;
 }
+// ---------------------------------------------------------------------------------------------------------------------------
+// v301 (retour Stéphane : « les matériaux ne sont pas innombrables : l'huile, la tempéra, le bronze, le marbre… une liste des articles pour la voix ») :
+// la voix dit une vraie phrase pour la nature et le matériau (« Il est peint à l'huile sur toile », « Elle est en marbre », « C'est un bas-relief en marbre »)
+// au lieu de lire « Huile sur toile » tout sec. Les listes ci-dessous donnent l'article de chaque technique et le genre de chaque nature d'objet ;
+// un matériau absent de ces listes retombe sur la phrase générale « Les matériaux employés sont les suivants : … » (jamais de mot nu).
+// ---------------------------------------------------------------------------------------------------------------------------
+const IMP_TECH = {   // technique picturale / de dessin → groupe prépositionnel
+  huile: 'à l’huile', tempera: 'à la tempera', detrempe: 'à la détrempe', gouache: 'à la gouache', aquarelle: 'à l’aquarelle', pastel: 'au pastel', encre: 'à l’encre',
+  graphite: 'au graphite', crayon: 'au crayon', craie: 'à la craie', fusain: 'au fusain', sanguine: 'à la sanguine', or: 'à l’or', argent: 'à l’argent', feuille: 'à la feuille',
+  cire: 'à la cire', colle: 'à la colle', collage: 'au collage', stylo: 'au stylo', ripolin: 'au ripolin', essence: 'à l’essence', ambre: 'à l’ambre', ceruse: 'à la céruse',
+};
+const IMP_TECH_DRAWN = new Set(['graphite', 'crayon', 'craie', 'fusain', 'sanguine', 'stylo', 'encre', 'pastel', 'collage', 'aquarelle', 'gouache']);   // « réalisé » plutôt que « peint »
+const IMP_MADE = new Set(['marbre', 'bronze', 'pierre', 'bois', 'terre', 'platre', 'stuc', 'gres', 'albatre', 'plomb', 'argent', 'granit', 'granite', 'steatite', 'travertin', 'cuivre', 'laiton', 'etain', 'ivoire', 'cire', 'or', 'chene', 'beton', 'porcelaine', 'roche', 'jaspe', 'alliage', 'fer', 'acier', 'fonte', 'onyx', 'porphyre', 'verre', 'ceramique', 'emeraude', 'noyer']);
+const IMP_NATURE_G = { m: ['groupe', 'monument', 'haut-relief', 'bas-relief', 'relief', 'retable', 'triptyque', 'diptyque', 'polyptyque', 'mobilier', 'ensemble', 'élément', 'elément', 'panneau', 'volet', 'dessin', 'bijou', 'émail', 'tableau', 'buste', 'portrait', 'tombeau', 'gisant', 'cénotaphe', 'crucifix', 'tondo', 'hauts-reliefs'], f: ['ronde-bosse', 'fontaine', 'décoration', 'aquarelle', 'estampe', 'enluminure', 'statue', 'statuette', 'peinture', 'fresque', 'sculpture', 'rondes-bosse', 'rondes-bosses'] };
+function impNk(w) { return String(w || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function impJoinList(items) { return items.length > 1 ? `${items.slice(0, -1).join(', ')} et ${items[items.length - 1]}` : (items[0] || ''); }
+// « Huile et tempera sur bois » → { verb: 'peint', clause: 'à l’huile et à la tempera sur bois' } ; null si une technique est inconnue
+const IMP_TECH_MAIN = new Set(['huile', 'tempera', 'detrempe', 'gouache', 'aquarelle', 'pastel', 'graphite', 'crayon', 'craie', 'fusain', 'sanguine', 'encre', 'stylo', 'collage']);
+function impCleanMat(m) {
+  return String(m || '').trim().replace(/\s*\(([^)]*)\)/g, ', $1').replace(/[()]/g, '').replace(/\s+,/g, ',').replace(/,\s*,/g, ',').replace(/\s{2,}/g, ' ').replace(/[\s,]+$/, '');
+}
+function impPaintedParts(m) {
+  let t = String(m || '').trim().replace(/^peinture\s+(?!à)/i, '');
+  const pa = t.match(/^peinture\s+(à\s+.+?)(?:\s+sur\s+(.+))?$/i);   // « Peinture à la colle sur toile » → « peinte à la colle sur toile »
+  if (pa) return { verb: 'peint', clause: `${impLowerFirst(pa[1])}${pa[2] ? ` sur ${impLowerFirst(pa[2])}` : ''}` };
+  const sp = t.search(/\s+sur\s+/i);
+  const left = sp >= 0 ? t.slice(0, sp) : t; const right = sp >= 0 ? t.slice(sp).replace(/^\s+sur\s+/i, '') : '';
+  const items = left.split(/\s*,\s*|\s+et\s+/).filter(Boolean); if (!items.length) return null;
+  let drawn = false; const out = [];
+  for (const it of items) {
+    const words = it.replace(/^peinture\s+/i, '').split(/\s+/); const head = impNk(words[0]);
+    if (!IMP_TECH[head]) return null;
+    if (IMP_TECH_DRAWN.has(head)) drawn = true;
+    out.push(`${IMP_TECH[head]}${words.length > 1 ? ` ${words.slice(1).join(' ')}` : ''}`);
+  }
+  if (!right && !items.some((it) => IMP_TECH_MAIN.has(impNk(it.split(/\s+/)[0])))) return null;
+  return { verb: drawn ? 'réalisé' : 'peint', clause: `${impJoinList(out)}${right ? ` sur ${impLowerFirst(right)}` : ''}` };
+}
+// « Marbre et bronze » → « en marbre et bronze » ; null si le premier mot n'est pas une matière connue ou si la chaîne est trop complexe
+function impMadeClause(m) {
+  let t = String(m || '').trim().replace(/^en\s+/i, '');
+  if (!t || !IMP_MADE.has(impNk(t.split(/[\s,]+/)[0])) || /\b(sur|en|pour|avec|auf)\b/i.test(t)) return null;
+  if (!/\bet\b/i.test(t) && /,\s/.test(t)) t = t.replace(/,\s([^,]+)$/, ' et $1');
+  return `en ${impLowerFirst(t)}`;
+}
+// Une phrase de nature/matériau. Renvoie la phrase (avec point) ou null.
+function impMatOne(m, V, info) {
+  const raw = String(m || '').replace(/\.\s*$/, '');
+  const t = impCleanMat(raw); if (!t) return '';
+  const td = impCleanMat(raw.replace(/\s*\([^)]*\)/g, ''));   // sans les parenthèses : pour les matières « en … », où elles feraient un faux « et »
+  const subj = info.pron; const e = info.e; const k = V % 3;
+  // « Bronze pour la statue, marbre pour le socle » → « La statue est en bronze et le socle en marbre. »
+  if (/\bpour\s+(les|la|le|l['’])\s*\S/i.test(t)) {
+    const parts = t.split(/,\s+(?=\S+(?:\s+\S+)*?\s+pour\s)/).map((p) => p.trim()); const built = [];
+    for (const p of parts) {
+      const mm = p.match(/^(.*?)\s+pour\s+(les|la|le|l['’])\s*(.+)$/i); if (!mm) return null;
+      const cl = impMadeClause(mm[1]); if (!cl) return null;
+      built.push({ subj: `${mm[2].toLowerCase()}${/['’]$/.test(mm[2]) ? '' : ' '}${mm[3]}`, cl });
+    }
+    return `${impUpperFirst(built[0].subj)} ${/ et /.test(built[0].subj) || /^les /i.test(built[0].subj) ? 'sont' : 'est'} ${built[0].cl}${built.slice(1).map((b) => ` et ${b.subj} ${b.cl}`).join('')}.`;
+  }
+  const first = (t.match(/^[\p{L}-]+/u) || [''])[0].toLowerCase();
+  const g = IMP_NATURE_G.m.includes(first) ? 'm' : (IMP_NATURE_G.f.includes(first) ? 'f' : '');
+  if (g && !/^(peinture|tableau|aquarelle|dessin|estampe)$/.test(first) || (g && /,\s/.test(t) && /^(retable|triptyque|diptyque|polyptyque|panneau)/i.test(t))) {
+    const art = g === 'm' ? 'un' : 'une';
+    let np = impLowerFirst(t);
+    const cm = t.match(/^([^,]+),\s*(.+)$/);   // « Triptyque, huile sur panneau de bois » → « un triptyque peint à l'huile sur panneau de bois »
+    if (cm) { const pp = impPaintedParts(cm[2]) || null; const mc = pp ? null : impMadeClause(impCleanMat(cm[2].replace(/\s*\([^)]*\)/g, ''))); if (pp) np = `${impLowerFirst(cm[1])} ${pp.verb}${g === 'f' ? 'e' : ''} ${pp.clause}`; else if (mc) np = `${impLowerFirst(cm[1])} ${mc}`; else return null; }
+    return [`C’est ${art} ${np}.`, `Il s’agit d’${art} ${np}.`, `C’est ${art} ${np}.`][k];
+  }
+  const pp = impPaintedParts(t);
+  if (pp && !/^(fresque|enluminure|esquisse)/i.test(t)) return [`${impUpperFirst(subj)} est ${pp.verb}${e} ${pp.clause}.`, `L’artiste l’a ${pp.verb}${e} ${pp.clause}.`, `${impUpperFirst(subj)} a été ${pp.verb}${e} ${pp.clause}.`][k];
+  const nm = t.match(/^(fresques|fresque|enluminure|esquisse|peinture|gravure|monotype|fragment)\b/i);
+  if (nm && !/^fresque\s+et\b/i.test(t)) {
+    const w = nm[1].toLowerCase(); const np = impLowerFirst(t);
+    return w === 'fresques' ? `Ce sont des ${np}.` : `C’est ${(w === 'monotype' || w === 'fragment') ? 'un' : 'une'} ${np}.`;
+  }
+  const mc = impMadeClause(td);
+  if (mc) return [`${impUpperFirst(subj)} est ${mc}.`, `L’artiste l’a réalisé${e} ${mc}.`, `${impUpperFirst(subj)} a été réalisé${e} ${mc}.`][k];
+  return null;
+}
+function impMatSentence(m, V, info) {
+  const sentences = String(m || '').split(/\.\s+/).map((x) => x.trim()).filter(Boolean); if (!sentences.length) return null;
+  const out = []; for (const x of sentences) { const r = impMatOne(x, V, info); if (!r) return null; out.push(r); }
+  return out.join(' ');
+}
 // Genre et désignation de l'œuvre, d'après son titre : « Retable de saint Denis » → « le retable de saint Denis », masculin, « ce retable ».
 const IMP_NOUNS = {
   m: ['retable', 'tableau', 'portrait', 'autoportrait', 'buste', 'tombeau', 'polyptyque', 'triptyque', 'diptyque', 'monument', 'crucifix', 'bas-relief', 'relief', 'tondo', 'groupe', 'cénotaphe', 'gisant', 'mausolée', 'plafond', 'paysage', 'cavalier', 'transi', 'sépulcre', 'tabernacle', 'baptême', 'martyre', 'jugement', 'mariage', 'couronnement', 'miracle', 'repas', 'festin', 'sacrifice', 'enlèvement', 'triomphe', 'christ', 'saint', 'sacré-cœur', 'épitaphe'],
@@ -12198,15 +12284,16 @@ function impLinkedSegment(work, keys) {
     const mono = isMonumentWork(work);
     const mat = has('materiaux') ? matPhrase(work) : '';
     const matL = mat ? impLowerFirst(mat.replace(/\.\s*$/, '')) : '';
-    if (mat) add('materiaux', mono ? mat : [
-      `Côté matériaux : ${matL}.`,
+    const matSentence = mat ? impMatSentence(mat, V, info) : '';
+    if (mat) add('materiaux', matSentence || (mono ? mat : [
+      `Les matériaux employés sont les suivants : ${matL}.`,
       `La technique utilisée par l’artiste est la suivante : ${matL}.`,
       `${impUpperFirst(pron)} est composé${e} des matériaux suivants : ${matL}.`,
-      `Matériaux employés : ${matL}.`,
-      `Pour la réaliser, l’artiste a utilisé : ${matL}.`,
-      `Pour ${le} réaliser, l’artiste a employé : ${matL}.`,
-      `Côté technique : ${matL}.`,
-    ][V]);
+      `Voici les matériaux employés : ${matL}.`,
+      `Pour la réaliser, l’artiste a utilisé les matériaux suivants : ${matL}.`,
+      `Pour ${le} réaliser, l’artiste a employé les matériaux suivants : ${matL}.`,
+      `La nature et le matériau de l’œuvre sont les suivants : ${matL}.`,
+    ][V]));
     const dimPhrase = has('dimensions') ? spokenDimensionsPhrase(work) : '';
     if (dimPhrase) {
       if (!/^de\s/.test(dimPhrase)) add('dimensions', `${dimPhrase.replace(/\.\s*$/, '')}.`);
@@ -12244,7 +12331,7 @@ function impLinkedSegment(work, keys) {
         `${impUpperFirst(pron)} est conservé${e} aujourd’hui ${P}`,
       ][V] : '';
       let init = ''; let extra = '';
-      if (ini && !Lp) extra = ` Son lieu de conservation initial : ${ini}.`;
+      if (ini && !Lp) extra = ` Le lieu de conservation initial est le suivant : ${ini}.`;
       if (Ld && C) init = [
         `mais à l’origine ${pron} avait été créé${e} pour ${Ld} sur une commande ${deC}`,
         `mais ${pron} avait été créé${e} pour ${Ld}, à l’initiative ${deC}`,
@@ -12273,7 +12360,7 @@ function impLinkedSegment(work, keys) {
         `mais à l’origine ${pron} avait été commandé${e} par ${C}`,
       ][V];
       if (P) s = `${curCore}${init ? `, ${init}` : ''}.${extra}`;
-      else s = `Lieu de conservation actuel : ${loc}.${init ? ` ${impUpperFirst(init)}.` : ''}${extra}`;
+      else s = `Le lieu de conservation actuel est le suivant : ${loc}.${init ? ` ${impUpperFirst(init)}.` : ''}${extra}`;
     }
     add('location', s); offsets.lieuInitial = 0; offsets.commanditaire = 0;
     return { text: parts.join(' '), offsets };
@@ -13835,8 +13922,8 @@ function impShowCurrent() {
     })(), spoken: spokenArtistFull(work, true), on: fieldOn('artist') },
     { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
-    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: `${escapeHtml(matPhrase(work))}`, spoken: matPhrase(work), on: fieldOn('materiaux') && work.materials },
-    { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },
+    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: `${escapeHtml(matPhrase(work))}`, spoken: matPhrase(work) ? (impMatSentence(matPhrase(work), 0, { pron: 'l’œuvre', e: 'e' }) || `La nature et le matériau de l’œuvre sont les suivants : ${matPhrase(work)}`) : '', on: fieldOn('materiaux') && work.materials },
+    { key: 'dimensions', label: 'Dimensions', value: dims, spoken: (() => { const d = spokenDimensionsPhrase(work); return /^de\s/.test(d) ? `Les dimensions de l’œuvre sont ${d}.` : d; })(), on: fieldOn('dimensions') && dims },
     // Nouvelle rubrique demandée par Stéphane : quand l'œuvre appartient à un ensemble plus vaste
     // (un cycle de fresques, un manuscrit...), le texte qui le décrit (déjà récupéré dans
     // work.cycle — jusqu'ici seulement glissé dans le titre via formatTitleWithCycle) s'affiche
@@ -13861,8 +13948,8 @@ function impShowCurrent() {
     // v299 (retour Stéphane : « le lieu de conservation avant Ensemble, sinon on confond le lieu d'un panneau avec les différents lieux des panneaux de l'ensemble ») : ordre = ..., Dimensions, Lieu de conservation, puis Ensemble (annule le v74).
     { key: 'location', label: 'Lieu de conservation actuel', value: workFlag(work) ? `${escapeHtml(work.location)} <span title="${escapeHtml(workCountryName(work))}">${workFlag(work)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
     // v300 : lieu de conservation initial puis commanditaire, juste après le lieu actuel (rubriques absentes quand la cellule est vide)
-    { key: 'lieuInitial', label: 'Lieu de conservation initial', value: escapeHtml(work.lieuInitial), spoken: work.lieuInitial ? `Lieu de conservation initial : ${work.lieuInitial}` : '', on: !!work.lieuInitial && (showFullCorrection || !anyFieldChecked) },
-    { key: 'commanditaire', label: 'Commanditaire', value: escapeHtml(work.commanditaire), spoken: work.commanditaire ? `Commanditaire : ${work.commanditaire}` : '', on: !!work.commanditaire && (showFullCorrection || !anyFieldChecked) },
+    { key: 'lieuInitial', label: 'Lieu de conservation initial', value: escapeHtml(work.lieuInitial), spoken: work.lieuInitial ? (impPlacePhrase(work.lieuInitial, 1) ? `Le lieu de conservation initial est ${impPlacePhrase(work.lieuInitial, 1)}.` : `Le lieu de conservation initial est le suivant : ${work.lieuInitial}.`) : '', on: !!work.lieuInitial && (showFullCorrection || !anyFieldChecked) },
+    { key: 'commanditaire', label: 'Commanditaire', value: escapeHtml(work.commanditaire), spoken: work.commanditaire ? `Le commanditaire est ${impPersonPhrase(work.commanditaire)}.` : '', on: !!work.commanditaire && (showFullCorrection || !anyFieldChecked) },
     { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: ensembleSpoken(work), on: !!work.cycle && (showFullCorrection || !anyFieldChecked) /* v294 (retour Stéphane : « après Dimensions, une rubrique Ensemble avec l'indication de la colonne M, et l'image de la colonne N qui apparaît à ce moment-là ») : rubrique rétablie (écrite ET lue) ; l'image du cycle se montre quand la voix lit cette rubrique (voir impSpeakSegment) */ },
   ].filter((f) => f.on);
 
