@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v297';
+const APP_VERSION = 'v298';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -3714,6 +3714,9 @@ function normaliseRows(rows) {
     const cycleImage2Key = findColumn(row, ['images 2 du cycle', 'image 2 du cycle', 'photo cycle 2']);
     const cycleCaption1Key = findColumn(row, ['legende image 1', 'legende 1 du cycle', 'legende du cycle']);
     const cycleCaption2Key = findColumn(row, ['legende image 2', 'legende 2 du cycle']);
+    // v298 : texte que la VOIX lit pendant que chaque image d'ensemble est à l'écran (colonnes « Commentaire image 1 » / « Commentaire image 2 »)
+    const cycleSay1Key = findColumn(row, ['commentaire image 1', 'commentaire 1 du cycle', 'texte lu image 1']);
+    const cycleSay2Key = findColumn(row, ['commentaire image 2', 'commentaire 2 du cycle', 'texte lu image 2']);
     let artistImage = artistImageKey ? String(row[artistImageKey] || '').trim() : '';
     const locationImage = locationImageKey ? String(row[locationImageKey] || '').trim() : '';
     const subLocationImage = subLocationImageKey ? String(row[subLocationImageKey] || '').trim() : '';
@@ -3721,6 +3724,8 @@ function normaliseRows(rows) {
     const cycleImage2 = cycleImage2Key ? String(row[cycleImage2Key] || '').trim() : '';
     const cycleCaption1 = cycleCaption1Key ? String(row[cycleCaption1Key] || '').trim() : '';
     const cycleCaption2 = cycleCaption2Key ? String(row[cycleCaption2Key] || '').trim() : '';
+    const cycleSay1 = cycleSay1Key ? String(row[cycleSay1Key] || '').trim() : '';
+    const cycleSay2 = cycleSay2Key ? String(row[cycleSay2Key] || '').trim() : '';
 
     // --- Identité de l'artiste : nouvelle structure (Prénom/Patronyme/Surnom) si présente,
     // sinon on retombe sur l'ancienne colonne unique « Artiste » pour rester compatible avec
@@ -3960,7 +3965,7 @@ function normaliseRows(rows) {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       associates, artistDates, materials, nature, natureAll: natureFull, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, bio, workText, mapCard, birthCity,
+      artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, cycleSay1, cycleSay2, bio, workText, mapCard, birthCity,
       row: rowIndex + 2,
       ...(masterRow && masterRow._light ? { _mr: masterRow } : {})   // v261 : fichier maître léger : les textes arrivent plus tard (voir ensureWorkTexts)
     };
@@ -13720,8 +13725,12 @@ function impShowCurrent() {
     // l'ouvrir et le fermer ») : l'« Image 2 du cycle » (colonne P) est maintenant montrée après la 1re, chacune avec sa légende (colonnes O et Q)
     // en guise de badge (à défaut, « Ensemble »). Voir aussi la pause avant le segment suivant, plus bas.
     const flowImages = flowField?.key === 'cycle'
-      ? [{ url: work.cycleImage, label: work.cycleCaption1 }, { url: work.cycleImage2, label: work.cycleCaption2 }].filter((o) => o.url)
+      ? [{ url: work.cycleImage, label: work.cycleCaption1, say: work.cycleSay1 }, { url: work.cycleImage2, label: work.cycleCaption2, say: work.cycleSay2 }].filter((o) => o.url)
       : [];
+    // v298 (retour Stéphane : « la voix donne les explications de chaque panneau ») : si au moins une image d'ensemble a un commentaire, la voix
+    // lit l'introduction (« Ce tableau faisait partie d'un triptyque »), PUIS le commentaire de l'image 1, PUIS celui de l'image 2, chacun pendant
+    // que son image est à l'écran (voir impEnsembleChain). Sans commentaire, ancien fonctionnement (images minutées).
+    const ensembleChain = flowField?.key === 'cycle' && flowImages.some((o) => o.say);
     const estimatedSegDurMs = Math.max(1200, (text.length / 10) * 1000) + 400;
     const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
     // v297 : diagnostic, uniquement si l'adresse contient ?debug=ensemble (ex. mnemart.fr/?debug=ensemble) : un bandeau en haut de l'écran dit ce que
@@ -13739,6 +13748,7 @@ function impShowCurrent() {
     if (flowImages.length) {
       const badge = flowField.label;
       flowImages.forEach((o, k) => {
+        if (ensembleChain && k > 0) return;   // v298 : les images suivantes sont montrées par impEnsembleChain, au fil de la voix
         // 2e image : après le fondu enchaîné de la 1re (2 s) + ~3 s d'affichage
         impTimers.push(setTimeout(() => impShowFlowImage(o.url, o.label || badge), flowDelayMs + k * 5000));
       });
@@ -13777,12 +13787,13 @@ function impShowCurrent() {
     const earlyPlan = stageImgPlan.filter((pl) => pl.seg === i + 1 && pl.key === 'location' && speechSegments[i + 1].findIndex((f) => f.key === 'location') <= 0);
     // v295 : avec 2 images d'ensemble (ouvert / fermé), la lecture s'arrête le temps de les voir toutes les deux (la dernière : 2 s de fondu + 2 s)
     const segStartedAt = Date.now();
-    const cycleHoldMs = flowImages.length > 1 ? flowDelayMs + (flowImages.length - 1) * 5000 + 4000 : 0;
-    impSpeak(text, () => {
+    const cycleHoldMs = (flowImages.length > 1 && !ensembleChain) ? flowDelayMs + (flowImages.length - 1) * 5000 + 4000 : 0;
+    const afterSegment = () => {
       if (earlyPlan.length && myRunStage === impRunId) earlyPlan.forEach((pl) => { pl.early = true; impShowFlowImage(pl.url, ''); });
       const holdMs = Math.max(0, cycleHoldMs - (Date.now() - segStartedAt));
       impTimers.push(setTimeout(() => impSpeakSegment(i + 1), Math.max(holdMs, earlyPlan.length ? Math.max(gapMs, 2500) : gapMs)));
-    }, false, midStageOpts);
+    };
+    impSpeak(text, () => { if (ensembleChain && myRunStage === impRunId) impEnsembleChain(flowImages, myRunStage, afterSegment); else afterSegment(); }, false, midStageOpts);
   }
   // v128 (docx 9 oct, IMPREGNATION : « la voix doit donner la consigne sur la première page ; c'est bon pour
   // les autres jeux ») : comme dans Intrus & co., la consigne écrite (#imp-instruction) est lue UNE fois,
@@ -13827,6 +13838,29 @@ function impShowCurrent() {
 // bascule suivante — aucun instant où l'on ne voit ni l'une ni l'autre. On attend que la nouvelle
 // image soit chargée avant de lancer le fondu (sinon on verrait l'image suivante apparaître déjà
 // blanche/vide le temps du téléchargement, un « à-coup » que le fondu devait justement éviter).
+// v298 : enchaîne, pour un ensemble (triptyque ouvert puis fermé...), « image à l'écran + sa voix » : l'image 1 est déjà là (montrée pendant l'introduction),
+// la voix lit son commentaire ; puis l'image 2 apparaît en fondu et sa voix démarre ~1,5 s après ; etc. Puis done() (suite normale d'Imprégnation).
+function impEnsembleChain(items, runId, done) {
+  let k = 0;
+  const next = () => {
+    if (runId !== impRunId) return;
+    if (k >= items.length) { impTimers.push(setTimeout(() => { if (runId === impRunId) done(); }, 800)); return; }
+    const o = items[k]; const first = k === 0; k++;
+    const speak = () => {
+      if (runId !== impRunId) return;
+      if (!o.say) { impTimers.push(setTimeout(next, 3000)); return; }
+      const t0 = Date.now();
+      impSpeak(o.say, () => {
+        const sansVoix = !(impAudioOn && window.speechSynthesis);   // son coupé : on laisse le temps de lire (~9 caractères par seconde)
+        const reste = sansVoix ? Math.max(0, o.say.length * 110 - (Date.now() - t0)) : 0;
+        impTimers.push(setTimeout(next, 1200 + reste));
+      }, false);
+    };
+    if (first) speak();
+    else { impShowFlowImage(o.url, o.label); impTimers.push(setTimeout(speak, 1500)); }
+  };
+  next();
+}
 function impShowFlowImage(url, label) {
   const img = $('imp-stage-img');
   const nextImg = $('imp-stage-img-next');
