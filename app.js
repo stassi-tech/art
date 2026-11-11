@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v291';
+const APP_VERSION = 'v293';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1899,6 +1899,7 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v293 (atelier de prononciation, export du 11 nov 10:34) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   // v290 (atelier de prononciation, export du 10 nov 23:59) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   // v288 (atelier de prononciation, export du 10 nov 09:32) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'die brucke': 'di bruckeu',  // v288 : atelier du 10 nov
@@ -2753,6 +2754,13 @@ const PRONUNCIATION_FIXES = {
   'ribera': 'ribéra',  // v290 : atelier du 10 nov
   'ruisdael': 'ruizdèl',  // v290 : atelier du 10 nov
   'saül': 'sa-ul',  // v290 : atelier du 10 nov
+  // v293 (atelier de prononciation, export du 11 nov 10:34) : écritures communes à toutes les voix ; nouveaux mots.
+  'baciocchi': 'bachioki',  // v293 : atelier du 11 nov
+  'brouwer': 'braou-eure',  // v293 : atelier du 11 nov
+  'chef-d\'oeuvre': 'ché-d\'oeuvre',  // v293 : atelier du 11 nov
+  'ézéchiel': 'ézékièl',  // v293 : atelier du 11 nov
+  'mengs': 'ménkse',  // v293 : atelier du 11 nov
+  'von': 'vone',  // v293 : atelier du 11 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -3336,6 +3344,8 @@ const PRONUNCIATION_BY_VOICE = {
     'pinturicchio': 'pin-tourikio',  // v285 : atelier du 7 nov
     // v290 (atelier de prononciation, export du 10 nov 23:59) : nouveaux mots pour cette voix.
     'caïn': 'ka-uns',  // v290 : atelier du 10 nov
+    // v293 (atelier de prononciation, export du 11 nov 10:34) : nouveaux mots pour cette voix.
+    'von': 'von',  // v293 : atelier du 11 nov
   },
   'rémy': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3367,6 +3377,8 @@ const PRONUNCIATION_BY_VOICE = {
     'pinturicchio': 'pin-tourikio',  // v285 : atelier du 7 nov
     // v290 (atelier de prononciation, export du 10 nov 23:59) : nouveaux mots pour cette voix.
     'caïn': 'ka-uns',  // v290 : atelier du 10 nov
+    // v293 (atelier de prononciation, export du 11 nov 10:34) : nouveaux mots pour cette voix.
+    'von': 'von',  // v293 : atelier du 11 nov
   },
   'eloise': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -8744,14 +8756,15 @@ function renderOtherWorksPanel() {
   const groupMax = { expo: maxOf('expo'), monument: 0 };
   const hasMonuments = otherWorks.some((w) => groupOf(w) === 'monument');
   const hasExpo = otherWorks.some((w) => groupOf(w) === 'expo');
-  const twoGroups = hasMonuments && hasExpo;
+  const twoGroups = false; // v292 : plus de titres « déplaçables / non déplaçables », puisqu'il n'y a plus d'échelle
   const cardHtml = (otherQuestion, index) => {
     const source = imageSourceSized(otherQuestion.image, 400);
     const titleValue = formatCorrectionValue('title', otherQuestion.title);
     const isFixedGroup = groupOf(otherQuestion) === 'monument';
     // Non déplaçable : jamais mis à l'échelle. (« fixed » = taille uniforme, seulement quand les deux
     // groupes sont présents ; un artiste qui n'a QUE des œuvres non déplaçables garde l'ancienne grille.)
-    const hCm = isFixedGroup ? null : parseCmValue(otherQuestion.hauteur);
+    // v292 (retour Stéphane : « uniformiser la taille des images, ne plus tenir compte des proportions — dans l'exposition, mais pas dans la liste ») : plus de mise à l'échelle dans cette liste, toutes les vignettes ont la même taille.
+    const hCm = null;
     const gMax = groupMax[groupOf(otherQuestion)];
     const scaleStyle = hCm && gMax ? ` style="--scale-ratio:${Math.max(hCm / gMax, 0.04)};"` : '';
     const sizeText = otherWorkSizeLabel(otherQuestion);
@@ -8765,9 +8778,8 @@ function renderOtherWorksPanel() {
   const expoIdx = []; const monIdx = [];
   otherWorks.forEach((w, i) => (groupOf(w) === 'monument' ? monIdx : expoIdx).push(i));
   if (twoGroups) html += '<h3 class="other-works-group-title">Œuvres déplaçables <span>— tableaux, sculptures, objets liturgiques : à l’échelle les unes des autres</span></h3>';
-  html += expoIdx.map((i) => cardHtml(otherWorks[i], i)).join('');
+  html += otherWorks.map((w, i) => cardHtml(w, i)).join(''); // v292 : ordre du catalogue conservé (niveau 1, 2, 3)
   if (twoGroups) html += '<h3 class="other-works-group-title">Œuvres non déplaçables <span>— monuments, mobilier liturgique, fresques : pas à l’échelle</span></h3>';
-  html += monIdx.map((i) => cardHtml(otherWorks[i], i)).join('');
   list.innerHTML = html;
   // Rectangles de statues (v117) : la vignette montre la statue seule, sans socle ni décor, à la
   // vraie proportion de son rectangle — cohérent avec la hauteur lue dans le fichier Excel.
