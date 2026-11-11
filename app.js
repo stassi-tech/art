@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v295';
+const APP_VERSION = 'v296';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -4322,6 +4322,16 @@ function correctCount(answer, question) { return activeFields().reduce((count, f
 function isFullyCorrect(answer, question) { return answer?.checked && correctCount(answer, question) === activeFields().length; }
 function totalCorrect() { return state.questions.reduce((total, question, index) => total + (state.answers[index]?.checked ? correctCount(state.answers[index], question) : 0), 0); }
 function checkedQuestions() { return state.answers.filter((answer) => answer?.checked).length; }
+// v296 (retour Stéphane, Christus : « la voix devrait dire : ce tableau faisait partie d'un triptyque ») : quand la colonne « Cycle » ne contient que
+// le genre de l'ensemble, sans nom propre (« Triptyque », « Diptyque », « Polyptyque », « Retable »), la voix dit une phrase ; l'écran garde le mot seul.
+// Avec un nom (« Polyptyque de Pise »), la voix lit le texte tel quel.
+function ensembleSpoken(work) {
+  const raw = String(work.cycle || '').trim();
+  const m = raw.match(/^(?:un\s+|le\s+)?(triptyque|diptyque|polyptyque|retable)\s*\.?$/i);
+  if (!m) return raw;
+  const sujet = /^tableau/i.test(String(work.nature || '').trim()) ? 'Ce tableau' : 'Cette œuvre';
+  return `${sujet} faisait partie d'un ${m[1].toLowerCase()}`;
+}
 function imageSource(reference) {
   if (/^(https?:|data:)/i.test(reference)) return reference;
   return state.imageFiles.get(reference) || state.imageFiles.get(reference.toLocaleLowerCase('fr-FR')) || reference;
@@ -13629,7 +13639,7 @@ function impShowCurrent() {
     // désormais d'abord le contexte plus large (l'ensemble dont l'œuvre fait partie) avant de dire
     // où elle se trouve précisément, dans les deux sens (texte affiché, ordre des champs plus bas
     // pour la voix et pour le déroulé d'images) plutôt que l'inverse.
-    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: work.cycle, on: !!work.cycle && (showFullCorrection || !anyFieldChecked) /* v294 (retour Stéphane : « après Dimensions, une rubrique Ensemble avec l'indication de la colonne M, et l'image de la colonne N qui apparaît à ce moment-là ») : rubrique rétablie (écrite ET lue) ; l'image du cycle se montre quand la voix lit cette rubrique (voir impSpeakSegment) */ },
+    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: ensembleSpoken(work), on: !!work.cycle && (showFullCorrection || !anyFieldChecked) /* v294 (retour Stéphane : « après Dimensions, une rubrique Ensemble avec l'indication de la colonne M, et l'image de la colonne N qui apparaît à ce moment-là ») : rubrique rétablie (écrite ET lue) ; l'image du cycle se montre quand la voix lit cette rubrique (voir impSpeakSegment) */ },
     { key: 'location', label: 'Lieu de conservation actuel', value: workFlag(work) ? `${escapeHtml(work.location)} <span title="${escapeHtml(workCountryName(work))}">${workFlag(work)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
   ].filter((f) => f.on);
 
