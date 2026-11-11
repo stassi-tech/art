@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v300';
+const APP_VERSION = 'v301';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -12078,6 +12078,114 @@ function ensureNatureTexts() {
 }
 // Sujets d'une œuvre (du plus précis au plus général) qui ont un texte : le type de monument, la nature, puis le matériau (sculpture)
 // ou la nature, les supports et les techniques (peinture). Les rubriques « autre » n'ont jamais de texte.
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// v301 (retour Stéphane, maquette PRESENTATION_IMPREGNATION : « la voix dit un texte lié, avec des formules différentes, moins haché ») :
+// la référence est dite en deux phrases-blocs liés — (1) artiste, titre, date, matériau, dimensions ; (2) lieu actuel, lieu initial et
+// commanditaire — au lieu d'une suite de rubriques. Les formules sont tirées de façon stable selon l'œuvre (même œuvre = même formule).
+// ---------------------------------------------------------------------------------------------------------------------------
+function impHash(str) { let h = 7; String(str || '').split('').forEach((c) => { h = (h * 31 + c.charCodeAt(0)) % 100003; }); return h; }
+function impPick(h, salt, list) { return list[(h + salt * 7) % list.length]; }
+function impLowerFirst(t) { t = String(t || ''); return t.charAt(0).toLowerCase() + t.slice(1); }
+function impUpperFirst(t) { t = String(t || ''); return t.charAt(0).toUpperCase() + t.slice(1); }
+// « de » / « d’ » / « du » devant un nom d'artiste
+function impArtistDe(name) {
+  const n = String(name || '').trim();
+  if (/^le\s/i.test(n)) return `du ${n.slice(3)}`;
+  return /^[aeiouyhàâäéèêëîïôöùûüœ]/i.test(n) ? `d’${n}` : `de ${n}`;
+}
+// Date → groupe adverbial lu par la voix (jamais de tiret : « entre 1500 et 1505 », « vers 1450 »)
+function impDateAdverb(raw) {
+  const d = String(raw || '').trim(); if (!d) return '';
+  let m;
+  if ((m = d.match(/^(\d{3,4})$/))) return `en ${m[1]}`;
+  if ((m = d.match(/^(\d{3,4})\s*[-–—]\s*(\d{3,4})$/))) return `entre ${m[1]} et ${m[2]}`;
+  if ((m = d.match(/^(\d{3,4})\s+environ$/i))) return `vers ${m[1]}`;
+  if ((m = d.match(/^(avant|après|apres)\s+(\d{3,4})$/i))) return `${m[1].toLowerCase() === 'apres' ? 'après' : m[1].toLowerCase()} ${m[2]}`;
+  return `à la date de ${d}`;
+}
+// Lieu → [préposition de lieu, article défini] selon le premier mot (« musée » → « au », « le » ; « église » → « dans l’ », « l’ »…)
+const IMP_PLACE_WORDS = {
+  'musée': ['au', 'le'], 'palais': ['au', 'le'], 'palazzo': ['au', 'le'], 'château': ['au', 'le'], 'monastère': ['au', 'le'], 'couvent': ['au', 'le'],
+  'cloître': ['dans le', 'le'], 'réfectoire': ['dans le', 'le'], 'sanctuaire': ['dans le', 'le'], 'baptistère': ['dans le', 'le'], 'tempio': ['dans le', 'le'], 'temple': ['dans le', 'le'],
+  'église': ['dans l’', 'l’'], 'oratoire': ['dans l’', 'l’'], 'chapelle': ['dans la', 'la'], 'cathédrale': ['dans la', 'la'], 'basilique': ['dans la', 'la'], 'collégiale': ['dans la', 'la'],
+  'sacristie': ['dans la', 'la'], 'salle': ['dans la', 'la'], 'chambre': ['dans la', 'la'], 'loggia': ['dans la', 'la'], 'crypte': ['dans la', 'la'], 'cour': ['dans la', 'la'], 'collection': ['dans la', 'la'],
+  'galerie': ['à la', 'la'], 'chartreuse': ['à la', 'la'], 'villa': ['à la', 'la'], 'bibliothèque': ['à la', 'la'], 'scuola': ['à la', 'la'], 'abbaye': ['à l’', 'l’'], 'hôtel': ['à l’', 'l’'],
+  'hôpital': ['à l’', 'l’'], 'université': ['à l’', 'l’'], 'académie': ['à l’', 'l’'], 'place': ['sur la', 'la'], 'piazza': ['sur la', 'la'], 'pont': ['sur le', 'le'], 'campo': ['sur le', 'le'],
+};
+function impPlacePhrase(txt, kind) {   // kind 0 = « dans la chapelle… », kind 1 = « la chapelle… » (après « pour »)
+  const t = String(txt || '').trim(); if (!t) return '';
+  let m;
+  if ((m = t.match(/^(les|aux)\s+(.*)$/i))) return kind === 0 ? `aux ${m[2]}` : `les ${m[2]}`;
+  if ((m = t.match(/^musées\b(.*)$/i))) return kind === 0 ? `aux musées${m[1]}` : `les musées${m[1]}`;
+  const w = (t.match(/^[\p{L}’'-]+/u) || [''])[0].toLowerCase();
+  const e = IMP_PLACE_WORDS[w]; if (!e) return '';
+  const art = e[kind]; const body = impLowerFirst(t);
+  const full = art.endsWith('’') ? `${art}${body}` : `${art} ${body}`;
+  // « …, Paris » → « … à Paris » (la ville en dernier) ; Vatican → « au Vatican »
+  return full.replace(/,\s*([^,]+)$/, (m0, city) => (/^vatican$/i.test(city.trim()) ? ' au Vatican' : (/^(le|la|les)\s/i.test(city.trim()) ? ` à ${city.trim()}` : ` à ${city.trim()}`)));
+}
+function impDeNom(c) { return /^le\s/i.test(c) ? `du ${c.slice(3)}` : (/^[aeiouyhàâäéèêëîïôöùûüœ]/i.test(c) ? `d’${c}` : `de ${c}`); }
+function impPersonPhrase(name) {   // « Pape Jules II » → « le pape Jules II »
+  const n = String(name || '').trim();
+  return /^(pape|cardinal)\s/i.test(n) ? `le ${impLowerFirst(n)}` : n;
+}
+// Texte lié d'un segment vocal d'Imprégnation. keys = rubriques du segment. Renvoie { text, offsets } ou null (rubrique « Ensemble » : texte inchangé).
+function impLinkedSegment(work, keys) {
+  const has = (k) => keys.includes(k);
+  const h = impHash(`${work.title}|${work.artist}|${work.date}`);
+  const parts = []; const offsets = {};
+  const add = (key, txt) => { if (!txt) return; offsets[key] = parts.join(' ').length + (parts.length ? 1 : 0); parts.push(txt); };
+  if (has('artist') || has('title') || has('date') || has('materiaux') || has('dimensions')) {
+    const A = has('artist') ? spokenArtistFull(work, true) : ''; const T = has('title') ? `« ${work.title} »` : ''; const D = has('date') ? impDateAdverb(work.date) : '';
+    const deA = A ? impArtistDe(A) : '';
+    let s1 = '';
+    if (A && T && D) s1 = impPick(h, 1, [`Voici une œuvre ${deA}, réalisée ${D} : ${T}.`, `${impUpperFirst(D)}, ${A} réalise ${T}.`, `Cette œuvre est ${deA}. Réalisée ${D}, elle s’intitule ${T}.`]);
+    else if (A && T) s1 = impPick(h, 1, [`Voici une œuvre ${deA} : ${T}.`, `${T} est une œuvre ${deA}.`, `Cette œuvre, ${T}, est ${deA}.`]);
+    else if (A && D) s1 = `${impUpperFirst(D)}, ${A} réalise cette œuvre.`;
+    else if (T && D) s1 = `${impUpperFirst(D)}, ${T} voit le jour.`;
+    else if (A) s1 = `Voici une œuvre ${deA}.`;
+    else if (T) s1 = `Voici ${T}.`;
+    add('artist', s1); offsets.title = offsets.artist ?? 0; offsets.date = offsets.artist ?? 0;
+    const mono = isMonumentWork(work);
+    const mat = has('materiaux') ? matPhrase(work) : '';
+    if (mat) add('materiaux', mono ? mat : impPick(h, 2, [`Matériaux : ${impLowerFirst(mat.replace(/\.\s*$/, ''))}.`, `Technique : ${impLowerFirst(mat.replace(/\.\s*$/, ''))}.`, `Sa nature et ses matériaux : ${impLowerFirst(mat.replace(/\.\s*$/, ''))}.`]));
+    const dimPhrase = has('dimensions') ? spokenDimensionsPhrase(work) : '';
+    if (dimPhrase) add('dimensions', /^de\s/.test(dimPhrase) ? impPick(h, 3, [`Elle mesure ${dimPhrase.replace(/^de\s+/, '')}.`, `L’œuvre mesure ${dimPhrase.replace(/^de\s+/, '')}.`, `Ses dimensions sont ${dimPhrase}.`]) : `${dimPhrase.replace(/\.\s*$/, '')}.`);
+    // l'image du sous-lieu arrive à la 2e phrase (zoom arrière : œuvre, puis sous-lieu, puis lieu)
+    const second = offsets.materiaux ?? offsets.dimensions;
+    if (second !== undefined) { offsets.date = second; offsets.title = second; offsets.artist = 0; }
+    return { text: parts.join(' '), offsets };
+  }
+  if (has('location')) {
+    const loc = String(work.location || '').trim(); const ini = String(work.lieuInitial || '').trim(); const com = String(work.commanditaire || '').trim();
+    const P = impPlacePhrase(loc, 0); const Lp = impPlacePhrase(ini, 0); const Ld = impPlacePhrase(ini, 1); const C = com ? impPersonPhrase(com) : '';
+    const firstSeg = keyName(loc.split(',')[0] || '');
+    const sameSpot = !!(ini && loc && firstSeg && keyName(ini).includes(firstSeg));
+    let s = '';
+    if (sameSpot && P) s = `Elle se trouve toujours ${P}, là où elle avait été conçue${C ? `, sur commande ${impDeNom(C)}` : ''}.`;
+    else {
+      const cur = P ? impPick(h, 4, [`Elle est actuellement conservée ${P}.`, `Aujourd’hui, elle se trouve ${P}.`, `On peut la voir ${P}.`]) : `Lieu de conservation actuel : ${loc}.`;
+      let init = '';
+      if (ini && C && Ld) init = impPick(h, 5, [`Mais à l’origine, elle avait été commandée par ${C} pour ${Ld}.`, `À l’origine, elle avait pourtant été commandée par ${C} pour ${Ld}.`, `${impUpperFirst(C)} l’avait commandée à l’origine pour ${Ld}.`]);
+      else if (ini && Lp) init = impPick(h, 5, [`Mais à l’origine, elle se trouvait ${Lp}.`, `À l’origine, elle était installée ${Lp}.`, `Elle avait d’abord été placée ${Lp}.`]);
+      else if (ini && C) init = `Mais à l’origine, elle avait été commandée par ${C}. Son lieu de conservation initial : ${ini}.`;
+      else if (ini) init = `Son lieu de conservation initial : ${ini}.`;
+      else if (C) init = impPick(h, 5, [`Mais à l’origine, elle avait été commandée par ${C}.`, `À l’origine, elle avait pourtant été commandée par ${C}.`, `${impUpperFirst(C)} l’avait commandée à l’origine.`]);
+      s = `${cur}${init ? ` ${init}` : ''}`;
+    }
+    add('location', s); offsets.lieuInitial = 0; offsets.commanditaire = 0;
+    return { text: parts.join(' '), offsets };
+  }
+  return null;
+}
+// Bouton « En savoir plus sur … » : intitulé d'un sujet (reprend le titre du texte : « L'évolution des retables »)
+function impMoreTopicLabel(id) {
+  const t = NATURE_TEXTS && NATURE_TEXTS.get(id); if (!t) return '';
+  let lab = t.label; try { const p = parseBioMarkup(t.text); if (p.title && p.title.text) lab = p.title.text; } catch (e) { /* ignoré */ }
+  lab = String(lab || '').trim();
+  return /^(l[’']|le |la |les |un |une |des |du )/i.test(lab) ? impLowerFirst(lab) : `« ${lab} »`;
+}
 function natureTopicIds(work) {
   if (!NATURE_TEXTS || !NATURE_TEXTS.size) return [];
   const o = objClassify(work); const ids = [];
@@ -13618,15 +13726,15 @@ function impShowCurrent() {
       const flagHtml = artistFlag(work.nationality) ? `<span title="${escapeHtml(nationalityCountryName(work.nationality))}">${artistFlag(work.nationality)}</span>` : '';
       // v129 : petit haut-parleur derrière le nom (bio lue), uniquement s'il y a une bio. Il est dans le bloc insécable (un clic dessus
       // ne déclenche pas le clic du nom : stopPropagation dans l'écouteur plus bas).
-      const speakerHtml = work.bio ? `<button type="button" class="imp-speaker-btn" id="imp-speaker-bio" title="Écouter la biographie" aria-label="Écouter la biographie de l’artiste">🔊</button>` : '';
+      const speakerHtml = '';   // v301 : le haut-parleur de la bio passe dans « En savoir plus sur … » (sous la référence)
       const tail = `${flagHtml ? `&nbsp;${flagHtml}` : ''}${speakerHtml ? `&nbsp;${speakerHtml}` : ''}`;
       const lastWord = !baseName.includes('<') && baseName.match(/^(.*\S)\s+(\S+)$/);
       const nameHtml = lastWord ? `${lastWord[1]} <span class="imp-nm-end">${lastWord[2]}${tail}</span>` : `${baseName}${tail}`;
       return (work.bio || work.artistImage) ? `<span role="button" tabindex="0" class="imp-artist-name-button" id="imp-artist-name-button">${nameHtml}</span>` : nameHtml;
     })(), spoken: spokenArtistFull(work, true), on: fieldOn('artist') },
-    { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>${work.workText ? ` <button type="button" class="imp-speaker-btn" id="imp-speaker-work" title="Écouter l’histoire de cette œuvre" aria-label="Écouter l’histoire de cette œuvre">🔊</button>` : ''}`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
+    { key: 'title', label: 'Titre de l\u2019œuvre', value: `<em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>`, spoken: `«\u00a0${work.title}\u00a0»`, on: fieldOn('title') },
     { key: 'date', label: 'Date', value: work.date, on: fieldOn('date') },
-    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: `${escapeHtml(matPhrase(work))}${natureTopicButtons(work)}`, spoken: matPhrase(work), on: fieldOn('materiaux') && work.materials },
+    { key: 'materiaux', label: 'Nature et matériau de l’œuvre', value: `${escapeHtml(matPhrase(work))}`, spoken: matPhrase(work), on: fieldOn('materiaux') && work.materials },
     { key: 'dimensions', label: 'Dimensions', value: dims, spoken: spokenDimensionsPhrase(work), on: fieldOn('dimensions') && dims },
     // Nouvelle rubrique demandée par Stéphane : quand l'œuvre appartient à un ensemble plus vaste
     // (un cycle de fresques, un manuscrit...), le texte qui le décrit (déjà récupéré dans
@@ -13657,9 +13765,23 @@ function impShowCurrent() {
     { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: ensembleSpoken(work), on: !!work.cycle && (showFullCorrection || !anyFieldChecked) /* v294 (retour Stéphane : « après Dimensions, une rubrique Ensemble avec l'indication de la colonne M, et l'image de la colonne N qui apparaît à ce moment-là ») : rubrique rétablie (écrite ET lue) ; l'image du cycle se montre quand la voix lit cette rubrique (voir impSpeakSegment) */ },
   ].filter((f) => f.on);
 
+  // v301 (retour Stéphane : « les petits haut-parleurs en dessous, avec "En savoir plus sur…" : on écoute d'abord la notice, on approfondit après ») :
+  // les liens d'approfondissement (biographie, histoire de l'œuvre, sujets de nature/technique) sont réunis sous la référence et n'apparaissent
+  // qu'une fois la notice écrite ET lue.
+  const moreItems = [];
+  if (work.bio) moreItems.push({ kind: 'bio', html: `En savoir plus sur ${formatMainArtistDisplayName(work)}` });
+  if (work.workText) moreItems.push({ kind: 'work', html: `En savoir plus sur <em>«\u00a0${escapeHtml(work.title)}\u00a0»</em>` });
+  natureTopicIds(work).forEach((id) => { const lab = impMoreTopicLabel(id); if (lab) moreItems.push({ kind: 'topic', id, html: `En savoir plus sur ${/^[«]/.test(lab) ? escapeHtml(lab) : escapeHtml(lab)}` }); });
+  const moreHtml = moreItems.length ? `<div class="imp-more" id="imp-more">${moreItems.map((m, k) => `<button type="button" class="imp-more-btn" data-more="${k}">${m.html}</button>`).join('')}</div>` : '';
   $('imp-correction-details').innerHTML = fields.map((f) =>
     `<span class="correction-label">${f.label}</span><span class="correction-value" id="imp-val-${f.key}"></span>`
-  ).join('');
+  ).join('') + moreHtml;
+  const moreFlags = { txt: false, voice: false };
+  const tryShowMore = () => { if (moreFlags.txt && moreFlags.voice) $('imp-more')?.classList.add('written'); };
+  document.querySelectorAll('#imp-more .imp-more-btn').forEach((b) => b.addEventListener('click', (e) => {
+    e.stopPropagation(); const m = moreItems[Number(b.dataset.more)]; if (!m) return;
+    if (m.kind === 'bio') openImpArtistBio(work, true); else if (m.kind === 'work') openImpWorkText(work); else if (m.kind === 'topic') openImpTopicText(work, m.id);
+  }));
 
   // v66 (docx 29 sept, item 8 : « séparer davantage pour la voix la lecture du lieu de celle du
   // matériau, prévoir 2 secondes d'écart. Même chose avant la lecture éventuelle de Ensemble ») :
@@ -13673,6 +13795,7 @@ function impShowCurrent() {
   // progressif du texte (STAGGER, juste plus bas) n'a pas besoin d'être synchronisé à ces pauses :
   // il ne l'était déjà pas exactement avec la voix avant ce changement (durées de synthèse variables).
   currentSpeechNationality = work.nationality || '';
+  const impLinkedMode = showFullCorrection || !anyFieldChecked;   // v301 : texte lié seulement quand tout est dit (pas quand on teste une rubrique précise)
   const speechSegments = [];
   let currentSpeechSegment = [];
   fields.forEach((f, i) => {
@@ -13681,7 +13804,7 @@ function impShowCurrent() {
     // Ensemble n'existant plus, le Lieu démarre TOUJOURS son propre segment (2 s de silence avant lui,
     // et l'image du lieu n'apparaît qu'une fois ce segment commencé, donc jamais pendant qu'on lit
     // encore le titre ou les dimensions) — jusqu'ici il ne le faisait que juste après Matériau/Ensemble.
-    const startsNewSegment = f.key === 'cycle' || f.key === 'location' || (f.key === 'materiaux' && prev && prev.key === 'date') || (f.key === 'date' && prev && prev.key === 'title');
+    const startsNewSegment = f.key === 'cycle' || f.key === 'location' || (!impLinkedMode && ((f.key === 'materiaux' && prev && prev.key === 'date') || (f.key === 'date' && prev && prev.key === 'title')));   // v301 : en mode lié, artiste→dimensions = un seul bloc
     if (startsNewSegment && currentSpeechSegment.length) { speechSegments.push(currentSpeechSegment); currentSpeechSegment = []; }
     currentSpeechSegment.push(f);
   });
@@ -13692,6 +13815,7 @@ function impShowCurrent() {
   // de cette rubrique, sur « Dimensions »).
   // v215 : plan des images de lieu — sous-lieu sur « Nature et matériau », lieu sur « Lieu de conservation ».
   // Si la rubrique voulue n'est pas affichée, l'image prend la suivante de sa liste ; sous-lieu toujours avant lieu.
+  const impSegLinked = speechSegments.map((sg) => (impLinkedMode ? impLinkedSegment(work, sg.map((f) => f.key)) : null));   // v301
   const stageImgPlan = [];
   [[work.subLocationImage, ['date', 'materiaux', 'dimensions', 'location']], [work.locationImage, ['location', 'dimensions']]].forEach(([url, keys]) => {
     if (!url) return;
@@ -13723,9 +13847,10 @@ function impShowCurrent() {
   // normale, comme demandé, mais automatiquement raccourci pour un segment plus court, afin que
   // l'image ne puisse plus jamais déborder sur le segment suivant.
   function impSpeakSegment(i) {
-    if (i >= speechSegments.length) return;
+    if (i >= speechSegments.length) { moreFlags.voice = true; tryShowMore(); return; }
     const segment = speechSegments[i];
-    const text = segment.map((f) => f.spoken || f.value).join(' — ') || work.artist;
+    const linkedSeg = impSegLinked[i];
+    const text = (linkedSeg && linkedSeg.text) || segment.map((f) => f.spoken || f.value).join(' — ') || work.artist;
     const flowField = segment.find((f) => f.key === 'cycle' || f.key === 'location');
     // v149 : pour le Lieu, on enchaîne l'image du lieu puis celle du sous-lieu (si les deux existent ; une seule
     // suffit à s'afficher), et on n'affiche AUCUN badge « Lieu de conservation » par-dessus (« pour une place
@@ -13773,7 +13898,7 @@ function impShowCurrent() {
     var midStageOpts = null;
     planHere.filter((pl) => !pl.early && !startImgs.includes(pl)).forEach((pl) => {
       const idx = segment.findIndex((f) => f.key === pl.key);
-      const off = segment.slice(0, idx).reduce((n, f) => n + String(f.spoken || f.value || '').length + 3, 0);
+      const off = (linkedSeg && linkedSeg.offsets && linkedSeg.offsets[pl.key] !== undefined) ? linkedSeg.offsets[pl.key] : segment.slice(0, idx).reduce((n, f) => n + String(f.spoken || f.value || '').length + 3, 0);
       const frac = off / Math.max(1, text.length);
       let fired = false; let sawBoundary = false;
       const fire = () => { if (fired || myRunStage !== impRunId) return; fired = true; impTimers.push(setTimeout(() => impShowFlowImage(pl.url, ''), 700)); };
@@ -13817,6 +13942,7 @@ function impShowCurrent() {
   }
 
   const STAGGER = impDelayMs * 0.5;
+  impTimers.push(setTimeout(() => { moreFlags.txt = true; tryShowMore(); }, 400 + fields.length * STAGGER + 300));   // v301 : boutons « En savoir plus » une fois la notice écrite
   fields.forEach((f, i) => {
     const textDelay = 400 + i * STAGGER;
     impTimers.push(setTimeout(() => {

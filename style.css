@@ -2972,3 +2972,15 @@ button, [role="button"], .home-mode-button, .primary-button, .secondary-button {
 .imp-bio-refs-list li::before { content:"· "; }
 .imp-bio-refs-list a { color:inherit; text-decoration:underline; word-break:break-all; }
 .imp-bio-split.bio-dual.bio-vert .imp-bio-refs-list { max-height:16vh; font-size:.8rem; }
+
+/* v301 : références resserrées + liens « En savoir plus sur … » sous la notice (retour Stéphane, maquette PRESENTATION_IMPREGNATION) */
+#imp-correction-details { row-gap:2px; }
+#imp-correction-details .correction-value { margin-bottom:8px; }
+#imp-correction-details .imp-more { grid-column:1/-1; display:flex; flex-direction:column; align-items:flex-start; gap:4px; margin-top:4px; opacity:0; pointer-events:none; transition:opacity .5s; }
+#imp-correction-details .imp-more.written { opacity:1; pointer-events:auto; }
+#imp-correction-details .imp-more-btn { background:none; border:none; padding:3px 0; font:inherit; font-size:.95rem; font-weight:600; color:var(--ink); text-align:left; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+#imp-correction-details .imp-more-btn::before { content:"🔊\00a0"; text-decoration:none; display:inline-block; }
+@media (max-width: 760px) {
+  #imp-correction-details .correction-value { margin-bottom:3px; }
+  #imp-correction-details .imp-more-btn { font-size:.86rem; }
+}
