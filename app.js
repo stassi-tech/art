@@ -12130,49 +12130,150 @@ function impPersonPhrase(name) {   // « Pape Jules II » → « le pape Jules I
   const n = String(name || '').trim();
   return /^(pape|cardinal)\s/i.test(n) ? `le ${impLowerFirst(n)}` : n;
 }
-// Texte lié d'un segment vocal d'Imprégnation. keys = rubriques du segment. Renvoie { text, offsets } ou null (rubrique « Ensemble » : texte inchangé).
+// Genre et désignation de l'œuvre, d'après son titre : « Retable de saint Denis » → « le retable de saint Denis », masculin, « ce retable ».
+const IMP_NOUNS = {
+  m: ['retable', 'tableau', 'portrait', 'autoportrait', 'buste', 'tombeau', 'polyptyque', 'triptyque', 'diptyque', 'monument', 'crucifix', 'bas-relief', 'relief', 'tondo', 'groupe', 'cénotaphe', 'gisant', 'mausolée', 'plafond', 'paysage', 'cavalier', 'transi', 'sépulcre', 'tabernacle', 'baptême', 'martyre', 'jugement', 'mariage', 'couronnement', 'miracle', 'repas', 'festin', 'sacrifice', 'enlèvement', 'triomphe', 'christ', 'saint', 'sacré-cœur', 'épitaphe'],
+  f: ['fresque', 'statue', 'fontaine', 'pietà', 'cène', 'madone', 'vierge', 'annonciation', 'nativité', 'adoration', 'déposition', 'crucifixion', 'résurrection', 'lamentation', 'déploration', 'descente', 'assomption', 'visitation', 'présentation', 'circoncision', 'transfiguration', 'tentation', 'chute', 'création', 'allégorie', 'porte', 'chaire', 'cantoria', 'salière', 'nymphe', 'pont', 'cour', 'sainte', 'déesse', 'scène', 'bataille', 'fuite', 'sainte famille', 'danse', 'tour', 'tempête', 'joconde'],
+};
+function impWorkInfo(work) {
+  const T = String(work.title || '').trim();
+  const first = (T.match(/^[\p{L}’'-]+/u) || [''])[0].toLowerCase();
+  const art = T.match(/^(le|la|un|une)\s+(.*)$/i) || T.match(/^(l)[’'](.*)$/i);
+  let gender = '', noun = '', desig = `« ${T} »`;
+  if (IMP_NOUNS.m.includes(first)) { gender = 'm'; noun = first; }
+  else if (IMP_NOUNS.f.includes(first)) { gender = 'f'; noun = first; }
+  if (gender && !art) {
+    const body = impLowerFirst(T);
+    desig = gender === 'm' ? (/^[aeiouyhàâäéèêëîïôöùûüœ]/i.test(body) ? `l’${body}` : `le ${body}`) : (/^[aeiouyhàâäéèêëîïôöùûüœ]/i.test(body) ? `l’${body}` : `la ${body}`);
+  } else if (art) {
+    const w = art[1].toLowerCase();
+    desig = impLowerFirst(T);
+    if (!gender) gender = (w === 'le' || w === 'un') ? 'm' : ((w === 'la' || w === 'une') ? 'f' : '');
+    if (!noun) noun = '';
+  }
+  const m = gender === 'm';
+  return { desig, m, pron: m ? 'il' : 'elle', e: m ? '' : 'e', le: m ? 'le' : 'la', dem: noun ? `${m ? 'ce' : 'cette'} ${noun}` : 'cette œuvre', known: !!gender };
+}
+let impVariantSeed = Math.floor(Math.random() * 7);   // v301 : point de départ au hasard, puis les formules tournent d'une œuvre à l'autre (jamais deux fois de suite la même)
+// 7 formules (les 4 de la maquette de Stéphane + 3 qui s'adressent directement au joueur). Règle de Stéphane : les pronoms suivent le PREMIER mot employé —
+// « une œuvre » / « cette œuvre » → elle ; « le retable » → il ; « la fresque » → elle. Quand le titre ne commence pas par un nom d'objet connu
+// (« Mars », « Adam et Ève »…), on ne garde que les formules qui parlent d'« œuvre » (3, 4, 6), pour que les pronoms soient toujours justes.
+const IMP_VARIANT_WORK = new Set([0, 1, 2, 5]);
 function impLinkedSegment(work, keys) {
   const has = (k) => keys.includes(k);
   const h = impHash(`${work.title}|${work.artist}|${work.date}`);
+  const winfo = impWorkInfo(work);
+  const order = winfo.known ? [0, 1, 2, 3, 4, 5, 6] : [3, 4, 6];
+  const k0 = (((typeof impIndex === 'number' ? impIndex : 0) + impVariantSeed) % 7 + 7) % 7;
+  const V = order[k0 % order.length];
+  const info = IMP_VARIANT_WORK.has(V) ? winfo : { ...winfo, m: false, pron: 'elle', e: 'e', le: 'la', dem: 'cette œuvre' };
   const parts = []; const offsets = {};
   const add = (key, txt) => { if (!txt) return; offsets[key] = parts.join(' ').length + (parts.length ? 1 : 0); parts.push(txt); };
   if (has('artist') || has('title') || has('date') || has('materiaux') || has('dimensions')) {
-    const A = has('artist') ? spokenArtistFull(work, true) : ''; const T = has('title') ? `« ${work.title} »` : ''; const D = has('date') ? impDateAdverb(work.date) : '';
+    const A = has('artist') ? spokenArtistFull(work, true) : ''; const T = has('title') ? `« ${work.title} »` : ''; const rawD = has('date') ? String(work.date || '').trim() : '';
+    const D = rawD ? impDateAdverb(rawD) : '';
     const deA = A ? impArtistDe(A) : '';
+    const centEnd = /00$/.test(rawD);   // une phrase ne doit pas finir par une année en « cent »
+    const dated = /^\d{3,4}(\s+environ)?$/i.test(rawD) ? `datée de ${rawD}` : (D ? `réalisée ${D}` : '');
+    const Dp = D ? ` ${D}` : '';
+    const vb = ['créé', 'réalisé', 'imaginé'][h % 3]; const { e, pron, le } = info;
     let s1 = '';
-    if (A && T && D) s1 = impPick(h, 1, [`Voici une œuvre ${deA}, réalisée ${D} : ${T}.`, `${impUpperFirst(D)}, ${A} réalise ${T}.`, `Cette œuvre est ${deA}. Réalisée ${D}, elle s’intitule ${T}.`]);
-    else if (A && T) s1 = impPick(h, 1, [`Voici une œuvre ${deA} : ${T}.`, `${T} est une œuvre ${deA}.`, `Cette œuvre, ${T}, est ${deA}.`]);
+    if (A && has('title')) {
+      const desig = winfo.desig;
+      s1 = [
+        D && centEnd ? `${impUpperFirst(D)}, ${A} a ${vb} ${desig}.` : `${A} a ${vb} ${desig}${Dp}.`,
+        `Vous voyez ici ${desig}, ${vb}${e}${Dp} par ${A}.`,
+        `Je vous présente maintenant ${desig}, imaginé${e}${Dp} par ${A}.`,
+        D ? (centEnd ? `Voici une œuvre ${deA}, ${dated} : ${desig}.` : `Voici une œuvre ${deA}, ${desig}, ${dated}.`) : `Voici une œuvre ${deA}, ${desig}.`,
+        `Regardez bien cette œuvre ${deA}${D ? `, réalisée ${D}` : ''} : ${desig}.`,
+        `Voici ${desig}, ${vb}${e}${Dp} par ${A}.`,
+        `Je vous propose d’observer une œuvre ${deA}${D ? `, réalisée ${D}` : ''} : ${desig}.`,
+      ][V];
+    } else if (A && T) s1 = `Voici une œuvre ${deA} : ${T}.`;
     else if (A && D) s1 = `${impUpperFirst(D)}, ${A} réalise cette œuvre.`;
     else if (T && D) s1 = `${impUpperFirst(D)}, ${T} voit le jour.`;
     else if (A) s1 = `Voici une œuvre ${deA}.`;
     else if (T) s1 = `Voici ${T}.`;
-    add('artist', s1); offsets.title = offsets.artist ?? 0; offsets.date = offsets.artist ?? 0;
+    add('artist', s1);
     const mono = isMonumentWork(work);
     const mat = has('materiaux') ? matPhrase(work) : '';
-    if (mat) add('materiaux', mono ? mat : impPick(h, 2, [`Matériaux : ${impLowerFirst(mat.replace(/\.\s*$/, ''))}.`, `Technique : ${impLowerFirst(mat.replace(/\.\s*$/, ''))}.`, `Sa nature et ses matériaux : ${impLowerFirst(mat.replace(/\.\s*$/, ''))}.`]));
+    const matL = mat ? impLowerFirst(mat.replace(/\.\s*$/, '')) : '';
+    if (mat) add('materiaux', mono ? mat : [
+      `Côté matériaux : ${matL}.`,
+      `La technique utilisée par l’artiste est la suivante : ${matL}.`,
+      `${impUpperFirst(pron)} est composé${e} des matériaux suivants : ${matL}.`,
+      `Matériaux employés : ${matL}.`,
+      `Pour la réaliser, l’artiste a utilisé : ${matL}.`,
+      `Pour ${le} réaliser, l’artiste a employé : ${matL}.`,
+      `Côté technique : ${matL}.`,
+    ][V]);
     const dimPhrase = has('dimensions') ? spokenDimensionsPhrase(work) : '';
-    if (dimPhrase) add('dimensions', /^de\s/.test(dimPhrase) ? impPick(h, 3, [`Elle mesure ${dimPhrase.replace(/^de\s+/, '')}.`, `L’œuvre mesure ${dimPhrase.replace(/^de\s+/, '')}.`, `Ses dimensions sont ${dimPhrase}.`]) : `${dimPhrase.replace(/\.\s*$/, '')}.`);
+    if (dimPhrase) {
+      if (!/^de\s/.test(dimPhrase)) add('dimensions', `${dimPhrase.replace(/\.\s*$/, '')}.`);
+      else {
+        const d = dimPhrase.replace(/^de\s+/, '');
+        let sd = [`Ses dimensions sont ${dimPhrase}.`, '', `${impUpperFirst(pron)} mesure ${d}.`, `${impUpperFirst(pron)} mesure ${d}.`, `Elle fait ${d}.`, `${impUpperFirst(pron)} mesure ${d}.`, `Elle mesure ${d}.`][V];
+        if (V === 1) {   // « Sa hauteur est de … Sa longueur, de … »
+          const dv = [['hauteur', work.hauteur], ['longueur', work.longueur], ['profondeur', work.profondeur]].filter((x) => String(x[1] || '').trim()).map((x) => [x[0], spokenDimensionValue(x[1]).text]);
+          sd = dv.length ? dv.map((x, i) => (i === 0 ? `Sa ${x[0]} est de ${x[1]}.` : `Sa ${x[0]}, de ${x[1]}.`)).join(' ') : `Ses dimensions sont ${dimPhrase}.`;
+        }
+        add('dimensions', sd);
+      }
+    }
     // l'image du sous-lieu arrive à la 2e phrase (zoom arrière : œuvre, puis sous-lieu, puis lieu)
-    const second = offsets.materiaux ?? offsets.dimensions;
-    if (second !== undefined) { offsets.date = second; offsets.title = second; offsets.artist = 0; }
+    offsets.title = 0; offsets.artist = 0; offsets.date = offsets.materiaux ?? offsets.dimensions ?? 0;
     return { text: parts.join(' '), offsets };
   }
   if (has('location')) {
     const loc = String(work.location || '').trim(); const ini = String(work.lieuInitial || '').trim(); const com = String(work.commanditaire || '').trim();
     const P = impPlacePhrase(loc, 0); const Lp = impPlacePhrase(ini, 0); const Ld = impPlacePhrase(ini, 1); const C = com ? impPersonPhrase(com) : '';
+    const deC = C ? impDeNom(C) : '';
     const firstSeg = keyName(loc.split(',')[0] || '');
     const sameSpot = !!(ini && loc && firstSeg && keyName(ini).includes(firstSeg));
+    const { pron, e, le, dem } = info;
     let s = '';
-    if (sameSpot && P) s = `Elle se trouve toujours ${P}, là où elle avait été conçue${C ? `, sur commande ${impDeNom(C)}` : ''}.`;
+    if (sameSpot && P) s = `${impUpperFirst(pron)} se trouve toujours ${P}, là où ${pron} avait été créé${e}${C ? `, sur commande ${deC}` : ''}.`;
     else {
-      const cur = P ? impPick(h, 4, [`Elle est actuellement conservée ${P}.`, `Aujourd’hui, elle se trouve ${P}.`, `On peut la voir ${P}.`]) : `Lieu de conservation actuel : ${loc}.`;
-      let init = '';
-      if (ini && C && Ld) init = impPick(h, 5, [`Mais à l’origine, elle avait été commandée par ${C} pour ${Ld}.`, `À l’origine, elle avait pourtant été commandée par ${C} pour ${Ld}.`, `${impUpperFirst(C)} l’avait commandée à l’origine pour ${Ld}.`]);
-      else if (ini && Lp) init = impPick(h, 5, [`Mais à l’origine, elle se trouvait ${Lp}.`, `À l’origine, elle était installée ${Lp}.`, `Elle avait d’abord été placée ${Lp}.`]);
-      else if (ini && C) init = `Mais à l’origine, elle avait été commandée par ${C}. Son lieu de conservation initial : ${ini}.`;
-      else if (ini) init = `Son lieu de conservation initial : ${ini}.`;
-      else if (C) init = impPick(h, 5, [`Mais à l’origine, elle avait été commandée par ${C}.`, `À l’origine, elle avait pourtant été commandée par ${C}.`, `${impUpperFirst(C)} l’avait commandée à l’origine.`]);
-      s = `${cur}${init ? ` ${init}` : ''}`;
+      const curCore = P ? [
+        `${impUpperFirst(dem)} est actuellement conservé${e} ${P}`,
+        `On peut ${le} voir actuellement ${P}`,
+        `On peut aujourd’hui ${le} voir ${P}`,
+        `${impUpperFirst(pron)} est actuellement conservé${e} ${P}`,
+        `Aujourd’hui, vous pouvez ${le} voir ${P}`,
+        `Vous pouvez ${le} voir actuellement ${P}`,
+        `${impUpperFirst(pron)} est conservé${e} aujourd’hui ${P}`,
+      ][V] : '';
+      let init = ''; let extra = '';
+      if (ini && !Lp) extra = ` Son lieu de conservation initial : ${ini}.`;
+      if (Ld && C) init = [
+        `mais à l’origine ${pron} avait été créé${e} pour ${Ld} sur une commande ${deC}`,
+        `mais ${pron} avait été créé${e} pour ${Ld}, à l’initiative ${deC}`,
+        `mais à l’origine, ${pron} se trouvait ${Lp} et ${C} en était le commanditaire`,
+        `mais originellement ${pron} avait été commandé${e} par ${C}, pour ${Ld}`,
+        `mais à l’origine, ${pron} avait été commandé${e} par ${C} pour ${Ld}`,
+        `mais à l’origine ${pron} avait été créé${e} pour ${Ld}, à la demande ${deC}`,
+        `mais à l’origine ${pron} se trouvait ${Lp}, commandé${e} par ${C}`,
+      ][V];
+      else if (Ld) init = [
+        `mais à l’origine ${pron} avait été créé${e} pour ${Ld}`,
+        `mais ${pron} avait été créé${e} pour ${Ld}`,
+        `mais à l’origine, ${pron} se trouvait ${Lp}`,
+        `mais originellement ${pron} avait été placé${e} ${Lp}`,
+        `mais à l’origine, ${pron} avait été créé${e} pour ${Ld}`,
+        `mais ${pron} avait été créé${e} pour ${Ld}`,
+        `mais à l’origine ${pron} se trouvait ${Lp}`,
+      ][V];
+      else if (C) init = [
+        `mais à l’origine ${pron} avait été commandé${e} par ${C}`,
+        `mais ${pron} avait été créé${e} à l’initiative ${deC}`,
+        `mais ${C} en était le commanditaire`,
+        `mais originellement ${pron} avait été commandé${e} par ${C}`,
+        `mais à l’origine, ${pron} avait été commandé${e} par ${C}`,
+        `mais ${pron} avait été créé${e} à la demande ${deC}`,
+        `mais à l’origine ${pron} avait été commandé${e} par ${C}`,
+      ][V];
+      if (P) s = `${curCore}${init ? `, ${init}` : ''}.${extra}`;
+      else s = `Lieu de conservation actuel : ${loc}.${init ? ` ${impUpperFirst(init)}.` : ''}${extra}`;
     }
     add('location', s); offsets.lieuInitial = 0; offsets.commanditaire = 0;
     return { text: parts.join(' '), offsets };
