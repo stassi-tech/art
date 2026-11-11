@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v296';
+const APP_VERSION = 'v297';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -13724,6 +13724,18 @@ function impShowCurrent() {
       : [];
     const estimatedSegDurMs = Math.max(1200, (text.length / 10) * 1000) + 400;
     const flowDelayMs = Math.min(2500, Math.max(1200, Math.round(estimatedSegDurMs * 0.65)));
+    // v297 : diagnostic, uniquement si l'adresse contient ?debug=ensemble (ex. mnemart.fr/?debug=ensemble) : un bandeau en haut de l'écran dit ce que
+    // l'appli a lu dans les colonnes N et P pour cette œuvre, et si chaque image se charge.
+    if (flowField?.key === 'cycle' && /[?&]debug=ensemble/.test(location.search)) {
+      try {
+        let box = document.getElementById('dbg-ensemble');
+        if (!box) { box = document.createElement('div'); box.id = 'dbg-ensemble'; box.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99999;background:#000c;color:#fff;font:12px/1.4 Arial,sans-serif;padding:6px 10px;word-break:break-all;pointer-events:none'; document.body.appendChild(box); }
+        const rapport = (nom, url) => { const ligne = document.createElement('div'); ligne.textContent = `${nom} : ${url ? url : '(VIDE : rien lu dans cette colonne)'}`; box.appendChild(ligne); if (url) { const t = new Image(); t.onload = () => { ligne.textContent += `  → se charge (${t.naturalWidth}×${t.naturalHeight})`; }; t.onerror = () => { ligne.textContent += '  → NE SE CHARGE PAS'; }; t.src = imageSourceSized(url, 900); } };
+        box.innerHTML = ''; const tete = document.createElement('div'); tete.textContent = `Ensemble « ${work.cycle} » — ${work.artist}`; box.appendChild(tete);
+        rapport('Colonne N (image 1)', work.cycleImage); rapport('Colonne P (image 2)', work.cycleImage2);
+        impTimers.push(setTimeout(() => { try { box.remove(); } catch (e) { /* ignoré */ } }, 20000));
+      } catch (e) { /* ignoré */ }
+    }
     if (flowImages.length) {
       const badge = flowField.label;
       flowImages.forEach((o, k) => {
