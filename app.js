@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v298';
+const APP_VERSION = 'v300';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -3717,6 +3717,11 @@ function normaliseRows(rows) {
     // v298 : texte que la VOIX lit pendant que chaque image d'ensemble est à l'écran (colonnes « Commentaire image 1 » / « Commentaire image 2 »)
     const cycleSay1Key = findColumn(row, ['commentaire image 1', 'commentaire 1 du cycle', 'texte lu image 1']);
     const cycleSay2Key = findColumn(row, ['commentaire image 2', 'commentaire 2 du cycle', 'texte lu image 2']);
+    // v300 (retour Stéphane : « lieu de conservation initial » et « commanditaire », deux colonnes, vides quand on ne sait pas)
+    const lieuInitialKey = findColumn(row, ['lieu de conservation initial', 'lieu initial']);
+    const commanditaireKey = findColumn(row, ['commanditaire']);
+    const lieuInitial = lieuInitialKey ? String(row[lieuInitialKey] || '').trim() : '';
+    const commanditaire = commanditaireKey ? String(row[commanditaireKey] || '').trim() : '';
     let artistImage = artistImageKey ? String(row[artistImageKey] || '').trim() : '';
     const locationImage = locationImageKey ? String(row[locationImageKey] || '').trim() : '';
     const subLocationImage = subLocationImageKey ? String(row[subLocationImageKey] || '').trim() : '';
@@ -3965,7 +3970,7 @@ function normaliseRows(rows) {
       image: String(row[imageKey] || '').trim(), artist, prenom, patronyme, surnomFr, surnomOrig,
       date: String(row[dateKey] || '').trim(), location, ville, pays: paysKey ? String(row[paysKey] || '').trim() : '', lieuPrecis: lieuPrecisValue, title, cycle, titleOriginal,
       associates, artistDates, materials, nature, natureAll: natureFull, materialsPhrase, hauteur, longueur, profondeur, nationality, niveau,
-      artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, cycleSay1, cycleSay2, bio, workText, mapCard, birthCity,
+      artistImage, artistImageCaption, artistVoice, locationImage, subLocationImage, cycleImage, cycleImage2, cycleCaption1, cycleCaption2, cycleSay1, cycleSay2, lieuInitial, commanditaire, bio, workText, mapCard, birthCity,
       row: rowIndex + 2,
       ...(masterRow && masterRow._light ? { _mr: masterRow } : {})   // v261 : fichier maître léger : les textes arrivent plus tard (voir ensureWorkTexts)
     };
@@ -13644,8 +13649,12 @@ function impShowCurrent() {
     // désormais d'abord le contexte plus large (l'ensemble dont l'œuvre fait partie) avant de dire
     // où elle se trouve précisément, dans les deux sens (texte affiché, ordre des champs plus bas
     // pour la voix et pour le déroulé d'images) plutôt que l'inverse.
-    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: ensembleSpoken(work), on: !!work.cycle && (showFullCorrection || !anyFieldChecked) /* v294 (retour Stéphane : « après Dimensions, une rubrique Ensemble avec l'indication de la colonne M, et l'image de la colonne N qui apparaît à ce moment-là ») : rubrique rétablie (écrite ET lue) ; l'image du cycle se montre quand la voix lit cette rubrique (voir impSpeakSegment) */ },
+    // v299 (retour Stéphane : « le lieu de conservation avant Ensemble, sinon on confond le lieu d'un panneau avec les différents lieux des panneaux de l'ensemble ») : ordre = ..., Dimensions, Lieu de conservation, puis Ensemble (annule le v74).
     { key: 'location', label: 'Lieu de conservation actuel', value: workFlag(work) ? `${escapeHtml(work.location)} <span title="${escapeHtml(workCountryName(work))}">${workFlag(work)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
+    // v300 : lieu de conservation initial puis commanditaire, juste après le lieu actuel (rubriques absentes quand la cellule est vide)
+    { key: 'lieuInitial', label: 'Lieu de conservation initial', value: escapeHtml(work.lieuInitial), spoken: work.lieuInitial ? `Lieu de conservation initial : ${work.lieuInitial}` : '', on: !!work.lieuInitial && (showFullCorrection || !anyFieldChecked) },
+    { key: 'commanditaire', label: 'Commanditaire', value: escapeHtml(work.commanditaire), spoken: work.commanditaire ? `Commanditaire : ${work.commanditaire}` : '', on: !!work.commanditaire && (showFullCorrection || !anyFieldChecked) },
+    { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: ensembleSpoken(work), on: !!work.cycle && (showFullCorrection || !anyFieldChecked) /* v294 (retour Stéphane : « après Dimensions, une rubrique Ensemble avec l'indication de la colonne M, et l'image de la colonne N qui apparaît à ce moment-là ») : rubrique rétablie (écrite ET lue) ; l'image du cycle se montre quand la voix lit cette rubrique (voir impSpeakSegment) */ },
   ].filter((f) => f.on);
 
   $('imp-correction-details').innerHTML = fields.map((f) =>
