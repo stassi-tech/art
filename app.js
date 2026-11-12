@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v308';
+const APP_VERSION = 'v309';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -12306,6 +12306,16 @@ function impMadeClause(m) {
   return `en ${impLowerFirst(t)}`;
 }
 // Une phrase de nature/matériau. Renvoie la phrase (avec point) ou null.
+// v309 (retour Stéphane : « quand le fichier dit "tempera sur bois", la voix doit dire "il s'agit d'un panneau de bois peint à la tempera" : panneau de bois est masculin, donc "il" après ;
+// le premier mot de Nature et matériaux fait les pronoms ») : sans mot de Nature, c'est le SUPPORT (bois, toile, cuivre…) qui devient le nom de l'œuvre. Aucun changement à faire dans les fichiers Excel.
+const IMP_SUPPORTS = { 'bois': ['panneau de bois', 'm', 'panneau'], 'panneau': ['panneau de bois', 'm', 'panneau'], 'panneau de bois': ['panneau de bois', 'm', 'panneau'], 'toile': ['toile', 'f', 'toile'], 'cuivre': ['plaque de cuivre', 'f', 'plaque'], 'papier': ['feuille de papier', 'f', 'feuille'], 'parchemin': ['parchemin', 'm', 'parchemin'], 'carton': ['carton', 'm', 'carton'], 'ardoise': ['ardoise', 'f', 'ardoise'] };
+function impSupportParse(mat) {
+  const t = String(mat || '').trim().replace(/\.\s*$/, ''); if (!t || /[.;]/.test(t) || /^(fresque|enluminure|esquisse)/i.test(t)) return null;
+  const pp = impPaintedParts(t); if (!pp) return null;
+  const mm = pp.clause.match(/^(.+?)\s+sur\s+(?:le\s+|la\s+|l[’'])?(.+)$/i); if (!mm || /\ssur\s/i.test(mm[1])) return null;
+  const sup = IMP_SUPPORTS[impNk(mm[2].trim())]; if (!sup) return null;
+  return { np: sup[0], g: sup[1], head: sup[2], verb: pp.verb, tech: mm[1] };
+}
 function impMatOne(m, V, info) {
   const raw = String(m || '').replace(/\.\s*$/, '');
   const t = impCleanMat(raw); if (!t) return '';
@@ -12329,6 +12339,10 @@ function impMatOne(m, V, info) {
     const cm = t.match(/^([^,]+),\s*(.+)$/);   // « Triptyque, huile sur panneau de bois » → « un triptyque peint à l'huile sur panneau de bois »
     if (cm) { const pp = impPaintedParts(cm[2]) || null; const mc = pp ? null : impMadeClause(impCleanMat(cm[2].replace(/\s*\([^)]*\)/g, ''))); if (pp) np = `${impLowerFirst(cm[1])} ${pp.verb}${g === 'f' ? 'e' : ''} ${pp.clause}`; else if (mc) np = `${impLowerFirst(cm[1])} ${mc}`; else return null; }
     return [`C’est ${art} ${np}.`, `Il s’agit d’${art} ${np}.`, `C’est ${art} ${np}.`][k];
+  }
+  if (info.support) {   // v309 : « Tempera sur bois » → « Il s’agit d’un panneau de bois peint à la tempera »
+    const sp = impSupportParse(t);
+    if (sp) { const art = sp.g === 'm' ? 'un' : 'une'; const body = `${art} ${sp.np} ${sp.verb}${sp.g === 'f' ? 'e' : ''} ${sp.tech}`; return [`C’est ${body}.`, `Il s’agit d’${body}.`, `C’est ${body}.`][k]; }
   }
   const pp = impPaintedParts(t);
   if (pp && !/^(fresque|enluminure|esquisse)/i.test(t)) return [`${impUpperFirst(subj)} est ${pp.verb}${e} ${pp.clause}.`, `${impUpperFirst(subj)} a été ${pp.verb}${e} ${pp.clause}.`, `${impUpperFirst(/^(ce|cet|cette)\s+(peinture|tableau)\b/i.test(info.dem || '') ? subj : (info.dem || subj))} est ${pp.verb}${e} ${pp.clause}.`][k]   /* v308 : jamais « cette peinture est peinte » */   /* v305 : on parle de l'œuvre, pas de l'artiste */;
@@ -12399,7 +12413,8 @@ function impLinkedSegment(work, keys) {
   // 1) la présentation (s1) n'emploie jamais le mot de la nature ; 2) tout ce qui suit (matériaux, dimensions, lieu, origine) suit le genre du mot de Nature, s'il y en a un.
   const natInfo = impNatureInfo(work); const natureKnown = natInfo.dem !== 'cette œuvre';
   const baseInfo = IMP_VARIANT_WORK.has(V) ? winfo : { ...winfo, m: false, pron: 'elle', e: 'e', le: 'la', dem: 'cette œuvre' };
-  const info = natureKnown ? natInfo : baseInfo;
+  const sup = natureKnown ? null : impSupportParse(matPhrase(work));
+  const info = natureKnown ? natInfo : (sup ? { m: sup.g === 'm', pron: sup.g === 'm' ? 'il' : 'elle', e: sup.g === 'm' ? '' : 'e', le: sup.g === 'm' ? 'le' : 'la', dem: `${sup.g === 'm' ? 'ce' : 'cette'} ${sup.head}`, support: sup } : baseInfo);
   const parts = []; const offsets = {};
   const add = (key, txt) => { if (!txt) return; offsets[key] = parts.join(' ').length + (parts.length ? 1 : 0); parts.push(txt); };
   if (has('artist') || has('title') || has('date') || has('materiaux') || has('dimensions')) {
