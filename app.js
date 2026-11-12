@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v302';
+const APP_VERSION = 'v304';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1899,6 +1899,13 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v303 (atelier de prononciation, export du 12 nov 00:31) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'de canon': 'de canont',  // v303 : atelier du 12 nov
+  'lange pier': 'langue piire',  // v303 : atelier du 12 nov
+  'le canon': 'le canont',  // v303 : atelier du 12 nov
+  'peter christus': 'pétère kristousse',  // v303 : atelier du 12 nov
+  'thomas guy': 'thomasse gaille',  // v303 : atelier du 12 nov
+  'valle romita': 'val-lé romiitâ',  // v303 : atelier du 12 nov
   // v293 (atelier de prononciation, export du 11 nov 10:34) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   // v290 (atelier de prononciation, export du 10 nov 23:59) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   // v288 (atelier de prononciation, export du 10 nov 09:32) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
@@ -2761,6 +2768,34 @@ const PRONUNCIATION_FIXES = {
   'ézéchiel': 'ézékièl',  // v293 : atelier du 11 nov
   'mengs': 'ménkse',  // v293 : atelier du 11 nov
   'von': 'vone',  // v293 : atelier du 11 nov
+  // v303 (atelier de prononciation, export du 12 nov 00:31) : écritures communes à toutes les voix ; nouveaux mots.
+  'ansbach': 'annsbak',  // v303 : atelier du 12 nov
+  'begas': 'bégasse',  // v303 : atelier du 12 nov
+  'belen': 'bélène',  // v303 : atelier du 12 nov
+  'blücher': 'bluchère',  // v303 : atelier du 12 nov
+  'braghettone': 'bragué-tonné',  // v303 : atelier du 12 nov
+  'brouwer.': 'braou-eure',  // v303 : atelier du 12 nov
+  'coade': 'kod',  // v303 : atelier du 12 nov
+  'conegliano': 'connéliano',  // v303 : atelier du 12 nov
+  'degli': 'dééli',  // v303 : atelier du 12 nov
+  'gendarmenmarkt': 'jandarmènemarkt',  // v303 : atelier du 12 nov
+  'hume': 'youm',  // v303 : atelier du 12 nov
+  'jüdenhof': 'Youdeunhauf',  // v303 : atelier du 12 nov
+  'lutero': 'loutéro',  // v303 : atelier du 12 nov
+  'marburg': 'marbourk',  // v303 : atelier du 12 nov
+  'monteoliveto': 'montéolivéto',  // v303 : atelier du 12 nov
+  'mrs.': 'miss-iz',  // v303 : atelier du 12 nov
+  'mrs': 'miss-iz',  // v303 : atelier du 12 nov
+  'neumarkt': 'neue-markt',  // v303 : atelier du 12 nov
+  'pasos': 'passosse',  // v303 : atelier du 12 nov
+  'paul': 'pol',  // v303 : atelier du 12 nov
+  'peruzzi': 'péroutzi',  // v303 : atelier du 12 nov
+  'roslin': 'roslinn',  // v303 : atelier du 12 nov
+  'southwark': 'saveuk',  // v303 : atelier du 12 nov
+  'vecellio': 'vétchélio',  // v303 : atelier du 12 nov
+  'victis': 'victisse',  // v303 : atelier du 12 nov
+  'walchensee': 'valrhen-zé',  // v303 : atelier du 12 nov
+  'winterthour': 'vinntertour',  // v303 : atelier du 12 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2806,7 +2841,10 @@ const PHONE_PRONUNCIATION = {
   'venise': 'Veunize',
   'schwerin': 'Schvéérinne',  // conservée (mot absent de l'export)
   // v290 (atelier de prononciation, export du 10 nov 23:59) : nouveaux mots pour cette voix.
-  'saül': 'saül',  // v290 : atelier du 10 nov
+  'saül': 'saül',  // v290 : atelier du 10 nov    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
+    'conegliano': 'conéliano',  // v303 : atelier du 12 nov
+    'paul': '',  // v303 : atelier du 12 nov
+
 };
 const PHONE_PRONUNCIATION_CA = {
   'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
@@ -2827,7 +2865,10 @@ const PHONE_PRONUNCIATION_CA = {
   'venise': 'Veunize',
   'schwerin': 'Schvéérinne',  // conservée (mot absent de l'export)
   // v288 (atelier de prononciation, export du 10 nov 09:32) : nouveaux mots pour cette voix.
-  'southampton': 'saowf-hemptonn',  // v288 : atelier du 10 nov
+  'southampton': 'saowf-hemptonn',  // v288 : atelier du 10 nov    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
+    'conegliano': 'conéliano',  // v303 : atelier du 12 nov
+    'paul': '',  // v303 : atelier du 12 nov
+
 };
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
 const PRONUNCIATION_BY_VOICE = {
@@ -2938,7 +2979,13 @@ const PRONUNCIATION_BY_VOICE = {
     'wittelsbach': 'vittelsbake',  // v288 : atelier du 10 nov
     // v290 (atelier de prononciation, export du 10 nov 23:59) : nouveaux mots pour cette voix.
     'kampen': 'kam-pen',  // v290 : atelier du 10 nov
-    'olivares': 'olivarès',  // v290 : atelier du 10 nov
+    'olivares': 'olivarès',  // v290 : atelier du 10 nov    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
+    'ansbach': 'ann-sbake',  // v303 : atelier du 12 nov
+    'coade': 'kôd',  // v303 : atelier du 12 nov
+    'neumarkt': 'noiy-markt',  // v303 : atelier du 12 nov
+    'paul': '',  // v303 : atelier du 12 nov
+    'walchensee': 'valrhennzé',  // v303 : atelier du 12 nov
+
   },
   'charline': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -2966,7 +3013,10 @@ const PRONUNCIATION_BY_VOICE = {
     'zwinger': 'tsvinn-guer',  // v280 : atelier du 5 nov
     'bath': 'bâf',  // v287 : atelier du 8 nov
     // v288 (atelier de prononciation, export du 10 nov 09:32) : nouveaux mots pour cette voix.
-    'southampton': 'saowf-hempetonn',  // v288 : atelier du 10 nov
+    'southampton': 'saowf-hempetonn',  // v288 : atelier du 10 nov    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
+    'mrs.': 'miss-izz',  // v303 : atelier du 12 nov
+    'mrs': 'miss-izz',  // v303 : atelier du 12 nov
+
   },
   'julie': {
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
@@ -3072,7 +3122,13 @@ const PRONUNCIATION_BY_VOICE = {
     'wittelsbach': 'vittelsbake',  // v288 : atelier du 10 nov
     // v290 (atelier de prononciation, export du 10 nov 23:59) : nouveaux mots pour cette voix.
     'kampen': 'kam-pen',  // v290 : atelier du 10 nov
-    'olivares': 'olivarès',  // v290 : atelier du 10 nov
+    'olivares': 'olivarès',  // v290 : atelier du 10 nov    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
+    'ansbach': 'ann-sbake',  // v303 : atelier du 12 nov
+    'coade': 'kôd',  // v303 : atelier du 12 nov
+    'neumarkt': 'noiy-markt',  // v303 : atelier du 12 nov
+    'paul': '',  // v303 : atelier du 12 nov
+    'walchensee': 'valrhennzé',  // v303 : atelier du 12 nov
+
   },
   'paul': {
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
@@ -3174,7 +3230,12 @@ const PRONUNCIATION_BY_VOICE = {
     'wittelsbach': 'vittelsbake',  // v288 : atelier du 10 nov
     // v290 (atelier de prononciation, export du 10 nov 23:59) : nouveaux mots pour cette voix.
     'kampen': 'kam-pen',  // v290 : atelier du 10 nov
-    'olivares': 'olivarès',  // v290 : atelier du 10 nov
+    'olivares': 'olivarès',  // v290 : atelier du 10 nov    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
+    'ansbach': 'ann-sbake',  // v303 : atelier du 12 nov
+    'coade': 'kôd',  // v303 : atelier du 12 nov
+    'neumarkt': 'noiy-markt',  // v303 : atelier du 12 nov
+    'paul': '',  // v303 : atelier du 12 nov
+
   },
   'gerard': {
     'giusto di menabuoi': 'djousto di ménabw-oï',  // v276 : atelier du 2 nov
@@ -3191,7 +3252,10 @@ const PRONUNCIATION_BY_VOICE = {
     'tate britain': 'Tétte Britenn',
     'tino di camaino': 'tino di kama-ï-no',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
+    'werefkin': 'vérefkine',    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
+    'mrs.': 'miss-izz',  // v303 : atelier du 12 nov
+    'mrs': 'miss-izz',  // v303 : atelier du 12 nov
+
   },
   'sylvie': {
     'giusto di menabuoi': 'djousto di ménabw-oy',  // v276 : atelier du 2 nov
@@ -3294,7 +3358,10 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'tate britain': 'Tétte Britenn',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
+    'werefkin': 'vérefkine',    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
+    'mrs.': 'miss-izz',  // v303 : atelier du 12 nov
+    'mrs': 'miss-izz',  // v303 : atelier du 12 nov
+
   },
   'fabrice': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3309,7 +3376,10 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'tate britain': 'Tétte Britenn',
     'venise': 'Venîz',
-    'werefkin': 'vérefkine',
+    'werefkin': 'vérefkine',    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
+    'mrs.': 'miss-izz',  // v303 : atelier du 12 nov
+    'mrs': 'miss-izz',  // v303 : atelier du 12 nov
+
   },
   'vivienne': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3390,7 +3460,9 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
-    'montanes': 'mont',  // v285 : atelier du 7 nov
+    'montanes': 'mont',  // v285 : atelier du 7 nov    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
+    'monteoliveto': 'monté',  // v303 : atelier du 12 nov
+
   },
 };
 function currentPronunciationOverrides() {
@@ -4338,7 +4410,7 @@ function checkedQuestions() { return state.answers.filter((answer) => answer?.ch
 function ensembleSpoken(work) {
   const raw = String(work.cycle || '').trim();
   const m = raw.match(/^(?:un\s+|le\s+)?(triptyque|diptyque|polyptyque|retable)\s*\.?$/i);
-  if (!m) return raw;
+  if (!m) return /^partie\s/i.test(raw) ? `Il s’agit de la ${impLowerFirst(raw)}` : raw;   // v304 : « Partie centrale d'un polyptique perdu » → « Il s’agit de la partie centrale… »
   const sujet = /^tableau/i.test(String(work.nature || '').trim()) ? 'Ce tableau' : 'Cette œuvre';
   return `${sujet} faisait partie d'un ${m[1].toLowerCase()}`;
 }
@@ -12101,6 +12173,7 @@ function impDateAdverb(raw) {
   if ((m = d.match(/^(\d{3,4})$/))) return `en ${m[1]}`;
   if ((m = d.match(/^(\d{3,4})\s*[-–—]\s*(\d{3,4})$/))) return `entre ${m[1]} et ${m[2]}`;
   if ((m = d.match(/^(\d{3,4})\s+environ$/i))) return `vers ${m[1]}`;
+  if ((m = d.match(/^(\d{3,4})\s*[-–—]\s*(\d{3,4})\s+environ$/i))) return `entre ${m[1]} et ${m[2]} environ`;   // v304
   if ((m = d.match(/^(avant|après|apres)\s+(\d{3,4})$/i))) return `${m[1].toLowerCase() === 'apres' ? 'après' : m[1].toLowerCase()} ${m[2]}`;
   return `à la date de ${d}`;
 }
@@ -12113,17 +12186,68 @@ const IMP_PLACE_WORDS = {
   'galerie': ['à la', 'la'], 'chartreuse': ['à la', 'la'], 'villa': ['à la', 'la'], 'bibliothèque': ['à la', 'la'], 'scuola': ['à la', 'la'], 'abbaye': ['à l’', 'l’'], 'hôtel': ['à l’', 'l’'],
   'hôpital': ['à l’', 'l’'], 'université': ['à l’', 'l’'], 'académie': ['à l’', 'l’'], 'place': ['sur la', 'la'], 'piazza': ['sur la', 'la'], 'pont': ['sur le', 'le'], 'campo': ['sur le', 'le'],
 };
+// v304 (retour Stéphane : « le lieu de conservation actuel est le suivant : c'est trop lourd, il faut pouvoir enchaîner ça dans des phrases ») :
+// avant, un lieu dont le premier mot n'était pas dans la liste ci-dessus (« Metropolitan Museum of Art », « National Gallery », « Rijksmuseum »…, environ un lieu sur trois)
+// retombait sur la phrase lourde « Le lieu de conservation actuel est le suivant : … ». Désormais : (1) le premier mot, sans tenir compte des accents ; (2) à défaut, un mot-clé
+// n'importe où dans le nom (museum, gallery, kirche…) donne le genre (au / à la / aux / dans l’…) ; (3) à défaut encore, « à + nom » (« à Upton House », « à Tate Britain »).
+const IMP_PLACE_EXTRA = {   // v304 : noms de lieux français très courants hors musées et églises
+  'co-cathédrale': ['dans la', 'la'], 'hôtel-dieu': ['à l’', 'l’'], jardin: ['dans le', 'le'], jardins: ['dans les', 'les'], parc: ['dans le', 'le'], cimetière: ['au', 'le'], théâtre: ['au', 'le'],
+  maison: ['à la', 'la'], résidence: ['à la', 'la'], pavillon: ['au', 'le'], fontaine: ['à la', 'la'], porte: ['à la', 'la'], arc: ['à l’', 'l’'], capitole: ['au', 'le'], colonnade: ['à la', 'la'],
+  citadelle: ['à la', 'la'], collège: ['au', 'le'], marché: ['au', 'le'], rue: ['dans la', 'la'], avenue: ['sur l’', 'l’'], boutique: ['dans la', 'la'], atelier: ['dans l’', 'l’'], grotte: ['dans la', 'la'],
+  escalier: ['dans l’', 'l’'], tombeau: ['dans le', 'le'], loggetta: ['à la', 'la'], guilde: ['à la', 'la'], halle: ['à la', 'la'], salles: ['dans les', 'les'], petits: ['dans les', 'les'], vieille: ['dans la', 'la'],
+  façade: ['sur la', 'la'], rotonde: ['dans la', 'la'], ministère: ['au', 'le'], mairie: ['à la', 'la'], chapelles: ['dans les', 'les'], compagnie: ['à la', 'la'], camerino: ['dans le', 'le'], torre: ['à la', 'la'],
+  quinta: ['à la', 'la'], bassin: ['dans le', 'le'], monument: ['au', 'le'], quai: ['sur le', 'le'], 'rond-point': ['au', 'le'], mercato: ['au', 'le'], panthéon: ['au', 'le'], 'comédie-française': ['à la', 'la'],
+  piazzale: ['sur la', 'la'], pieve: ['dans la', 'la'], collegiata: ['dans la', 'la'], oratorio: ['dans l’', 'l’'], colonne: ['sur la', 'la'],
+};
+const IMP_PLACE_WORDS_NK = Object.fromEntries(Object.entries({ ...IMP_PLACE_EXTRA, ...IMP_PLACE_WORDS }).map(([k, v]) => [impNk(k), v]));
+const IMP_REGIONS = { 'dakota du sud': 'dans le Dakota du Sud', 'dakota du nord': 'dans le Dakota du Nord', virginie: 'en Virginie', yorkshire: 'dans le Yorkshire', derbyshire: 'dans le Derbyshire', norfolk: 'dans le Norfolk', suffolk: 'dans le Suffolk', oregon: 'dans l’Oregon', ohio: 'dans l’Ohio', massachusetts: 'dans le Massachusetts', malte: 'à Malte' };
+const IMP_PLACE_KW = [   // [expression sur le nom sans accents, genre] ; le premier qui correspond gagne
+  [/\bgalleries\b/, 'p'],
+  [/\b(eglise|church|chiesa|kirche|iglesia|igreja|cathedrale|cathedral|basilique|basilica|chapelle|cappella|collegiale|abbaye|abbey|kloster|oratoire|sanctuaire)\b|kirche\b|kerk|kapelle|collegiata|pieve/, 'ch-f'],
+  [/\b(duomo|dom|baptistere|battistero|temple|tempio|cloitre|refectoire|oratorio)\b/, 'ch-m'],
+  [/kunstsammlungen/, 'p'],
+  [/museum|museo|musee|museu|muzeum|museet|mauritshuis|\b(complexe|centre|center|collegio|cenacolo|casino|castello|kunsthaus|palace|palais|palazzo|chateau|schloss|institut|institute|couvent|convento|hotel|hospice|ospedale|hopital|hospital|college|castle|priory|zentrum|zwinger|gewolbe)\b|haus$/, 'm'],
+  [/galer|gallery|galleria|pinacot|pinakothek|kunsthalle|\b(badia|rocca|sainte maison|bibliotheque|library|biblioteca|villa|fondation|foundation|academie|academy|accademia|academia|scuola|loggia|university|universite|universitat|glyptotek|kunstsammlung|santa casa)\b|^ca['’ ]/, 'f'],
+  [/collection/, 'c'],
+];
+function impSegPhrase(seg) {   // un segment après le nom du lieu : sous-lieu connu (« au château de Versailles »), région, ou ville (« à Paris », « au Havre »)
+  const c = String(seg || '').trim(); if (!c || c === '-') return '';
+  const r = IMP_REGIONS[impNk(c)]; if (r) return r;
+  let m;
+  if (/^vatican$/i.test(c)) return 'au Vatican';
+  if ((m = c.match(/^le\s+(.*)$/i))) return `au ${m[1]}`;
+  if ((m = c.match(/^les\s+(.*)$/i))) return `aux ${m[1]}`;
+  const w = (c.match(/^[\p{L}’'-]+/u) || [''])[0]; const e = IMP_PLACE_WORDS_NK[impNk(w)];
+  if (e && !/^place$/i.test(w)) { const art = e[0]; const body = impLowerFirst(c); return art.endsWith('’') ? `${art}${body}` : `${art} ${body}`; }
+  return `à ${c}`;
+}
 function impPlacePhrase(txt, kind) {   // kind 0 = « dans la chapelle… », kind 1 = « la chapelle… » (après « pour »)
   const t = String(txt || '').trim(); if (!t) return '';
   let m;
   if ((m = t.match(/^(les|aux)\s+(.*)$/i))) return kind === 0 ? `aux ${m[2]}` : `les ${m[2]}`;
   if ((m = t.match(/^musées\b(.*)$/i))) return kind === 0 ? `aux musées${m[1]}` : `les musées${m[1]}`;
-  const w = (t.match(/^[\p{L}’'-]+/u) || [''])[0].toLowerCase();
-  const e = IMP_PLACE_WORDS[w]; if (!e) return '';
-  const art = e[kind]; const body = impLowerFirst(t);
-  const full = art.endsWith('’') ? `${art}${body}` : `${art} ${body}`;
-  // « …, Paris » → « … à Paris » (la ville en dernier) ; Vatican → « au Vatican »
-  return full.replace(/,\s*([^,]+)$/, (m0, city) => (/^vatican$/i.test(city.trim()) ? ' au Vatican' : (/^(le|la|les)\s/i.test(city.trim()) ? ` à ${city.trim()}` : ` à ${city.trim()}`)));
+  const segs = t.split(/\s*,\s*/); const name = segs[0];
+  const tail = segs.slice(1).map(impSegPhrase).filter(Boolean).map((p) => `, ${p}`).join('');
+  const w = (name.match(/^[\p{L}’'-]+/u) || [''])[0];
+  const e = IMP_PLACE_WORDS_NK[impNk(w)];
+  if (e) {   // 1) le premier mot est un nom de lieu connu
+    const art = e[kind]; const body = impLowerFirst(name).replace(/^eglise\b/, 'église');
+    return `${art.endsWith('’') ? `${art}${body}` : `${art} ${body}`}${tail}`;
+  }
+  if ((m = name.match(/^le\s+(.*)$/i))) return `${kind === 0 ? 'au ' : 'le '}${m[1]}${tail}`;   // « Le Rosenbach » → « au Rosenbach »
+  if ((m = name.match(/^la\s+(.*)$/i))) return `${kind === 0 ? 'à la ' : 'la '}${m[1]}${tail}`;
+  const nk = impNk(name);
+  const elide = /^[aeiouy]/.test(nk) || /^(hotel|hopital|hospice)/.test(nk);
+  let g = ''; for (const [re, gg] of IMP_PLACE_KW) { if (re.test(nk)) { g = gg; break; } }
+  let pre;   // [avec préposition, article seul]
+  if (g === 'p') pre = ['aux ', 'les '];
+  else if (g === 'm') pre = elide ? ['à l’', 'l’'] : ['au ', 'le '];
+  else if (g === 'f') pre = elide ? ['à l’', 'l’'] : ['à la ', 'la '];
+  else if (g === 'ch-f') pre = elide ? ['dans l’', 'l’'] : ['dans la ', 'la '];
+  else if (g === 'ch-m') pre = elide ? ['dans l’', 'l’'] : ['dans le ', 'le '];
+  else if (g === 'c') pre = ['dans la ', 'la '];
+  else pre = ['à ', ''];   // nom propre sans article reconnu : « à Upton House », « à Tate Britain »
+  return `${pre[kind]}${name}${tail}`;
 }
 function impDeNom(c) { return /^le\s/i.test(c) ? `du ${c.slice(3)}` : (/^[aeiouyhàâäéèêëîïôöùûüœ]/i.test(c) ? `d’${c}` : `de ${c}`); }
 function impPersonPhrase(name) {   // « Pape Jules II » → « le pape Jules II »
@@ -12240,29 +12364,42 @@ function impWorkInfo(work) {
   const m = gender === 'm';
   return { desig, m, pron: m ? 'il' : 'elle', e: m ? '' : 'e', le: m ? 'le' : 'la', dem: noun ? `${m ? 'ce' : 'cette'} ${noun}` : 'cette œuvre', known: !!gender };
 }
-let impVariantSeed = Math.floor(Math.random() * 7);   // v301 : point de départ au hasard, puis les formules tournent d'une œuvre à l'autre (jamais deux fois de suite la même)
+let impVariantSeed = Math.floor(Math.random() * 5);   // v301 : point de départ au hasard, puis les formules tournent d'une œuvre à l'autre (jamais deux fois de suite la même)
 // 7 formules (les 4 de la maquette de Stéphane + 3 qui s'adressent directement au joueur). Règle de Stéphane : les pronoms suivent le PREMIER mot employé —
 // « une œuvre » / « cette œuvre » → elle ; « le retable » → il ; « la fresque » → elle. Quand le titre ne commence pas par un nom d'objet connu
 // (« Mars », « Adam et Ève »…), on ne garde que les formules qui parlent d'« œuvre » (3, 4, 6), pour que les pronoms soient toujours justes.
-const IMP_VARIANT_WORK = new Set([0, 1, 2, 5]);
+const IMP_VARIANT_WORK = new Set([0, 1, 2]);   // v304 : 5 formules (0 à 4) ; 0, 1, 2 parlent du « retable / de la fresque » (pronom selon le titre), 3 d'« une œuvre », 4 de « ce tableau » (selon la nature)
+// v304 (retour Stéphane, PRESENTATION_IMPREGNATION version 5) : 5 formules (les 4 de la maquette + la « version 5 » : « Regardons maintenant ce tableau, réalisé par… »), et NOUVEL ORDRE :
+// lieu actuel, ensemble, commanditaire, lieu initial. Le lieu actuel est dit dans une phrase (jamais « Le lieu de conservation actuel est le suivant »), puis le commanditaire PUIS le
+// lieu initial s'enchaînent dans la même phrase (« …, mais à l’origine il avait été commandé par X pour Y »). Quand l'œuvre fait partie d'un ensemble, celui-ci s'intercale (segment à part,
+// avec ses images) et l'origine est alors dite après lui, en une phrase qui reprend « l’ensemble » (« À l’origine, l’ensemble avait été commandé par X pour Y »).
+const IMP_NV = 5;
+function impNatureInfo(work) {   // « Tableau » → « ce tableau » (masculin) ; « Statue » → « cette statue » ; à défaut « cette œuvre »
+  const w = ((String(work.nature || '').trim().match(/^[\p{L}’'-]+/u)) || [''])[0]; const k = impNk(w);
+  const isM = !!w && IMP_NATURE_G.m.some((x) => impNk(x) === k); const isF = !!w && IMP_NATURE_G.f.some((x) => impNk(x) === k);
+  if (!isM && !isF) return { m: false, pron: 'elle', e: 'e', le: 'la', dem: 'cette œuvre' };
+  const lw = impLowerFirst(w);
+  return isM ? { m: true, pron: 'il', e: '', le: 'le', dem: `${/^[aeiouyàâäéèêëîïôöùûü]/i.test(lw) ? 'cet' : 'ce'} ${lw}` } : { m: false, pron: 'elle', e: 'e', le: 'la', dem: `cette ${lw}` };
+}
 function impLinkedSegment(work, keys) {
   const has = (k) => keys.includes(k);
   const h = impHash(`${work.title}|${work.artist}|${work.date}`);
   const winfo = impWorkInfo(work);
-  const order = winfo.known ? [0, 1, 2, 3, 4, 5, 6] : [3, 4, 6];
-  const k0 = (((typeof impIndex === 'number' ? impIndex : 0) + impVariantSeed) % 7 + 7) % 7;
+  const order = winfo.known ? [0, 1, 2, 3, 4] : [3, 4];
+  const k0 = (((typeof impIndex === 'number' ? impIndex : 0) + impVariantSeed) % IMP_NV + IMP_NV) % IMP_NV;
   const V = order[k0 % order.length];
-  const info = IMP_VARIANT_WORK.has(V) ? winfo : { ...winfo, m: false, pron: 'elle', e: 'e', le: 'la', dem: 'cette œuvre' };
+  const info = IMP_VARIANT_WORK.has(V) ? winfo : (V === 4 ? impNatureInfo(work) : { ...winfo, m: false, pron: 'elle', e: 'e', le: 'la', dem: 'cette œuvre' });
   const parts = []; const offsets = {};
   const add = (key, txt) => { if (!txt) return; offsets[key] = parts.join(' ').length + (parts.length ? 1 : 0); parts.push(txt); };
   if (has('artist') || has('title') || has('date') || has('materiaux') || has('dimensions')) {
-    const A = has('artist') ? spokenArtistFull(work, true) : ''; const T = has('title') ? `« ${work.title} »` : ''; const rawD = has('date') ? String(work.date || '').trim() : '';
+    const A = has('artist') ? spokenArtistFull(work, true) : ''; const T = has('title') ? `« ${work.title} »` : ''; const rawD = has('date') ? String(work.date || '').trim() : '';
     const D = rawD ? impDateAdverb(rawD) : '';
     const deA = A ? impArtistDe(A) : '';
     const centEnd = /00$/.test(rawD);   // une phrase ne doit pas finir par une année en « cent »
     const dated = /^\d{3,4}(\s+environ)?$/i.test(rawD) ? `datée de ${rawD}` : (D ? `réalisée ${D}` : '');
     const Dp = D ? ` ${D}` : '';
-    const vb = ['créé', 'réalisé', 'imaginé'][h % 3]; const { e, pron, le } = info;
+    const D4 = D.replace(/^vers /, 'aux alentours de ');
+    const vb = ['créé', 'réalisé', 'imaginé'][h % 3]; const { e, pron, le, dem } = info;
     let s1 = '';
     if (A && has('title')) {
       const desig = winfo.desig;
@@ -12271,9 +12408,7 @@ function impLinkedSegment(work, keys) {
         `Vous voyez ici ${desig}, ${vb}${e}${Dp} par ${A}.`,
         `Je vous présente maintenant ${desig}, imaginé${e}${Dp} par ${A}.`,
         D ? (centEnd ? `Voici une œuvre ${deA}, ${dated} : ${desig}.` : `Voici une œuvre ${deA}, ${desig}, ${dated}.`) : `Voici une œuvre ${deA}, ${desig}.`,
-        `Regardez bien cette œuvre ${deA}${D ? `, réalisée ${D}` : ''} : ${desig}.`,
-        `Voici ${desig}, ${vb}${e}${Dp} par ${A}.`,
-        `Je vous propose d’observer une œuvre ${deA}${D ? `, réalisée ${D}` : ''} : ${desig}.`,
+        D ? (centEnd ? `Regardons maintenant ${dem}, réalisé${e} ${D4} par ${A}.` : `Regardons maintenant ${dem}, réalisé${e} par ${A} ${D4}.`) : `Regardons maintenant ${dem}, réalisé${e} par ${A}.`,
       ][V];
     } else if (A && T) s1 = `Voici une œuvre ${deA} : ${T}.`;
     else if (A && D) s1 = `${impUpperFirst(D)}, ${A} réalise cette œuvre.`;
@@ -12291,15 +12426,13 @@ function impLinkedSegment(work, keys) {
       `${impUpperFirst(pron)} est composé${e} des matériaux suivants : ${matL}.`,
       `Voici les matériaux employés : ${matL}.`,
       `Pour la réaliser, l’artiste a utilisé les matériaux suivants : ${matL}.`,
-      `Pour ${le} réaliser, l’artiste a employé les matériaux suivants : ${matL}.`,
-      `La nature et le matériau de l’œuvre sont les suivants : ${matL}.`,
     ][V]));
     const dimPhrase = has('dimensions') ? spokenDimensionsPhrase(work) : '';
     if (dimPhrase) {
       if (!/^de\s/.test(dimPhrase)) add('dimensions', `${dimPhrase.replace(/\.\s*$/, '')}.`);
       else {
         const d = dimPhrase.replace(/^de\s+/, '');
-        let sd = [`Ses dimensions sont ${dimPhrase}.`, '', `${impUpperFirst(pron)} mesure ${d}.`, `${impUpperFirst(pron)} mesure ${d}.`, `Elle fait ${d}.`, `${impUpperFirst(pron)} mesure ${d}.`, `Elle mesure ${d}.`][V];
+        let sd = [`Ses dimensions sont ${dimPhrase}.`, '', `${impUpperFirst(pron)} mesure ${d}.`, `${impUpperFirst(pron)} mesure ${d}.`, `${impUpperFirst(pron)} fait ${d}.`][V];
         if (V === 1) {   // « Sa hauteur est de … Sa longueur, de … »
           const dv = [['hauteur', work.hauteur], ['longueur', work.longueur], ['profondeur', work.profondeur]].filter((x) => String(x[1] || '').trim()).map((x) => [x[0], spokenDimensionValue(x[1]).text]);
           sd = dv.length ? dv.map((x, i) => (i === 0 ? `Sa ${x[0]} est de ${x[1]}.` : `Sa ${x[0]}, de ${x[1]}.`)).join(' ') : `Ses dimensions sont ${dimPhrase}.`;
@@ -12311,58 +12444,58 @@ function impLinkedSegment(work, keys) {
     offsets.title = 0; offsets.artist = 0; offsets.date = offsets.materiaux ?? offsets.dimensions ?? 0;
     return { text: parts.join(' '), offsets };
   }
-  if (has('location')) {
-    const loc = String(work.location || '').trim(); const ini = String(work.lieuInitial || '').trim(); const com = String(work.commanditaire || '').trim();
-    const P = impPlacePhrase(loc, 0); const Lp = impPlacePhrase(ini, 0); const Ld = impPlacePhrase(ini, 1); const C = com ? impPersonPhrase(com) : '';
-    const deC = C ? impDeNom(C) : '';
+  if (has('location') || has('commanditaire') || has('lieuInitial')) {
+    const fresh = !has('location');   // segment d'origine seul : il vient APRÈS l'ensemble (« L’ensemble avait été commandé par… »)
+    const loc = String(work.location || '').trim(); const iniAll = String(work.lieuInitial || '').trim();
+    const ini = has('lieuInitial') ? iniAll : ''; const com = has('commanditaire') ? String(work.commanditaire || '').trim() : '';
+    const P = fresh ? '' : impPlacePhrase(loc, 0);
+    const C = com ? impPersonPhrase(com) : ''; const deC = C ? impDeNom(C) : ''; const Cc = /,/.test(C) ? `${C},` : C;   // « Jean sans Peur, duc de Bourgogne, pour… »
     const firstSeg = keyName(loc.split(',')[0] || '');
-    const sameSpot = !!(ini && loc && firstSeg && keyName(ini).includes(firstSeg));
-    const { pron, e, le, dem } = info;
+    const sameSpot = !!(iniAll && loc && firstSeg && keyName(iniAll).includes(firstSeg));
+    let Lp = ini ? impPlacePhrase(ini, 0) : ''; let Ld = ini ? impPlacePhrase(ini, 1) : '';
+    if (fresh && sameSpot && C) { Lp = ''; Ld = ''; }   // l'œuvre est encore là où elle a été commandée : inutile de répéter le lieu
+    let { pron, e, le, dem } = info;
+    if (fresh) { pron = 'l’ensemble'; e = ''; }
+    // origine : le commanditaire PUIS le lieu initial
+    let orig = '';
+    if (C && Ld) orig = [
+      `à l’origine ${pron} avait été commandé${e} par ${Cc} pour ${Ld}`,
+      `${pron} avait été créé${e} à l’initiative ${deC}, pour ${Ld}`,
+      `à l’origine, ${Cc} en était le commanditaire et ${pron} se trouvait ${Lp}`,
+      `originellement ${pron} avait été commandé${e} par ${C}, pour ${Ld}`,
+      `${pron} a été commandé${e} par ${Cc} pour ${Ld}`,
+    ][V];
+    else if (C) orig = [
+      `à l’origine ${pron} avait été commandé${e} par ${C}`,
+      `${pron} avait été créé${e} à l’initiative ${deC}`,
+      `${Cc} en était le commanditaire`,
+      `originellement ${pron} avait été commandé${e} par ${C}`,
+      `${pron} a été commandé${e} par ${C}`,
+    ][V];
+    else if (Ld) orig = [
+      `à l’origine ${pron} avait été créé${e} pour ${Ld}`,
+      `${pron} avait été créé${e} pour ${Ld}`,
+      `à l’origine, ${pron} se trouvait ${Lp}`,
+      `originellement ${pron} avait été placé${e} ${Lp}`,
+      `${pron} a été créé${e} pour ${Ld}`,
+    ][V];
     let s = '';
-    if (sameSpot && P) s = `${impUpperFirst(pron)} se trouve toujours ${P}, là où ${pron} avait été créé${e}${C ? `, sur commande ${deC}` : ''}.`;
-    else {
-      const curCore = P ? [
+    if (fresh) s = orig ? `${impUpperFirst(orig)}.` : '';
+    else if (sameSpot && P && ini) s = `${impUpperFirst(pron)} se trouve toujours ${P}, là où ${pron} avait été créé${e}${C ? `, sur commande ${deC}` : ''}.`;
+    else if (P) {
+      const verb = /^dans\b/.test(P) ? 'conservé' : 'exposé';
+      const cur = [
         `${impUpperFirst(dem)} est actuellement conservé${e} ${P}`,
         `On peut ${le} voir actuellement ${P}`,
         `On peut aujourd’hui ${le} voir ${P}`,
         `${impUpperFirst(pron)} est actuellement conservé${e} ${P}`,
-        `Aujourd’hui, vous pouvez ${le} voir ${P}`,
-        `Vous pouvez ${le} voir actuellement ${P}`,
-        `${impUpperFirst(pron)} est conservé${e} aujourd’hui ${P}`,
-      ][V] : '';
-      let init = ''; let extra = '';
-      if (ini && !Lp) extra = ` Le lieu de conservation initial est le suivant : ${ini}.`;
-      if (Ld && C) init = [
-        `mais à l’origine ${pron} avait été créé${e} pour ${Ld} sur une commande ${deC}`,
-        `mais ${pron} avait été créé${e} pour ${Ld}, à l’initiative ${deC}`,
-        `mais à l’origine, ${pron} se trouvait ${Lp} et ${C} en était le commanditaire`,
-        `mais originellement ${pron} avait été commandé${e} par ${C}, pour ${Ld}`,
-        `mais à l’origine, ${pron} avait été commandé${e} par ${C} pour ${Ld}`,
-        `mais à l’origine ${pron} avait été créé${e} pour ${Ld}, à la demande ${deC}`,
-        `mais à l’origine ${pron} se trouvait ${Lp}, commandé${e} par ${C}`,
+        `${impUpperFirst(dem)} est ${verb}${e} ${P}`,
       ][V];
-      else if (Ld) init = [
-        `mais à l’origine ${pron} avait été créé${e} pour ${Ld}`,
-        `mais ${pron} avait été créé${e} pour ${Ld}`,
-        `mais à l’origine, ${pron} se trouvait ${Lp}`,
-        `mais originellement ${pron} avait été placé${e} ${Lp}`,
-        `mais à l’origine, ${pron} avait été créé${e} pour ${Ld}`,
-        `mais ${pron} avait été créé${e} pour ${Ld}`,
-        `mais à l’origine ${pron} se trouvait ${Lp}`,
-      ][V];
-      else if (C) init = [
-        `mais à l’origine ${pron} avait été commandé${e} par ${C}`,
-        `mais ${pron} avait été créé${e} à l’initiative ${deC}`,
-        `mais ${C} en était le commanditaire`,
-        `mais originellement ${pron} avait été commandé${e} par ${C}`,
-        `mais à l’origine, ${pron} avait été commandé${e} par ${C}`,
-        `mais ${pron} avait été créé${e} à la demande ${deC}`,
-        `mais à l’origine ${pron} avait été commandé${e} par ${C}`,
-      ][V];
-      if (P) s = `${curCore}${init ? `, ${init}` : ''}.${extra}`;
-      else s = `Le lieu de conservation actuel est le suivant : ${loc}.${init ? ` ${impUpperFirst(init)}.` : ''}${extra}`;
-    }
-    add('location', s); offsets.lieuInitial = 0; offsets.commanditaire = 0;
+      s = orig ? (V === 4 ? `${cur}. ${impUpperFirst(orig)}.` : `${cur}, mais ${orig}.`) : `${cur}.`;
+    } else s = `Le lieu de conservation actuel est le suivant : ${loc}.${orig ? ` ${impUpperFirst(orig)}.` : ''}`;
+    if (!s) return null;
+    add(fresh ? (com ? 'commanditaire' : 'lieuInitial') : 'location', s);
+    ['location', 'commanditaire', 'lieuInitial'].forEach((k) => { if (has(k)) offsets[k] = 0; });
     return { text: parts.join(' '), offsets };
   }
   return null;
@@ -13948,9 +14081,9 @@ function impShowCurrent() {
     // v299 (retour Stéphane : « le lieu de conservation avant Ensemble, sinon on confond le lieu d'un panneau avec les différents lieux des panneaux de l'ensemble ») : ordre = ..., Dimensions, Lieu de conservation, puis Ensemble (annule le v74).
     { key: 'location', label: 'Lieu de conservation actuel', value: workFlag(work) ? `${escapeHtml(work.location)} <span title="${escapeHtml(workCountryName(work))}">${workFlag(work)}</span>` : escapeHtml(work.location), spoken: work.location, on: fieldOn('location') },
     // v300 : lieu de conservation initial puis commanditaire, juste après le lieu actuel (rubriques absentes quand la cellule est vide)
-    { key: 'lieuInitial', label: 'Lieu de conservation initial', value: escapeHtml(work.lieuInitial), spoken: work.lieuInitial ? (impPlacePhrase(work.lieuInitial, 1) ? `Le lieu de conservation initial est ${impPlacePhrase(work.lieuInitial, 1)}.` : `Le lieu de conservation initial est le suivant : ${work.lieuInitial}.`) : '', on: !!work.lieuInitial && (showFullCorrection || !anyFieldChecked) },
-    { key: 'commanditaire', label: 'Commanditaire', value: escapeHtml(work.commanditaire), spoken: work.commanditaire ? `Le commanditaire est ${impPersonPhrase(work.commanditaire)}.` : '', on: !!work.commanditaire && (showFullCorrection || !anyFieldChecked) },
     { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: ensembleSpoken(work), on: !!work.cycle && (showFullCorrection || !anyFieldChecked) /* v294 (retour Stéphane : « après Dimensions, une rubrique Ensemble avec l'indication de la colonne M, et l'image de la colonne N qui apparaît à ce moment-là ») : rubrique rétablie (écrite ET lue) ; l'image du cycle se montre quand la voix lit cette rubrique (voir impSpeakSegment) */ },
+    { key: 'commanditaire', label: 'Commanditaire', value: escapeHtml(work.commanditaire), spoken: work.commanditaire ? `Le commanditaire est ${impPersonPhrase(work.commanditaire)}.` : '', on: !!work.commanditaire && (showFullCorrection || !anyFieldChecked) },
+    { key: 'lieuInitial', label: 'Lieu de conservation initial', value: escapeHtml(work.lieuInitial), spoken: work.lieuInitial ? (impPlacePhrase(work.lieuInitial, 1) ? `Le lieu de conservation initial est ${impPlacePhrase(work.lieuInitial, 1)}.` : `Le lieu de conservation initial est le suivant : ${work.lieuInitial}.`) : '', on: !!work.lieuInitial && (showFullCorrection || !anyFieldChecked) },
   ].filter((f) => f.on);
 
   // v301 (retour Stéphane : « les petits haut-parleurs en dessous, avec "En savoir plus sur…" : on écoute d'abord la notice, on approfondit après ») :
@@ -13992,7 +14125,7 @@ function impShowCurrent() {
     // Ensemble n'existant plus, le Lieu démarre TOUJOURS son propre segment (2 s de silence avant lui,
     // et l'image du lieu n'apparaît qu'une fois ce segment commencé, donc jamais pendant qu'on lit
     // encore le titre ou les dimensions) — jusqu'ici il ne le faisait que juste après Matériau/Ensemble.
-    const startsNewSegment = f.key === 'cycle' || f.key === 'location' || (!impLinkedMode && ((f.key === 'materiaux' && prev && prev.key === 'date') || (f.key === 'date' && prev && prev.key === 'title')));   // v301 : en mode lié, artiste→dimensions = un seul bloc
+    const startsNewSegment = f.key === 'cycle' || f.key === 'location' || (prev && prev.key === 'cycle') || (!impLinkedMode && ((f.key === 'materiaux' && prev && prev.key === 'date') || (f.key === 'date' && prev && prev.key === 'title')));   // v301 : en mode lié, artiste→dimensions = un seul bloc
     if (startsNewSegment && currentSpeechSegment.length) { speechSegments.push(currentSpeechSegment); currentSpeechSegment = []; }
     currentSpeechSegment.push(f);
   });
