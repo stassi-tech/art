@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v309';
+const APP_VERSION = 'v311';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -4896,7 +4896,7 @@ function spokenDimensionsPhrase(work) {
   // Dès qu'une dimension est dite en mètres, chacune dit son unité (sinon « 2 mètres de hauteur, 50 de longueur » prêterait à confusion) ;
   // sinon règle d'avant : l'unité n'est dite que sur la dernière.
   const anyMeters = raw.some((d) => d.meters || (d.unit && d.unit !== 'cm'));
-  const parts = raw.map((d, i) => `${anyMeters || i === raw.length - 1 ? d.text : (d.bare ?? d.text)} de ${labels[d.key]}`);
+  const parts = raw.map((d) => `${d.text} de ${labels[d.key]}`);   // v311 : l'unité est dite sur chaque dimension (« 67 centimètres de hauteur, et 43 centimètres de longueur »)
   if (!parts.length) return '';
   if (parts.length === 1) return `de ${parts[0]}`;
   return `de ${parts.slice(0, -1).join(', ')}, et ${parts[parts.length - 1]}`;
@@ -12413,8 +12413,10 @@ function impLinkedSegment(work, keys) {
   // 1) la présentation (s1) n'emploie jamais le mot de la nature ; 2) tout ce qui suit (matériaux, dimensions, lieu, origine) suit le genre du mot de Nature, s'il y en a un.
   const natInfo = impNatureInfo(work); const natureKnown = natInfo.dem !== 'cette œuvre';
   const baseInfo = IMP_VARIANT_WORK.has(V) ? winfo : { ...winfo, m: false, pron: 'elle', e: 'e', le: 'la', dem: 'cette œuvre' };
-  const sup = natureKnown ? null : impSupportParse(matPhrase(work));
-  const info = natureKnown ? natInfo : (sup ? { m: sup.g === 'm', pron: sup.g === 'm' ? 'il' : 'elle', e: sup.g === 'm' ? '' : 'e', le: sup.g === 'm' ? 'le' : 'la', dem: `${sup.g === 'm' ? 'ce' : 'cette'} ${sup.head}`, support: sup } : baseInfo);
+  // v310 : « Tableau » / « Peinture » en colonne Nature ne sont pas lus (l'écran ne les montre pas non plus) : c'est donc le support (« panneau de bois », « toile ») qui donne le nom et les pronoms
+  const genreOnly = /^(tableau|peinture)$/.test(impNk(String(work.nature || '').trim()));
+  const sup = (natureKnown && !genreOnly) ? null : impSupportParse(matPhrase(work));
+  const info = (natureKnown && !sup) ? natInfo : (sup ? { m: sup.g === 'm', pron: sup.g === 'm' ? 'il' : 'elle', e: sup.g === 'm' ? '' : 'e', le: sup.g === 'm' ? 'le' : 'la', dem: `${sup.g === 'm' ? 'ce' : 'cette'} ${sup.head}`, support: sup } : baseInfo);
   const parts = []; const offsets = {};
   const add = (key, txt) => { if (!txt) return; offsets[key] = parts.join(' ').length + (parts.length ? 1 : 0); parts.push(txt); };
   if (has('artist') || has('title') || has('date') || has('materiaux') || has('dimensions')) {
@@ -12427,14 +12429,15 @@ function impLinkedSegment(work, keys) {
     const D4 = D.replace(/^vers /, 'aux alentours de ');
     const vb = ['créé', 'réalisé', 'imaginé'][h % 3]; const { e, pron, le, dem } = info;
     let s1 = '';
+    const Ac = /,\s*dit\s/i.test(A) ? `${A},` : A;   // v311 : « Antonio di Puccio Pisano, dit Pisanello, a imaginé… »
     if (A && has('title')) {
       const desig = winfo.desig;
       s1 = [
-        D && centEnd ? `${impUpperFirst(D)}, ${A} a ${vb} ${desig}.` : `${A} a ${vb} ${desig}${Dp}.`,
+        D && centEnd ? `${impUpperFirst(D)}, ${Ac} a ${vb} ${desig}.` : `${Ac} a ${vb} ${desig}${Dp}.`,
         `Vous voyez ici ${desig}, ${vb}${winfo.e}${Dp} par ${A}.`,
         `Je vous présente maintenant ${desig}, imaginé${winfo.e}${Dp} par ${A}.`,
         D ? (centEnd ? `Voici une œuvre ${deA}, ${dated} : ${desig}.` : `Voici une œuvre ${deA}, ${desig}, ${dated}.`) : `Voici une œuvre ${deA}, ${desig}.`,
-        D ? (centEnd ? `Regardons maintenant cette œuvre, ${desig}, réalisée ${D4} par ${A}.` : `Regardons maintenant cette œuvre, ${desig}, réalisée par ${A} ${D4}.`) : `Regardons maintenant cette œuvre, ${desig}, réalisée par ${A}.`,   // v306 : cette formule oubliait le titre
+        D ? (centEnd ? `Regardons maintenant cette œuvre, ${desig}, réalisée ${D4} par ${A}.` : `Regardons maintenant cette œuvre, ${desig}, réalisée par ${Ac} ${D4}.`) : `Regardons maintenant cette œuvre, ${desig}, réalisée par ${A}.`,   // v306 : cette formule oubliait le titre
       ][V];
     } else if (A && T) s1 = `Voici une œuvre ${deA} : ${T}.`;
     else if (A && D) s1 = `${impUpperFirst(D)}, ${A} réalise cette œuvre.`;
