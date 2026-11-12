@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v311';
+const APP_VERSION = 'v313';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -12519,10 +12519,18 @@ function impLinkedSegment(work, keys) {
       `${pron} a été créé${e} pour ${Ld}`,
     ][V];
     let s = '';
-    if (fresh) s = (sameSpot && !C) ? 'L’œuvre n’a jamais changé de place.' : (orig ? `${impUpperFirst(orig)}.` : '');   // v307
+    if (fresh) s = (sameSpot && !C) ? 'L’œuvre est conservée au même endroit depuis l’origine.' : (orig ? `${impUpperFirst(orig)}.` : '');   // v307
     else if (sameSpot && P && ini) {   // v307 : le lieu actuel EST le lieu initial : on le dit, avec le nom le plus précis des deux
+      // v313 (retour Stéphane : « il est conservé dans l'église Santa Trinita, à Florence, depuis l'origine » : on comprend que le lieu n'a pas changé)
       const Pp = iniMorePrecise && Lp ? Lp : P;
-      s = `${impUpperFirst(pron)} se trouve toujours ${Pp}, là où ${pron} avait été créé${e}${C ? `, sur commande ${deC}` : ''}.`;
+      const base = [
+        `${impUpperFirst(pron)} est conservé${e} ${Pp}, depuis l’origine`,
+        `Depuis l’origine, ${pron} est conservé${e} ${Pp}`,
+        `On peut ${le} voir ${Pp}, depuis l’origine`,
+        `Depuis l’origine, on peut ${le} voir ${Pp}`,
+        `${impUpperFirst(dem)} est conservé${e} ${Pp}, depuis l’origine`,
+      ][V];
+      s = `${base}.${C ? ` ${impUpperFirst(pron)} a été commandé${e} par ${Cc} pour ce lieu.` : ''}`;
     }
     else if (P) {
       const verb = /^dans\b/.test(P) ? 'conservé' : 'exposé';
@@ -12533,7 +12541,12 @@ function impLinkedSegment(work, keys) {
         `${impUpperFirst(pron)} est actuellement conservé${e} ${P}`,
         `${impUpperFirst(dem)} est ${verb}${e} ${P}`,
       ][V];
-      s = orig ? (V === 4 ? `${cur}. ${impUpperFirst(orig)}.` : `${cur}, mais ${orig}.`) : `${cur}.`;
+      // v312 (règle de Stéphane : « lieu initial » vide = inconnu OU identique au lieu actuel) : sans lieu initial, rien n'oppose le lieu actuel à l'origine : pas de « mais à l'origine »,
+      // on enchaîne simplement « Il a été commandé par… »
+      if (C && !Ld && !fresh) {
+        const oc = [`${pron} a été commandé${e} par ${Cc}`, `${pron} avait été créé${e} à l’initiative ${deC}`, `${Cc} en était le commanditaire`, `${pron} a été commandé${e} par ${Cc}`, `${pron} a été commandé${e} par ${Cc}`][V];
+        s = `${cur}. ${impUpperFirst(oc.replace(/,$/, ''))}.`;
+      } else s = orig ? (V === 4 ? `${cur}. ${impUpperFirst(orig)}.` : `${cur}, mais ${orig}.`) : `${cur}.`;
     } else s = `Le lieu de conservation actuel est le suivant : ${loc}.${orig ? ` ${impUpperFirst(orig)}.` : ''}`;
     if (!s) return null;
     add(fresh ? (com ? 'commanditaire' : 'lieuInitial') : 'location', s);
