@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v304';
+const APP_VERSION = 'v305';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -12198,6 +12198,8 @@ const IMP_PLACE_EXTRA = {   // v304 : noms de lieux français très courants hor
   façade: ['sur la', 'la'], rotonde: ['dans la', 'la'], ministère: ['au', 'le'], mairie: ['à la', 'la'], chapelles: ['dans les', 'les'], compagnie: ['à la', 'la'], camerino: ['dans le', 'le'], torre: ['à la', 'la'],
   quinta: ['à la', 'la'], bassin: ['dans le', 'le'], monument: ['au', 'le'], quai: ['sur le', 'le'], 'rond-point': ['au', 'le'], mercato: ['au', 'le'], panthéon: ['au', 'le'], 'comédie-française': ['à la', 'la'],
   piazzale: ['sur la', 'la'], pieve: ['dans la', 'la'], collegiata: ['dans la', 'la'], oratorio: ['dans l’', 'l’'], colonne: ['sur la', 'la'],
+  ermitage: ['à l’', 'l’'], hermitage: ['à l’', 'l’'], famille: ['chez la', 'la'], corporation: ['à la', 'la'], commanderie: ['à la', 'la'], appartement: ['dans l’', 'l’'], studiolo: ['dans le', 'le'],
+  prédelle: ['dans la', 'la'], alcázar: ['à l’', 'l’'], castel: ['au', 'le'], chiostro: ['dans le', 'le'],   // v305 (« à l’ermitage de Valle Romita » : la voix oubliait le « l’ »)
 };
 const IMP_PLACE_WORDS_NK = Object.fromEntries(Object.entries({ ...IMP_PLACE_EXTRA, ...IMP_PLACE_WORDS }).map(([k, v]) => [impNk(k), v]));
 const IMP_REGIONS = { 'dakota du sud': 'dans le Dakota du Sud', 'dakota du nord': 'dans le Dakota du Nord', virginie: 'en Virginie', yorkshire: 'dans le Yorkshire', derbyshire: 'dans le Derbyshire', norfolk: 'dans le Norfolk', suffolk: 'dans le Suffolk', oregon: 'dans l’Oregon', ohio: 'dans l’Ohio', massachusetts: 'dans le Massachusetts', malte: 'à Malte' };
@@ -12213,6 +12215,7 @@ const IMP_PLACE_KW = [   // [expression sur le nom sans accents, genre] ; le pre
 function impSegPhrase(seg) {   // un segment après le nom du lieu : sous-lieu connu (« au château de Versailles »), région, ou ville (« à Paris », « au Havre »)
   const c = String(seg || '').trim(); if (!c || c === '-') return '';
   const r = IMP_REGIONS[impNk(c)]; if (r) return r;
+  if (/^(près|pres|au|aux|à|en|dans|sur|sous|devant|derrière|autour|environ)(?![\p{L}])/iu.test(c)) return c;   // v305 : « près de Fabriano » reste tel quel (pas « à près de »)
   let m;
   if (/^vatican$/i.test(c)) return 'au Vatican';
   if ((m = c.match(/^le\s+(.*)$/i))) return `au ${m[1]}`;
@@ -12221,13 +12224,16 @@ function impSegPhrase(seg) {   // un segment après le nom du lieu : sous-lieu c
   if (e && !/^place$/i.test(w)) { const art = e[0]; const body = impLowerFirst(c); return art.endsWith('’') ? `${art}${body}` : `${art} ${body}`; }
   return `à ${c}`;
 }
-function impPlacePhrase(txt, kind) {   // kind 0 = « dans la chapelle… », kind 1 = « la chapelle… » (après « pour »)
+function impPlacePhrase(txt, kind, locTail) {   // kind 0 = « dans la chapelle… », kind 1 = « la chapelle… » (après « pour »)
   const t = String(txt || '').trim(); if (!t) return '';
+  // v305 (retour Stéphane : « si les deux lieux de conservation sont dans la même ville, la voix dit pour le deuxième : dans cette même ville ») : locTail = la ville (segments après le nom) du lieu actuel
+  const sameTail = (a) => !!(locTail && a && keyName(a) === keyName(locTail));
+  if (!/,/.test(t) && sameTail(t)) return kind === 0 ? 'dans cette même ville' : 'cette même ville';
   let m;
   if ((m = t.match(/^(les|aux)\s+(.*)$/i))) return kind === 0 ? `aux ${m[2]}` : `les ${m[2]}`;
   if ((m = t.match(/^musées\b(.*)$/i))) return kind === 0 ? `aux musées${m[1]}` : `les musées${m[1]}`;
   const segs = t.split(/\s*,\s*/); const name = segs[0];
-  const tail = segs.slice(1).map(impSegPhrase).filter(Boolean).map((p) => `, ${p}`).join('');
+  const tail = sameTail(segs.slice(1).join(', ')) ? ', dans cette même ville' : segs.slice(1).map(impSegPhrase).filter(Boolean).map((p) => `, ${p}`).join('');
   const w = (name.match(/^[\p{L}’'-]+/u) || [''])[0];
   const e = IMP_PLACE_WORDS_NK[impNk(w)];
   if (e) {   // 1) le premier mot est un nom de lieu connu
@@ -12325,14 +12331,14 @@ function impMatOne(m, V, info) {
     return [`C’est ${art} ${np}.`, `Il s’agit d’${art} ${np}.`, `C’est ${art} ${np}.`][k];
   }
   const pp = impPaintedParts(t);
-  if (pp && !/^(fresque|enluminure|esquisse)/i.test(t)) return [`${impUpperFirst(subj)} est ${pp.verb}${e} ${pp.clause}.`, `L’artiste l’a ${pp.verb}${e} ${pp.clause}.`, `${impUpperFirst(subj)} a été ${pp.verb}${e} ${pp.clause}.`][k];
+  if (pp && !/^(fresque|enluminure|esquisse)/i.test(t)) return [`${impUpperFirst(subj)} est ${pp.verb}${e} ${pp.clause}.`, `${impUpperFirst(subj)} a été ${pp.verb}${e} ${pp.clause}.`, `${impUpperFirst(info.dem || subj)} est ${pp.verb}${e} ${pp.clause}.`][k]   /* v305 : on parle de l'œuvre, pas de l'artiste */;
   const nm = t.match(/^(fresques|fresque|enluminure|esquisse|peinture|gravure|monotype|fragment)\b/i);
   if (nm && !/^fresque\s+et\b/i.test(t)) {
     const w = nm[1].toLowerCase(); const np = impLowerFirst(t);
     return w === 'fresques' ? `Ce sont des ${np}.` : `C’est ${(w === 'monotype' || w === 'fragment') ? 'un' : 'une'} ${np}.`;
   }
   const mc = impMadeClause(td);
-  if (mc) return [`${impUpperFirst(subj)} est ${mc}.`, `L’artiste l’a réalisé${e} ${mc}.`, `${impUpperFirst(subj)} a été réalisé${e} ${mc}.`][k];
+  if (mc) return [`${impUpperFirst(subj)} est ${mc}.`, `${impUpperFirst(subj)} a été réalisé${e} ${mc}.`, `${impUpperFirst(info.dem || subj)} est ${mc}.`][k];
   return null;
 }
 function impMatSentence(m, V, info) {
@@ -12422,10 +12428,10 @@ function impLinkedSegment(work, keys) {
     const matSentence = mat ? impMatSentence(mat, V, info) : '';
     if (mat) add('materiaux', matSentence || (mono ? mat : [
       `Les matériaux employés sont les suivants : ${matL}.`,
-      `La technique utilisée par l’artiste est la suivante : ${matL}.`,
+      `La technique de l’œuvre est la suivante : ${matL}.`,
       `${impUpperFirst(pron)} est composé${e} des matériaux suivants : ${matL}.`,
       `Voici les matériaux employés : ${matL}.`,
-      `Pour la réaliser, l’artiste a utilisé les matériaux suivants : ${matL}.`,
+      `${impUpperFirst(pron)} est réalisé${e} avec les matériaux suivants : ${matL}.`,
     ][V]));
     const dimPhrase = has('dimensions') ? spokenDimensionsPhrase(work) : '';
     if (dimPhrase) {
@@ -12452,7 +12458,8 @@ function impLinkedSegment(work, keys) {
     const C = com ? impPersonPhrase(com) : ''; const deC = C ? impDeNom(C) : ''; const Cc = /,/.test(C) ? `${C},` : C;   // « Jean sans Peur, duc de Bourgogne, pour… »
     const firstSeg = keyName(loc.split(',')[0] || '');
     const sameSpot = !!(iniAll && loc && firstSeg && keyName(iniAll).includes(firstSeg));
-    let Lp = ini ? impPlacePhrase(ini, 0) : ''; let Ld = ini ? impPlacePhrase(ini, 1) : '';
+    const locTail = loc.split(/\s*,\s*/).slice(1).join(', ');
+    let Lp = ini ? impPlacePhrase(ini, 0, locTail) : ''; let Ld = ini ? impPlacePhrase(ini, 1, locTail) : '';
     if (fresh && sameSpot && C) { Lp = ''; Ld = ''; }   // l'œuvre est encore là où elle a été commandée : inutile de répéter le lieu
     let { pron, e, le, dem } = info;
     if (fresh) { pron = 'l’ensemble'; e = ''; }
@@ -12529,12 +12536,12 @@ function natureTopicButtons(work) {
   }).join('');
 }
 // Même écran « film » que la bio et le texte de l'œuvre, sans portrait : un faux « work » dont le texte est celui du sujet.
-function openImpTopicText(work, id) {
+function openImpTopicText(work, id, autoClose) {
   const t = NATURE_TEXTS && NATURE_TEXTS.get(id); if (!t) return;
   const parsedT = parseBioMarkup(t.text); const first = bioFirstImg(parsedT.marks);
   const lab = (parsedT.title && parsedT.title.text) || t.label;   // v234 : l'en-tête du film reprend son titre (« L'évolution des fontaines »), pas le nom du sujet (« Fontaine »)
   const pseudo = { ...work, workText: t.text, bio: '', artistImage: '', artistImageCaption: '', image: bioWantMode() && first ? '' : (first ? first.ref : ''), title: lab, date: '', topicLabel: lab };
-  if (bioWantMode()) openImpArtistBio(pseudo, true, { work: true, topic: lab }); else openImpWorkText(pseudo, lab);
+  if (bioWantMode()) openImpArtistBio(pseudo, true, { work: true, topic: lab, autoClose: !!autoClose }); else openImpWorkText(pseudo, lab, autoClose);
 }
 function objMatches(r, f, skip) {
   if (!objectsActive(f)) return true;
@@ -14101,7 +14108,7 @@ function impShowCurrent() {
   const tryShowMore = () => { if (moreFlags.txt && moreFlags.voice) $('imp-more')?.classList.add('written'); };
   document.querySelectorAll('#imp-more .imp-more-btn').forEach((b) => b.addEventListener('click', (e) => {
     e.stopPropagation(); const m = moreItems[Number(b.dataset.more)]; if (!m) return;
-    if (m.kind === 'bio') openImpArtistBio(work, true); else if (m.kind === 'work') openImpWorkText(work); else if (m.kind === 'topic') openImpTopicText(work, m.id);
+    if (m.kind === 'bio') openImpArtistBio(work, true, { autoClose: true }); else if (m.kind === 'work') openImpWorkText(work, undefined, true); else if (m.kind === 'topic') openImpTopicText(work, m.id, true);   // v305 : à la fin du film, retour automatique à l'Imprégnation
   }));
 
   // v66 (docx 29 sept, item 8 : « séparer davantage pour la voix la lecture du lieu de celle du
@@ -15117,7 +15124,7 @@ function bioSpeakChunks(plain, offset, sid) {
   // en file d'attente — sur Android, la file de la voix se bloque parfois à la jonction de deux morceaux (justement là où l'image change).
   // On lance désormais UN morceau à la fois, et un chien de garde (bioWatchdog) relance la voix si elle s'est tue sans prévenir.
   const ctl = A.ctl = { sid, u: null, i: -1, t: 0, started: false, advanced: true, tries: 0, idleSince: 0, n: chunks.length, maxMs: 0, speakAt: null, advance: null };
-  const finishAll = () => { A.speaking = false; if (A.dual && A.willSpeak) { A.ended = true; A.paused = false; bioMemClear(); $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); } };
+  const finishAll = () => { A.speaking = false; if (A.dual && A.willSpeak) { A.ended = true; A.paused = false; bioMemClear(); $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); bioAutoCloseSoon(); } };
   const speakAt = (i) => {
     if (sid !== bioAuto.sid) return;
     if (i >= chunks.length) { finishAll(); return; }
@@ -15195,7 +15202,7 @@ function bioSpeakFrom(offset) {
     onStop: () => {
       if (sid !== bioAuto.sid) return;
       bioAuto.speaking = false;
-      if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; bioMemClear(); $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); }
+      if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; bioMemClear(); $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); bioAutoCloseSoon(); }
     },
   });
 }
@@ -15361,6 +15368,7 @@ function openImpArtistBio(work, force, opts) {
   // v165 : le texte de l'œuvre (première personne) passe par le même écran « film » que la bio : opts.work = true
   const isWork = !!(opts && opts.work); const srcRaw = isWork ? (work.workText || '') : ((work.card || work.mapCard) && !(opts && opts.topic) ? bioInsertCard(work.bio || '', work.card || work.mapCard, work.birthCity) : (work.bio || ''));
   const srcSplit = bioSplitRefs(srcRaw); const srcText = srcSplit.text;   // v268 : « Pour aller plus loin » (références) : retirées du texte lu, affichées sous le texte
+  bioAuto.autoClose = !!(opts && opts.autoClose);   // v305 : film lancé par « En savoir plus sur… » : il se ferme tout seul à la fin
   bioAuto.isWork = isWork; bioAuto.topic = (opts && opts.topic) || '';   // v211 : texte « Natures et techniques » (sans portrait ni guillemets)
   const splitEl = $('imp-bio-split');
   const mode = bioWantMode(); const dual = !!mode;
@@ -15432,7 +15440,7 @@ function openImpArtistBio(work, force, opts) {
         onStop: () => {
           if (sid !== bioAuto.sid) return;
           bioAuto.speaking = false;
-          if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; bioMemClear(); $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); }
+          if (bioAuto.dual && bioAuto.willSpeak) { bioAuto.ended = true; bioAuto.paused = false; bioMemClear(); $('imp-bio-split')?.classList.remove('bio-film'); bioSyncButton(); bioFilmExit(); bioAutoCloseSoon(); }
         },
       });
     }
@@ -15442,8 +15450,8 @@ function openImpArtistBio(work, force, opts) {
   if (titleMs) { bioAutoStop(); try { speechSynthesis.cancel(); } catch (e) { /* ignoré */ } bioCur.launch = setTimeout(launch, titleMs); } else launch();
 }
 // v129 : même écran partagé que la bio, mais avec l'image de l'œuvre à gauche et son texte (première personne) à droite.
-function openImpWorkText(work, topicLabel) {
-  if (bioWantMode()) { openImpArtistBio(work, true, { work: true, topic: topicLabel || '' }); return; }
+function openImpWorkText(work, topicLabel, autoClose) {
+  if (bioWantMode()) { openImpArtistBio(work, true, { work: true, topic: topicLabel || '', autoClose: !!autoClose }); return; }
   impClearTimers();
   bioAutoStop(); bioCurtainHide();
   bioAuto.dual = false; bioSyncButton();
@@ -15466,9 +15474,21 @@ function openImpWorkText(work, topicLabel) {
   if (textEl) textEl.textContent = plainWork;
   $('imp-bio-split')?.classList.remove('hidden');
   $('imp-quiz-grid')?.classList.add('imp-bio-open');
-  impSpeak(plainWork, undefined, true);
+  bioAuto.autoClose = false;
+  const sidW = bioAuto.sid;
+  impSpeak(plainWork, autoClose ? () => { bioAuto.autoClose = true; setTimeout(() => { if (sidW === bioAuto.sid && !$('imp-bio-split')?.classList.contains('hidden')) closeImpArtistBio(); }, 1200); } : undefined, true);   // v305
+}
+// v305 (retour Stéphane : « à la fin du petit film, il faut qu'il revienne automatiquement sur la page d'origine, sans avoir appuyé sur la croix ») :
+// appelée quand la lecture du film est finie ; attend la fin du fondu de sortie éventuel, puis ferme comme la croix — sauf si le joueur a entre-temps relancé, mis en pause ou fermé le film.
+function bioAutoCloseSoon() {
+  if (!bioAuto.autoClose) return;
+  const sid = bioAuto.sid; const ex = bioAuto.parsed && bioAuto.parsed.exit;
+  const wait = ex ? 700 + (ex.type === 'cut' ? 0 : (ex.ms != null ? ex.ms : 1500)) + 600 : 1500;
+  clearTimeout(bioAuto.closeTimer);
+  bioAuto.closeTimer = setTimeout(() => { if (sid !== bioAuto.sid || !bioAuto.autoClose || bioAuto.paused) return; if ($('imp-bio-split')?.classList.contains('hidden')) return; closeImpArtistBio(); }, wait);
 }
 function closeImpArtistBio() {
+  bioAuto.autoClose = false; clearTimeout(bioAuto.closeTimer);
   bioAutoStop(); bioCurtainHide();
   $('imp-bio-split')?.classList.add('hidden');
   $('imp-quiz-grid')?.classList.remove('imp-bio-open');
