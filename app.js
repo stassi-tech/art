@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v305';
+const APP_VERSION = 'v307';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -12414,7 +12414,7 @@ function impLinkedSegment(work, keys) {
         `Vous voyez ici ${desig}, ${vb}${e}${Dp} par ${A}.`,
         `Je vous présente maintenant ${desig}, imaginé${e}${Dp} par ${A}.`,
         D ? (centEnd ? `Voici une œuvre ${deA}, ${dated} : ${desig}.` : `Voici une œuvre ${deA}, ${desig}, ${dated}.`) : `Voici une œuvre ${deA}, ${desig}.`,
-        D ? (centEnd ? `Regardons maintenant ${dem}, réalisé${e} ${D4} par ${A}.` : `Regardons maintenant ${dem}, réalisé${e} par ${A} ${D4}.`) : `Regardons maintenant ${dem}, réalisé${e} par ${A}.`,
+        D ? (centEnd ? `Regardons maintenant ${dem}, ${desig}, réalisé${e} ${D4} par ${A}.` : `Regardons maintenant ${dem}, ${desig}, réalisé${e} par ${A} ${D4}.`) : `Regardons maintenant ${dem}, ${desig}, réalisé${e} par ${A}.`,   // v306 : cette formule oubliait le titre
       ][V];
     } else if (A && T) s1 = `Voici une œuvre ${deA} : ${T}.`;
     else if (A && D) s1 = `${impUpperFirst(D)}, ${A} réalise cette œuvre.`;
@@ -12457,7 +12457,16 @@ function impLinkedSegment(work, keys) {
     const P = fresh ? '' : impPlacePhrase(loc, 0);
     const C = com ? impPersonPhrase(com) : ''; const deC = C ? impDeNom(C) : ''; const Cc = /,/.test(C) ? `${C},` : C;   // « Jean sans Peur, duc de Bourgogne, pour… »
     const firstSeg = keyName(loc.split(',')[0] || '');
-    const sameSpot = !!(iniAll && loc && firstSeg && keyName(iniAll).includes(firstSeg));
+    // v307 (retour Stéphane, Lorenzo Monaco : « Église Santa Trinita » et « Chapelle Bartolini Salimbeni, Santa Trinita » sont le MÊME lieu, l'un plus précis que l'autre :
+    // l'œuvre n'a pas bougé ») : on compare le « cœur » du nom (sans « église », « chapelle », « musée »…) à tous les éléments du lieu initial (sauf la ville, en dernier)
+    const coreOf = (seg) => keyName(seg).replace(/\b(eglise|chapelle|basilique|cathedrale|collegiale|abbaye|monastere|couvent|sanctuaire|oratoire|palais|musee|galerie|de|du|des|la|le|les|l|d|saint|sainte|san|santa|sant|sankt)\b/g, ' ').replace(/\s+/g, ' ').trim();
+    const segsOf = (t) => { const a = String(t || '').split(/\s*,\s*/).filter(Boolean); return (a.length > 1 ? a.slice(0, -1) : a).map(keyName); };
+    const cities = [loc, iniAll].map((t) => keyName(String(t).split(/\s*,\s*/).filter(Boolean).pop() || ''));   // la ville seule ne prouve rien (« Cathédrale de Cologne » ≠ « Chapelle de l’hôtel de ville de Cologne »)
+    const museumFirst = [loc, iniAll].some((t) => /^(musee|museo|galerie|galleria)\b/.test(keyName(String(t).split(',')[0])));   // un musée n’est pas le lieu d’origine d’une église (« Musée de San Marco » ≠ « Église San Marco »)
+    const inSegs = (core, segs) => !museumFirst && core.length >= 5 && !cities.includes(core) && segs.some((g) => (' ' + g + ' ').includes(' ' + core + ' '));
+    const locCore = coreOf(loc.split(',')[0] || ''); const iniCore = coreOf(iniAll.split(',')[0] || '');
+    const sameSpot = !!(iniAll && loc && ((firstSeg && keyName(iniAll).includes(firstSeg)) || inSegs(locCore, segsOf(iniAll)) || inSegs(iniCore, segsOf(loc))));
+    const iniMorePrecise = sameSpot && iniAll.split(',').length > loc.split(',').length;
     const locTail = loc.split(/\s*,\s*/).slice(1).join(', ');
     let Lp = ini ? impPlacePhrase(ini, 0, locTail) : ''; let Ld = ini ? impPlacePhrase(ini, 1, locTail) : '';
     if (fresh && sameSpot && C) { Lp = ''; Ld = ''; }   // l'œuvre est encore là où elle a été commandée : inutile de répéter le lieu
@@ -12487,8 +12496,11 @@ function impLinkedSegment(work, keys) {
       `${pron} a été créé${e} pour ${Ld}`,
     ][V];
     let s = '';
-    if (fresh) s = orig ? `${impUpperFirst(orig)}.` : '';
-    else if (sameSpot && P && ini) s = `${impUpperFirst(pron)} se trouve toujours ${P}, là où ${pron} avait été créé${e}${C ? `, sur commande ${deC}` : ''}.`;
+    if (fresh) s = (sameSpot && !C) ? 'L’œuvre n’a jamais changé de place.' : (orig ? `${impUpperFirst(orig)}.` : '');   // v307
+    else if (sameSpot && P && ini) {   // v307 : le lieu actuel EST le lieu initial : on le dit, avec le nom le plus précis des deux
+      const Pp = iniMorePrecise && Lp ? Lp : P;
+      s = `${impUpperFirst(pron)} se trouve toujours ${Pp}, là où ${pron} avait été créé${e}${C ? `, sur commande ${deC}` : ''}.`;
+    }
     else if (P) {
       const verb = /^dans\b/.test(P) ? 'conservé' : 'exposé';
       const cur = [
@@ -13829,6 +13841,9 @@ const IMP_GAP_BEFORE_LOCATION_MS = 600; // pause avant la lecture du Lieu (voir 
 const IMP_GAP_BEFORE_MATERIAL_MS = 1000;
 // v177 (retour Stéphane : « entre le titre et la date, tu rajoutes 0,3 s ») : silence avant la date
 const IMP_GAP_BEFORE_DATE_MS = 300;
+// v306 (retour Stéphane : « deux moments de silence trop longs vers la fin, il faut davantage enchaîner ») : silences avant et après la rubrique Ensemble (2 s chacun avant)
+const IMP_GAP_BEFORE_CYCLE_MS = 600;
+const IMP_GAP_AFTER_CYCLE_MS = 300;
 function impClearTimers() { impRunId++; impTimers.forEach(clearTimeout); impTimers = []; }
 // v66 (docx 29 sept, item 8) : onEnd optionnel, même mécanique que intrusSpeak/vfSpeak/famSpeak —
 // utilisé pour enchaîner les segments de la référence avec un vrai silence entre eux (voir
@@ -14242,7 +14257,7 @@ function impShowCurrent() {
     // n'est donc plus que de 0,8 s — juste de quoi laisser finir la voix et séparer nettement le lieu,
     // sans attente perceptible. Les autres coupures (Ensemble, s'il revenait) gardent 2 s.
     const nextSegment = speechSegments[i + 1];
-    const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : (nextSegment && nextSegment[0].key === 'materiaux' ? IMP_GAP_BEFORE_MATERIAL_MS : (nextSegment && nextSegment[0].key === 'date' ? IMP_GAP_BEFORE_DATE_MS : 2000));
+    const gapMs = nextSegment && nextSegment.some((f) => f.key === 'location') && !nextSegment.some((f) => f.key === 'cycle') ? IMP_GAP_BEFORE_LOCATION_MS : (nextSegment && nextSegment[0].key === 'materiaux' ? IMP_GAP_BEFORE_MATERIAL_MS : (nextSegment && nextSegment[0].key === 'date' ? IMP_GAP_BEFORE_DATE_MS : (nextSegment && nextSegment[0].key === 'cycle' ? IMP_GAP_BEFORE_CYCLE_MS : (segment[0].key === 'cycle' ? IMP_GAP_AFTER_CYCLE_MS : 2000))));   // v306 : on enchaîne lieu → ensemble → origine
     // v221 (retour Stéphane : « la 3e image doit arriver 2-3 secondes avant : quand on a fini de donner les dimensions, l'image est là, avant que la voix
     // commence le lieu ») : si le segment suivant est celui du lieu de conservation et que l'image du lieu existe, on la lance dès la fin de la voix
     // (fondu de 2 s) et on laisse ~2,5 s avant que la voix du lieu démarre.
@@ -14307,7 +14322,7 @@ function impEnsembleChain(items, runId, done) {
   let k = 0;
   const next = () => {
     if (runId !== impRunId) return;
-    if (k >= items.length) { impTimers.push(setTimeout(() => { if (runId === impRunId) done(); }, 800)); return; }
+    if (k >= items.length) { impTimers.push(setTimeout(() => { if (runId === impRunId) done(); }, 100)); return; }   // v306 : 800 → 100
     const o = items[k]; const first = k === 0; k++;
     const speak = () => {
       if (runId !== impRunId) return;
@@ -14316,7 +14331,7 @@ function impEnsembleChain(items, runId, done) {
       impSpeak(o.say, () => {
         const sansVoix = !(impAudioOn && window.speechSynthesis);   // son coupé : on laisse le temps de lire (~9 caractères par seconde)
         const reste = sansVoix ? Math.max(0, o.say.length * 110 - (Date.now() - t0)) : 0;
-        impTimers.push(setTimeout(next, 1200 + reste));
+        impTimers.push(setTimeout(next, (k >= items.length ? 200 : 1200) + reste));   // v306 : après le dernier commentaire, on enchaîne presque aussitôt
       }, false);
     };
     if (first) speak();
