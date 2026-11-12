@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v307';
+const APP_VERSION = 'v308';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -12273,7 +12273,7 @@ const IMP_TECH = {   // technique picturale / de dessin → groupe prépositionn
 };
 const IMP_TECH_DRAWN = new Set(['graphite', 'crayon', 'craie', 'fusain', 'sanguine', 'stylo', 'encre', 'pastel', 'collage', 'aquarelle', 'gouache']);   // « réalisé » plutôt que « peint »
 const IMP_MADE = new Set(['marbre', 'bronze', 'pierre', 'bois', 'terre', 'platre', 'stuc', 'gres', 'albatre', 'plomb', 'argent', 'granit', 'granite', 'steatite', 'travertin', 'cuivre', 'laiton', 'etain', 'ivoire', 'cire', 'or', 'chene', 'beton', 'porcelaine', 'roche', 'jaspe', 'alliage', 'fer', 'acier', 'fonte', 'onyx', 'porphyre', 'verre', 'ceramique', 'emeraude', 'noyer']);
-const IMP_NATURE_G = { m: ['groupe', 'monument', 'haut-relief', 'bas-relief', 'relief', 'retable', 'triptyque', 'diptyque', 'polyptyque', 'mobilier', 'ensemble', 'élément', 'elément', 'panneau', 'volet', 'dessin', 'bijou', 'émail', 'tableau', 'buste', 'portrait', 'tombeau', 'gisant', 'cénotaphe', 'crucifix', 'tondo', 'hauts-reliefs'], f: ['ronde-bosse', 'fontaine', 'décoration', 'aquarelle', 'estampe', 'enluminure', 'statue', 'statuette', 'peinture', 'fresque', 'sculpture', 'rondes-bosse', 'rondes-bosses'] };
+const IMP_NATURE_G = { m: ['groupe', 'monument', 'haut-relief', 'bas-relief', 'relief', 'retable', 'triptyque', 'diptyque', 'polyptyque', 'mobilier', 'ensemble', 'élément', 'elément', 'panneau', 'volet', 'dessin', 'bijou', 'émail', 'tableau', 'buste', 'portrait', 'tombeau', 'gisant', 'cénotaphe', 'crucifix', 'tondo', 'hauts-reliefs'], f: ['ronde', 'ronde-bosse', 'fontaine', 'décoration', 'aquarelle', 'estampe', 'enluminure', 'statue', 'statuette', 'peinture', 'fresque', 'sculpture', 'rondes-bosse', 'rondes-bosses'] };
 function impNk(w) { return String(w || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 function impJoinList(items) { return items.length > 1 ? `${items.slice(0, -1).join(', ')} et ${items[items.length - 1]}` : (items[0] || ''); }
 // « Huile et tempera sur bois » → { verb: 'peint', clause: 'à l’huile et à la tempera sur bois' } ; null si une technique est inconnue
@@ -12331,7 +12331,7 @@ function impMatOne(m, V, info) {
     return [`C’est ${art} ${np}.`, `Il s’agit d’${art} ${np}.`, `C’est ${art} ${np}.`][k];
   }
   const pp = impPaintedParts(t);
-  if (pp && !/^(fresque|enluminure|esquisse)/i.test(t)) return [`${impUpperFirst(subj)} est ${pp.verb}${e} ${pp.clause}.`, `${impUpperFirst(subj)} a été ${pp.verb}${e} ${pp.clause}.`, `${impUpperFirst(info.dem || subj)} est ${pp.verb}${e} ${pp.clause}.`][k]   /* v305 : on parle de l'œuvre, pas de l'artiste */;
+  if (pp && !/^(fresque|enluminure|esquisse)/i.test(t)) return [`${impUpperFirst(subj)} est ${pp.verb}${e} ${pp.clause}.`, `${impUpperFirst(subj)} a été ${pp.verb}${e} ${pp.clause}.`, `${impUpperFirst(/^(ce|cet|cette)\s+(peinture|tableau)\b/i.test(info.dem || '') ? subj : (info.dem || subj))} est ${pp.verb}${e} ${pp.clause}.`][k]   /* v308 : jamais « cette peinture est peinte » */   /* v305 : on parle de l'œuvre, pas de l'artiste */;
   const nm = t.match(/^(fresques|fresque|enluminure|esquisse|peinture|gravure|monotype|fragment)\b/i);
   if (nm && !/^fresque\s+et\b/i.test(t)) {
     const w = nm[1].toLowerCase(); const np = impLowerFirst(t);
@@ -12394,7 +12394,12 @@ function impLinkedSegment(work, keys) {
   const order = winfo.known ? [0, 1, 2, 3, 4] : [3, 4];
   const k0 = (((typeof impIndex === 'number' ? impIndex : 0) + impVariantSeed) % IMP_NV + IMP_NV) % IMP_NV;
   const V = order[k0 % order.length];
-  const info = IMP_VARIANT_WORK.has(V) ? winfo : (V === 4 ? impNatureInfo(work) : { ...winfo, m: false, pron: 'elle', e: 'e', le: 'la', dem: 'cette œuvre' });
+  // v308 (retour Stéphane : « quand la voix présente l'œuvre, elle ne dit pas "un polyptyque, la Vierge à l'Enfant" : soit le titre seul, soit un mot comme "œuvre". Les mots techniques
+  // apparaissent à la nature et aux matériaux, et les pronoms dépendent du mot de la rubrique Nature : polyptyque → il, ronde-bosse → elle ») :
+  // 1) la présentation (s1) n'emploie jamais le mot de la nature ; 2) tout ce qui suit (matériaux, dimensions, lieu, origine) suit le genre du mot de Nature, s'il y en a un.
+  const natInfo = impNatureInfo(work); const natureKnown = natInfo.dem !== 'cette œuvre';
+  const baseInfo = IMP_VARIANT_WORK.has(V) ? winfo : { ...winfo, m: false, pron: 'elle', e: 'e', le: 'la', dem: 'cette œuvre' };
+  const info = natureKnown ? natInfo : baseInfo;
   const parts = []; const offsets = {};
   const add = (key, txt) => { if (!txt) return; offsets[key] = parts.join(' ').length + (parts.length ? 1 : 0); parts.push(txt); };
   if (has('artist') || has('title') || has('date') || has('materiaux') || has('dimensions')) {
@@ -12411,10 +12416,10 @@ function impLinkedSegment(work, keys) {
       const desig = winfo.desig;
       s1 = [
         D && centEnd ? `${impUpperFirst(D)}, ${A} a ${vb} ${desig}.` : `${A} a ${vb} ${desig}${Dp}.`,
-        `Vous voyez ici ${desig}, ${vb}${e}${Dp} par ${A}.`,
-        `Je vous présente maintenant ${desig}, imaginé${e}${Dp} par ${A}.`,
+        `Vous voyez ici ${desig}, ${vb}${winfo.e}${Dp} par ${A}.`,
+        `Je vous présente maintenant ${desig}, imaginé${winfo.e}${Dp} par ${A}.`,
         D ? (centEnd ? `Voici une œuvre ${deA}, ${dated} : ${desig}.` : `Voici une œuvre ${deA}, ${desig}, ${dated}.`) : `Voici une œuvre ${deA}, ${desig}.`,
-        D ? (centEnd ? `Regardons maintenant ${dem}, ${desig}, réalisé${e} ${D4} par ${A}.` : `Regardons maintenant ${dem}, ${desig}, réalisé${e} par ${A} ${D4}.`) : `Regardons maintenant ${dem}, ${desig}, réalisé${e} par ${A}.`,   // v306 : cette formule oubliait le titre
+        D ? (centEnd ? `Regardons maintenant cette œuvre, ${desig}, réalisée ${D4} par ${A}.` : `Regardons maintenant cette œuvre, ${desig}, réalisée par ${A} ${D4}.`) : `Regardons maintenant cette œuvre, ${desig}, réalisée par ${A}.`,   // v306 : cette formule oubliait le titre
       ][V];
     } else if (A && T) s1 = `Voici une œuvre ${deA} : ${T}.`;
     else if (A && D) s1 = `${impUpperFirst(D)}, ${A} réalise cette œuvre.`;
