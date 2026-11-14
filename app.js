@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v317';
+const APP_VERSION = 'v318';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -12411,14 +12411,14 @@ function impIsBareCity(txt) {
   const nk = impNk(t); for (const [re] of IMP_PLACE_KW) { if (re.test(nk)) return false; }
   return t.split(/\s+/).length <= 3;
 }
-function impSameSpotOf(loc, iniAll) {
+function impSameSpotOf(loc, iniAll, city) {   // v318 : `city` = ville de l'œuvre (« Cathédrale de Cologne » et « Chapelle de l'hôtel de ville de Cologne » : « Cologne » seul ne prouve rien)
   loc = String(loc || '').trim(); iniAll = String(iniAll || '').trim();
     const firstSeg = keyName(loc.split(',')[0] || '');
     // v307 (retour Stéphane, Lorenzo Monaco : « Église Santa Trinita » et « Chapelle Bartolini Salimbeni, Santa Trinita » sont le MÊME lieu, l'un plus précis que l'autre :
     // l'œuvre n'a pas bougé ») : on compare le « cœur » du nom (sans « église », « chapelle », « musée »…) à tous les éléments du lieu initial (sauf la ville, en dernier)
     const coreOf = (seg) => keyName(seg).replace(/\b(eglise|chapelle|basilique|cathedrale|collegiale|abbaye|monastere|couvent|sanctuaire|oratoire|palais|musee|galerie|national|nationale|convento|chartreuse|de|du|des|la|le|les|l|d|saint|sainte|san|santa|sant|sankt)\b/g, ' ').replace(/\s+/g, ' ').trim();
     const segsOf = (t) => { const a = String(t || '').split(/\s*,\s*/).filter(Boolean); return (a.length > 1 ? a.slice(0, -1) : a).map(keyName); };
-    const cities = [loc, iniAll].map((t) => keyName(String(t).split(/\s*,\s*/).filter(Boolean).pop() || ''));   // la ville seule ne prouve rien (« Cathédrale de Cologne » ≠ « Chapelle de l’hôtel de ville de Cologne »)
+    const cities = [loc, iniAll].map((t) => keyName(String(t).split(/\s*,\s*/).filter(Boolean).pop() || '')).concat(city ? [keyName(city)] : []);   // la ville seule ne prouve rien (« Cathédrale de Cologne » ≠ « Chapelle de l’hôtel de ville de Cologne »)
     const museumFirst = [[loc, iniAll], [iniAll, loc]].some(([t, o]) => /^(musee|museo|galerie|galleria)\b/.test(keyName(String(t).split(',')[0])) && !/\b(couvent|convento|monastere|monastero|abbaye|abbazia|chartreuse|cloitre|prieure)\b/.test(keyName(String(o).split(',')[0])));   // v317 : « Musée national San Marco » = « Couvent San Marco » (le musée occupe le couvent)   // un musée n’est pas le lieu d’origine d’une église (« Musée de San Marco » ≠ « Église San Marco »)
     const inSegs = (core, segs) => !museumFirst && core.length >= 5 && !cities.includes(core) && segs.some((g) => (' ' + g + ' ').includes(' ' + core + ' '));
     const locCore = coreOf(loc.split(',')[0] || ''); const iniCore = coreOf(iniAll.split(',')[0] || '');
@@ -12504,7 +12504,7 @@ function impLinkedSegment(work, keys) {
     const ini = has('lieuInitial') ? iniAll : ''; const com = has('commanditaire') ? String(work.commanditaire || '').trim() : '';
     const P = fresh ? '' : impPlacePhrase(loc, 0);
     const C = com ? impPersonPhrase(com) : ''; const deC = C ? impDeNom(C) : ''; const Cc = /,/.test(C) ? `${C},` : C;   // « Jean sans Peur, duc de Bourgogne, pour… »
-    const _ss = impSameSpotOf(loc, iniAll); const sameSpot = _ss.same; const iniMorePrecise = _ss.morePrecise;
+    const _ss = impSameSpotOf(loc, iniAll, work.ville); const sameSpot = _ss.same; const iniMorePrecise = _ss.morePrecise;
     const locTail = loc.split(/\s*,\s*/).slice(1).join(', ');
     let Lp = ini ? impPlacePhrase(ini, 0, locTail) : ''; let Ld = ini ? impPlacePhrase(ini, 1, locTail) : '';
     if (fresh && sameSpot && C) { Lp = ''; Ld = ''; }   // l'œuvre est encore là où elle a été commandée : inutile de répéter le lieu
@@ -14156,7 +14156,7 @@ function impShowCurrent() {
     // v300 : lieu de conservation initial puis commanditaire, juste après le lieu actuel (rubriques absentes quand la cellule est vide)
     { key: 'cycle', label: 'Ensemble', value: escapeHtml(work.cycle), spoken: ensembleSpoken(work), on: !!work.cycle && (showFullCorrection || !anyFieldChecked) /* v294 (retour Stéphane : « après Dimensions, une rubrique Ensemble avec l'indication de la colonne M, et l'image de la colonne N qui apparaît à ce moment-là ») : rubrique rétablie (écrite ET lue) ; l'image du cycle se montre quand la voix lit cette rubrique (voir impSpeakSegment) */ },
     { key: 'commanditaire', label: 'Commanditaire', value: escapeHtml(work.commanditaire), spoken: work.commanditaire ? `Le commanditaire est ${impPersonPhrase(work.commanditaire)}.` : '', on: !!work.commanditaire && (showFullCorrection || !anyFieldChecked) },
-    { key: 'lieuInitial', label: 'Lieu de conservation initial', value: escapeHtml(work.lieuInitial), spoken: work.lieuInitial ? (impPlacePhrase(work.lieuInitial, 1) ? `Le lieu de conservation initial est ${impPlacePhrase(work.lieuInitial, 1)}.` : `Le lieu de conservation initial est le suivant : ${work.lieuInitial}.`) : '', on: !!work.lieuInitial && !impIsBareCity(work.lieuInitial) && !impSameSpotOf(work.location, work.lieuInitial).same && (showFullCorrection || !anyFieldChecked) },
+    { key: 'lieuInitial', label: 'Lieu de conservation initial', value: escapeHtml(work.lieuInitial), spoken: work.lieuInitial ? (impPlacePhrase(work.lieuInitial, 1) ? `Le lieu de conservation initial est ${impPlacePhrase(work.lieuInitial, 1)}.` : `Le lieu de conservation initial est le suivant : ${work.lieuInitial}.`) : '', on: !!work.lieuInitial && !impIsBareCity(work.lieuInitial) && !impSameSpotOf(work.location, work.lieuInitial, work.ville).same && (showFullCorrection || !anyFieldChecked) },
   ].filter((f) => f.on);
 
   // v301 (retour Stéphane : « les petits haut-parleurs en dessous, avec "En savoir plus sur…" : on écoute d'abord la notice, on approfondit après ») :
