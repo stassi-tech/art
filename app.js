@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v318';
+const APP_VERSION = 'v319';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -2796,6 +2796,17 @@ const PRONUNCIATION_FIXES = {
   'victis': 'victisse',  // v303 : atelier du 12 nov
   'walchensee': 'valrhen-zé',  // v303 : atelier du 12 nov
   'winterthour': 'vinntertour',  // v303 : atelier du 12 nov
+  // v319 (atelier de prononciation, export du 14 nov 09:33) : nouveaux mots.
+  'cassai': 'cassaille',  // v319 : atelier du 14 nov
+  'castelvecchio': 'kastelvékio',  // v319 : atelier du 14 nov
+  'cecco': 'tchéko',  // v319 : atelier du 14 nov
+  'dronrijp': 'dronréïp',  // v319 : atelier du 14 nov
+  'frasca': 'fraskâ',  // v319 : atelier du 14 nov
+  'llyn-y-cau': 'linn-kaïe',  // v319 : atelier du 14 nov
+  'nantlle': 'nénntel',  // v319 : atelier du 14 nov
+  'palla': 'pallâ',  // v319 : atelier du 14 nov
+  'penegoes': 'Pé-né-goïss',  // v319 : atelier du 14 nov
+  'trinita': 'trinitâ',  // v319 : atelier du 14 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2876,6 +2887,7 @@ const PRONUNCIATION_BY_VOICE = {
   'français canada': PHONE_PRONUNCIATION_CA,
   // Une table par voix, repérée par un morceau de son nom. Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
+    'castelvecchio': 'kastelvékyo',  // v319 : atelier du 14 nov
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
     'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3019,6 +3031,7 @@ const PRONUNCIATION_BY_VOICE = {
 
   },
   'julie': {
+    'castelvecchio': 'kastelvékyo',  // v319 : atelier du 14 nov
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
     'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3131,6 +3144,7 @@ const PRONUNCIATION_BY_VOICE = {
 
   },
   'paul': {
+    'castelvecchio': 'kastelvékyo',  // v319 : atelier du 14 nov
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
     'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3451,6 +3465,7 @@ const PRONUNCIATION_BY_VOICE = {
     'von': 'von',  // v293 : atelier du 11 nov
   },
   'eloise': {
+    'cassai': 'casaille',  // v319 : atelier du 14 nov
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
     'edward burne-jones': 'Edward BeURNE-JôNtze',
     'élément': 'éléman',
