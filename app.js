@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v324';
+const APP_VERSION = 'v326';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -746,6 +746,7 @@ function initProfilePage() {
   try { rubriqueDefaults = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); } catch (e) {}
   document.querySelectorAll('.pf-rubrique-field').forEach((el) => { el.checked = (rubriqueDefaults.rubriques || []).includes(el.value); });
   document.querySelectorAll('.pf-rubrique-level').forEach((el) => { el.checked = (rubriqueDefaults.levels || []).includes(el.value); });
+  document.querySelectorAll('.pf-game-level').forEach((el) => { el.checked = (rubriqueDefaults.gameLevels || []).includes(el.value); });   // v325 : niveau des jeux
   if (rubriqueDefaults.count) {
     if (rubriqueDefaults.count === 'max' || rubriqueDefaults.count === '5' || rubriqueDefaults.count === '10' || rubriqueDefaults.count === '20') {
       const el = document.querySelector(`input[name="pf-count"][value="${rubriqueDefaults.count}"]`);
@@ -1001,7 +1002,7 @@ async function populateArtistSuggestionsNow() {
   // sans drapeau à cliquer ; là, des cases à cocher avec drapeau), ce qui donnait l'impression de
   // deux fonctionnalités distinctes alors que c'est exactement le même choix vu depuis deux
   // endroits de l'appli (parcours guidé vs Mon compte).
-  matchingRows.sort((a, b) => particleStrippedSortKey(a['Surnom'] || a['Patronyme']).localeCompare(particleStrippedSortKey(b['Surnom'] || b['Patronyme']), 'fr'));
+  matchingRows.sort(compareArtistRows);
   const selected = (readGlobalArtistDefaults().artists || []);
   list.innerHTML = matchingRows.map((r) => {
     const name = [r['Prénom'], r['Patronyme']].filter(Boolean).join(' ').trim();
@@ -1073,17 +1074,18 @@ function saveRubriqueChoiceGeneral() {
   sessionStorage.setItem('hasConfiguredThisSession', 'true');
   const rubriques = [...document.querySelectorAll('.pf-rubrique-field:checked')].map((el) => el.value);
   const levels = [...document.querySelectorAll('.pf-rubrique-level:checked')].map((el) => el.value);
+  const gameLevels = [...document.querySelectorAll('.pf-game-level:checked')].map((el) => el.value);   // v325 : niveau des jeux
   let count = document.querySelector('input[name="pf-count"]:checked')?.value || '';
   if (count === 'custom') count = $('pf-count-custom').value?.trim() || '';
-  if (quickDraft) quickDraft.rubrique = { rubriques, levels, count };
-  else localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, count, remember: true }));
+  if (quickDraft) quickDraft.rubrique = { rubriques, levels, gameLevels, count };
+  else localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques, levels, gameLevels, count, remember: true }));
   updateExerciseSummaries();
   updateProfileMenuBadges();
   // Le niveau vient éventuellement de changer : un artiste déjà choisi peut être devenu
   // incompatible (ses œuvres ne correspondent plus au niveau sélectionné).
   populateArtistSuggestions();
 }
-document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => {
+document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level, .pf-game-level').forEach((el) => {
   el.addEventListener('change', saveRubriqueChoiceGeneral);
 });
 document.querySelectorAll('input[name="pf-count"]').forEach((el) => { el.addEventListener('change', saveRubriqueChoiceGeneral); });
@@ -1091,7 +1093,7 @@ $('pf-count-custom')?.addEventListener('change', saveRubriqueChoiceGeneral);
 $('pf-rubriques-apply')?.addEventListener('click', saveRubriqueChoiceGeneral);
 $('pf-rubriques-clear')?.addEventListener('click', () => {
   localStorage.removeItem('globalRubriqueDefaults');
-  document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level').forEach((el) => { el.checked = false; });
+  document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level, .pf-game-level').forEach((el) => { el.checked = false; });
   updateExerciseSummaries();
   updateProfileMenuBadges();
 });
@@ -9020,34 +9022,67 @@ const ARTIST_LIST_COLS = [
   { key: 'Siècle(s)', label: 'Siècle(s)' },
 ];
 const ARTIST_NAME_PARTICLES = ['da','di','de','del','della','van','von','le','la','les','du','des','dei','af',"d'"];
+// =====================================================================================================
+// v326 (retour Stéphane) — NOM DE LISTE COMMUN. La liste des artistes, la liste des diaporamas et les listes à cocher classent et
+// écrivent maintenant les artistes de la même façon : par le mot le plus connu (le surnom s'il y en a un — « Canaletto », « Monaco » —,
+// sinon le nom de famille), sans tenir compte des particules (de, di, da, van, van der, del, della, von, ter…), qui passent entre
+// parenthèses après ce mot : « CHAMPAIGNE (de), Philippe », « WEYDEN (van der), Rogier », « GOES (van der), Hugo ».
+// Un surnom précédé d'un prénom (« Lorenzo MONACO ») est classé à son nom (MONACO, Lorenzo) ; un article de surnom (« Le Guerchin »,
+// « Fra Angelico ») passe aussi entre parenthèses. « Le » reste, lui, dans un NOM de famille (« LE BRUN » est classé à L).
+// =====================================================================================================
+const NAME_PARTICLES = new Set(['da', 'di', 'de', 'del', 'della', 'delle', 'dello', 'dei', 'degli', 'van', 'von', 'der', 'den', 'ter', 'ten', 'du', 'des', 'af', 'dos', 'do', 'zu', 'zum', 'zur']);
+const NAME_ARTICLES = new Set(['le', 'la', 'les', 'el', 'il', 'lo', 'fra']);
+function artistNameParts(row) {
+  const g = (k) => String(row[k] == null ? '' : row[k]).trim();
+  const sur = g('Surnom'); const pre = g('Prénom'); const pat = g('Patronyme');
+  const src = sur || pat;
+  let tokens = src.split(/\s+/).filter(Boolean);
+  const particles = []; const firsts = [];
+  const hasUpperToken = tokens.some((t) => /\p{Lu}/u.test(t) && t === t.toLocaleUpperCase('fr-FR'));   // un surnom tout en capitales ou avec un mot en capitales (« Lorenzo MONACO »)
+  let i = 0;
+  while (i < tokens.length) {
+    const t = tokens[i]; const low = t.toLocaleLowerCase('fr-FR').replace(/’/g, "'");
+    const apos = low.match(/^(d|dell|dall|dalla|degl|de)'(.*)$/);
+    if (apos && apos[2] && t.slice(apos[1].length + 1) === t.slice(apos[1].length + 1).toLocaleUpperCase('fr-FR')) { particles.push(`${apos[1]}'`); tokens[i] = t.slice(apos[1].length + 1); break; }   // d'ANTONIO, dell'ARCA : la particule colle au nom
+    if (i === tokens.length - 1) break;   // le dernier mot est toujours le nom
+    if (low === "de'") { particles.push('de'); i++; continue; }
+    if (NAME_PARTICLES.has(low) || (NAME_ARTICLES.has(low) && (sur || particles.length))) { particles.push(low); i++; continue; }
+    if (sur && hasUpperToken && /^\p{Lu}[\p{Ll}'’-]+$/u.test(t)) { firsts.push(t); i++; continue; }   // prénom devant un surnom (« Lorenzo MONACO »)
+    break;
+  }
+  let core = tokens.slice(i).join(' ');
+  if (!core) core = src;
+  const first = sur ? firsts.join(' ') : pre;
+  const civil = [pre, pat].filter(Boolean).join(' ');
+  return { core, particles, first, sur, civil, key: keyName(core), key2: keyName(first || pre) };
+}
+function artistNameBase(row) {
+  const p = artistNameParts(row);
+  return { text: `${p.core}${p.particles.length ? ` (${p.particles.join(' ')})` : ''}`, rest: p.first ? `, ${p.first}` : '', civil: (p.sur && p.civil && keyName(p.civil) !== keyName(p.sur)) ? p.civil : '' };
+}
+function artistListLabelHtml(row) {
+  const b = artistNameBase(row);
+  return `<strong>${escapeHtml(b.text)}</strong>${escapeHtml(b.rest)}${b.civil ? ` <span class="artist-civil">(${escapeHtml(b.civil)})</span>` : ''}`;
+}
+function artistListLabelPlain(row) {
+  const b = artistNameBase(row);
+  return `${b.text}${b.rest}${b.civil ? ` (${b.civil})` : ''}`;
+}
+function compareArtistRows(a, b) {
+  const pa = artistNameParts(a); const pb = artistNameParts(b);
+  return pa.key.localeCompare(pb.key, 'fr') || pa.key2.localeCompare(pb.key2, 'fr');
+}
+
 function particleStrippedSortKey(patronyme) {
   const words = keyName(patronyme).split(' ').filter(Boolean);
   while (words.length && ARTIST_NAME_PARTICLES.includes(words[0])) words.shift();
   return words.join(' ') || keyName(patronyme);
 }
 function artistPickLabel(row, civilName) {
-  // v169 : dans les listes à cocher, le surnom (ex. « Canaletto ») est affiché en plus du nom civil.
-  const surnom = String(row['Surnom'] || '').trim();
-  if (!surnom || keyName(surnom) === keyName(civilName)) return escapeHtml(civilName);
-  return `<strong>${escapeHtml(surnom)}</strong> <span class="artist-civil">(${escapeHtml(civilName)})</span>`;
+  return artistListLabelHtml(row);   // v326 : même nom, même présentation que la liste des artistes et que la liste des diaporamas
 }
 function formatArtistListName(row) {
-  // Si un surnom est connu (ex. « Le Greco », « Fra Angelico »), c'est lui qui identifie
-  // l'artiste dans la liste — plus reconnaissable que le nom civil. Sinon, colonnes séparées
-  // (Prénom, Patronyme) : l'entrée se lit nom puis prénom, le prénom en casse normale, le nom de
-  // famille tel qu'enregistré (en général en majuscules) mis en avant.
-  const surnom = String(row['Surnom'] || '').trim();
-  // v169 (Stéphane : « il n'y a pas le pseudonyme… je cherchais Canaletto, on donne son nom, Canal ») : on montre
-  // le surnom ET le nom civil entre parenthèses, pour qu'on retrouve l'artiste par l'un comme par l'autre.
-  if (surnom) {
-    const civil = [String(row['Prénom'] || '').trim(), String(row['Patronyme'] || '').trim()].filter(Boolean).join(' ');
-    return `<strong>${escapeHtml(surnom)}</strong>${civil && keyName(civil) !== keyName(surnom) ? ` <span class="artist-civil">(${escapeHtml(civil)})</span>` : ''}`;
-  }
-  const nom = String(row['Patronyme'] || '').trim();
-  const prenom = String(row['Prénom'] || '').trim();
-  if (!nom) return `<strong>${escapeHtml(prenom)}</strong>`;
-  const prenomPart = prenom ? ` ${escapeHtml(prenom)}` : '';
-  return `<strong>${escapeHtml(nom)}</strong>${prenomPart}`;
+  return artistListLabelHtml(row);   // v326 : voir artistNameParts (mot le plus connu en tête, particules entre parenthèses)
 }
 function artistRowNameKeys(row) {
   const artistName = [row['Prénom'], row['Patronyme']].filter(Boolean).join(' ').trim();
@@ -9139,13 +9174,9 @@ function sortArtistRows(rows) {
   const { col, dir } = artistListSort;
   // Trie par surnom quand il existe (ex. « Le Greco » trie à G, « Bada Shanren » à B) — sinon,
   // par nom de famille. Dans les deux cas, les particules en tête (le, da, van...) sont ignorées.
-  const sortKeyForRow = (row) => particleStrippedSortKey(row['Surnom'] || row['Patronyme']);
   return rows.slice().sort((a, b) => {
-    if (col === 'Patronyme') {
-      const byNom = dir * sortKeyForRow(a).localeCompare(sortKeyForRow(b), 'fr');
-      if (byNom !== 0) return byNom;
-      return dir * String(a['Prénom'] || '').localeCompare(String(b['Prénom'] || ''), 'fr');
-    }
+    if (col === 'Patronyme') return dir * compareArtistRows(a, b);   // v326 : tri commun aux trois listes
+
     return dir * String(a[col] || '').localeCompare(String(b[col] || ''), 'fr');
   });
 }
@@ -10220,7 +10251,9 @@ $('chrono-start-button')?.addEventListener('click', async () => {
     // Ne garde que les œuvres dont on peut extraire une année exploitable — indispensable pour
     // établir un ordre chronologique sans ambiguïté.
     const dated = pool.filter((r) => chronoYearOf(r) !== null);
-    if (dated.length < 4) { feedback.textContent = "Pas assez d'œuvres avec une date exploitable pour ce choix — essayez d'élargir la sélection."; return; }
+    const gameLevelsSel = readGameLevels(); const chronoFoil = gameLevelsSel.length ? await loadGameFoilPool(arts, zones, levels) : null;   // v325
+    const foilDated = chronoFoil ? chronoFoil.filter((r) => chronoYearOf(r) !== null) : null;
+    if (dated.length < (foilDated ? 1 : 4)) { feedback.textContent = "Pas assez d'œuvres avec une date exploitable pour ce choix — essayez d'élargir la sélection."; return; }
 
     const countChoice = Number(document.querySelector('input[name="chrono-count"]:checked').value);
     const questions = [];
@@ -10230,7 +10263,18 @@ $('chrono-start-button')?.addEventListener('click', async () => {
     // elles, plus facile à ordonner qu'un tirage totalement aléatoire.
     const centuriesPresent = [...new Set(dated.map((w) => Math.floor(chronoYearOf(w) / 100)))];
     let attempts = 0;
-    while (questions.length < countChoice && attempts < countChoice * 30) {
+    if (foilDated) {   // v325 : niveau des jeux — l'écart entre les quatre œuvres dépend du niveau (voir chronoLevelQuestion)
+      while (questions.length < countChoice && attempts < countChoice * 60) {
+        attempts++;
+        const picked = chronoLevelQuestion(pickGameLevel(gameLevelsSel), dated, foilDated);
+        if (!picked) continue;
+        const key = picked.map((w) => w.image).sort().join('|');
+        if (usedKeys.has(key)) continue;
+        usedKeys.add(key);
+        questions.push({ works: picked, chronological: picked.slice().sort((a, b) => chronoYearOf(a) - chronoYearOf(b)) });
+      }
+    }
+    while (!foilDated && questions.length < countChoice && attempts < countChoice * 30) {
       attempts++;
       const centuryBase = centuriesPresent[Math.floor(Math.random() * centuriesPresent.length)] * 100;
       const inCentury = dated.filter((w) => { const y = chronoYearOf(w); return y >= centuryBase && y < centuryBase + 100; });
@@ -10551,16 +10595,21 @@ function famAnswerMatches(input, correct, type) {
 
 // Cherche, pour un type donné, un groupe de 4 œuvres partageant un trait commun, avec assez
 // d'œuvres différentes en dehors du groupe pour servir d'intrus.
-function famFindGroup(type, pool, distractorCount, familySize) {
+function famFindGroup(type, pool, distractorCount, familySize, lvOpt) {
   familySize = familySize || 4;
   if (type === 'artist') {
     const byArtist = new Map();
     pool.forEach((r) => { if (!byArtist.has(r.artist)) byArtist.set(r.artist, []); byArtist.get(r.artist).push(r); });
-    const candidates = [...byArtist.entries()].filter(([, works]) => works.length >= familySize && pool.length - works.length >= distractorCount);
+    const candidates = [...byArtist.entries()].filter(([, works]) => works.length >= familySize && (lvOpt || pool.length - works.length >= distractorCount));
     if (!candidates.length) return null;
     const [artist, works] = candidates[Math.floor(Math.random() * candidates.length)];
     const shuffled = works.slice().sort(() => Math.random() - 0.5);
     const family = shuffled.slice(0, familySize);
+    if (lvOpt) {   // v325 : niveau des jeux — les intrus viennent de tous les artistes, placés selon le niveau par rapport à la famille
+      const ak = famNormalize(artist); const inFamily = new Set(family);
+      const base = lvOpt.pool.filter((r) => !inFamily.has(r) && famNormalize(r.artist) !== ak);
+      return { family, answer: artist, outsiders: levelPick(family, base, lvOpt.level, distractorCount) };
+    }
     // Les intrus ne doivent pas partager le même siècle que la famille : sinon « tel siècle »
     // serait aussi une réponse juste, mais refusée puisqu'on cherche l'artiste.
     const familyCenturies = new Set(family.map((r) => r.century || detectCenturyFromDate(r.date)));
@@ -10634,7 +10683,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
   // (et les 5 autres tuiles du menu des jeux) juste plus haut, qui garantit maintenant que le
   // panneau de configuration concerné est déjà affiché avant même que ces messages ne s'écrivent.
   const globalArtistsFam = (readGlobalArtistDefaults().artists || []);
-  if (globalArtistsFam.length === 1) {
+  if (globalArtistsFam.length === 1 && !readGameLevels().length) {   // v325 : avec un niveau des jeux, les intrus viennent de tous les artistes
     $('fam-setup-feedback').classList.remove('hidden');
     $('fam-setup-feedback').textContent = "Famille a besoin d'au moins 2 artistes choisis (pour proposer des œuvres intruses d'un autre artiste) — ajoute-en un second dans Mes choix de champ, ou choisis un art/siècle/zone à la place.";
     return;
@@ -10679,6 +10728,8 @@ $('fam-start-button')?.addEventListener('click', async () => {
     pool = filterPoolByGlobalArtists(pool, allRows);
     famAudioOn = getGlobalPrefs().audioOn;
     famSelectedVoiceRef = getGlobalVoice();
+    const gameLevelsSel = readGameLevels(); const famFoil = gameLevelsSel.length ? await loadGameFoilPool(arts, zones, levels) : null;   // v325
+    const famFoilMov = famFoil ? famFoil.filter(isMovableWork) : null; const famFoilFix = famFoil ? famFoil.filter((w) => !isMovableWork(w)) : null;
     const countChoice = document.querySelector('input[name="fam-count"]:checked').value;
     const count = countChoice === 'max' ? 40 : Number(countChoice);
     let imgCountChoice = Number(document.querySelector('input[name="fam-images"]:checked').value);
@@ -10687,7 +10738,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
     // très reconnaissables d'un coup d'œil. On passe alors à 6 images pour que ce soit un peu moins
     // immédiat.
     const globalArtistsCount = (readGlobalArtistDefaults().artists || []).length;
-    if (globalArtistsCount === 2 && imgCountChoice < 6) imgCountChoice = 6;
+    if (globalArtistsCount === 2 && imgCountChoice < 6 && !famFoil) imgCountChoice = 6;   // v325 : plus utile avec un niveau des jeux (intrus de tous les artistes)
     // v78 (retour de Stéphane : avec 2 artistes choisis — ex. Jean Goujon et Jean de Bologne — un
     // partage 50/50 (4 œuvres de chacun) ne laisse aucune majorité : rien ne distingue à l'œil la
     // « famille » du lot d'intrus, d'où des erreurs quand le joueur désigne le mauvais groupe de 4.
@@ -10695,7 +10746,7 @@ $('fam-start-button')?.addEventListener('click', async () => {
     // — voir famUpdateImagesLabels, qui tient les libellés du panneau de configuration à jour de ce
     // décalage. Avec 3 artistes ou plus, le partage reste la simple moitié (déjà naturellement
     // majoritaire face à des intrus venant de plusieurs artistes différents).
-    const familySize = globalArtistsCount === 2 ? (imgCountChoice / 2) + 1 : imgCountChoice / 2;
+    const familySize = globalArtistsCount === 2 && !famFoil ? (imgCountChoice / 2) + 1 : imgCountChoice / 2;
     const distractorCount = imgCountChoice - familySize;
 
     const questions = [];
@@ -10706,7 +10757,8 @@ $('fam-start-button')?.addEventListener('click', async () => {
       // déplaçable), tirée au hasard au prorata de leur effectif.
       const movablePool = pool.filter(isMovableWork); const fixedPool = pool.filter((w) => !isMovableWork(w));
       const catPool = fixedPool.length && Math.random() < fixedPool.length / pool.length ? fixedPool : (movablePool.length ? movablePool : fixedPool);
-      const group = famFindGroup('artist', catPool, distractorCount, familySize);
+      const lvOpt = famFoil ? { pool: catPool === fixedPool ? famFoilFix : famFoilMov, level: pickGameLevel(gameLevelsSel) } : null;   // v325
+      const group = famFindGroup('artist', catPool, distractorCount, familySize, lvOpt);
       if (!group) continue;
       const distractors = group.outsiders.slice().sort(() => Math.random() - 0.5).slice(0, distractorCount);
       if (distractors.length < distractorCount) continue;
@@ -11184,7 +11236,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
   // v77 : voir le correctif systémique sur open-vraifaux-setup (et les 5 autres tuiles du menu des
   // jeux) plus haut dans ce fichier.
   const globalArtists = (readGlobalArtistDefaults().artists || []);
-  if (globalArtists.length === 1) {
+  if (globalArtists.length === 1 && !readGameLevels().length) {   // v325 : avec un niveau des jeux, les fausses attributions viennent de tous les artistes
     $('vf-setup-feedback').classList.remove('hidden');
     $('vf-setup-feedback').textContent = "Vrai/Faux a besoin d'au moins 2 artistes choisis (pour proposer une fausse attribution) — ajoute-en un second dans Mes choix de champ, ou choisis un art/siècle/zone à la place.";
     return;
@@ -11221,6 +11273,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
     // ne s'appliquait alors jamais).
     pool = filterPoolByGlobalArtists(pool, allRows);
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    const gameLevelsSel = readGameLevels(); const vfFoil = gameLevelsSel.length ? await loadGameFoilPool(arts, zones, levels) : null;   // v325
     const countChoice = document.querySelector('input[name="vf-count"]:checked').value;
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
     vfAudioOn = getGlobalPrefs().audioOn;
@@ -11229,6 +11282,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
     const activeFields = vfActiveFields();
     if (!activeFields.length) { feedback.textContent = 'Choisissez au moins une rubrique.'; return; }
     VF_SESSION = pool.slice(0, count).map((correct) => {
+      const vfLevel = vfFoil ? pickGameLevel(gameLevelsSel) : null;   // v325
       const hasError = Math.random() < 0.5;
       let errorFields = [];
       const displayed = {};
@@ -11250,12 +11304,13 @@ $('vf-start-button')?.addEventListener('click', async () => {
           // Dans tous les cas, on exclut aussi une ligne dont la valeur affichée serait identique
           // (une fois normalisée) à la bonne réponse : ce ne serait alors pas une erreur détectable.
           const correctValueKey = keyName(vfFieldValue(correct, key));
-          const others = pool.filter((r) => r !== correct
+          const others0 = (vfFoil || pool).filter((r) => r !== correct
             && vfFieldValue(r, key)
             && keyName(vfFieldValue(r, key)) !== correctValueKey
             && sameMovability(r, correct) // v122 : pas de valeur « fausse » empruntée à l'autre catégorie
             && (key !== 'artist' || !vfSameArtist(r, correct))
             && (key !== 'materials' || !vfSameMaterials(r, correct)));
+          const others = vfLevel ? levelPick([correct], others0, vfLevel, 1) : others0;   // v325 : niveau des jeux
           if (others.length) {
             const swapped = others[Math.floor(Math.random() * others.length)];
             displayed[key] = vfFieldValue(swapped, key);
@@ -11676,6 +11731,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
     // ne s'appliquait alors jamais).
     pool = filterPoolByGlobalArtists(pool, allRows);
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    const gameLevelsSel = readGameLevels(); const reconFoil = gameLevelsSel.length ? await loadGameFoilPool(arts, zones, levels) : null;   // v325
     const countChoice = document.querySelector('input[name="recon-count"]:checked').value;
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
     reconAudioOn = getGlobalPrefs().audioOn;
@@ -11689,7 +11745,7 @@ $('recon-start-button')?.addEventListener('click', async () => {
       reconExtraFields = ['date', 'materiaux', 'dimensions', 'location'];
     }
     RECON_SESSION = pool.slice(0, count).map((correct) => {
-      const distractors = pickIntrusDistractors(correct, pool);
+      const distractors = pickIntrusDistractors(correct, pool, false, reconFoil ? { pool: reconFoil, level: pickGameLevel(gameLevelsSel) } : null);
       if (distractors.length < 2 && pool.some((r) => !sameMovability(r, correct))) return null; // v122 : pas de mélange déplaçable / non déplaçable
       const choices = [correct, ...distractors];
       for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [choices[i], choices[j]] = [choices[j], choices[i]]; }
@@ -13186,7 +13242,7 @@ function hasGeneralChoice() {
   try { if (SESSION_GLOBAL_KEYS.some((k) => sessionStorage.getItem(k))) return true; } catch (e) { /* ignoré */ }
   const gf = readGlobalFieldDefaults(); const gr = readGlobalRubriqueDefaults(); const ga = readGlobalArtistDefaults();
   return !!((gf.remember && (gf.arts?.length || gf.centuries?.length || gf.zones?.length))
-    || (gr.remember && (gr.rubriques?.length || gr.levels?.length || gr.count))
+    || (gr.remember && (gr.rubriques?.length || gr.levels?.length || gr.gameLevels?.length || gr.count))
     || (ga.remember && (ga.artists?.length || objectsActive(ga.objects))));
 }
 function prepareQuickConfig() {
@@ -13194,7 +13250,7 @@ function prepareQuickConfig() {
   const f = readGlobalFieldDefaults(); const r = readGlobalRubriqueDefaults(); const a = readGlobalArtistDefaults();
   quickDraft = {
     field: { arts: [...(f.arts || [])], centuries: [...(f.centuries || [])], zones: [...(f.zones || [])] },
-    rubrique: { rubriques: [...(r.rubriques || [])], levels: [...(r.levels || [])], count: r.count || '' },
+    rubrique: { rubriques: [...(r.rubriques || [])], levels: [...(r.levels || [])], gameLevels: [...(r.gameLevels || [])], count: r.count || '' },
     artist: { artists: [...(a.artists || [])], objects: objectsActive(a.objects) ? { ...a.objects } : null },
   };
   const d = quickDraft;
@@ -13203,6 +13259,7 @@ function prepareQuickConfig() {
   document.querySelectorAll('.pf-field-zone').forEach((el) => { el.checked = d.field.zones.includes(el.value); });
   document.querySelectorAll('.pf-rubrique-field').forEach((el) => { el.checked = d.rubrique.rubriques.includes(el.value); });
   document.querySelectorAll('.pf-rubrique-level').forEach((el) => { el.checked = d.rubrique.levels.includes(el.value); });
+  document.querySelectorAll('.pf-game-level').forEach((el) => { el.checked = d.rubrique.gameLevels.includes(el.value); });
   document.querySelectorAll('input[name="pf-count"]').forEach((el) => { el.checked = false; });
   if ($('pf-count-custom')) $('pf-count-custom').value = '';
   const c = d.rubrique.count;
@@ -13335,7 +13392,7 @@ function renderQuickOverrides() {
 function hasSavedLastConfig() {
   let gf = {}, gr = {}, ga = {};
   try { gf = JSON.parse(localStorage.getItem('globalFieldDefaults') || '{}'); gr = JSON.parse(localStorage.getItem('globalRubriqueDefaults') || '{}'); ga = JSON.parse(localStorage.getItem('globalArtistDefaults') || '{}'); } catch (e) { /* ignoré */ }
-  if (gf.arts?.length || gf.centuries?.length || gf.zones?.length || gr.rubriques?.length || gr.levels?.length || gr.count || ga.artists?.length || objectsActive(ga.objects)) return true;
+  if (gf.arts?.length || gf.centuries?.length || gf.zones?.length || gr.rubriques?.length || gr.levels?.length || gr.gameLevels?.length || gr.count || ga.artists?.length || objectsActive(ga.objects)) return true;
   return Object.keys(localStorage).some((k) => {
     if (!k.startsWith('lastSelection_')) return false;
     const panel = k.slice('lastSelection_'.length);
@@ -13369,7 +13426,7 @@ function snapshotConfig() {
   const f = readGlobalFieldDefaults(); const r = readGlobalRubriqueDefaults(); const a = readGlobalArtistDefaults();
   return {
     field: { arts: [...(f.arts || [])], centuries: [...(f.centuries || [])], zones: [...(f.zones || [])], remember: true },
-    rubrique: { rubriques: [...(r.rubriques || [])], levels: [...(r.levels || [])], count: r.count || '', remember: true },
+    rubrique: { rubriques: [...(r.rubriques || [])], levels: [...(r.levels || [])], gameLevels: [...(r.gameLevels || [])], count: r.count || '', remember: true },
     artists: { artists: [...(a.artists || [])], objects: objectsActive(a.objects) ? { ...a.objects } : null, remember: true },
     allGames: true, games: [], perGame,
   };
@@ -13381,6 +13438,7 @@ function suggestConfigName() {
     c.field.arts.map((a) => artLabel[a] || a).join(' + '),
     c.field.centuries.join(' + '),
     c.rubrique.levels.length ? 'N' + c.rubrique.levels.join('+') : '',
+    c.rubrique.gameLevels?.length ? 'jeux N' + c.rubrique.gameLevels.join('+') : '',
     c.artists.artists.length ? c.artists.artists.slice(0, 2).join(', ') + (c.artists.artists.length > 2 ? '…' : '') : '',
     objectsActive(c.artists.objects) ? describeObjectsFilter(c.artists.objects) : '',
   ].filter(Boolean);
@@ -13554,8 +13612,8 @@ function launchGameAfterConfig(prefix) {
   });
   $('qc-clear-rubriques')?.addEventListener('click', () => {
     if (!quickDraft) return;
-    quickDraft.rubrique = { rubriques: [], levels: [], count: '' };
-    document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level, input[name="pf-count"]').forEach((el) => { el.checked = false; });
+    quickDraft.rubrique = { rubriques: [], levels: [], gameLevels: [], count: '' };
+    document.querySelectorAll('.pf-rubrique-field, .pf-rubrique-level, .pf-game-level, input[name="pf-count"]').forEach((el) => { el.checked = false; });
     if ($('pf-count-custom')) $('pf-count-custom').value = '';
     populateArtistSuggestions();
   });
@@ -13800,7 +13858,7 @@ async function populateGuidedArtistList() {
   patience.classList.add('hidden');
   // Tri alphabétique par nom de famille (ou surnom s'il existe), particules ignorées — le même
   // critère que la liste complète du menu hamburger, pour rester cohérent dans toute l'appli.
-  matchingRows.sort((a, b) => particleStrippedSortKey(a['Surnom'] || a['Patronyme']).localeCompare(particleStrippedSortKey(b['Surnom'] || b['Patronyme']), 'fr'));
+  matchingRows.sort(compareArtistRows);
   const selected = readGlobalArtistDefaults().artists || [];
   list.classList.remove('hidden');
   list.innerHTML = matchingRows.map((r) => {
@@ -13869,9 +13927,11 @@ function buildTrainingHubConfigSentence(opts) {
   const levelPart = gr.levels?.length
     ? ` de niveau ${gr.levels.join('/')} (artistes ${gr.levels.map((l) => levelLabels[l]).join('/')})`
     : '';
+  const gameLevelNames = { '1': "d'autres siècles", '2': 'du même siècle mais éloignées dans le temps', '3': "d'une même époque" };
+  const gameLevelPart = gr.gameLevels?.length ? `, en vous entraînant à distinguer des œuvres ${gr.gameLevels.map((l) => gameLevelNames[l]).filter(Boolean).join(' ou ')}` : '';   // v325
   const artistsPart = (ga.artists?.length ? `, en particulier ${ga.artists.join(', ')}` : '') + (!skipObjects && objectsActive(ga.objects) ? `, en vous limitant à : ${describeObjectsFilter(ga.objects)}` : '');
   const countPart = gr.count ? ` et en répondant à des questionnaires de ${gr.count === 'max' ? 'un maximum de' : gr.count} questions` : '';
-  const middle = `vous exercer sur ${artsPart}${centPart}${zonePart}${rubriquePart}${levelPart}${artistsPart}${countPart}`;
+  const middle = `vous exercer sur ${artsPart}${centPart}${zonePart}${rubriquePart}${levelPart}${artistsPart}${gameLevelPart}${countPart}`;
   if (loadedGuidedConfigName) {
     return `Pour cette session vous avez repris votre configuration ${loadedGuidedConfigName} : ${middle}.`;
   }
@@ -15818,7 +15878,85 @@ function intrusInfo(r) {
   }
   return i;
 }
-function pickIntrusDistractors(correct, pool, requireDistinctArtist) {
+// =====================================================================================================
+// v325 (retour Stéphane) — NIVEAU DES JEUX. Pour les jeux où l'on distingue des œuvres entre elles (Intrus, Famille, Chronologie,
+// Reconstitution, Vrai/Faux), la page « Mes choix » propose maintenant « Niveau des jeux » : 1, 2, 3 (plusieurs possibles, tirés
+// au hasard question par question ; rien de coché = les jeux fonctionnent comme avant). Le niveau règle la PROXIMITÉ DANS LE TEMPS,
+// mesurée sur les dates des œuvres, entre l'œuvre posée et les « faux » (ou, en Chronologie, entre les quatre œuvres à ordonner) :
+//   niveau 1 : œuvres d'un autre siècle (la discrimination est très simple) ;
+//   niveau 2 : même siècle, mais au moins GAME_LEVEL_GAP ans d'écart (ex. romantisme / impressionnisme) ;
+//   niveau 3 : moins de GAME_LEVEL_GAP ans d'écart (même époque, discrimination difficile).
+// Les « faux » sont tirés dans TOUTES les œuvres (autres siècles compris), pas seulement dans celles de l'artiste choisi : c'est ce qui
+// permet de jouer avec un seul artiste en mélangeant ses œuvres à celles des autres. Si un niveau n'offre pas assez d'œuvres, on
+// passe au niveau voisin plutôt que de bloquer la question.
+// =====================================================================================================
+const GAME_LEVEL_GAP = 30;
+function readGameLevels() {
+  const g = (readGlobalRubriqueDefaults().gameLevels || []).map(String).filter((l) => l === '1' || l === '2' || l === '3');
+  return [...new Set(g)];
+}
+function pickGameLevel(levels) { return levels.length ? Number(levels[Math.floor(Math.random() * levels.length)]) : null; }
+// Niveau de proximité (1 = autre siècle, 2 = même siècle mais éloignée, 3 = même époque) d'une œuvre d'année y par rapport aux années de référence.
+function gameLevelRelation(refYears, y) {
+  if (y === null || y === undefined || !refYears.length) return null;
+  if (refYears.some((a) => Math.abs(a - y) < GAME_LEVEL_GAP)) return 3;
+  return refYears.some((a) => Math.floor(a / 100) === Math.floor(y / 100)) ? 2 : 1;
+}
+// Garde, parmi cands, les œuvres du niveau demandé (par rapport aux œuvres refs) ; s'il y en a moins que « need », on essaie le niveau voisin.
+function levelPick(refs, cands, level, need) {
+  const years = refs.map((r) => chronoYearOf(r)).filter((y) => y !== null);
+  if (!level || !years.length) return cands;
+  const rel = new Map();
+  cands.forEach((c) => rel.set(c, gameLevelRelation(years, chronoYearOf(c))));
+  const order = { 1: [1, 2, 3], 2: [2, 1, 3], 3: [3, 2, 1] }[level];
+  for (const lv of order) {
+    const sel = cands.filter((c) => rel.get(c) === lv);
+    if (sel.length >= (need || 1)) return sel;
+  }
+  return cands;
+}
+// Réservoir des « faux » : les œuvres de tous les siècles pour les arts choisis (comme le réservoir de base : niveau d'artiste et zone
+// respectés tant qu'il reste de quoi choisir).
+async function loadGameFoilPool(arts, zones, artistLevels) {
+  let rows = [];
+  for (const art of arts) {
+    for (const century of ['15e', '16e', '17e', '18e', '19e', '20e']) {
+      try {
+        const part = await fetchQuizRows(art, century);
+        part.forEach((r) => { r.artType = art; if (!r.century) r.century = century; });
+        rows.push(...part);
+      } catch (e) { /* fichier absent, ignoré */ }
+    }
+  }
+  if (artistLevels?.length) { const lv = rows.filter((w) => artistLevels.includes(String(w.niveau || 1))); if (lv.length >= 30) rows = lv; }
+  if (zones?.length) { const z = rows.filter((w) => { const zz = zoneOfNationality(w.nationality); return !zz || zones.includes(zz); }); if (z.length >= 30) rows = z; }
+  return rows.length >= 8 ? rows : null;
+}
+// Chronologie : une œuvre « d'ancrage » (de l'artiste / du champ choisi) et trois autres, d'autres artistes, placées selon le niveau.
+function chronoLevelQuestion(level, dated, foilDated) {
+  const anchor = dated[Math.floor(Math.random() * dated.length)];
+  const ay = chronoYearOf(anchor); const ak = famNormalize(anchor.artist);
+  const foils = foilDated.filter((w) => w !== anchor && famNormalize(w.artist) !== ak);
+  const shuffle = (arr) => arr.slice().sort(() => Math.random() - 0.5);
+  const picked = [anchor];
+  const far = (w, gap) => picked.every((p) => Math.abs(chronoYearOf(p) - chronoYearOf(w)) >= gap);
+  if (level === 1) {
+    const byCentury = new Map();
+    foils.forEach((w) => { const c = Math.floor(chronoYearOf(w) / 100); if (c !== Math.floor(ay / 100)) { if (!byCentury.has(c)) byCentury.set(c, []); byCentury.get(c).push(w); } });
+    for (const c of shuffle([...byCentury.keys()])) {
+      if (picked.length >= 4) break;
+      const cand = shuffle(byCentury.get(c)).find((w) => far(w, GAME_LEVEL_GAP));
+      if (cand) picked.push(cand);
+    }
+  } else if (level === 2) {
+    const c0 = Math.floor(ay / 100);
+    shuffle(foils.filter((w) => Math.floor(chronoYearOf(w) / 100) === c0)).forEach((w) => { if (picked.length < 4 && far(w, GAME_LEVEL_GAP)) picked.push(w); });
+  } else {
+    shuffle(foils.filter((w) => Math.abs(chronoYearOf(w) - ay) <= 20)).forEach((w) => { if (picked.length < 4 && far(w, 1)) picked.push(w); });
+  }
+  return picked.length === 4 ? picked : null;
+}
+function pickIntrusDistractors(correct, pool, requireDistinctArtist, lvOpt) {
   // Rendre le choix plus exigeant : on préfère des intrus qui partagent un mot significatif du
   // titre (ex. « paysage »), sinon des œuvres d'un AUTRE artiste (pour ne pas trivialiser un
   // choix limité au nom du peintre), sinon n'importe quoi d'autre du réservoir.
@@ -15829,11 +15967,12 @@ function pickIntrusDistractors(correct, pool, requireDistinctArtist) {
   const correctWords = new Set(ci.words);
   // On exclut d'emblée les œuvres sans titre exploitable (choix ambigu, illisible dans la liste)
   // et tout doublon de contenu (même couple auteur+titre, même si ce sont deux lignes distinctes).
-  let others = pool.filter((r) => { if (r === correct) return false; const i = intrusInfo(r); return i.hasTitle && i.ck !== correctKey && i.mov === ci.mov; }); // v122 : jamais de mélange déplaçable / non déplaçable
+  let others = (lvOpt ? lvOpt.pool : pool).filter((r) => { if (r === correct) return false; const i = intrusInfo(r); return i.hasTitle && i.ck !== correctKey && i.mov === ci.mov; }); // v122 : jamais de mélange déplaçable / non déplaçable
   // Quand seul le nom de l'artiste sera affiché (pas de titre pour distinguer), il FAUT trois
   // artistes différents, sinon deux « Monet » pourraient se retrouver face à face.
   if (requireDistinctArtist) others = others.filter((r) => !usedArtists.has(intrusInfo(r).ak));
   { const sameKind = others.filter((r) => intrusInfo(r).arch === ci.arch); if (sameKind.length >= 2) others = sameKind; } // v136 : pas d'architecture face à une sculpture
+  if (lvOpt && lvOpt.level) others = levelPick([correct], others, lvOpt.level, 2);   // v325 : niveau des jeux
   let candidates = correctWords.size ? others.filter((r) => intrusInfo(r).words.some((w) => correctWords.has(w))) : [];
   const picked = [];
   const drawFrom = (list) => {
@@ -15894,6 +16033,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
     // ne s'appliquait alors jamais).
     pool = filterPoolByGlobalArtists(pool, allRows);
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    const gameLevelsSel = readGameLevels(); const intrusFoil = gameLevelsSel.length ? await loadGameFoilPool(arts, zones, levels) : null;   // v325
     const countChoice = document.querySelector('input[name="intrus-count"]:checked').value;
     const count = countChoice === 'max' ? pool.length : Math.min(Number(countChoice), pool.length);
     intrusAudioOn = getGlobalPrefs().audioOn;
@@ -15916,7 +16056,7 @@ $('intrus-start-button')?.addEventListener('click', async () => {
       // titre affiché, il faut impérativement 3 artistes différents pour éviter deux choix
       // identiques (ex. deux « Monet »).
       const titleMode = intrusMode === 'reference' ? Math.random() < 0.3 : true;
-      const distractors = pickIntrusDistractors(correct, pool, intrusMode === 'reference' && !titleMode);
+      const distractors = pickIntrusDistractors(correct, pool, intrusMode === 'reference' && !titleMode, intrusFoil ? { pool: intrusFoil, level: pickGameLevel(gameLevelsSel) } : null);
       if (distractors.length < 2 && pool.some((r) => !sameMovability(r, correct))) return null;
       const choices = [correct, ...distractors];
       for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [choices[i], choices[j]] = [choices[j], choices[i]]; }
@@ -16819,9 +16959,9 @@ async function cinemaCatalog() {
     const parsed = r._light ? { marks: { filter: () => ({ length: Number(r['Images bio']) || 0 }) } } : parseBioMarkup(g('Bio'));
     const wkTitle = g('Œuvre emblématique'), wkText = r._light ? (r._hasWork ? '1' : '') : g("Texte de l'œuvre");
     const cmText = r._light ? (r._hasComm ? '1' : '') : g("Commentaire de l'œuvre");   // v267   // v248 : l'œuvre principale commentée de l'artiste
-    arts.push({ kind: 'artist', wk: wkText ? wkTitle : '', wkText, cm: cmText ? wkTitle : '', cmText, cmN: cmText && !r._light ? parseBioMarkup(cmText).marks.filter((m) => m.ref).length : 0, wkN: wkText ? (r._light ? Number(r['Images œuvre']) || 0 : parseBioMarkup(wkText).marks.filter((m) => m.ref).length) : 0, wkFind: keyName(wkTitle), row: r, name: civil && sur ? `${name}, dit ${sur}` : name, dates, p: a.includes('peinture'), s: a.includes('sculpture'), n: parsed.marks.filter((m) => m.ref).length, key: keyName(pat || sur || pre), find: keyName(`${pre} ${pat} ${sur}`) });
+    arts.push({ kind: 'artist', wk: wkText ? wkTitle : '', wkText, cm: cmText ? wkTitle : '', cmText, cmN: cmText && !r._light ? parseBioMarkup(cmText).marks.filter((m) => m.ref).length : 0, wkN: wkText ? (r._light ? Number(r['Images œuvre']) || 0 : parseBioMarkup(wkText).marks.filter((m) => m.ref).length) : 0, wkFind: keyName(wkTitle), row: r, name: artistListLabelPlain(r), dates, p: a.includes('peinture'), s: a.includes('sculpture'), n: parsed.marks.filter((m) => m.ref).length, key: artistNameParts(r).key, key2: artistNameParts(r).key2, find: keyName(`${pre} ${pat} ${sur}`) });
   });
-  arts.sort((a, b) => a.key.localeCompare(b.key));
+  arts.sort((a, b) => a.key.localeCompare(b.key, 'fr') || a.key2.localeCompare(b.key2, 'fr'));
   cinemaCat = { evo, arts }; return cinemaCat;
 }
 function cinemaRender() {
