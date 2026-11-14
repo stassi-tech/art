@@ -3003,3 +3003,31 @@ button, [role="button"], .home-mode-button, .primary-button, .secondary-button {
 /* v324 */
 /* v325 */
 /* v326 */
+
+/* v327 : images d'ambiance réellement appliquées.
+   - Boutons : l'ancienne règle posait background-image puis un « background: » raccourci qui l'effaçait ;
+     l'image xxx-bouton.jpg passe maintenant PAR-DESSUS l'ancien dégradé/couleur (qui reste en secours
+     tant que le fichier n'est pas déposé dans assets/).
+   - Fonds : xxx-fond.jpg sur le fond d'exercice (comme versailles-fond.jpg / renoir-fond.jpg) ; la couleur
+     d'origine reste dessous. space-bouton, versailles-*, renoir-* étaient déjà bons. */
+body[data-ambiance="pitti"] .primary-button, body[data-ambiance="pitti"] .home-mode-button { background-image:url('assets/pitti-bouton.jpg'), linear-gradient(160deg, #d8b866 0%, #a8842f 35%, #8a6a24 50%, #c9a24a 65%, #8a6a24 100%); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="pitti"].in-exercise { background-color:#0c3c2f; background-image:url('assets/pitti-fond.jpg'); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="pitti"].in-exercise .app-shell { background-color:transparent; }
+body[data-ambiance="bauhaus"] .primary-button, body[data-ambiance="bauhaus"] .home-mode-button { background-image:url('assets/bauhaus-bouton.jpg'); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="bauhaus"].in-exercise { background-color:#333335; background-image:url('assets/bauhaus-fond.jpg'); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="bauhaus"].in-exercise .app-shell { background-color:transparent; }
+body[data-ambiance="space"].in-exercise { background-color:#e07a2e; background-image:url('assets/space-fond.jpg'); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="space"].in-exercise .app-shell { background-color:transparent; }
+body[data-ambiance="wedgwood"] .primary-button, body[data-ambiance="wedgwood"] .home-mode-button { background-image:url('assets/wedgwood-bouton.jpg'), linear-gradient(160deg, #faf6ea 0%, #e8e0cf 50%, #d8cdb4 100%); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="wedgwood"].in-exercise { background-color:#a8c0d4; background-image:url('assets/wedgwood-fond.jpg'); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="wedgwood"].in-exercise .app-shell { background-color:transparent; }
+body[data-ambiance="ermitage"] .primary-button, body[data-ambiance="ermitage"] .home-mode-button { background-image:url('assets/ermitage-bouton.jpg'), linear-gradient(160deg, #f2d98a 0%, #d8b23c 40%, #8a6a1e 55%, #e8c874 70%, #8a6a1e 100%); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="ermitage"].in-exercise { background-color:#0a2745; background-image:url('assets/ermitage-fond.jpg'); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="ermitage"].in-exercise .app-shell { background-color:transparent; }
+body[data-ambiance="renaissance"] .primary-button, body[data-ambiance="renaissance"] .home-mode-button { background-image:url('assets/renaissance-bouton.jpg'), linear-gradient(160deg, #e8c874 0%, #c9a24a 35%, #8a6a24 50%, #d8b25c 65%, #8a6a24 100%); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="renaissance"].in-exercise { background-color:#7a3820; background-image:url('assets/renaissance-fond.jpg'); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="renaissance"].in-exercise .app-shell { background-color:transparent; }
+body[data-ambiance="gothique"] .primary-button, body[data-ambiance="gothique"] .home-mode-button { background-image:url('assets/gothique-bouton.jpg'), linear-gradient(160deg, #f2d98a 0%, #d4af37 35%, #8a6a1e 50%, #e8c874 65%, #8a6a1e 100%); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="gothique"].in-exercise { background-color:#101d3c; background-image:url('assets/gothique-fond.jpg'); background-size:cover; background-position:center; background-repeat:no-repeat; }
+body[data-ambiance="gothique"].in-exercise .app-shell { background-color:transparent; }
+/* v327 */
