@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v320';
+const APP_VERSION = 'v322';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -9968,6 +9968,13 @@ document.addEventListener('click', (event) => {
 });
 $('menu-item-fonctionnement')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-fonctionnement'); });
 $('menu-item-contact')?.addEventListener('click', () => { closeHamburgerMenu(); openModal('modal-contact'); });
+// v321 : fenêtre « À propos » : son contenu est une copie du texte (unique) de la page d'accueil, recopiée à la première ouverture.
+$('menu-item-apropos')?.addEventListener('click', () => {
+  closeHamburgerMenu();
+  const body = $('apropos-modal-body');
+  if (body && !body.dataset.ready) { body.innerHTML = $('apropos-content')?.innerHTML || ''; body.dataset.ready = '1'; }
+  openModal('modal-apropos');
+});
 // Sur petit écran, ces 4 boutons disparaissent du bandeau (faute de place) — ces entrées
 // déclenchent le même bouton d'origine plutôt que de dupliquer sa logique.
 // event.stopPropagation() est nécessaire ici : sans lui, le clic d'origine continue de remonter
@@ -9979,7 +9986,7 @@ $('menu-item-ambiance')?.addEventListener('click', (event) => { event.stopPropag
 $('menu-item-exhibition')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-exhibition-button')?.click(); });
 $('menu-item-account')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-account-button')?.click(); });
 // v320 : les 4 boutons ajoutés au bandeau sur grand écran déclenchent l'entrée correspondante du menu ☰ (même logique, aucune copie).
-[['global-artists-button', 'menu-item-artistes'], ['global-info-button', 'menu-item-fonctionnement'], ['global-contact-button', 'menu-item-contact'], ['global-quit-button', 'menu-item-quit']].forEach(([btn, item]) => {
+[['global-about-button', 'menu-item-apropos'], ['global-artists-button', 'menu-item-artistes'], ['global-info-button', 'menu-item-fonctionnement'], ['global-contact-button', 'menu-item-contact'], ['global-quit-button', 'menu-item-quit']].forEach(([btn, item]) => {
   $(btn)?.addEventListener('click', (event) => { event.stopPropagation(); $(item)?.click(); });
 });
 $('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
@@ -13463,6 +13470,14 @@ function quitSession() {
     updateExerciseSummaries(); updateProfileMenuBadges(); populateArtistSuggestions(); renderQuickArtistsBox();
   });
   $('qc-clear-objects')?.addEventListener('click', () => { setObjectsFilter(null); if ($('qc-objects-details')?.open) renderObjectsBlock(); else refreshObjectsBlockSoon(); updateExerciseSummaries(); renderQuickArtistsBox(); populateArtistSuggestions(); });
+  // v322 (retour Stéphane) : « Tout effacer » juste sous l'encadré récapitulatif (artistes et/ou natures d'objets choisis),
+  // pour ne pas avoir à ouvrir les menus repliés. Il vide les deux choix d'un coup ; l'encadré (et donc le bouton) disparaît ensuite.
+  $('qc-clear-box')?.addEventListener('click', () => {
+    writeGlobalArtistNames([]);
+    setObjectsFilter(null);
+    if ($('qc-objects-details')?.open) renderObjectsBlock(); else refreshObjectsBlockSoon();
+    updateExerciseSummaries(); updateProfileMenuBadges(); populateArtistSuggestions(); renderQuickArtistsBox();
+  });
   $('qc-objects-details')?.addEventListener('toggle', () => { if ($('qc-objects-details').open) renderObjectsBlock(); });
   $('qc-artists-details')?.addEventListener('toggle', () => { if ($('qc-artists-details').open) populateArtistSuggestions(); });
   $('training-hub-edit-general')?.addEventListener('click', () => showPanel('quick-config'));

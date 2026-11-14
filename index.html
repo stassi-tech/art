@@ -3,7 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="robots" content="noindex, nofollow" />
+    <meta name="robots" content="index, follow" />
+    <meta name="description" content="Jeux et quiz gratuits pour mémoriser 3 000 peintures et sculptures de 500 artistes d'Occident, du 15e au 20e siècle : exercices, diaporamas et voix de synthèse." />
+    <link rel="canonical" href="https://mnemart.fr/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:site_name" content="MNEMART" />
+    <meta property="og:title" content="MNEMART — Peintures et sculptures en Occident, 15e au 20e siècle" />
+    <meta property="og:description" content="Mémoriser des milliers d'œuvres d'art, c'est possible : 3 000 œuvres, 500 artistes, six exercices et un quiz final." />
+    <meta property="og:url" content="https://mnemart.fr/" />
+    <meta property="og:image" content="https://mnemart.fr/assets/accueil.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"MNEMART","url":"https://mnemart.fr/","inLanguage":"fr","description":"Jeux et quiz gratuits pour mémoriser 3 000 peintures et sculptures de 500 artistes d'Occident, du 15e au 20e siècle.","publisher":{"@type":"Organization","name":"MNEMART","url":"https://mnemart.fr/","email":"contact@mnemart.fr","address":{"@type":"PostalAddress","addressLocality":"Tours","addressCountry":"FR"}}}</script>
     <title>MNEMART — Peintures et sculptures en Occident, 15e au 20e siècle</title>
     <script>
 /* v254 — FILET DE SÉCURITÉ : si le programme de l'application rencontre une erreur (surtout sur téléphone, où l'état
@@ -55,7 +66,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=314" />
+    <link rel="stylesheet" href="style.css?v=316" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -99,6 +110,7 @@
         <button type="button" id="global-artists-button" class="global-topbar-button desktop-only-topbtn" aria-label="Liste des artistes et des œuvres" title="Liste des artistes et des œuvres">📖</button>
         <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
         <button type="button" id="global-info-button" class="global-topbar-button desktop-only-topbtn" aria-label="Comment fonctionne l'application" title="Comment fonctionne l'application">ℹ️</button>
+        <button type="button" id="global-about-button" class="global-topbar-button desktop-only-topbtn" aria-label="À propos de MNEMART : la base, les jeux, les objectifs" title="À propos de MNEMART">📄</button>
         <button type="button" id="global-contact-button" class="global-topbar-button desktop-only-topbtn" aria-label="Contact" title="Contact">✉️</button>
         <button type="button" id="global-account-button" class="global-topbar-button" aria-label="Mon compte" title="Mon compte">👤</button>
         <button type="button" id="global-quit-button" class="global-topbar-button desktop-only-topbtn" aria-label="Quitter la session" title="Quitter la session">🚪</button>
@@ -127,6 +139,7 @@
              enterScaleView dans app.js), plus besoin d'un accès dédié depuis ce menu. -->
         <button type="button" class="hamburger-item" id="menu-item-quit">🚪 Quitter la session</button>
         <button type="button" class="hamburger-item" id="menu-item-fonctionnement">ℹ️ Comment fonctionne l'application</button>
+        <button type="button" class="hamburger-item" id="menu-item-apropos">📄 À propos de MNEMART</button>
         <button type="button" class="hamburger-item" id="menu-item-artistes">📖 Liste des artistes et des œuvres</button>
         <button type="button" class="hamburger-item" id="menu-item-contact">✉️ Contact</button>
       </div>
@@ -442,6 +455,42 @@
             </div>
           </div>
 
+          <!-- v321 : texte de présentation du site (base de données, jeux, objectifs, fabrication), lisible par Google : une seule copie dans la page, repliée ; la fenêtre « À propos » (icône 📄 du bandeau) en reprend le contenu. -->
+          <details class="home-apropos" id="home-apropos">
+            <summary>À propos de MNEMART : la base de données, les jeux, les objectifs</summary>
+            <div class="apropos-content" id="apropos-content">
+              <h2>Qu'est-ce que MNEMART ?</h2>
+              <p>MNEMART est un site gratuit pour apprendre à reconnaître et à mémoriser les peintures et les sculptures d'Occident, du 15e au 20e siècle. Il réunit 3 000 œuvres de 500 artistes, et les propose sous forme d'exercices d'entraînement et de quiz d'identification : on y retrouve le titre d'une œuvre, son artiste, sa date, son matériau, ses dimensions ou le musée qui la conserve.</p>
+              <p>Le site s'adresse à toute personne qui veut mieux connaître l'histoire de l'art occidental : étudiants, amateurs de musées, visiteurs qui préparent un voyage, enseignants.</p>
+              <h2>La base de données</h2>
+              <p>La base compte 500 artistes (323 peintres, 152 sculpteurs, et des artistes qui pratiquent plusieurs arts) et 3 000 œuvres : environ 2 070 peintures et 930 sculptures, réparties par siècle, du 15e au 20e. Les artistes viennent surtout d'Italie (143), de France (136), d'Allemagne (36), des Pays-Bas (34), de Belgique (29), du Royaume-Uni (28), des États-Unis (23) et d'Espagne (19).</p>
+              <p>Chaque œuvre est décrite par son titre, son artiste, sa date, sa nature (tableau, fresque, statue, triptyque…), son matériau et sa technique, ses dimensions, et le lieu où elle est conservée aujourd'hui. Quand on le connaît, le lieu de conservation initial et le commanditaire sont notés aussi, et les œuvres qui faisaient partie d'un ensemble (polyptyque, triptyque, cycle de fresques) sont reliées entre elles.</p>
+              <p>Chaque artiste a un niveau de notoriété : c'est une estimation, qui sert à choisir la difficulté des questions, pas un classement scientifique. Une œuvre isolée bien plus célèbre que le reste de la production de son auteur reçoit son propre niveau.</p>
+              <p>Les images viennent de Wikimedia Commons et sont utilisées sous leurs licences respectives, domaine public ou Creative Commons. Les dates, les dimensions et les musées sont contrôlés par comparaison avec Wikimedia Commons et Wikidata, et corrigés à la main quand les sources divergent.</p>
+              <h2>Les jeux et les modes d'apprentissage</h2>
+              <p>MNEMART propose deux façons de progresser : six exercices d'entraînement, du plus simple au plus difficile, puis un quiz final pour s'autoévaluer sur le même échantillon d'œuvres. On peut aussi passer directement au quiz.</p>
+              <ol>
+                <li>Imprégnation : une image apparaît, et sa référence s'écrit progressivement pendant qu'une voix la lit, sans notation.</li>
+                <li>Intrus : on retrouve la bonne image, ou la bonne référence, parmi trois propositions.</li>
+                <li>Famille : on repère les œuvres d'un même artiste parmi d'autres, puis on retrouve leur titre.</li>
+                <li>Reconstitution : un détail très resserré de l'œuvre apparaît, et on retrouve sa référence complète parmi trois choix.</li>
+                <li>Vrai/Faux : une image apparaît avec sa référence, entièrement exacte ou comportant jusqu'à deux détails faux à repérer.</li>
+                <li>Chronologie : quatre œuvres apparaissent, et on les remet dans l'ordre chronologique de leur création.</li>
+              </ol>
+              <p>Le quiz final demande, pour chaque œuvre, de retrouver les rubriques choisies (artiste, titre, date, matériau, dimensions, lieu). Les réponses proches sont tolérées : fautes d'orthographe, surnoms, titres en langue d'origine. On peut aussi dicter sa réponse au micro.</p>
+              <p>Tous les jeux se règlent par art (peinture, sculpture), par siècle, par zone géographique, par rubrique, par niveau de difficulté et par nombre de questions. Un compte gratuit permet de retrouver ses réglages et ses scores d'une session à l'autre.</p>
+              <p>En dehors des jeux, on peut regarder des diaporamas (la vie d'un artiste, une présentation de son œuvre principale, ou l'histoire d'un matériau, d'une technique ou d'un genre), parcourir la liste complète des artistes et des œuvres, et se promener dans une salle d'exposition où les œuvres sont montrées à l'échelle d'une personne.</p>
+              <h2>Les objectifs du site</h2>
+              <p>MNEMART part d'une conviction, affichée sur sa page d'accueil : mémoriser des milliers d'œuvres d'art est possible, à condition de les revoir souvent et de s'exercer activement. Le site cherche donc à faire passer du simple coup d'œil à la vraie reconnaissance : d'abord s'imprégner d'une œuvre, puis la retrouver parmi d'autres, puis la situer dans le temps, et enfin la nommer avec son artiste, sa date et son lieu de conservation.</p>
+              <p>Ses trois principes sont la progression (des exercices de plus en plus difficiles, puis un quiz d'évaluation), le choix (chacun règle les arts, les siècles, les zones, les rubriques et les niveaux qu'il veut travailler) et la gratuité : le site est non commercial, sans publicité, proposé à titre personnel et éducatif.</p>
+              <h2>Comment le site a été créé</h2>
+              <p>MNEMART est un projet personnel, élaboré à Tours. Tout part d'une base de données tenue à la main : une fiche par œuvre et par artiste, avec les images, les textes et les informations de conservation, mise à jour au fil des vérifications.</p>
+              <p>Les textes des diaporamas sont rédigés pour le site. Chaque biographie est racontée à la première personne, comme si l'artiste parlait, et illustrée par ses œuvres au moment où il les évoque. Ces textes, comme les présentations des exercices, sont lus par des voix de synthèse françaises. Comme ces voix butent sur les noms étrangers, un atelier de prononciation règle l'écriture de chaque nom, voix par voix, jusqu'à ce qu'il soit bien dit.</p>
+              <p>Les informations sont vérifiées par comparaison avec les sources ouvertes de Wikimedia Commons et de Wikidata, puis corrigées à la main : dates, dimensions, musées de conservation, lieux d'origine et commanditaires. Les images restent hyperliées vers leur page d'origine, avec leurs crédits et leurs licences.</p>
+              <p>Le site fonctionne sur ordinateur, tablette et smartphone, et ne demande aucune installation. Pour toute question, suggestion ou signalement d'erreur : <a href="mailto:contact@mnemart.fr">contact@mnemart.fr</a>.</p>
+            </div>
+          </details>
+
           <!-- v112 (prototype TEMPORAIRE, à retirer dès que l'atelier de placement sera câblé dans le
                vrai parcours — voir #placement-proto ci-dessus) : même principe que le menu hamburger
                temporaire qui donnait accès à #gallery-proto avant qu'il devienne la vraie salle
@@ -665,6 +714,7 @@
                artistes sont choisis, avec « Tout effacer » pour vider ce choix d'artistes. -->
           <div id="qc-artists-box" class="hidden">
             <div class="config-table qc-artists-chosen" id="qc-artists-chosen"></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-box">Tout effacer</button></div>
           </div>
           <div id="qc-overrides" class="hidden"></div>
           <div class="setup-action-bar">
@@ -1563,6 +1613,14 @@
           </div>
         </div>
 
+        <div class="modal-overlay hidden" id="modal-apropos">
+          <div class="modal-box apropos-box">
+            <h3>À propos de MNEMART</h3>
+            <div class="apropos-content" id="apropos-modal-body"></div>
+            <button type="button" class="primary-button modal-close" data-modal="modal-apropos">Fermer</button>
+          </div>
+        </div>
+
         <div class="modal-overlay hidden" id="modal-contact">
           <div class="modal-box">
             <h3>Contact</h3>
@@ -2297,6 +2355,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=540"></script>
+    <script defer src="app.js?v=542"></script>
   </body>
 </html>

@@ -2990,3 +2990,12 @@ button, [role="button"], .home-mode-button, .primary-button, .secondary-button {
   #imp-correction-details .correction-value { margin-bottom:3px; }
   #imp-correction-details .imp-more-btn { font-size:.86rem; }
 }
+
+/* v321 : texte « À propos » (accueil repliable + fenêtre de l'icône 📄 du bandeau) */
+.home-apropos { max-width:760px; margin:28px auto 0; text-align:left; color:var(--ink); font-family:Arial,sans-serif; }
+.home-apropos > summary { cursor:pointer; font-weight:700; color:var(--accent); text-align:center; padding:10px; font-size:.95rem; }
+.apropos-content h2 { font-size:1.05rem; color:var(--accent); margin:20px 0 6px; }
+.apropos-content p, .apropos-content li { font-size:.92rem; line-height:1.55; margin:0 0 10px; }
+.apropos-content ol { margin:0 0 10px; padding-left:22px; }
+.apropos-box { max-width:720px; width:calc(100% - 32px); max-height:85vh; overflow-y:auto; text-align:left; }
+/* v322 */
