@@ -609,6 +609,12 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 }
 .global-topbar-button { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:var(--paper); font-size:.9rem; cursor:pointer; flex:0 0 auto; }
 @media (hover:hover) { .global-topbar-button:hover { background:#f7f2ea; } }
+/* v320 : sur grand écran, le menu ☰ disparaît et ses 4 entrées (artistes, aide, contact, sortie) deviennent des boutons du bandeau ; en dessous de 1025 px, c'est l'inverse (menu ☰). */
+.desktop-only-topbtn { display:none; }
+@media (min-width:1025px) {
+  .desktop-only-topbtn { display:inline-block; }
+  #hamburger-button, #hamburger-menu { display:none !important; }
+}
 /* Le bouton salle s'élargit pour montrer les artistes en cours d'exposition (comme les boutons de
    jeux le font pour leur propre sélection) — vide, il garde sa taille normale d'icône seule. */
 #global-exhibition-button:has(#exhibition-button-label:not(:empty)) { width:auto; display:inline-flex; align-items:center; gap:4px; padding:0 8px; }

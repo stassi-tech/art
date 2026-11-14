@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v319';
+const APP_VERSION = 'v320';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -9978,6 +9978,10 @@ $('menu-item-fullscreen')?.addEventListener('click', (event) => { event.stopProp
 $('menu-item-ambiance')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-ambiance-button')?.click(); });
 $('menu-item-exhibition')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-exhibition-button')?.click(); });
 $('menu-item-account')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); $('global-account-button')?.click(); });
+// v320 : les 4 boutons ajoutés au bandeau sur grand écran déclenchent l'entrée correspondante du menu ☰ (même logique, aucune copie).
+[['global-artists-button', 'menu-item-artistes'], ['global-info-button', 'menu-item-fonctionnement'], ['global-contact-button', 'menu-item-contact'], ['global-quit-button', 'menu-item-quit']].forEach(([btn, item]) => {
+  $(btn)?.addEventListener('click', (event) => { event.stopPropagation(); $(item)?.click(); });
+});
 $('open-mentions-legales')?.addEventListener('click', () => openModal('modal-mentions-legales'));
 // v113 (retour Stéphane : « tirer le personnage, ça ne vient pas trop... pour sortir de la salle,
 // soit on appuie sur maison et on retombe sur la page d'accueil, soit on appuie sur la flèche et on

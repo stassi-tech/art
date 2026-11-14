@@ -90,10 +90,18 @@
         </div>
         <button type="button" id="global-fullscreen-button" class="global-topbar-button" aria-label="Basculer le mode plein écran" title="Plein écran">⛶</button>
         <button type="button" id="hamburger-button" aria-label="Menu" class="hamburger-button global-topbar-button">☰</button>
+        <!-- v320 (retour Stéphane : « sur PC, on fait disparaître le menu hamburger et on remet ce qu'il contient à côté des autres icônes ») : sur grand écran (≥ 1025 px) tout est visible
+             d'emblée, dans un ordre logique : d'abord ce qu'on regarde (diaporamas, salle d'exposition, liste des artistes), puis l'apparence (ambiance), puis l'aide et le contact (ℹ️, ✉️),
+             et pour finir le compte et la sortie de la session. Les 4 boutons ajoutés (.desktop-only-topbtn) ne font que déclencher les entrées du menu hamburger, qui gardent toute la logique ;
+             sur smartphone et tablette (≤ 1024 px) ils restent cachés et le menu ☰ reprend du service. -->
         <button type="button" id="global-cinema-button" class="global-topbar-button" aria-label="Diaporamas : voir un diaporama" title="Diaporamas : voir un diaporama">🎬</button>
-        <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
         <button type="button" id="global-exhibition-button" class="global-topbar-button" aria-label="Salle d'exposition" title="Salle d'exposition">🖼️<span id="exhibition-button-label"></span></button>
+        <button type="button" id="global-artists-button" class="global-topbar-button desktop-only-topbtn" aria-label="Liste des artistes et des œuvres" title="Liste des artistes et des œuvres">📖</button>
+        <button type="button" id="global-ambiance-button" class="global-topbar-button" aria-label="Changer l'ambiance" title="Changer l'ambiance">🎨</button>
+        <button type="button" id="global-info-button" class="global-topbar-button desktop-only-topbtn" aria-label="Comment fonctionne l'application" title="Comment fonctionne l'application">ℹ️</button>
+        <button type="button" id="global-contact-button" class="global-topbar-button desktop-only-topbtn" aria-label="Contact" title="Contact">✉️</button>
         <button type="button" id="global-account-button" class="global-topbar-button" aria-label="Mon compte" title="Mon compte">👤</button>
+        <button type="button" id="global-quit-button" class="global-topbar-button desktop-only-topbtn" aria-label="Quitter la session" title="Quitter la session">🚪</button>
         <!-- v87 (retour Stéphane : « remets-moi le numéro de version... je ne sais jamais si je suis
              sur la bonne version, ou si je suis sur une vieille version ») : jusqu'ici le numéro de
              version n'était affiché que sur l'écran d'accueil (#app-version-badge plus bas) — invisible
@@ -2289,6 +2297,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=539"></script>
+    <script defer src="app.js?v=540"></script>
   </body>
 </html>
