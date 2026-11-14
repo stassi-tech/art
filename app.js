@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v322';
+const APP_VERSION = 'v324';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -38,6 +38,7 @@ try {
 // v140 : brouillon de la page « Mes choix pour tous les jeux » (null tant qu'elle n'est pas ouverte) ; déclaré ici, tout en haut,
 // car les fonctions de lecture des réglages sont appelées dès le chargement.
 let quickDraft = null; let speechEpoch = 0;
+let gameConfigPrefix = null; // v324 : exercice en cours de reconfiguration depuis ⚙️ (la page « Mes choix » s'ouvre alors en « mode jeu »)
 
 // v148 (retour Stéphane, Vrai/Faux Piero della Francesca : « la voix corrige la dimension, elle est interrompue,
 // ça passe à l'erreur du matériau ») : le filet de sécurité des voix (onend parfois jamais signalé) supposait
@@ -4541,7 +4542,7 @@ function showPanel(name) {
   // 'intrus' | 'quiz-setup' | 'quiz' | 'results' | 'account' | 'other-works' — centralise
   // l'affichage des panneaux et de la barre latérale (titre + import), visible uniquement sur la
   // page d'accueil.
-  if (name !== 'quick-config') quickDraft = null; // le brouillon de la page 2 n'existe que pendant qu'elle est ouverte
+  if (name !== 'quick-config') { quickDraft = null; gameConfigPrefix = null; } // le brouillon de la page 2 n'existe que pendant qu'elle est ouverte
   if (name === 'quick-config' && !quickDraft) prepareQuickConfig();
   $('welcome-panel').classList.toggle('hidden', name !== 'welcome');
   $('training-hub-panel')?.classList.toggle('hidden', name !== 'training-hub');
@@ -10101,7 +10102,7 @@ $('open-reconstitution-setup')?.addEventListener('click', () => {
   showPanel('reconstitution-setup');
   speakObjective('recon'); $('recon-start-button')?.click();
 });
-$('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); showPanel('reconstitution-setup'); });
+$('recon-exit-link')?.addEventListener('click', () => { speechSynthesis.cancel(); openGameConfig('recon'); });
 $('recon-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'reconstitution'; showPanel('account'); loadAccountPage(); });
 $('recon-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
@@ -10119,7 +10120,7 @@ $('open-vraifaux-setup')?.addEventListener('click', () => {
   showPanel('vraifaux-setup'); // v77 : voir open-reconstitution-setup
   speakObjective('vf'); $('vf-start-button')?.click();
 });
-$('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('vraifaux-setup'); });
+$('vf-exit-link')?.addEventListener('click', () => { vfTimers.forEach(clearTimeout); speechSynthesis.cancel(); openGameConfig('vf'); });
 $('vf-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'vraifaux'; showPanel('account'); loadAccountPage(); });
 
 // ============================================================
@@ -10147,7 +10148,7 @@ $('open-famille-setup')?.addEventListener('click', () => {
   famUpdateImagesLabels();
   speakObjective('fam'); $('fam-start-button')?.click();
 });
-$('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('famille-setup'); });
+$('fam-exit-link')?.addEventListener('click', () => { famTimers.forEach(clearTimeout); speechSynthesis.cancel(); openGameConfig('fam'); });
 $('fam-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'famille'; showPanel('account'); loadAccountPage(); });
 $('fam-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
@@ -10174,7 +10175,7 @@ $('open-chrono-setup')?.addEventListener('click', () => {
   showPanel('chrono-setup'); // v77 : voir open-reconstitution-setup
   speakObjective('chrono'); $('chrono-start-button')?.click();
 });
-$('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); showPanel('chrono-setup'); });
+$('chrono-exit-link')?.addEventListener('click', () => { chronoTimers.forEach(clearTimeout); speechSynthesis.cancel(); openGameConfig('chrono'); });
 $('chrono-scores-link')?.addEventListener('click', () => { speechSynthesis.cancel(); returnToExercisePanel = 'chrono'; showPanel('account'); loadAccountPage(); });
 $('chrono-setup-scores-link')?.addEventListener('click', () => { returnToExercisePanel = null; showPanel('account'); loadAccountPage(); });
 
@@ -12774,8 +12775,10 @@ async function renderObjectsBlock(ui) {
     if (!isActive) setObjectsFilter(null); else setObjectsFilter(f);
   }
   const sum = $('qc-objects-summary');
-  if (sum) sum.textContent = isActive ? `Se limiter à des natures d'objets précis : ${describeObjectsFilter(f)}` : "Se limiter à des natures d'objets précis (facultatif)";
+  if (sum) sum.textContent = objectsSummaryText(isActive);
 }
+// v324 : le choix lui-même est affiché dans l'encadré récapitulatif (#qc-objects-box) ; la ligne repliable ne sert qu'à le modifier.
+function objectsSummaryText(active) { return active ? "Modifier la limitation à des natures d'objets" : "Se limiter à des natures d'objets précis (facultatif)"; }
 function setObjectsFilter(objects) {
   if (quickDraft) { quickDraft.artist = { ...quickDraft.artist, objects: objects || null }; }
   else {
@@ -12797,7 +12800,7 @@ function refreshObjectsBlockSoon() {
   const d = $('qc-objects-details');
   if (d && d.open) renderObjectsBlock();
   const sum = $('qc-objects-summary');
-  if (sum && !(d && d.open)) { const f = readGlobalArtistDefaults().objects; sum.textContent = objectsActive(f) ? `Se limiter à des natures d'objets précis : ${describeObjectsFilter(f)}` : "Se limiter à des natures d'objets précis (facultatif)"; }
+  if (sum && !(d && d.open)) sum.textContent = objectsSummaryText(objectsActive(readGlobalArtistDefaults().objects));
 }
 function filterPoolByGlobalArtists(pool, fallbackPool) {
   const ga = readGlobalArtistDefaults();
@@ -13209,11 +13212,12 @@ function prepareQuickConfig() {
     else { if ($('pf-count-custom')) $('pf-count-custom').value = c; const cu = document.querySelector('input[name="pf-count"][value="custom"]'); if (cu) cu.checked = true; }
   }
   if ($('qc-artists-details')?.open) populateArtistSuggestions();
-  { const od = $('qc-objects-details'); if (od) { if (objectsActive(d.artist.objects)) od.open = true; if (od.open) renderObjectsBlock(); else refreshObjectsBlockSoon(); } }
+  { const od = $('qc-objects-details'); if (od) { od.open = false; refreshObjectsBlockSoon(); } }   // v324 : les menus restent repliés ; le choix s'affiche dans l'encadré récapitulatif
   renderExerciseOverrides();
   updateQuickIntro();
   renderQuickOverrides();
   renderQuickArtistsBox();
+  renderQuickGameUI();
 }
 // v146 (retour Stéphane : « au départ il n'enregistre rien ; en quittant la session, un écran propose de donner un nom ») :
 // valider la page 2 écrit TOUJOURS le choix à deux endroits — la session en cours (sessionStorage) et la mémoire de
@@ -13246,6 +13250,7 @@ function commitQuickConfig() {
   loadedGuidedConfigName = loadedName;
   guidedModeActive = true;
   localStorage.setItem('guidedModeActive', 'true');
+  if (gameConfigPrefix) { const gp = gameConfigPrefix; gameConfigPrefix = null; launchGameAfterConfig(gp); return; }   // v324 : arrivé par ⚙️ → on relance l'exercice
   if (returnToExercisePanel) { // arrivé ici depuis le lien « Mes choix d'artiste » d'une page de jeu : on y retourne
     const back = returnToExercisePanel; returnToExercisePanel = null;
     showPanel(back); updateExerciseSummaries();
@@ -13297,9 +13302,15 @@ function renderQuickArtistsBox() {
   const ga0 = readGlobalArtistDefaults();
   const names = ga0.artists || [];
   const hasObj = objectsActive(ga0.objects);
-  box.classList.toggle('hidden', !names.length && !hasObj);
-  // v190 : la phrase récapitulative (art, siècle, rubriques, artistes, nombre de questions) vit ici, plus sur la page des exercices.
-  list.textContent = (names.length || hasObj) ? buildTrainingHubConfigSentence() : '';
+  // v324 : deux encadrés distincts et de même type — un pour les artistes (phrase récapitulative, sans la nature d'objets),
+  // un pour les natures d'objets — chacun avec son « Tout effacer », visibles seulement s'il y a un choix correspondant.
+  box.classList.toggle('hidden', !names.length);
+  list.textContent = names.length ? buildTrainingHubConfigSentence({ skipObjects: true }) : '';
+  const obox = $('qc-objects-box'); const olist = $('qc-objects-chosen');
+  if (obox && olist) {
+    obox.classList.toggle('hidden', !hasObj);
+    olist.textContent = hasObj ? `Pour cette session vous vous limitez aux natures d'objets suivantes : ${describeObjectsFilter(ga0.objects)}.` : '';
+  }
 }
 function renderQuickOverrides() {
   const box = $('qc-overrides'); if (!box) return;
@@ -13339,7 +13350,8 @@ function updateQuickIntro() {
   const intro = $('qc-intro'); if (!intro) return;
   let loadedName = '';
   try { loadedName = sessionStorage.getItem(SESSION_LOADED_NAME_KEY) || ''; } catch (e) { /* ignoré */ }
-  if (loadedName) intro.textContent = `Configuration « ${loadedName} » chargée. Vous pouvez la conserver ou la modifier.`;
+  if (gameConfigPrefix && EXERCISE_INFO[gameConfigPrefix]) intro.textContent = `Vous reconfigurez l'exercice ${gameConfigPrefix === 'quiz' ? 'Quiz final' : EXERCISE_INFO[gameConfigPrefix].name}. Ces choix valent pour tous les jeux ; « Relancer » reprend l'exercice avec eux.`;
+  else if (loadedName) intro.textContent = `Configuration « ${loadedName} » chargée. Vous pouvez la conserver ou la modifier.`;
   else if (!sessionIsConfirmed() && hasSavedLastConfig()) intro.textContent = 'Voici la dernière configuration que vous avez utilisée pour vos jeux dans votre précédente session. Vous pouvez la conserver ou la modifier.';
   else intro.textContent = 'Ces choix valent pour tous les jeux et pour le quiz final. Si vous ne cochez rien, les jeux par défaut porteront sur tous les domaines. Une fois un jeu commencé, vous pourrez le configurer à part avec le bouton ⚙️.';
   $('qc-load-saved')?.classList.toggle('hidden', !savedConfigCount());
@@ -13395,6 +13407,89 @@ function quitSession() {
   returnToExercisePanel = null;
   showPanel('welcome');
   window.scrollTo({ top: 0 });
+}
+// =====================================================================================================
+// v324 (retour Stéphane : « quand je veux reconfigurer l'exercice, il faut que ce soit exactement le même panneau ») —
+// le ⚙️ d'un exercice (et le lien de retour à la configuration) ouvre la page « Mes choix de configuration » elle-même, en
+// « mode jeu » : mêmes tableaux, mêmes encadrés récapitulatifs et mêmes « Tout effacer ». Les choix valent pour tous les jeux ;
+// le bouton du bas devient « Relancer <exercice> ». Seuls les réglages qui n'existent que dans un jeu (Imprégnation : œuvres
+// commentées et nombre d'œuvres ; Famille : nombre d'images) sont proposés dans un petit encadré sous la page.
+// Les anciens panneaux de configuration propres à chaque jeu restent dans la page mais ne sont plus ouverts depuis le jeu.
+// =====================================================================================================
+const QC_GAME_EXTRAS = {
+  imp: { title: 'Réglages propres à Imprégnation', checks: [['imp-only-commented', 'Uniquement les œuvres commentées', 'Œuvres emblématiques qui racontent leur histoire à voix haute (haut-parleur 🔊).']], radios: [['imp-count', "Nombre d'œuvres à parcourir"]] },
+  fam: { title: 'Réglages propres à Famille', checks: [], radios: [['fam-images', "Nombre d'images"]] },
+};
+function openGameConfig(prefix) {
+  if (!EXERCISE_INFO[prefix]) return;
+  gameConfigPrefix = prefix;
+  quickDraft = null;   // repart du choix réellement en vigueur, même si la page était déjà ouverte
+  showPanel('quick-config');
+  if ($('quick-config-panel')?.classList.contains('hidden')) { gameConfigPrefix = null; EXERCISE_SHOW_CONFIG[prefix]?.(); return; }   // filet de sécurité : ancien panneau
+  window.scrollTo({ top: 0 });
+}
+function renderQuickGameUI() {
+  const go = $('qc-go'); const hub = $('qc-go-hub'); const box = $('qc-game-box'); const inner = $('qc-game-options');
+  const info = gameConfigPrefix ? EXERCISE_INFO[gameConfigPrefix] : null;
+  if (!go) return;
+  if (!info) { go.textContent = 'Accéder aux jeux →'; hub?.classList.add('hidden'); box?.classList.add('hidden'); if (inner) inner.innerHTML = ''; return; }
+  go.textContent = `Relancer ${gameConfigPrefix === 'quiz' ? 'le quiz final' : info.name} →`;
+  hub?.classList.remove('hidden');
+  const extras = QC_GAME_EXTRAS[gameConfigPrefix];
+  if (!extras || !box || !inner) { box?.classList.add('hidden'); return; }
+  if (gameConfigPrefix === 'fam') { try { famUpdateImagesLabels(); } catch (e) { /* ignoré */ } }
+  const state = effectiveGameState(info.panel) || {};
+  let html = '';
+  extras.checks.forEach(([id, label, hint]) => {
+    html += `<label class="rubrique-option"><input type="checkbox" class="qcg-check" data-id="${id}" ${state[id] ? 'checked' : ''} /><span>${escapeHtml(label)}</span></label>`;
+    if (hint) html += `<p class="modal-hint" style="margin:2px 0 8px;text-align:left;">${escapeHtml(hint)}</p>`;
+  });
+  extras.radios.forEach(([name, title]) => {
+    const radios = [...document.querySelectorAll(`#${info.panel} input[type="radio"][name="${name}"]`)];
+    if (!radios.length) return;
+    const current = state[`radio:${name}`] ?? radios.find((r) => r.defaultChecked)?.value;
+    html += `<p class="config-table-col-title" style="margin-top:8px;">${escapeHtml(title)}</p>`;
+    radios.forEach((r) => { html += `<label class="rubrique-option"><input type="radio" class="qcg-radio" name="qcg-${name}" data-name="${name}" value="${escapeHtml(r.value)}" ${r.value === current ? 'checked' : ''} /><span>${escapeHtml(r.parentElement.textContent.trim())}</span></label>`; });
+  });
+  if (!html) { box.classList.add('hidden'); return; }
+  $('qc-game-title').textContent = extras.title;
+  inner.innerHTML = html;
+  box.classList.remove('hidden');
+}
+// Réglages propres au jeu, lus dans l'encadré de la page, sous la forme d'un morceau d'état de jeu.
+function collectQuickGameOptions() {
+  const patch = {};
+  document.querySelectorAll('#qc-game-options .qcg-check').forEach((el) => { patch[el.dataset.id] = el.checked; });
+  document.querySelectorAll('#qc-game-options .qcg-radio:checked').forEach((el) => { patch[`radio:${el.dataset.name}`] = el.value; });
+  return patch;
+}
+function editGameState(panelId, fn) {
+  [[sessionStorage, `sessGame_${panelId}`], [localStorage, `lastSelection_${panelId}`]].forEach(([store, key]) => {
+    let st = {};
+    try { st = JSON.parse(store.getItem(key) || 'null') || {}; } catch (e) { st = {}; }
+    fn(st);
+    try { if (Object.keys(st).length) store.setItem(key, JSON.stringify(st)); else store.removeItem(key); } catch (e) { /* ignoré */ }
+  });
+}
+// Le choix général vaut maintenant pour ce jeu : on retire son ancien réglage de contenu (art, siècle, zone, rubriques,
+// niveaux, nombre de questions) s'il en avait un, mais on garde ses réglages propres (voix, œuvres commentées…).
+function stripGameContentOverride(panelId) {
+  editGameState(panelId, (st) => {
+    Object.keys(st).forEach((k) => {
+      if (k.startsWith('radio:')) { if (/(count|nb-questions)$/.test(k) && k !== 'radio:imp-count') delete st[k]; }
+      else if (CONTENT_FIELD_RE.test(k) || CONTENT_RUB_RE.test(k)) delete st[k];
+    });
+  });
+}
+function launchGameAfterConfig(prefix) {
+  const info = EXERCISE_INFO[prefix]; if (!info) { showPanel('training-hub'); return; }
+  const patch = collectQuickGameOptions();
+  stripGameContentOverride(info.panel);
+  resetPanelContentToDefaults(info.panel);   // cases de contenu du jeu remises à zéro, puis remplies par le choix général au lancement
+  editGameState(info.panel, (st) => { Object.assign(st, patch); });
+  updateExerciseSummaries();
+  applyFieldLinkedAmbiance();
+  $(info.open)?.click();   // même chemin que le bouton du tableau des jeux : choix général + réglages propres du jeu, puis lancement
 }
 (function installQuickConfig() {
   const move = (el, slot) => { if (el && slot) slot.appendChild(el); };
@@ -13470,14 +13565,19 @@ function quitSession() {
     updateExerciseSummaries(); updateProfileMenuBadges(); populateArtistSuggestions(); renderQuickArtistsBox();
   });
   $('qc-clear-objects')?.addEventListener('click', () => { setObjectsFilter(null); if ($('qc-objects-details')?.open) renderObjectsBlock(); else refreshObjectsBlockSoon(); updateExerciseSummaries(); renderQuickArtistsBox(); populateArtistSuggestions(); });
-  // v322 (retour Stéphane) : « Tout effacer » juste sous l'encadré récapitulatif (artistes et/ou natures d'objets choisis),
-  // pour ne pas avoir à ouvrir les menus repliés. Il vide les deux choix d'un coup ; l'encadré (et donc le bouton) disparaît ensuite.
+  // v322/v324 (retour Stéphane) : un « Tout effacer » juste sous chaque encadré récapitulatif — un pour les artistes, un pour les natures
+  // d'objets — pour ne pas avoir à ouvrir les menus repliés. L'encadré (et donc son bouton) disparaît ensuite.
   $('qc-clear-box')?.addEventListener('click', () => {
     writeGlobalArtistNames([]);
-    setObjectsFilter(null);
-    if ($('qc-objects-details')?.open) renderObjectsBlock(); else refreshObjectsBlockSoon();
+    refreshObjectsBlockSoon();
     updateExerciseSummaries(); updateProfileMenuBadges(); populateArtistSuggestions(); renderQuickArtistsBox();
   });
+  $('qc-clear-objbox')?.addEventListener('click', () => {
+    setObjectsFilter(null);
+    if ($('qc-objects-details')?.open) renderObjectsBlock(); else refreshObjectsBlockSoon();
+    updateExerciseSummaries(); renderQuickArtistsBox(); populateArtistSuggestions();
+  });
+  $('qc-go-hub')?.addEventListener('click', () => { gameConfigPrefix = null; commitQuickConfig(); });
   $('qc-objects-details')?.addEventListener('toggle', () => { if ($('qc-objects-details').open) renderObjectsBlock(); });
   $('qc-artists-details')?.addEventListener('toggle', () => { if ($('qc-artists-details').open) populateArtistSuggestions(); });
   $('training-hub-edit-general')?.addEventListener('click', () => showPanel('quick-config'));
@@ -13527,7 +13627,7 @@ function quitSession() {
     btn.textContent = '⚙️';
     btn.title = 'Configurer cet exercice';
     btn.setAttribute('aria-label', 'Configurer cet exercice');
-    btn.addEventListener('click', () => EXERCISE_SHOW_CONFIG[prefix]?.());
+    btn.addEventListener('click', () => openGameConfig(prefix));   // v324 : même page que « Mes choix de configuration »
     // v147 : bouton « Quitter la session » à droite des boutons de défilement — ouvre l'écran de sortie (nom facultatif).
     const quit = document.createElement('button');
     quit.type = 'button';
@@ -13751,7 +13851,8 @@ document.querySelectorAll('input[name="gc-allgames"]').forEach((el) => {
 // Phrase affichée en haut du tableau des exercices quand on y arrive via « Valider » (parcours
 // guidé ou Mon compte) — texte détaillé demandé, avec un préfixe différent selon qu'il s'agit
 // d'une configuration enregistrée retrouvée ou d'un choix du jour fait sur le moment.
-function buildTrainingHubConfigSentence() {
+function buildTrainingHubConfigSentence(opts) {
+  const skipObjects = !!(opts && opts.skipObjects);
   const gf = readGlobalFieldDefaults();
   const gr = readGlobalRubriqueDefaults();
   const ga = readGlobalArtistDefaults();
@@ -13768,7 +13869,7 @@ function buildTrainingHubConfigSentence() {
   const levelPart = gr.levels?.length
     ? ` de niveau ${gr.levels.join('/')} (artistes ${gr.levels.map((l) => levelLabels[l]).join('/')})`
     : '';
-  const artistsPart = (ga.artists?.length ? `, en particulier ${ga.artists.join(', ')}` : '') + (objectsActive(ga.objects) ? `, en vous limitant à : ${describeObjectsFilter(ga.objects)}` : '');
+  const artistsPart = (ga.artists?.length ? `, en particulier ${ga.artists.join(', ')}` : '') + (!skipObjects && objectsActive(ga.objects) ? `, en vous limitant à : ${describeObjectsFilter(ga.objects)}` : '');
   const countPart = gr.count ? ` et en répondant à des questionnaires de ${gr.count === 'max' ? 'un maximum de' : gr.count} questions` : '';
   const middle = `vous exercer sur ${artsPart}${centPart}${zonePart}${rubriquePart}${levelPart}${artistsPart}${countPart}`;
   if (loadedGuidedConfigName) {
@@ -13877,7 +13978,7 @@ $('open-impregnation-setup')?.addEventListener('click', () => {
   showPanel('impregnation-setup'); // v77 : voir open-reconstitution-setup
   speakObjective('imp'); $('imp-start-button')?.click();
 });
-$('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); showPanel('impregnation-setup'); });
+$('imp-exit-link')?.addEventListener('click', () => { impClearTimers(); speechSynthesis.cancel(); openGameConfig('imp'); });
 
 const IMP_ACCORDIONS = ['imp-toggle-art:imp-body-art', 'imp-toggle-century:imp-body-century', 'imp-toggle-level:imp-body-level', 'imp-toggle-rubriques:imp-body-rubriques'];
 IMP_ACCORDIONS.forEach((pair) => {
@@ -15653,7 +15754,7 @@ function populateIntrusVoices() {
     : '<option value="">Voix par défaut du système</option>';
 }
 speechSynthesis.onvoiceschanged = () => { populateImpVoices(); populateIntrusVoices(); };
-$('intrus-exit-link')?.addEventListener('click', () => showPanel('intrus-setup'));
+$('intrus-exit-link')?.addEventListener('click', () => openGameConfig('intrus'));
 
 let intrusMode = 'image';
 document.querySelectorAll('.intrus-mode-btn').forEach((btn) => {

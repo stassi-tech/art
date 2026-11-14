@@ -66,7 +66,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=316" />
+    <link rel="stylesheet" href="style.css?v=318" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -455,9 +455,8 @@
             </div>
           </div>
 
-          <!-- v321 : texte de présentation du site (base de données, jeux, objectifs, fabrication), lisible par Google : une seule copie dans la page, repliée ; la fenêtre « À propos » (icône 📄 du bandeau) en reprend le contenu. -->
-          <details class="home-apropos" id="home-apropos">
-            <summary>À propos de MNEMART : la base de données, les jeux, les objectifs</summary>
+          <!-- v321 : texte de présentation du site (base de données, jeux, objectifs, fabrication), lisible par Google : une seule copie dans la page (v323 : plus affichée en bas de l'accueil, gardée masquée) ; la fenêtre « À propos » (icône 📄 du bandeau) en reprend le contenu. -->
+          <div class="home-apropos" id="home-apropos" hidden>
             <div class="apropos-content" id="apropos-content">
               <h2>Qu'est-ce que MNEMART ?</h2>
               <p>MNEMART est un site gratuit pour apprendre à reconnaître et à mémoriser les peintures et les sculptures d'Occident, du 15e au 20e siècle. Il réunit 3 000 œuvres de 500 artistes, et les propose sous forme d'exercices d'entraînement et de quiz d'identification : on y retrouve le titre d'une œuvre, son artiste, sa date, son matériau, ses dimensions ou le musée qui la conserve.</p>
@@ -489,7 +488,7 @@
               <p>Les informations sont vérifiées par comparaison avec les sources ouvertes de Wikimedia Commons et de Wikidata, puis corrigées à la main : dates, dimensions, musées de conservation, lieux d'origine et commanditaires. Les images restent hyperliées vers leur page d'origine, avec leurs crédits et leurs licences.</p>
               <p>Le site fonctionne sur ordinateur, tablette et smartphone, et ne demande aucune installation. Pour toute question, suggestion ou signalement d'erreur : <a href="mailto:contact@mnemart.fr">contact@mnemart.fr</a>.</p>
             </div>
-          </details>
+          </div>
 
           <!-- v112 (prototype TEMPORAIRE, à retirer dès que l'atelier de placement sera câblé dans le
                vrai parcours — voir #placement-proto ci-dessus) : même principe que le menu hamburger
@@ -701,6 +700,11 @@
               <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-objects">Tout effacer</button></div>
             </div>
           </details>
+          <!-- v324 : encadré récapitulatif des natures d'objets choisies (même type que celui des artistes), avec son « Tout effacer ». -->
+          <div id="qc-objects-box" class="hidden">
+            <div class="config-table qc-artists-chosen" id="qc-objects-chosen"></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-objbox">Tout effacer</button></div>
+          </div>
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
           <div id="qc-rubriques-slot"></div>
           <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-rubriques">Tout effacer</button></div>
@@ -717,9 +721,15 @@
             <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-box">Tout effacer</button></div>
           </div>
           <div id="qc-overrides" class="hidden"></div>
+          <!-- v324 : réglages qui n'existent que dans un jeu (Imprégnation, Famille), proposés seulement quand on arrive par le ⚙️ d'un exercice. -->
+          <div id="qc-game-box" class="hidden">
+            <p class="config-section-title" id="qc-game-title"></p>
+            <div class="config-table" id="qc-game-options"></div>
+          </div>
           <div class="setup-action-bar">
             <div class="setup-action-row">
               <button type="button" class="primary-button" id="qc-go">Accéder aux jeux →</button>
+              <button type="button" class="secondary-button hidden" id="qc-go-hub">Accéder au menu des jeux</button>
             </div>
           </div>
         </section>
@@ -2355,6 +2365,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=542"></script>
+    <script defer src="app.js?v=544"></script>
   </body>
 </html>
