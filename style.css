@@ -3038,7 +3038,7 @@ body[data-ambiance="gothique"].in-exercise .app-shell { background-color:transpa
 /* v329 */
 /* v330 */
 .gc-step .rubrique-option input { flex-shrink:0; }   /* v331 : les cases ne rétrécissent plus quand le libellé est long */
-/* v332 */
+/* v333 */
 
 /* v332 : « Comment fonctionne l'application » refondue (icônes du bandeau, notoriété, niveau des jeux) */
 .fonct-box h4 { margin:18px 0 6px; font-size:1.02rem; color:var(--accent); }

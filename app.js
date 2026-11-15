@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v332';
+const APP_VERSION = 'v333';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -13445,7 +13445,7 @@ function updateQuickIntro() {
   if (gameConfigPrefix && EXERCISE_INFO[gameConfigPrefix]) intro.textContent = `Vous reconfigurez l'exercice ${gameConfigPrefix === 'quiz' ? 'Quiz final' : EXERCISE_INFO[gameConfigPrefix].name}. Ces choix valent pour tous les jeux ; « Relancer » reprend l'exercice avec eux.`;
   else if (loadedName) intro.textContent = `Configuration « ${loadedName} » chargée. Vous pouvez la conserver ou la modifier.`;
   else if (!sessionIsConfirmed() && hasSavedLastConfig()) intro.textContent = 'Voici la dernière configuration que vous avez utilisée pour vos jeux dans votre précédente session. Vous pouvez la conserver ou la modifier.';
-  else intro.textContent = 'Ces choix valent pour tous les jeux et pour le quiz final. Si vous ne cochez rien, les jeux par défaut porteront sur tous les domaines. Une fois un jeu commencé, vous pourrez le configurer à part avec le bouton ⚙️.';
+  else intro.textContent = 'Ces choix valent pour tous les jeux et pour le quiz final. Si vous ne cochez rien, les jeux par défaut porteront sur tous les domaines. Une fois un jeu commencé, le bouton ⚙️ vous ramène ici pour modifier ces choix, qui valent toujours pour tous les jeux.';
   $('qc-load-saved')?.classList.toggle('hidden', !savedConfigCount());
 }
 // Photo de la configuration en vigueur (choix général + jeux réglés à part) — pour la nommer et la ressortir plus tard.
@@ -13747,8 +13747,8 @@ function launchGameAfterConfig(prefix) {
     btn.type = 'button';
     btn.className = 'nav-arrow-button panel-config-button';
     btn.textContent = '⚙️';
-    btn.title = 'Configurer cet exercice';
-    btn.setAttribute('aria-label', 'Configurer cet exercice');
+    btn.title = 'Modifier mes choix (valables pour tous les jeux)';
+    btn.setAttribute('aria-label', 'Modifier mes choix, valables pour tous les jeux');
     btn.addEventListener('click', () => openGameConfig(prefix));   // v324 : même page que « Mes choix de configuration »
     // v147 : bouton « Quitter la session » à droite des boutons de défilement — ouvre l'écran de sortie (nom facultatif).
     const quit = document.createElement('button');
