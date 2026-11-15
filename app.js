@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v328';
+const APP_VERSION = 'v329';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -13273,8 +13273,8 @@ function prepareQuickConfig() {
   renderExerciseOverrides();
   updateQuickIntro();
   renderQuickOverrides();
-  qcEditFields = false; qcEditRubriques = false;
-  renderQuickFieldBoxes();
+  qcEdit.fields = false; qcEdit.rubriques = false;
+  { const ad = $('qc-artists-details'); if (ad) ad.open = false; }   // v329 : tout arrive replié, en résumé
   renderQuickArtistsBox();
   renderQuickGameUI();
 }
@@ -13355,26 +13355,10 @@ function resetPanelContentToDefaults(panelId) {
   });
   $(panelId)?.querySelectorAll('input[type="radio"][name$="count"]').forEach((el) => { el.checked = el.defaultChecked; });
 }
-// v188 : 3e encadré (artistes choisis) de la page « Mes choix de configuration » : visible seulement s'il y a au moins un artiste.
-function renderQuickArtistsBox() {
-  const box = $('qc-artists-box'); const list = $('qc-artists-chosen'); if (!box || !list) return;
-  const ga0 = readGlobalArtistDefaults();
-  const names = ga0.artists || [];
-  const hasObj = objectsActive(ga0.objects);
-  // v324 : deux encadrés distincts et de même type — un pour les artistes (phrase récapitulative, sans la nature d'objets),
-  // un pour les natures d'objets — chacun avec son « Tout effacer », visibles seulement s'il y a un choix correspondant.
-  box.classList.toggle('hidden', !names.length);
-  list.textContent = names.length ? `Pour cette session vous vous limitez ${names.length > 1 ? 'aux artistes suivants' : "à l'artiste suivant"} : ${names.join(', ')}.` : '';   // v328 : le champ et les rubriques ont désormais leurs propres encadrés
-  const obox = $('qc-objects-box'); const olist = $('qc-objects-chosen');
-  if (obox && olist) {
-    obox.classList.toggle('hidden', !hasObj);
-    olist.textContent = hasObj ? `Pour cette session vous vous limitez aux natures d'objets suivantes : ${describeObjectsFilter(ga0.objects)}.` : '';
-  }
-}
 // v328 (retour Stéphane : « quand on revient sur la configuration précédente, voir simplement le petit résumé, comme en bas pour
 // les artistes ; si on fait Tout effacer, on retrouve le tableau des choix ») : les tableaux « 1. champs » et « 2. rubriques et niveaux »
 // sont remplacés par une phrase récapitulative tant qu'il y a un choix ; « Tout effacer » vide le choix et rouvre le tableau.
-let qcEditFields = false, qcEditRubriques = false;
+const qcEdit = { fields: false, rubriques: false };   // v329 : objets et artistes suivent l'état ouvert/fermé de leur <details>
 function quickFieldsSentence(f) {
   const artLabel = { peinture: 'la peinture', sculpture: 'la sculpture' };
   const zoneLabels = { france: 'France', italie: 'Italie', espagne: 'Espagne', royaume_uni: 'Royaume-Uni', allemagne: 'Allemagne', europe_centrale_russie: 'Europe centrale et Russie', europe_nord: 'Europe du Nord', amerique: 'Amérique' };
@@ -13394,20 +13378,31 @@ function quickRubriquesSentence(r) {
   if (r.count) parts.push(`avec des questionnaires de ${r.count === 'max' ? 'un maximum de' : r.count} questions`);
   return `Pour cette session vous avez choisi de travailler ${parts.join(', ')}.`;
 }
-function renderQuickFieldBoxes() {
-  const d = quickDraft; if (!d) return;
-  const f = d.field; const r = d.rubrique;
-  const showF = !!(f.arts.length || f.centuries.length || f.zones.length) && !qcEditFields;
-  const showR = !!(r.rubriques.length || r.levels.length || r.gameLevels.length || r.count) && !qcEditRubriques;
-  $('qc-fields-box')?.classList.toggle('hidden', !showF);
-  if ($('qc-fields-chosen')) $('qc-fields-chosen').textContent = showF ? quickFieldsSentence(f) : '';
-  $('qc-fields-slot')?.classList.toggle('hidden', showF);
-  $('qc-fields-clear-row')?.classList.toggle('hidden', showF);
-  $('qc-rubriques-box')?.classList.toggle('hidden', !showR);
-  if ($('qc-rubriques-chosen')) $('qc-rubriques-chosen').textContent = showR ? quickRubriquesSentence(r) : '';
-  $('qc-rubriques-slot')?.classList.toggle('hidden', showR);
-  $('qc-rubriques-clear-row')?.classList.toggle('hidden', showR);
+// v329 : les 4 rubriques (champs, natures d'objets, rubriques/niveaux, artistes) montrent chacune un résumé — ou « aucun choix » —
+// avec un bouton « Modifier » ; le tableau (ou le <details>) n'apparaît qu'en mode modification, refermé par « Terminé ».
+function renderQuickSections() {
+  const f = readGlobalFieldDefaults(); const r = readGlobalRubriqueDefaults(); const a = readGlobalArtistDefaults();
+  const edit = { fields: qcEdit.fields, rubriques: qcEdit.rubriques, objects: !!$('qc-objects-details')?.open, artists: !!$('qc-artists-details')?.open };
+  const names = a.artists || [];
+  const hasF = !!(f.arts?.length || f.centuries?.length || f.zones?.length);
+  const hasR = !!(r.rubriques?.length || r.levels?.length || r.gameLevels?.length || r.count);
+  const hasO = objectsActive(a.objects);
+  const txt = {
+    fields: hasF ? quickFieldsSentence(f) : "Vous n'avez effectué aucun choix : vous jouez sur toute la peinture et toute la sculpture, de tous les siècles et de toutes les zones.",
+    objects: hasO ? `Pour cette session vous vous limitez aux natures d'objets suivantes : ${describeObjectsFilter(a.objects)}.` : "Vous n'avez effectué aucun choix : vous jouez sur toutes les natures d'objets.",
+    rubriques: hasR ? quickRubriquesSentence(r) : "Vous n'avez effectué aucun choix : les jeux utilisent leurs réglages par défaut (le plus grand nombre de rubriques).",
+    artists: names.length ? `Pour cette session vous vous limitez ${names.length > 1 ? 'aux artistes suivants' : "à l'artiste suivant"} : ${names.join(', ')}.` : "Vous n'avez effectué aucune limitation : vous jouez avec tous les artistes.",
+  };
+  ['fields', 'objects', 'rubriques', 'artists'].forEach((k) => {
+    const t = $(`qc-${k}-chosen`); if (t) t.textContent = txt[k];
+    $(`qc-${k}-box`)?.classList.toggle('hidden', edit[k]);
+  });
+  $('qc-fields-slot')?.classList.toggle('hidden', !edit.fields);
+  $('qc-fields-clear-row')?.classList.toggle('hidden', !edit.fields);
+  $('qc-rubriques-slot')?.classList.toggle('hidden', !edit.rubriques);
+  $('qc-rubriques-clear-row')?.classList.toggle('hidden', !edit.rubriques);
 }
+function renderQuickArtistsBox() { renderQuickSections(); }   // nom conservé : appelé depuis de nombreux endroits
 function renderQuickOverrides() {
   const box = $('qc-overrides'); if (!box) return;
   const rows = gameOverrides();
@@ -13657,29 +13652,23 @@ function launchGameAfterConfig(prefix) {
     populateArtistSuggestions();
   });
   // v328 : « Tout effacer » sous le résumé = même effet que sous le tableau, puis le tableau (vide) réapparaît.
-  $('qc-clear-fields-box')?.addEventListener('click', () => { $('qc-clear-fields')?.click(); qcEditFields = true; renderQuickFieldBoxes(); });
-  $('qc-clear-rubriques-box')?.addEventListener('click', () => { $('qc-clear-rubriques')?.click(); qcEditRubriques = true; renderQuickFieldBoxes(); });
+  $('qc-mod-fields')?.addEventListener('click', () => { qcEdit.fields = true; renderQuickSections(); });
+  $('qc-done-fields')?.addEventListener('click', () => { qcEdit.fields = false; renderQuickSections(); populateArtistSuggestions(); });
+  $('qc-mod-rubriques')?.addEventListener('click', () => { qcEdit.rubriques = true; renderQuickSections(); });
+  $('qc-done-rubriques')?.addEventListener('click', () => { qcEdit.rubriques = false; renderQuickSections(); populateArtistSuggestions(); });
+  $('qc-mod-objects')?.addEventListener('click', () => { const d = $('qc-objects-details'); if (d) { d.open = true; renderObjectsBlock(); } renderQuickSections(); });
+  $('qc-done-objects')?.addEventListener('click', () => { const d = $('qc-objects-details'); if (d) d.open = false; refreshObjectsBlockSoon(); renderQuickSections(); updateExerciseSummaries(); populateArtistSuggestions(); });
+  $('qc-mod-artists')?.addEventListener('click', () => { const d = $('qc-artists-details'); if (d) d.open = true; populateArtistSuggestions(); renderQuickSections(); });
+  $('qc-done-artists')?.addEventListener('click', () => { const d = $('qc-artists-details'); if (d) d.open = false; renderQuickSections(); updateExerciseSummaries(); });
   $('qc-clear-artists')?.addEventListener('click', () => {
     writeGlobalArtistNames([]);
     refreshObjectsBlockSoon();
     updateExerciseSummaries(); updateProfileMenuBadges(); populateArtistSuggestions(); renderQuickArtistsBox();
   });
   $('qc-clear-objects')?.addEventListener('click', () => { setObjectsFilter(null); if ($('qc-objects-details')?.open) renderObjectsBlock(); else refreshObjectsBlockSoon(); updateExerciseSummaries(); renderQuickArtistsBox(); populateArtistSuggestions(); });
-  // v322/v324 (retour Stéphane) : un « Tout effacer » juste sous chaque encadré récapitulatif — un pour les artistes, un pour les natures
-  // d'objets — pour ne pas avoir à ouvrir les menus repliés. L'encadré (et donc son bouton) disparaît ensuite.
-  $('qc-clear-box')?.addEventListener('click', () => {
-    writeGlobalArtistNames([]);
-    refreshObjectsBlockSoon();
-    updateExerciseSummaries(); updateProfileMenuBadges(); populateArtistSuggestions(); renderQuickArtistsBox();
-  });
-  $('qc-clear-objbox')?.addEventListener('click', () => {
-    setObjectsFilter(null);
-    if ($('qc-objects-details')?.open) renderObjectsBlock(); else refreshObjectsBlockSoon();
-    updateExerciseSummaries(); renderQuickArtistsBox(); populateArtistSuggestions();
-  });
   $('qc-go-hub')?.addEventListener('click', () => { gameConfigPrefix = null; commitQuickConfig(); });
-  $('qc-objects-details')?.addEventListener('toggle', () => { if ($('qc-objects-details').open) renderObjectsBlock(); });
-  $('qc-artists-details')?.addEventListener('toggle', () => { if ($('qc-artists-details').open) populateArtistSuggestions(); });
+  $('qc-objects-details')?.addEventListener('toggle', () => { if ($('qc-objects-details').open) renderObjectsBlock(); renderQuickSections(); });   // v329 : aussi quand on arrive d'un lien « Mes choix »
+  $('qc-artists-details')?.addEventListener('toggle', () => { if ($('qc-artists-details').open) populateArtistSuggestions(); renderQuickSections(); });
   $('training-hub-edit-general')?.addEventListener('click', () => showPanel('quick-config'));
 })();
 

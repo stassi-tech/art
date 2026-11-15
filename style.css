@@ -3031,3 +3031,8 @@ body[data-ambiance="gothique"] .primary-button, body[data-ambiance="gothique"] .
 body[data-ambiance="gothique"].in-exercise { background-color:#101d3c; background-image:url('assets/gothique-fond.jpg'); background-size:cover; background-position:center; background-repeat:no-repeat; }
 body[data-ambiance="gothique"].in-exercise .app-shell { background-color:transparent; }
 /* v327 */
+/* v329 : rubriques de la page de configuration — résumé + « Modifier » ; le titre cliquable des <details> est masqué (on les ouvre par le bouton). */
+.qc-clear-row { gap:8px; }
+.qc-edit-details > summary { display:none; }
+.qc-edit-details:not([open]) { margin:0 !important; height:0; overflow:hidden; }
+/* v329 */

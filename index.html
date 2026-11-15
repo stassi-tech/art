@@ -66,7 +66,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=321" />
+    <link rel="stylesheet" href="style.css?v=322" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -687,48 +687,49 @@
             </div>
           </div>
           <div style="text-align:center;margin:0 0 6px;"><button type="button" class="secondary-button hidden" id="qc-load-saved" style="width:auto;padding:8px 18px;">Charger une configuration de jeux enregistrée</button></div>
+          <!-- v329 (retour Stéphane) : 4 rubriques numérotées. Chacune montre d'abord un RÉSUMÉ (ou « aucun choix ») avec un bouton « Modifier » ;
+               le tableau ne réapparaît qu'après « Modifier », et « Terminé » le referme. -->
           <p class="config-section-title">1. Choisissez vos champs</p>
-          <!-- v328 : résumé du choix de champs (remplace le tableau tant qu'un choix existe) -->
-          <div id="qc-fields-box" class="hidden">
+          <div id="qc-fields-box">
             <div class="config-table qc-artists-chosen" id="qc-fields-chosen"></div>
-            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-fields-box">Tout effacer</button></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-mod-fields">Modifier</button></div>
           </div>
-          <div id="qc-fields-slot"></div>
-          <div class="qc-clear-row" id="qc-fields-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-fields">Tout effacer</button></div>
-          <!-- v204 : limiter les jeux à certaines natures d'objets (Peinture/Sculpture, puis nature, support, technique ou matériau). Facultatif. -->
-          <details id="qc-objects-details" style="margin:14px 0 4px;">
+          <div id="qc-fields-slot" class="hidden"></div>
+          <div class="qc-clear-row hidden" id="qc-fields-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-fields">Tout effacer</button><button type="button" class="secondary-button qc-clear-btn" id="qc-done-fields">Terminé</button></div>
+
+          <p class="config-section-title">2. Se limiter éventuellement à des natures d'objets précis</p>
+          <div id="qc-objects-box">
+            <div class="config-table qc-artists-chosen" id="qc-objects-chosen"></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-mod-objects">Modifier</button></div>
+          </div>
+          <details id="qc-objects-details" class="qc-edit-details" style="margin:0 0 4px;">
             <summary id="qc-objects-summary" style="cursor:pointer;font-family:Arial,sans-serif;font-weight:700;color:var(--muted);">Se limiter à des natures d'objets précis (facultatif)</summary>
             <div style="margin-top:8px;">
               <p class="modal-hint" style="margin:0 0 8px;text-align:left;">Les menus se suivent : choisissez d'abord Peinture ou Sculpture, puis affinez. Le nombre entre parenthèses est le nombre d'œuvres disponibles, compte tenu de vos choix de champs, de niveaux et d'artistes.</p>
               <div id="qc-objects-menus" class="qc-objects-menus"></div>
               <p id="qc-objects-count" class="hint qc-objects-count"></p>
-              <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-objects">Tout effacer</button></div>
+              <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-objects">Tout effacer</button><button type="button" class="secondary-button qc-clear-btn" id="qc-done-objects">Terminé</button></div>
             </div>
           </details>
-          <!-- v324 : encadré récapitulatif des natures d'objets choisies (même type que celui des artistes), avec son « Tout effacer ». -->
-          <div id="qc-objects-box" class="hidden">
-            <div class="config-table qc-artists-chosen" id="qc-objects-chosen"></div>
-            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-objbox">Tout effacer</button></div>
-          </div>
-          <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
-          <div id="qc-rubriques-box" class="hidden">
+
+          <p class="config-section-title">3. Choisissez vos rubriques et niveaux</p>
+          <div id="qc-rubriques-box">
             <div class="config-table qc-artists-chosen" id="qc-rubriques-chosen"></div>
-            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-rubriques-box">Tout effacer</button></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-mod-rubriques">Modifier</button></div>
           </div>
-          <div id="qc-rubriques-slot"></div>
-          <div class="qc-clear-row" id="qc-rubriques-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-rubriques">Tout effacer</button></div>
-          <details id="qc-artists-details" style="margin:14px 0 4px;">
+          <div id="qc-rubriques-slot" class="hidden"></div>
+          <div class="qc-clear-row hidden" id="qc-rubriques-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-rubriques">Tout effacer</button><button type="button" class="secondary-button qc-clear-btn" id="qc-done-rubriques">Terminé</button></div>
+
+          <p class="config-section-title">4. Se limiter éventuellement à des artistes précis</p>
+          <div id="qc-artists-box">
+            <div class="config-table qc-artists-chosen" id="qc-artists-chosen"></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-mod-artists">Modifier</button></div>
+          </div>
+          <details id="qc-artists-details" class="qc-edit-details" style="margin:0 0 4px;">
             <summary style="cursor:pointer;font-family:Arial,sans-serif;font-weight:700;color:var(--muted);">Se limiter à des artistes précis (facultatif)</summary>
             <div id="qc-artists-slot" style="margin-top:8px;"></div>
-            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-artists">Tout effacer</button></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-artists">Tout effacer</button><button type="button" class="secondary-button qc-clear-btn" id="qc-done-artists">Terminé</button></div>
           </details>
-          <!-- v188/v190 (retour Stéphane) : 3e encadré beige en bas de la page des choix, comme les deux premiers — il reprend la phrase
-               « Pour cette session vous avez choisi de vous exercer sur… » (qui ne figure plus sur la page des exercices) quand des
-               artistes sont choisis, avec « Tout effacer » pour vider ce choix d'artistes. -->
-          <div id="qc-artists-box" class="hidden">
-            <div class="config-table qc-artists-chosen" id="qc-artists-chosen"></div>
-            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-box">Tout effacer</button></div>
-          </div>
           <div id="qc-overrides" class="hidden"></div>
           <!-- v324 : réglages qui n'existent que dans un jeu (Imprégnation, Famille), proposés seulement quand on arrive par le ⚙️ d'un exercice. -->
           <div id="qc-game-box" class="hidden">
@@ -2380,6 +2381,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=548"></script>
+    <script defer src="app.js?v=549"></script>
   </body>
 </html>
