@@ -3038,7 +3038,7 @@ body[data-ambiance="gothique"].in-exercise .app-shell { background-color:transpa
 /* v329 */
 /* v330 */
 .gc-step .rubrique-option input { flex-shrink:0; }   /* v331 : les cases ne rétrécissent plus quand le libellé est long */
-/* v333 */
+/* v334 */
 
 /* v332 : « Comment fonctionne l'application » refondue (icônes du bandeau, notoriété, niveau des jeux) */
 .fonct-box h4 { margin:18px 0 6px; font-size:1.02rem; color:var(--accent); }
@@ -3049,3 +3049,7 @@ body[data-ambiance="gothique"].in-exercise .app-shell { background-color:transpa
 .fonct-icons { list-style:none; padding:0; margin:8px 0 10px; }
 .fonct-icons li { display:flex; gap:12px; align-items:flex-start; padding:7px 0; border-bottom:1px solid rgba(0,0,0,.08); }
 .fonct-icons .fi { flex:0 0 52px; text-align:center; font-size:1.25rem; line-height:1.4; }
+
+/* v334 : trois boutons côte à côte en bas de « Mes choix de configuration » (enregistrer, charger, accéder) */
+#quick-config-panel .setup-action-row { flex-wrap:wrap; justify-content:center; gap:10px; }
+#quick-config-panel .setup-action-row > button { width:auto; flex:1 1 150px; min-width:0; padding:10px 8px; font-size:.92rem; line-height:1.25; }

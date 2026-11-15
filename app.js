@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v333';
+const APP_VERSION = 'v334';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -13435,6 +13435,10 @@ function hasSavedLastConfig() {
     try { return !!(prefix && describeGameOverride(prefix, JSON.parse(localStorage.getItem(k) || '{}'))); } catch (e) { return false; }
   });
 }
+function showQcActionMessage(text) {
+  const m = $('qc-action-message'); if (!m) return;
+  m.textContent = text; m.classList.remove('hidden');
+}
 function savedConfigCount() {
   try { return Object.keys(JSON.parse(localStorage.getItem('savedGuidedConfigs') || '{}')).length; } catch (e) { return 0; }
 }
@@ -13443,10 +13447,7 @@ function updateQuickIntro() {
   let loadedName = '';
   try { loadedName = sessionStorage.getItem(SESSION_LOADED_NAME_KEY) || ''; } catch (e) { /* ignoré */ }
   if (gameConfigPrefix && EXERCISE_INFO[gameConfigPrefix]) intro.textContent = `Vous reconfigurez l'exercice ${gameConfigPrefix === 'quiz' ? 'Quiz final' : EXERCISE_INFO[gameConfigPrefix].name}. Ces choix valent pour tous les jeux ; « Relancer » reprend l'exercice avec eux.`;
-  else if (loadedName) intro.textContent = `Configuration « ${loadedName} » chargée. Vous pouvez la conserver ou la modifier.`;
-  else if (!sessionIsConfirmed() && hasSavedLastConfig()) intro.textContent = 'Voici la dernière configuration que vous avez utilisée pour vos jeux dans votre précédente session. Vous pouvez la conserver ou la modifier.';
   else intro.textContent = 'Ces choix valent pour tous les jeux et pour le quiz final. Si vous ne cochez rien, les jeux par défaut porteront sur tous les domaines. Une fois un jeu commencé, le bouton ⚙️ vous ramène ici pour modifier ces choix, qui valent toujours pour tous les jeux.';
-  $('qc-load-saved')?.classList.toggle('hidden', !savedConfigCount());
 }
 // Photo de la configuration en vigueur (choix général + jeux réglés à part) — pour la nommer et la ressortir plus tard.
 function snapshotConfig() {
@@ -13619,9 +13620,11 @@ function launchGameAfterConfig(prefix) {
       closeModal('modal-save-config');
       quitSession();
     } else {
-      saveNamedConfig(typed || suggestConfigName());
+      const savedName = typed || suggestConfigName();
+      saveNamedConfig(savedName);
       closeModal('modal-save-config');
       renderProfileConfigsTable();
+      if (!$('quick-config-panel')?.classList.contains('hidden')) showQcActionMessage(`Configuration « ${savedName} » enregistrée. Vous la retrouverez avec « Charger une configuration enregistrée ».`);
     }
   };
   $('save-config-validate')?.addEventListener('click', validateNameModal);
@@ -13631,7 +13634,9 @@ function launchGameAfterConfig(prefix) {
   $('menu-item-quit')?.addEventListener('click', (event) => { event.stopPropagation(); closeHamburgerMenu(); openNameModal('exit'); });
   $('profile-save-current-config')?.addEventListener('click', () => openNameModal('save'));
   // « Charger une configuration de jeux enregistrée » (page 2) : mène à Mon compte, sur la liste des configurations.
+  $('qc-save-config')?.addEventListener('click', () => { $('qc-action-message')?.classList.add('hidden'); openNameModal('save'); });
   $('qc-load-saved')?.addEventListener('click', () => {
+    if (currentUser && !savedConfigCount()) { showQcActionMessage('Vous n’avez encore enregistré aucune configuration.'); return; }
     if (!currentUser) { quickDraft = null; showPanel('welcome'); $('home-account-slot')?.scrollIntoView({ block: 'center' }); return; }
     quickDraft = null;
     showPanel('profile'); initProfilePage();

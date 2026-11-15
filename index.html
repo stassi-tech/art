@@ -66,7 +66,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=325" />
+    <link rel="stylesheet" href="style.css?v=326" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -697,7 +697,6 @@
             </div>
           </div>
           <p id="qc-launch-message" class="hidden" style="margin:10px 0;padding:10px 14px;border:1px solid var(--wrong);border-radius:8px;color:var(--wrong);font-family:Arial,sans-serif;font-size:.9rem;text-align:left;"></p>
-          <div style="text-align:center;margin:0 0 6px;"><button type="button" class="secondary-button hidden" id="qc-load-saved" style="width:auto;padding:8px 18px;">Charger une configuration de jeux enregistrée</button></div>
           <!-- v329 (retour Stéphane) : 4 rubriques numérotées. Chacune montre d'abord un RÉSUMÉ (ou « aucun choix ») avec un bouton « Modifier » ;
                le tableau ne réapparaît qu'après « Modifier », et « Terminé » le referme. -->
           <p class="config-section-title">1. Choisissez vos champs</p>
@@ -749,9 +748,12 @@
           </div>
           <div class="setup-action-bar">
             <div class="setup-action-row">
+              <button type="button" class="secondary-button" id="qc-save-config">Enregistrer cette configuration</button>
+              <button type="button" class="secondary-button" id="qc-load-saved">Charger une configuration enregistrée</button>
               <button type="button" class="primary-button" id="qc-go">Accéder aux jeux →</button>
               <button type="button" class="secondary-button hidden" id="qc-go-hub">Accéder au menu des jeux</button>
             </div>
+            <p id="qc-action-message" class="hidden" style="margin:8px 0 0;font-family:Arial,sans-serif;font-size:.9rem;text-align:center;color:var(--muted);"></p>
           </div>
         </section>
 
@@ -2444,6 +2446,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=553"></script>
+    <script defer src="app.js?v=554"></script>
   </body>
 </html>
