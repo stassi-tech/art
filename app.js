@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v329';
+const APP_VERSION = 'v332';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -13246,6 +13246,7 @@ function hasGeneralChoice() {
     || (ga.remember && (ga.artists?.length || objectsActive(ga.objects))));
 }
 function prepareQuickConfig() {
+  $('qc-launch-message')?.classList.add('hidden');
   quickDraft = null; // les lecteurs renvoient alors le réglage réellement en vigueur (session, sinon enregistré)
   const f = readGlobalFieldDefaults(); const r = readGlobalRubriqueDefaults(); const a = readGlobalArtistDefaults();
   quickDraft = {
@@ -13672,6 +13673,38 @@ function launchGameAfterConfig(prefix) {
   $('training-hub-edit-general')?.addEventListener('click', () => showPanel('quick-config'));
 })();
 
+// v330 (retour Stéphane : « quand on appuie sur Relancer, on retombe sur le vieux tableau qui ne sert plus à rien ») : quand un jeu REFUSE
+// de se lancer (ex. Vrai/Faux avec un seul artiste, pas assez d'œuvres…), le message s'écrivait dans l'ancien panneau de configuration du jeu,
+// affiché au passage. On surveille maintenant le lancement : si le panneau reste à l'écran avec un message d'erreur, on ramène le joueur
+// sur la page « Mes choix de configuration » (celle qui sert partout), avec le message affiché en haut.
+(function installLaunchFailureWatch() {
+  ['imp', 'intrus', 'recon', 'vf', 'fam', 'chrono'].forEach((prefix) => {
+    const info = EXERCISE_INFO[prefix]; const btn = $(info?.open); if (!btn) return;
+    btn.addEventListener('click', () => {
+      const fb = $(`${prefix}-setup-feedback`); if (fb) fb.textContent = '';   // le message lu plus tard est forcément celui de CE lancement
+      let ticks = 0;
+      const timer = setInterval(() => {
+        ticks += 1;
+        const panel = $(info.panel);
+        const msg = (fb?.textContent || '').trim();
+        if (!panel || panel.classList.contains('hidden')) { clearInterval(timer); return; }   // le jeu a démarré (ou on est ailleurs)
+        if (msg && !/^Chargement/i.test(msg)) {
+          clearInterval(timer);
+          openGameConfig(prefix);
+          const box = $('qc-launch-message');
+          if (box) {
+            box.textContent = msg.replace('dans Mes choix de champ', 'dans la rubrique 4 ci-dessous').replace('ajoute-en un second', 'ajoutez-en un second').replace('ou choisis un art/siècle/zone', 'ou choisissez un art/siècle/zone');
+            box.classList.remove('hidden');
+            box.scrollIntoView({ block: 'center' });
+          }
+          return;
+        }
+        if (ticks > 160) clearInterval(timer);   // ~48 s : on abandonne la surveillance
+      }, 300);
+    }, true);   // phase de capture : s'exécute AVANT le lancement, pour vider l'ancien message
+  });
+})();
+
 // v139 (retour Stéphane : « deux boutons : commencer / enregistrer puis commencer — visibles d'emblée, sans défiler ») :
 // chaque page de configuration d'un jeu reçoit une barre collée en bas de l'écran, avec le message de chargement
 // au-dessus. « Commencer le jeu » = réglage valable pour la session ; « Enregistrer, puis commencer » = en plus gardé
@@ -13781,7 +13814,7 @@ function resetGuidedConfig() {
   localStorage.removeItem('globalRubriqueDefaults');
   localStorage.removeItem('globalGamesDefaults');
   document.querySelectorAll('.gc-step').forEach((el, i) => el.classList.toggle('hidden', i !== 0));
-  document.querySelectorAll('.gc-art, .gc-century, .gc-zone, .gc-level, .gc-rubrique').forEach((el) => { el.checked = false; });
+  document.querySelectorAll('.gc-art, .gc-century, .gc-zone, .gc-level, .gc-gamelevel, .gc-rubrique').forEach((el) => { el.checked = false; });
   document.querySelector('input[name="gc-want-artists"][value="no"]').checked = true;
   document.querySelector('input[name="gc-want-objects"][value="no"]').checked = true;
   $('gc-objects-panel').classList.add('hidden');
@@ -13845,9 +13878,10 @@ function saveGuidedFieldAndRubrique() {
   localStorage.setItem('globalFieldDefaults', JSON.stringify({ arts, centuries, zones, remember: true }));
   const levels = [...document.querySelectorAll('.gc-level:checked')].map((el) => el.value);
   const rubriques = [...document.querySelectorAll('.gc-rubrique:checked')].map((el) => el.value);
+  const gameLevels = [...document.querySelectorAll('.gc-gamelevel:checked')].map((el) => el.value);   // v331 : niveau des jeux, comme sur la page de configuration
   let count = document.querySelector('input[name="gc-count"]:checked')?.value || '10';
   const prevRubrique = readGlobalRubriqueDefaults();
-  localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques: rubriques.length ? rubriques : (prevRubrique.rubriques || []), levels, count, remember: true }));
+  localStorage.setItem('globalRubriqueDefaults', JSON.stringify({ rubriques: rubriques.length ? rubriques : (prevRubrique.rubriques || []), levels, gameLevels, count, remember: true }));
 }
 document.querySelectorAll('.gc-continue').forEach((btn) => {
   btn.addEventListener('click', () => {

@@ -3036,3 +3036,16 @@ body[data-ambiance="gothique"].in-exercise .app-shell { background-color:transpa
 .qc-edit-details > summary { display:none; }
 .qc-edit-details:not([open]) { margin:0 !important; height:0; overflow:hidden; }
 /* v329 */
+/* v330 */
+.gc-step .rubrique-option input { flex-shrink:0; }   /* v331 : les cases ne rétrécissent plus quand le libellé est long */
+/* v332 */
+
+/* v332 : « Comment fonctionne l'application » refondue (icônes du bandeau, notoriété, niveau des jeux) */
+.fonct-box h4 { margin:18px 0 6px; font-size:1.02rem; color:var(--accent); }
+.fonct-box p, .fonct-box li { line-height:1.5; }
+.fonct-note { font-size:.88rem; color:var(--muted); margin-top:0; }
+.fonct-list { padding-left:20px; margin:6px 0 10px; }
+.fonct-list li { margin-bottom:6px; }
+.fonct-icons { list-style:none; padding:0; margin:8px 0 10px; }
+.fonct-icons li { display:flex; gap:12px; align-items:flex-start; padding:7px 0; border-bottom:1px solid rgba(0,0,0,.08); }
+.fonct-icons .fi { flex:0 0 52px; text-align:center; font-size:1.25rem; line-height:1.4; }

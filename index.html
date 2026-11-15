@@ -66,7 +66,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=322" />
+    <link rel="stylesheet" href="style.css?v=325" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -602,6 +602,16 @@
             <label class="rubrique-option"><input type="checkbox" class="gc-level" value="2" /><span>Les artistes connus (niveau 2)</span></label>
             <label class="rubrique-option"><input type="checkbox" class="gc-level" value="3" /><span>Les artistes moins connus (niveau 3)</span></label>
             <p class="gc-note"><em>Si rien n'est coché, tous les niveaux sont sélectionnés automatiquement.</em></p>
+            <button type="button" class="primary-button gc-continue" data-next="gc-step-gamelevel" style="margin-top:10px;">Continuer →</button>
+          </div>
+
+          <!-- v331 : même réglage que « Niveau des jeux » de la page « Mes choix de configuration » (Intrus, Famille, Chronologie, Reconstitution, Vrai/Faux). -->
+          <div id="gc-step-gamelevel" class="gc-step hidden">
+            <p class="config-table-col-title">À quel niveau de difficulté voulez-vous jouer aux jeux où il faut distinguer des œuvres (Intrus, Famille, Chronologie, Reconstitution, Vrai/Faux) ?</p>
+            <label class="rubrique-option"><input type="checkbox" class="gc-gamelevel" value="1" /><span>Niveau 1 (facile) : les œuvres de l'artiste sont mélangées à des œuvres d'autres siècles</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-gamelevel" value="2" /><span>Niveau 2 : œuvres du même siècle, mais éloignées dans le temps (par exemple romantisme et impressionnisme)</span></label>
+            <label class="rubrique-option"><input type="checkbox" class="gc-gamelevel" value="3" /><span>Niveau 3 (difficile) : œuvres d'une même époque</span></label>
+            <p class="gc-note"><em>Si rien n'est coché, les jeux se jouent comme d'habitude.</em></p>
             <button type="button" class="primary-button gc-continue" data-next="gc-step-artists" style="margin-top:10px;">Continuer →</button>
           </div>
 
@@ -686,6 +696,7 @@
               <p class="modal-hint" id="qc-intro" style="margin:4px 0 0;max-width:560px;">Ces choix valent pour tous les jeux et pour le quiz final. Si vous ne cochez rien, les jeux par défaut porteront sur tous les domaines. Une fois un jeu commencé, vous pourrez le configurer à part avec le bouton ⚙️.</p>
             </div>
           </div>
+          <p id="qc-launch-message" class="hidden" style="margin:10px 0;padding:10px 14px;border:1px solid var(--wrong);border-radius:8px;color:var(--wrong);font-family:Arial,sans-serif;font-size:.9rem;text-align:left;"></p>
           <div style="text-align:center;margin:0 0 6px;"><button type="button" class="secondary-button hidden" id="qc-load-saved" style="width:auto;padding:8px 18px;">Charger une configuration de jeux enregistrée</button></div>
           <!-- v329 (retour Stéphane) : 4 rubriques numérotées. Chacune montre d'abord un RÉSUMÉ (ou « aucun choix ») avec un bouton « Modifier » ;
                le tableau ne réapparaît qu'après « Modifier », et « Terminé » le referme. -->
@@ -1621,14 +1632,66 @@
         </div>
 
         <div class="modal-overlay hidden" id="modal-fonctionnement">
-          <div class="modal-box">
+          <div class="modal-box apropos-box fonct-box">
             <h3>Comment fonctionne l’application</h3>
-            <p>Deux façons de progresser : les <strong>6 exercices d’entraînement</strong> (Imprégnation, Intrus, Famille, Reconstitution, Vrai/Faux, Chronologie), classés par ordre croissant de difficulté, puis le <strong>quiz final</strong> pour vous autoévaluer sur le même échantillon d’œuvres. Mais vous pouvez faire le quiz sans avoir pratiqué d’entraînement.</p>
-            <p>Chaque exercice et le quiz se filtrent par <strong>champs</strong> (art, siècle, zone géographique) et par <strong>rubriques, niveaux, nombre de questions</strong>. Si vous ne cochez rien aucune restriction de champ ni de difficulté ne s’appliquera. Réglez ces choix depuis <strong>Mon compte</strong> (icône 👤) : ils s’appliquent alors automatiquement à tous les exercices et au quiz.</p>
-            <p>Le niveau reflète en général la notoriété de l’<strong>artiste</strong> dans son ensemble, pas celle de chaque œuvre individuellement. Mais il arrive qu’une œuvre isolée soit bien plus (ou moins) célèbre que le reste de la production du même artiste : dans ces cas, elle est reclassée à son propre niveau, indépendamment de celui de l’artiste. C’est une estimation, pas une science exacte — si un classement vous semble discutable, il s’agit plutôt d’assurer une progression dans l’apprentissage plutôt qu’un jugement de valeur.</p>
-            <p>Dans le quiz, pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les informations disponibles, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d’orthographe, surnoms, titres en langue d’origine) sont tolérées dans une certaine mesure.</p>
-            <p>Un bouton micro (🎤) permet de dicter votre réponse : si vous avez sélectionné plusieurs rubriques, appuyez d’abord sur le bouton de la rubrique concernée pour la sélectionner, puis sur le micro juste avant de parler. Pour l’artiste, dictez le prénom complet plutôt que le seul nom de famille : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » seul, souvent retranscrit en « monnaie ». Vous pouvez corriger avec le clavier mais le micro alors se désactive. Il suffit de le réactiver pour continuer en dictée orale.</p>
-            <p>Bon travail de mémoire et de culture !</p>
+
+            <h4>1. Le principe</h4>
+            <p>MNEMART vous fait apprendre à reconnaître des peintures et des sculptures d’Occident, du 15e au 20e siècle. Deux façons de progresser : les <strong>6 exercices d’entraînement</strong> (Imprégnation, Intrus, Famille, Reconstitution, Vrai/Faux, Chronologie), classés du plus simple au plus difficile, puis le <strong>quiz final</strong> pour vous autoévaluer. Vous pouvez aussi faire le quiz sans avoir pratiqué d’entraînement.</p>
+
+            <h4>2. Trois portes d’entrée sur l’accueil</h4>
+            <ul class="fonct-list">
+              <li><strong>Accès guidé aux jeux</strong> : une suite de petites pages qui vous demandent, une à une, ce que vous voulez travailler (art, siècle, zone, natures d’objets, notoriété des artistes, niveau des jeux, artistes précis, nombre de questions, rubriques). Idéal pour commencer.</li>
+              <li><strong>Accès rapide aux jeux</strong> : la page « Mes choix de configuration pour cette session ». Elle montre d’abord un résumé de vos choix, en quatre parties : les champs, les natures d’objets, les rubriques et niveaux, les artistes. Si vous n’avez rien choisi, elle l’écrit simplement (« aucune limitation »). Le bouton <strong>Modifier</strong> de chaque partie fait apparaître le tableau de choix ; <strong>Terminé</strong> le referme.</li>
+              <li><strong>Retrouver une configuration enregistrée</strong> : si vous avez enregistré vos choix sous un nom depuis votre compte, vous les rechargez ici en un clic.</li>
+            </ul>
+            <p>Si vous ne cochez rien, aucune restriction ne s’applique : les jeux puisent dans toute la base. Vos choix valent ensuite pour tous les exercices et pour le quiz.</p>
+
+            <h4>3. Les icônes du bandeau en haut</h4>
+            <p class="fonct-note">Sur un grand écran, toutes les icônes sont visibles. Sur smartphone et tablette, certaines sont rangées dans le menu ☰.</p>
+            <ul class="fonct-icons">
+              <li><span class="fi">←</span><span><strong>Page précédente</strong> : revient à l’écran d’avant (visible quand il y en a un).</span></li>
+              <li><span class="fi">🏠</span><span><strong>Accueil</strong> : retour à la page d’accueil, avec les trois portes d’entrée.</span></li>
+              <li><span class="fi">▂▄▆█</span><span><strong>Volume de la voix</strong> : la voix lit les textes. Cliquez sur une barre pour fixer le niveau : toutes les barres jusqu’à celle-ci se remplissent (cinq niveaux, du plus faible au plus fort).</span></li>
+              <li><span class="fi">⛶</span><span><strong>Plein écran</strong> : l’application occupe tout l’écran, pour mieux voir les images.</span></li>
+              <li><span class="fi">🎬</span><span><strong>Diaporamas</strong> : de courts films commentés par la voix, avec des images. Deux onglets : <em>Artistes et œuvre principale</em> (la vie d’un artiste, ou une présentation rapide de son œuvre principale) et <em>Histoire des formes</em> (l’évolution d’un matériau, d’une technique ou d’un genre à travers les siècles). Un moteur de recherche et un filtre peinture/sculpture aident à trouver.</span></li>
+              <li><span class="fi">🖼️</span><span><strong>Salle d’exposition</strong> : vous choisissez un ou plusieurs artistes, et leurs œuvres sont accrochées dans une galerie, à leur échelle réelle, salle par salle. On peut revoir l’exposition en cours, en changer, la <em>fabriquer soi-même</em> en plaçant les œuvres à la main, puis l’enregistrer et la recharger plus tard. C’est un lieu pour regarder et comparer, sans question ni note.</span></li>
+              <li><span class="fi">📖</span><span><strong>Liste des artistes et des œuvres</strong> : tout ce que contient la base, en liste complète, par critères ou par ville.</span></li>
+              <li><span class="fi">🎨</span><span><strong>Ambiance</strong> : change le décor et les couleurs de l’application (Salon Renoir, Versailles, Gothique international, Bauhaus, Space Age, etc.). C’est purement esthétique et votre choix est retenu sur cet appareil.</span></li>
+              <li><span class="fi">ℹ️</span><span><strong>Comment fonctionne l’application</strong> : cette page.</span></li>
+              <li><span class="fi">📄</span><span><strong>À propos</strong> : la base de données, les jeux, les objectifs du site.</span></li>
+              <li><span class="fi">✉️</span><span><strong>Contact</strong> : pour une question, une suggestion ou une erreur à signaler.</span></li>
+              <li><span class="fi">👤</span><span><strong>Mon compte</strong> : connexion, réglages de l’interface (voix, chronomètre, emplacement des boutons…), vos choix de champs, de rubriques et d’artistes, vos configurations enregistrées et vos scores. Sans compte, l’application fonctionne mais ne retient rien d’une fois sur l’autre.</span></li>
+              <li><span class="fi">🚪</span><span><strong>Quitter la session</strong> : vous propose d’enregistrer vos choix sous un nom pour les retrouver plus tard, puis ferme la session.</span></li>
+              <li><span class="fi">v…</span><span><strong>Numéro de version</strong> : petit repère discret en bout de bandeau, utile pour vérifier que vous avez bien la dernière version.</span></li>
+            </ul>
+            <p>Pendant un exercice, le bandeau affiche aussi, à gauche, le nom de l’exercice et votre avancement, et à droite votre score.</p>
+
+            <h4>4. Les champs, les rubriques et les niveaux</h4>
+            <p>Les <strong>champs</strong> délimitent l’échantillon d’œuvres : l’art (peinture, sculpture), le siècle, la zone géographique, et, si vous voulez, une nature d’objet précise (tableau, fresque, statue…) ou des artistes précis. Les <strong>rubriques</strong> sont les informations que vous devez retrouver (artiste, titre, date, matériau, lieu…). Vous réglez aussi le nombre de questions.</p>
+
+            <h4>5. La notoriété de l’artiste (niveau de l’artiste)</h4>
+            <p>Chaque artiste reçoit un niveau de notoriété, de 1 à 3 :</p>
+            <ul class="fonct-list">
+              <li><strong>Niveau 1</strong> : les artistes les plus célèbres, ceux dont la base présente au moins 12 œuvres.</li>
+              <li><strong>Niveau 2</strong> : les artistes connus, avec au moins 8 œuvres.</li>
+              <li><strong>Niveau 3</strong> : les artistes moins connus, avec au moins 4 œuvres.</li>
+            </ul>
+            <p>Plus le niveau est élevé, plus l’artiste est difficile à reconnaître. Vous cochez les niveaux que vous voulez travailler : commencez par le niveau 1 pour vous familiariser, puis ajoutez les suivants. C’est une estimation, pas un classement scientifique : il sert à progresser, pas à juger. Il arrive qu’une œuvre isolée soit bien plus (ou moins) célèbre que le reste de la production de son auteur : elle est alors reclassée à son propre niveau.</p>
+
+            <h4>6. Le niveau des jeux</h4>
+            <p>À ne pas confondre avec la notoriété de l’artiste. Le <strong>niveau des jeux</strong> règle la difficulté des <em>pièges</em> que le jeu vous tend, c’est-à-dire des œuvres qu’il met à côté de la bonne pour vous faire hésiter. Il mesure l’écart de date entre les œuvres, à partir de leur année de création. Il s’applique à cinq jeux : Intrus, Famille, Chronologie, Reconstitution et Vrai/Faux.</p>
+            <ul class="fonct-list">
+              <li><strong>Niveau 1 (facile)</strong> : les pièges viennent d’autres siècles. L’œuvre qui n’est pas à sa place se repère tout de suite à son époque.</li>
+              <li><strong>Niveau 2 (moyen)</strong> : les pièges viennent du même siècle, mais d’une date nettement éloignée (au moins 30 ans d’écart). Il faut déjà connaître les grandes périodes.</li>
+              <li><strong>Niveau 3 (difficile)</strong> : les pièges viennent de la même époque, à peu d’années d’écart. Il faut distinguer finement les styles et les artistes.</li>
+            </ul>
+            <p>Vous pouvez cocher plusieurs niveaux ; les jeux mélangent alors les pièges correspondants. Si vous n’en cochez aucun, les jeux se déroulent comme avant, sans cette contrainte.</p>
+
+            <h4>7. Dans le quiz</h4>
+            <p>Pour chaque œuvre, répondez aux rubriques choisies puis validez : la correction affiche toujours les informations disponibles, avec un petit indicateur « Exact » ou « À réviser » pour les rubriques notées. Les réponses proches (fautes d’orthographe, surnoms, titres en langue d’origine) sont tolérées dans une certaine mesure.</p>
+            <p>Un bouton micro (🎤) permet de dicter votre réponse : si vous avez sélectionné plusieurs rubriques, appuyez d’abord sur le bouton de la rubrique concernée pour la sélectionner, puis sur le micro juste avant de parler. Pour l’artiste, dictez le prénom complet plutôt que le seul nom de famille : la reconnaissance vocale reconnaît bien mieux « Claude Monet » que « Monet » seul, souvent retranscrit en « monnaie ». Vous pouvez corriger avec le clavier, mais le micro se désactive alors : il suffit de le réactiver pour continuer en dictée orale.</p>
+
+            <p>Bon travail de mémoire et de culture !</p>
             <button type="button" class="primary-button modal-close" data-modal="modal-fonctionnement">Fermer</button>
           </div>
         </div>
@@ -2381,6 +2444,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=549"></script>
+    <script defer src="app.js?v=552"></script>
   </body>
 </html>
