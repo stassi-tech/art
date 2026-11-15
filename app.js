@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v327';
+const APP_VERSION = 'v328';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -13273,6 +13273,8 @@ function prepareQuickConfig() {
   renderExerciseOverrides();
   updateQuickIntro();
   renderQuickOverrides();
+  qcEditFields = false; qcEditRubriques = false;
+  renderQuickFieldBoxes();
   renderQuickArtistsBox();
   renderQuickGameUI();
 }
@@ -13362,12 +13364,49 @@ function renderQuickArtistsBox() {
   // v324 : deux encadrés distincts et de même type — un pour les artistes (phrase récapitulative, sans la nature d'objets),
   // un pour les natures d'objets — chacun avec son « Tout effacer », visibles seulement s'il y a un choix correspondant.
   box.classList.toggle('hidden', !names.length);
-  list.textContent = names.length ? buildTrainingHubConfigSentence({ skipObjects: true }) : '';
+  list.textContent = names.length ? `Pour cette session vous vous limitez ${names.length > 1 ? 'aux artistes suivants' : "à l'artiste suivant"} : ${names.join(', ')}.` : '';   // v328 : le champ et les rubriques ont désormais leurs propres encadrés
   const obox = $('qc-objects-box'); const olist = $('qc-objects-chosen');
   if (obox && olist) {
     obox.classList.toggle('hidden', !hasObj);
     olist.textContent = hasObj ? `Pour cette session vous vous limitez aux natures d'objets suivantes : ${describeObjectsFilter(ga0.objects)}.` : '';
   }
+}
+// v328 (retour Stéphane : « quand on revient sur la configuration précédente, voir simplement le petit résumé, comme en bas pour
+// les artistes ; si on fait Tout effacer, on retrouve le tableau des choix ») : les tableaux « 1. champs » et « 2. rubriques et niveaux »
+// sont remplacés par une phrase récapitulative tant qu'il y a un choix ; « Tout effacer » vide le choix et rouvre le tableau.
+let qcEditFields = false, qcEditRubriques = false;
+function quickFieldsSentence(f) {
+  const artLabel = { peinture: 'la peinture', sculpture: 'la sculpture' };
+  const zoneLabels = { france: 'France', italie: 'Italie', espagne: 'Espagne', royaume_uni: 'Royaume-Uni', allemagne: 'Allemagne', europe_centrale_russie: 'Europe centrale et Russie', europe_nord: 'Europe du Nord', amerique: 'Amérique' };
+  const arts = (f.arts || []).map((a) => artLabel[a] || a).join(' et ') || 'la peinture et la sculpture';
+  const cent = f.centuries?.length ? ` du ${f.centuries.join(', du ')} siècle` : '';
+  const zone = f.zones?.length ? ` en ${f.zones.map((z) => zoneLabels[z] || z).join(', ')}` : '';
+  return `Pour cette session vous avez choisi de vous intéresser à ${arts}${cent}${zone}.`;
+}
+function quickRubriquesSentence(r) {
+  const rubriqueLabels = { artist: "les noms d'artistes", title: 'les titres', date: 'les dates', materiaux: 'les matériaux', dimensions: 'les dimensions', location: 'les lieux de conservation' };
+  const levelLabels = { '1': 'les plus célèbres', '2': 'connus', '3': 'moins connus' };
+  const gameLevelNames = { '1': "d'autres siècles", '2': 'du même siècle mais éloignées dans le temps', '3': "d'une même époque" };
+  const parts = [];
+  if (r.rubriques?.length) parts.push(`en donnant pour chaque image ${r.rubriques.map((x) => rubriqueLabels[x] || x).join(', ')}`);
+  if (r.levels?.length) parts.push(`avec des artistes de niveau ${r.levels.join('/')} (${r.levels.map((l) => levelLabels[l]).join('/')})`);
+  if (r.gameLevels?.length) parts.push(`en vous entraînant à distinguer des œuvres ${r.gameLevels.map((l) => gameLevelNames[l]).filter(Boolean).join(' ou ')}`);
+  if (r.count) parts.push(`avec des questionnaires de ${r.count === 'max' ? 'un maximum de' : r.count} questions`);
+  return `Pour cette session vous avez choisi de travailler ${parts.join(', ')}.`;
+}
+function renderQuickFieldBoxes() {
+  const d = quickDraft; if (!d) return;
+  const f = d.field; const r = d.rubrique;
+  const showF = !!(f.arts.length || f.centuries.length || f.zones.length) && !qcEditFields;
+  const showR = !!(r.rubriques.length || r.levels.length || r.gameLevels.length || r.count) && !qcEditRubriques;
+  $('qc-fields-box')?.classList.toggle('hidden', !showF);
+  if ($('qc-fields-chosen')) $('qc-fields-chosen').textContent = showF ? quickFieldsSentence(f) : '';
+  $('qc-fields-slot')?.classList.toggle('hidden', showF);
+  $('qc-fields-clear-row')?.classList.toggle('hidden', showF);
+  $('qc-rubriques-box')?.classList.toggle('hidden', !showR);
+  if ($('qc-rubriques-chosen')) $('qc-rubriques-chosen').textContent = showR ? quickRubriquesSentence(r) : '';
+  $('qc-rubriques-slot')?.classList.toggle('hidden', showR);
+  $('qc-rubriques-clear-row')?.classList.toggle('hidden', showR);
 }
 function renderQuickOverrides() {
   const box = $('qc-overrides'); if (!box) return;
@@ -13555,7 +13594,7 @@ function launchGameAfterConfig(prefix) {
   move($('profile-section-rubriques')?.querySelector('.config-table'), $('qc-rubriques-slot'));
   move($('pf-artist-list-status'), $('qc-artists-slot'));
   move($('pf-artist-clickable-list'), $('qc-artists-slot'));
-  move($('pf-artists-clear'), $('qc-artists-slot'));
+  // v328 : le grand bouton « Effacer le choix d'artiste » n'est plus déplacé ici (doublon des « Tout effacer »).
   $('qc-go')?.addEventListener('click', () => commitQuickConfig());
   // Fenêtre « nom de configuration » : deux usages. « exit » = écran affiché en quittant la session (le nom est facultatif) ;
   // « save » = depuis Mon compte, enregistrer la configuration en cours sous un nom.
@@ -13617,6 +13656,9 @@ function launchGameAfterConfig(prefix) {
     if ($('pf-count-custom')) $('pf-count-custom').value = '';
     populateArtistSuggestions();
   });
+  // v328 : « Tout effacer » sous le résumé = même effet que sous le tableau, puis le tableau (vide) réapparaît.
+  $('qc-clear-fields-box')?.addEventListener('click', () => { $('qc-clear-fields')?.click(); qcEditFields = true; renderQuickFieldBoxes(); });
+  $('qc-clear-rubriques-box')?.addEventListener('click', () => { $('qc-clear-rubriques')?.click(); qcEditRubriques = true; renderQuickFieldBoxes(); });
   $('qc-clear-artists')?.addEventListener('click', () => {
     writeGlobalArtistNames([]);
     refreshObjectsBlockSoon();

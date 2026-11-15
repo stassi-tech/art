@@ -66,7 +66,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta name="theme-color" content="#1f3a5f" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="style.css?v=320" />
+    <link rel="stylesheet" href="style.css?v=321" />
     <!-- Drapeaux rendus en vraies images (librairie flag-icons) plutôt qu'en emoji Unicode : sur
          certains systèmes (Windows notamment), l'emoji drapeau ne s'affiche pas comme une image et
          retombe sur les 2 lettres du code pays écrites telles quelles — bug réel repéré (« les
@@ -688,8 +688,13 @@
           </div>
           <div style="text-align:center;margin:0 0 6px;"><button type="button" class="secondary-button hidden" id="qc-load-saved" style="width:auto;padding:8px 18px;">Charger une configuration de jeux enregistrée</button></div>
           <p class="config-section-title">1. Choisissez vos champs</p>
+          <!-- v328 : résumé du choix de champs (remplace le tableau tant qu'un choix existe) -->
+          <div id="qc-fields-box" class="hidden">
+            <div class="config-table qc-artists-chosen" id="qc-fields-chosen"></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-fields-box">Tout effacer</button></div>
+          </div>
           <div id="qc-fields-slot"></div>
-          <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-fields">Tout effacer</button></div>
+          <div class="qc-clear-row" id="qc-fields-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-fields">Tout effacer</button></div>
           <!-- v204 : limiter les jeux à certaines natures d'objets (Peinture/Sculpture, puis nature, support, technique ou matériau). Facultatif. -->
           <details id="qc-objects-details" style="margin:14px 0 4px;">
             <summary id="qc-objects-summary" style="cursor:pointer;font-family:Arial,sans-serif;font-weight:700;color:var(--muted);">Se limiter à des natures d'objets précis (facultatif)</summary>
@@ -706,8 +711,12 @@
             <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-objbox">Tout effacer</button></div>
           </div>
           <p class="config-section-title">2. Choisissez vos rubriques et niveaux</p>
+          <div id="qc-rubriques-box" class="hidden">
+            <div class="config-table qc-artists-chosen" id="qc-rubriques-chosen"></div>
+            <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-rubriques-box">Tout effacer</button></div>
+          </div>
           <div id="qc-rubriques-slot"></div>
-          <div class="qc-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-rubriques">Tout effacer</button></div>
+          <div class="qc-clear-row" id="qc-rubriques-clear-row"><button type="button" class="secondary-button qc-clear-btn" id="qc-clear-rubriques">Tout effacer</button></div>
           <details id="qc-artists-details" style="margin:14px 0 4px;">
             <summary style="cursor:pointer;font-family:Arial,sans-serif;font-weight:700;color:var(--muted);">Se limiter à des artistes précis (facultatif)</summary>
             <div id="qc-artists-slot" style="margin-top:8px;"></div>
@@ -2371,6 +2380,6 @@
       </div>
       <div id="report-sheet" class="report-sheet"></div>
     </div>
-    <script defer src="app.js?v=547"></script>
+    <script defer src="app.js?v=548"></script>
   </body>
 </html>
