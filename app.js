@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v334';
+const APP_VERSION = 'v335';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -15308,6 +15308,20 @@ const BIO_ICON = {
   replay: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" fill="currentColor"/></svg>',
 };
 function bioFmt(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+// v335 (retour Stéphane, smartphone : « le nom de l'artiste n'apparaît pas au-dessus de l'image ») : sur téléphone le bandeau du haut est trop étroit (« D… »)
+// et le nom de la colonne de texte est masqué (mode empilé) ; une ligne titre est donc posée au-dessus de l'image : nom (ou titre de l'œuvre) et, dessous, dates (ou artiste).
+function bioSetVertTitle() {
+  const t = $('imp-bio-vert-title'); if (!t) return;
+  const name = (($('imp-bio-split-name') || {}).textContent || '').trim();
+  const byEl = $('imp-bio-split-by'); const datesEl = $('imp-bio-split-dates');
+  const by = byEl && !byEl.classList.contains('hidden') ? byEl.textContent.trim() : '';
+  const dt = datesEl && !datesEl.classList.contains('hidden') ? datesEl.textContent.trim() : '';
+  const sub = by || dt;
+  t.innerHTML = '';
+  const a = document.createElement('div'); a.className = 'vt-name'; a.textContent = name; t.appendChild(a);
+  if (sub) { const b = document.createElement('div'); b.className = 'vt-sub'; b.textContent = sub; t.appendChild(b); }
+  t.classList.toggle('hidden', !name);
+}
 function bioNote(msg) { const n = $('imp-bio-note'); if (!n) return; n.textContent = msg || ''; n.classList.toggle('hidden', !msg); }
 // v235 (retour Stéphane : « mettre un compteur de temps dans la barre du bas ») : temps écoulé / durée estimée + curseur pour se déplacer dans le film.
 // La durée est estimée d'après la vitesse de la voix (mesurée sur les morceaux déjà lus) : elle se précise au fil de la lecture.
@@ -15726,6 +15740,7 @@ function openImpArtistBio(work, force, opts) {
   const parsedBio = parseBioMarkup(bioText);
   if (textEl) bioRender(textEl, parsedBio);
   bioShowRefs(srcSplit.refs);
+  bioSetVertTitle();
   $('imp-bio-split')?.classList.remove('hidden');
   // v81 (retour Stéphane, capture d'écran de la bio de Giambologna : « la référence de l'œuvre à
   // droite doit disparaître, ça permettra au texte de se déployer davantage ») : #imp-quiz-grid
@@ -15803,6 +15818,7 @@ function openImpWorkText(work, topicLabel, autoClose) {
   const textEl = $('imp-bio-split-text');
   const plainWork = parseBioMarkup(work.workText).plain; // les balises [image: …] ne s'affichent ni ne se lisent
   if (textEl) textEl.textContent = plainWork;
+  bioSetVertTitle();
   $('imp-bio-split')?.classList.remove('hidden');
   $('imp-quiz-grid')?.classList.add('imp-bio-open');
   bioAuto.autoClose = false;
@@ -17106,7 +17122,7 @@ function cinemaTeardown() {   // remet l'écran Imprégnation comme on l'avait t
   if (cinemaSaved) { $('imp-ready-screen')?.classList.toggle('hidden', !!cinemaSaved.ready); $('imp-quiz-grid')?.classList.toggle('hidden', !!cinemaSaved.grid); }
 }
 function cinemaExit() { const prev = cinemaPrev || 'welcome'; cinemaTeardown(); showPanel(prev); }
-function cinemaPlay(e, what) {   // v261 : maître léger : on charge d'abord le texte de cet artiste (un seul petit fichier, souvent déjà reçu au toucher) puis on lance le film
+function cinemaPlay(e, what) {   closeOpenedImage();   // v261 : maître léger : on charge d'abord le texte de cet artiste (un seul petit fichier, souvent déjà reçu au toucher) puis on lance le film
   if (e.row && e.row._light && !e.row._textsReady) {
     ensureRowTexts(e.row).then((ok) => {
       if (!ok || !(e.row['Bio'] || e.row["Texte de l'œuvre"] || e.row["Commentaire de l'œuvre"])) { alert('Ce texte n’est pas disponible pour le moment (connexion ?). Réessayez dans un instant.'); return; }
@@ -17131,7 +17147,10 @@ function cinemaWorkImage(e, txt) {
 function cinemaPrefetchWorkImage(e) {   // au toucher du bouton « œuvre » : on s'assure que le fichier d'œuvres de cet artiste est déjà reçu (silencieux)
   try { const m = e && e.row && /^textes-(\w+)-(\w+)\.json$/.exec(e.row._chunk || ''); if (m && m[1] !== 'autre' && m[2] !== 'autre') fetchQuizRows(m[1], m[2]).catch(() => {}); } catch (err) { /* ignoré */ }
 }
+// v335 (retour Stéphane : « quand on ouvre une image et qu'on passe à la bio suivante, l'image reste accrochée et on entend le texte suivant ») : l'image agrandie se ferme dès qu'on change de notice.
+function closeOpenedImage() { $('image-lightbox')?.classList.add('hidden'); try { setLightboxScaleData(null); } catch (err) { /* ignoré */ } }
 function cinemaPlayNow(e, what) {   // appelé directement par le clic (la voix du navigateur exige un geste de l'utilisateur : aucune attente avant le film)
+  closeOpenedImage();
   closeCinemaPicker();
   const gameOn = !cinemaActive && currentPanelName === 'impregnation' && $('imp-quiz-grid') && !$('imp-quiz-grid').classList.contains('hidden');
   if (!gameOn) {

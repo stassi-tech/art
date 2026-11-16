@@ -3038,7 +3038,7 @@ body[data-ambiance="gothique"].in-exercise .app-shell { background-color:transpa
 /* v329 */
 /* v330 */
 .gc-step .rubrique-option input { flex-shrink:0; }   /* v331 : les cases ne rétrécissent plus quand le libellé est long */
-/* v334 */
+/* v335 */
 
 /* v332 : « Comment fonctionne l'application » refondue (icônes du bandeau, notoriété, niveau des jeux) */
 .fonct-box h4 { margin:18px 0 6px; font-size:1.02rem; color:var(--accent); }
@@ -3053,3 +3053,10 @@ body[data-ambiance="gothique"].in-exercise .app-shell { background-color:transpa
 /* v334 : trois boutons côte à côte en bas de « Mes choix de configuration » (enregistrer, charger, accéder) */
 #quick-config-panel .setup-action-row { flex-wrap:wrap; justify-content:center; gap:10px; }
 #quick-config-panel .setup-action-row > button { width:auto; flex:1 1 150px; min-width:0; padding:10px 8px; font-size:.92rem; line-height:1.25; }
+
+/* v335 : sur téléphone (bio empilée), le nom de l'artiste revient en bandeau au-dessus de l'image */
+.imp-bio-vert-title { display:none; }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-vert-title { display:block; flex:0 0 auto; padding:7px 52px 6px 14px; background:#000; color:#f2f2f2; text-align:center; font-family:Georgia,"Times New Roman",serif; border-bottom:1px solid rgba(255,255,255,.12); }
+.imp-bio-split.bio-dual.bio-vert .imp-bio-vert-title.hidden { display:none; }
+.imp-bio-vert-title .vt-name { font-size:1.05rem; font-weight:700; line-height:1.25; }
+.imp-bio-vert-title .vt-sub { font-size:.82rem; color:#c9c9c9; font-family:Arial,sans-serif; margin-top:1px; }
