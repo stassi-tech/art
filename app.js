@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v335';
+const APP_VERSION = 'v337';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -4399,7 +4399,11 @@ function acceptableValues(question, key) {
     return [question.artist, ...associateNames(question), question.surnomFr, question.surnomOrig].filter(Boolean);
   }
   if (key === 'title') {
-    return [question.title, question.titleOriginal].filter(Boolean);
+    // v337 (retour Stéphane : « le joueur répondra toujours par le titre court — "Bataille de San Romano" — qu'il faut accepter comme bonne réponse ») : le titre court
+    // (avant « : », « ; », « ( » ou un tiret) est toujours accepté, en plus du titre complet qui explique le contenu du tableau.
+    const shortOf = (t) => String(t || '').split(/\s*(?:[:;(–—]|\s-\s)/)[0].trim();
+    const shorts = [shortOf(question.title), shortOf(question.titleOriginal)].filter((s, i) => s && s !== [question.title, question.titleOriginal][i]);
+    return [question.title, question.titleOriginal, ...shorts].filter(Boolean);
   }
   return [question[key]];
 }
@@ -11309,6 +11313,7 @@ $('vf-start-button')?.addEventListener('click', async () => {
             && keyName(vfFieldValue(r, key)) !== correctValueKey
             && sameMovability(r, correct) // v122 : pas de valeur « fausse » empruntée à l'autre catégorie
             && (key !== 'artist' || !vfSameArtist(r, correct))
+            && (key !== 'title' || !intrusSameSeries(intrusInfo(r), intrusInfo(correct)))   // v337 : un « faux » titre emprunté au même ensemble (San Romano…) serait en réalité vrai
             && (key !== 'materials' || !vfSameMaterials(r, correct)));
           const others = vfLevel ? levelPick([correct], others0, vfLevel, 1) : others0;   // v325 : niveau des jeux
           if (others.length) {
@@ -15959,7 +15964,9 @@ function intrusInfo(r) {
   let i = intrusInfoMemo.get(r);
   if (!i) {
     const ak = famNormalize(r.artist);
-    i = { ak, ck: `${ak}|${famNormalize(r.title)}`, words: intrusTitleWords(r.title), mov: isMovableWork(r), arch: isArchitecturalWork(r), hasTitle: !!(r.title && r.title.trim()) };
+    // v336 : « série » (cycle) de l'œuvre : colonne Cycle, ou titre de base (avant « : », « ( », « ; », tiret) — voir intrusSameSeries.
+    const baseTitle = famNormalize(String(r.title || '').split(/\s*(?:[:;(–—]|\s-\s)/)[0]);
+    i = { ak, cyc: famNormalize(r.cycle || ''), base: baseTitle, ck: `${ak}|${famNormalize(r.title)}`, words: intrusTitleWords(r.title), mov: isMovableWork(r), arch: isArchitecturalWork(r), hasTitle: !!(r.title && r.title.trim()) };
     intrusInfoMemo.set(r, i);
   }
   return i;
@@ -16042,6 +16049,17 @@ function chronoLevelQuestion(level, dated, foilDated) {
   }
   return picked.length === 4 ? picked : null;
 }
+// v336 (retour Stéphane : « la Bataille de San Romano existe en 4 tableaux, certains avec un titre plus long qui explique le contenu : dans Intrus, si je réponds
+// "La Bataille de San Romano", on me dit non, c'est celle avec telle explication ») : deux œuvres d'un MÊME ensemble (même artiste ET même cycle, ou même titre de base,
+// ou l'un des titres commence par l'autre sur 12 caractères au moins) ne sont jamais mises en concurrence dans une même question d'Intrus.
+function intrusSameSeries(a, b) {
+  if (a.ak !== b.ak) return false;
+  if (a.cyc && a.cyc === b.cyc) return true;
+  if (!a.base || !b.base) return false;
+  if (a.base === b.base) return true;
+  const s = a.base.length <= b.base.length ? a.base : b.base; const l = s === a.base ? b.base : a.base;
+  return s.length >= 12 && l.startsWith(s);
+}
 function pickIntrusDistractors(correct, pool, requireDistinctArtist, lvOpt) {
   // Rendre le choix plus exigeant : on préfère des intrus qui partagent un mot significatif du
   // titre (ex. « paysage »), sinon des œuvres d'un AUTRE artiste (pour ne pas trivialiser un
@@ -16053,7 +16071,7 @@ function pickIntrusDistractors(correct, pool, requireDistinctArtist, lvOpt) {
   const correctWords = new Set(ci.words);
   // On exclut d'emblée les œuvres sans titre exploitable (choix ambigu, illisible dans la liste)
   // et tout doublon de contenu (même couple auteur+titre, même si ce sont deux lignes distinctes).
-  let others = (lvOpt ? lvOpt.pool : pool).filter((r) => { if (r === correct) return false; const i = intrusInfo(r); return i.hasTitle && i.ck !== correctKey && i.mov === ci.mov; }); // v122 : jamais de mélange déplaçable / non déplaçable
+  let others = (lvOpt ? lvOpt.pool : pool).filter((r) => { if (r === correct) return false; const i = intrusInfo(r); return i.hasTitle && i.ck !== correctKey && i.mov === ci.mov && !intrusSameSeries(ci, i); }); // v122 ; v336 : jamais deux tableaux du même ensemble : jamais de mélange déplaçable / non déplaçable
   // Quand seul le nom de l'artiste sera affiché (pas de titre pour distinguer), il FAUT trois
   // artistes différents, sinon deux « Monet » pourraient se retrouver face à face.
   if (requireDistinctArtist) others = others.filter((r) => !usedArtists.has(intrusInfo(r).ak));
@@ -16062,7 +16080,7 @@ function pickIntrusDistractors(correct, pool, requireDistinctArtist, lvOpt) {
   let candidates = correctWords.size ? others.filter((r) => intrusInfo(r).words.some((w) => correctWords.has(w))) : [];
   const picked = [];
   const drawFrom = (list) => {
-    const copy = list.filter((r) => !picked.includes(r) && !usedKeys.has(intrusInfo(r).ck) && (!requireDistinctArtist || !usedArtists.has(intrusInfo(r).ak)));
+    const copy = list.filter((r) => !picked.includes(r) && !usedKeys.has(intrusInfo(r).ck) && (!requireDistinctArtist || !usedArtists.has(intrusInfo(r).ak)) && !picked.some((p) => intrusSameSeries(intrusInfo(p), intrusInfo(r))));
     while (picked.length < 2 && copy.length) {
       const idx = Math.floor(Math.random() * copy.length);
       const chosen = copy.splice(idx, 1)[0];
