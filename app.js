@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v337';
+const APP_VERSION = 'v338';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1902,6 +1902,11 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'fine arts': 'fyne artz',  // v338 : atelier du 18 nov
+  'lander\'s peak': 'landers-pik',  // v338 : atelier du 18 nov
+  'lovis corinth': 'loviss korinte',  // v338 : atelier du 18 nov
+  'west point': 'west poyntt',  // v338 : atelier du 18 nov
   // v303 (atelier de prononciation, export du 12 nov 00:31) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'de canon': 'de canont',  // v303 : atelier du 12 nov
   'lange pier': 'langue piire',  // v303 : atelier du 12 nov
@@ -2445,7 +2450,7 @@ const PRONUNCIATION_FIXES = {
   'jungle': 'junngle',  // v269 : atelier du 30 oct
   'kunsthalle': 'kounst-halleu',  // v269 : atelier du 30 oct
   'lembachhaus': 'lemmbak-haousse',  // v269 : atelier du 30 oct
-  'munch': 'münk',  // v269 : atelier du 30 oct
+  'munch': 'mounq',  // v338 : atelier du 18 nov
   'slevogt': 'sléfokt',  // v269 : atelier du 30 oct
   'beckmann': 'beckmann',  // identité : sert de support aux écritures propres à certaines voix
   // v216 (atelier de prononciation, export du 21 oct 21:36) : nouveaux mots, écritures communes à toutes les voix.
@@ -2561,7 +2566,7 @@ const PRONUNCIATION_FIXES = {
   'metropolitan': 'métropolitanne',  // v269 : atelier du 30 oct
   'mochi': 'môki',  // v269 : atelier du 30 oct
   'mount': 'maount',  // v269 : atelier du 30 oct
-  'munch': 'münk',  // v269 : atelier du 30 oct
+  'munch': 'mounq',  // v338 : atelier du 18 nov
   'neue': 'neuyeu',  // v269 : atelier du 30 oct
   'odilon': 'odilon',  // v269 : atelier du 30 oct
   'of art': 'off artte',  // v269 : atelier du 30 oct
@@ -2810,6 +2815,36 @@ const PRONUNCIATION_FIXES = {
   'palla': 'pallâ',  // v319 : atelier du 14 nov
   'penegoes': 'Pé-né-goïss',  // v319 : atelier du 14 nov
   'trinita': 'trinitâ',  // v319 : atelier du 14 nov
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
+  'aleijadinho': 'aléradigno',  // v338 : atelier du 18 nov
+  'arnould': 'arnou',  // v338 : atelier du 18 nov
+  'battista': 'bâtistâ',  // v338 : atelier du 18 nov
+  'casilde': 'casilde',  // v338 : atelier du 18 nov
+  'collegio': 'kolédjio',  // v338 : atelier du 18 nov
+  'cruz': 'crouz',  // v338 : atelier du 18 nov
+  'dinglinger': 'dinn-glinn-ghère',  // v338 : atelier du 18 nov
+  'e': 'hé',  // v338 : atelier du 18 nov
+  'frémiet': 'frémié',  // v338 : atelier du 18 nov
+  'giovanni': 'djiovâni',  // v338 : atelier du 18 nov
+  'giuseppe': 'djiousépé',  // v338 : atelier du 18 nov
+  'godfrey': 'godefrais',  // v338 : atelier du 18 nov
+  'huquier': 'ukié',  // v338 : atelier du 18 nov
+  'jethro': 'jétro',  // v338 : atelier du 18 nov
+  'kneller': 'néllère',  // v338 : atelier du 18 nov
+  'krüger': 'kruguère',  // v338 : atelier du 18 nov
+  'meléndez': 'méléndèze',  // v338 : atelier du 18 nov
+  'mouffetard': 'mouffe-tar',  // v338 : atelier du 18 nov
+  'pascin': 'passe-kinn',  // v338 : atelier du 18 nov
+  'sennen': 'sénène',  // v338 : atelier du 18 nov
+  'singleton': 'sin-ghel-tonn',  // v338 : atelier du 18 nov
+  'soeurs': 'seur',  // v338 : atelier du 18 nov
+  'städel': 'chtédèl',  // v338 : atelier du 18 nov
+  'stieglitz': 'stiglitz',  // v338 : atelier du 18 nov
+  'vela': 'vélâ',  // v338 : atelier du 18 nov
+  'velata': 'vélatâ',  // v338 : atelier du 18 nov
+  'vittoria': 'vitoriâ',  // v338 : atelier du 18 nov
+  'volterra': 'voltérâ',  // v338 : atelier du 18 nov
+  'woolner': 'woulnère',  // v338 : atelier du 18 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2835,6 +2870,8 @@ function deArtist(name) {
 // (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
 // Voix du smartphone (« français France » et « français Canada ») : tables réglées à l'oreille dans l'atelier de prononciation (export du 26 oct 11:51, v235).
 const PHONE_PRONUNCIATION = {
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'west point': 'westï',  // v338 : atelier du 18 nov
   'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
   // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
   'adam': 'Adant',
@@ -2859,8 +2896,12 @@ const PHONE_PRONUNCIATION = {
     'conegliano': 'conéliano',  // v303 : atelier du 12 nov
     'paul': '',  // v303 : atelier du 12 nov
 
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
+  'munch': 'münk',  // v338 : atelier du 18 nov
 };
 const PHONE_PRONUNCIATION_CA = {
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'west point': '',  // v338 : atelier du 18 nov
   'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
   // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
   'adam': 'Adant',
@@ -2883,6 +2924,9 @@ const PHONE_PRONUNCIATION_CA = {
     'conegliano': 'conéliano',  // v303 : atelier du 12 nov
     'paul': '',  // v303 : atelier du 12 nov
 
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
+  'dinglinger': 'dinn-glinn-guère',  // v338 : atelier du 18 nov
+  'munch': 'münk',  // v338 : atelier du 18 nov
 };
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
 const PRONUNCIATION_BY_VOICE = {
@@ -2890,6 +2934,11 @@ const PRONUNCIATION_BY_VOICE = {
   'français canada': PHONE_PRONUNCIATION_CA,
   // Une table par voix, repérée par un morceau de son nom. Seules les écritures qui diffèrent de la table commune y figurent ; '' = lire le mot tel quel.
   'hortense': {
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'fine arts': 'faï-nartse',  // v338 : atelier du 18 nov
+  'lander\'s peak': 'lénderss-pik',  // v338 : atelier du 18 nov
+  'lovis corinth': 'loviss korinnte',  // v338 : atelier du 18 nov
+  'west point': 'west poynte',  // v338 : atelier du 18 nov
     'castelvecchio': 'kastelvékyo',  // v319 : atelier du 14 nov
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
     'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
@@ -2936,7 +2985,7 @@ const PRONUNCIATION_BY_VOICE = {
     'michelangelo': 'mikel-angelo',
     'moyen âge': 'moyenn-age',
     'moyen-âge': 'moyenn-age',
-    'munch': 'mun-ke',
+    'munch': 'munq',  // v338 : atelier du 18 nov
     'odilon': 'odilont',
     'ordonez': 'ordonièze',
     'pan': 'pans',
@@ -3001,6 +3050,11 @@ const PRONUNCIATION_BY_VOICE = {
     'paul': '',  // v303 : atelier du 12 nov
     'walchensee': 'valrhennzé',  // v303 : atelier du 12 nov
 
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
+  'casilde': 'casildd',  // v338 : atelier du 18 nov
+  'dinglinger': 'dinnglinnguère',  // v338 : atelier du 18 nov
+  'jongkind': 'jon-kinde',  // v338 : atelier du 18 nov
+  'pascin': 'pass-kine',  // v338 : atelier du 18 nov
   },
   'charline': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3015,7 +3069,6 @@ const PRONUNCIATION_BY_VOICE = {
     'jongkind': 'jonkinnde',
     'lescot': 'laisscot',
     'menabuoi': 'Ménabwo-ylle',
-    'munch': 'mun-ke',
     'pollaiolo': '',
     'schifanoia': 'Skifannôya',
     'singer sargent': 'singer sargente',
@@ -3034,6 +3087,10 @@ const PRONUNCIATION_BY_VOICE = {
 
   },
   'julie': {
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'fine arts': 'faï-nartse',  // v338 : atelier du 18 nov
+  'lander\'s peak': 'lénderss-pik',  // v338 : atelier du 18 nov
+  'lovis corinth': 'loviss korinnte',  // v338 : atelier du 18 nov
     'castelvecchio': 'kastelvékyo',  // v319 : atelier du 14 nov
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
     'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
@@ -3081,7 +3138,7 @@ const PRONUNCIATION_BY_VOICE = {
     'michelangelo': 'mikel-angelo',
     'moyen âge': 'moyenn-age',
     'moyen-âge': 'moyenn-age',
-    'munch': 'mun-ke',
+    'munch': 'munq',  // v338 : atelier du 18 nov
     'odilon': 'odilont',
     'ordonez': 'ordonièze',
     'pan': 'pans',
@@ -3145,8 +3202,17 @@ const PRONUNCIATION_BY_VOICE = {
     'paul': '',  // v303 : atelier du 12 nov
     'walchensee': 'valrhennzé',  // v303 : atelier du 12 nov
 
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
+  'casilde': 'casildd',  // v338 : atelier du 18 nov
+  'dinglinger': 'dinnglinnguère',  // v338 : atelier du 18 nov
+  'jongkind': 'jon-kinde',  // v338 : atelier du 18 nov
+  'pascin': 'passe-kine',  // v338 : atelier du 18 nov
   },
   'paul': {
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'fine arts': 'faï-nartse',  // v338 : atelier du 18 nov
+  'lander\'s peak': 'lénderss-pik',  // v338 : atelier du 18 nov
+  'lovis corinth': 'loviss korinnte',  // v338 : atelier du 18 nov
     'castelvecchio': 'kastelvékyo',  // v319 : atelier du 14 nov
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
     'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
@@ -3191,7 +3257,7 @@ const PRONUNCIATION_BY_VOICE = {
     'michelangelo': 'mikel-angelo',
     'moyen âge': 'moyenn-age',
     'moyen-âge': 'moyenn-age',
-    'munch': 'mun-ke',
+    'munch': 'munq',  // v338 : atelier du 18 nov
     'odilon': 'odilont',
     'ordonez': 'ordonièze',
     'pan': 'pans',
@@ -3253,6 +3319,11 @@ const PRONUNCIATION_BY_VOICE = {
     'neumarkt': 'noiy-markt',  // v303 : atelier du 12 nov
     'paul': '',  // v303 : atelier du 12 nov
 
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
+  'casilde': 'casildd',  // v338 : atelier du 18 nov
+  'dinglinger': 'dinnglinnguère',  // v338 : atelier du 18 nov
+  'jongkind': 'jon-kinde',  // v338 : atelier du 18 nov
+  'pascin': 'passe-kine',  // v338 : atelier du 18 nov
   },
   'gerard': {
     'giusto di menabuoi': 'djousto di ménabw-oï',  // v276 : atelier du 2 nov
@@ -3263,7 +3334,6 @@ const PRONUNCIATION_BY_VOICE = {
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
-    'munch': 'münke',
     'schifanoia': 'Skifannôya',
     'singer sargent': 'singer sargente',
     'tate britain': 'Tétte Britenn',
@@ -3331,7 +3401,6 @@ const PRONUNCIATION_BY_VOICE = {
     'emmaüs': 'émaüsse',
     'epsom': 'épsomm',
     'gentile': 'Génntilé',
-    'munch': 'mûnn-ke',
     'schifanoia': 'Skifannôya',
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
@@ -3362,6 +3431,8 @@ const PRONUNCIATION_BY_VOICE = {
     'singer sargent': 'singer sargente',
     'venise': 'Venîz',
     'werefkin': 'vérefkine',
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
+  'jongkind': 'jon-kinde',  // v338 : atelier du 18 nov
   },
   'ariane': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3466,6 +3537,9 @@ const PRONUNCIATION_BY_VOICE = {
     'caïn': 'ka-uns',  // v290 : atelier du 10 nov
     // v293 (atelier de prononciation, export du 11 nov 10:34) : nouveaux mots pour cette voix.
     'von': 'von',  // v293 : atelier du 11 nov
+  // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
+  'aleijadinho': 'alé',  // v338 : atelier du 18 nov
+  'vela': 'vél',  // v338 : atelier du 18 nov
   },
   'eloise': {
     'cassai': 'casaille',  // v319 : atelier du 14 nov
