@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v338';
+const APP_VERSION = 'v340';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1906,7 +1906,6 @@ const PRONUNCIATION_FIXES = {
   'fine arts': 'fyne artz',  // v338 : atelier du 18 nov
   'lander\'s peak': 'landers-pik',  // v338 : atelier du 18 nov
   'lovis corinth': 'loviss korinte',  // v338 : atelier du 18 nov
-  'west point': 'west poyntt',  // v338 : atelier du 18 nov
   // v303 (atelier de prononciation, export du 12 nov 00:31) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'de canon': 'de canont',  // v303 : atelier du 12 nov
   'lange pier': 'langue piire',  // v303 : atelier du 12 nov
@@ -2845,6 +2844,8 @@ const PRONUNCIATION_FIXES = {
   'vittoria': 'vitoriâ',  // v338 : atelier du 18 nov
   'volterra': 'voltérâ',  // v338 : atelier du 18 nov
   'woolner': 'woulnère',  // v338 : atelier du 18 nov
+  // v340 (atelier de prononciation, export du 19 nov 14:42) : nouveau mot.
+  'portement': 'portemand',  // v340 : atelier du 19 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2871,7 +2872,6 @@ function deArtist(name) {
 // Voix du smartphone (« français France » et « français Canada ») : tables réglées à l'oreille dans l'atelier de prononciation (export du 26 oct 11:51, v235).
 const PHONE_PRONUNCIATION = {
   // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
-  'west point': 'westï',  // v338 : atelier du 18 nov
   'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
   // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
   'adam': 'Adant',
@@ -2901,7 +2901,6 @@ const PHONE_PRONUNCIATION = {
 };
 const PHONE_PRONUNCIATION_CA = {
   // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
-  'west point': '',  // v338 : atelier du 18 nov
   'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
   // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
   'adam': 'Adant',
@@ -2938,7 +2937,6 @@ const PRONUNCIATION_BY_VOICE = {
   'fine arts': 'faï-nartse',  // v338 : atelier du 18 nov
   'lander\'s peak': 'lénderss-pik',  // v338 : atelier du 18 nov
   'lovis corinth': 'loviss korinnte',  // v338 : atelier du 18 nov
-  'west point': 'west poynte',  // v338 : atelier du 18 nov
     'castelvecchio': 'kastelvékyo',  // v319 : atelier du 14 nov
     'delle grazie': 'déllé grattzié',  // v276 : atelier du 2 nov
     'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
@@ -3638,7 +3636,7 @@ function nounCase(m, off, str, val) {
   if (!/(^|[.!?…:»\n])\s*$/.test(str.slice(Math.max(0, off - 12), off)) && off > 12) return null;
   return val.charAt(0).toUpperCase() + val.slice(1);
 }
-const PLURAL_SANS_DEDUCTION = new Set(['fine', 'gardens', 'marsyas', 'congonhas', 'manzanares', 'rubeus']);  // v285 : ces mots finissent par « s » mais sont des noms propres (pas de singulier à déduire)
+const PLURAL_SANS_DEDUCTION = new Set(['fine', 'gardens', 'marsyas', 'congonhas', 'manzanares', 'rubeus', 'rogers', 'bouts']);  // v339 : « rogers » et « bouts » (noms propres) ne déduisent plus « roger » / « bout » : sinon « Roger » (écriture de « Rogier ») était relu « Rogers » ; v285 : ces mots finissent par « s » mais sont des noms propres (pas de singulier à déduire)
 const pronunciationVariantsCache = new Map();
 function pronunciationVariants(vo) {
   if (pronunciationVariantsCache.has(vo || null)) return pronunciationVariantsCache.get(vo || null);
