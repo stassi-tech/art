@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v340';
+const APP_VERSION = 'v342';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1902,6 +1902,12 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v338 (atelier de prononciation, export du 23 nov 22:12) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'alfred gilbert': 'hall-frède guill-beurte',  // v342 : atelier du 23 nov soir
+  'bohumil kubišta': 'bohoumil koubichtâ',  // v342 : atelier du 23 nov soir
+  // v338 (atelier de prononciation, export du 23 nov 14:01) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'bernt notke': 'bert notkeu',  // v341 : atelier du 23 nov
+  'le correge': 'le korège',  // v341 : atelier du 23 nov
   // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'fine arts': 'fyne artz',  // v338 : atelier du 18 nov
   'lander\'s peak': 'landers-pik',  // v338 : atelier du 18 nov
@@ -2039,6 +2045,7 @@ const PRONUNCIATION_FIXES = {
   // v159 : « Royal Collection » (collection de la Couronne britannique) lue à l'anglaise ; le mot « collection » seul reste français.
   'royal collection*': 'Roïeul Keulèkchenne',
   'sœur': 'seur',
+  'sœurs': 'seur',  // v342 : « Les Deux Sœurs » (titre, majuscule en milieu de phrase) : le pluriel déduit n'était pas appliqué aux mots à majuscule, la voix lisait « sures »
   'werefkin': 'véréfkine',  // v269 : atelier du 30 oct
   'coysevox': 'cozevo',
   'manneken pis': 'mannekenne piss',
@@ -2846,6 +2853,56 @@ const PRONUNCIATION_FIXES = {
   'woolner': 'woulnère',  // v338 : atelier du 18 nov
   // v340 (atelier de prononciation, export du 19 nov 14:42) : nouveau mot.
   'portement': 'portemand',  // v340 : atelier du 19 nov
+  // v338 (atelier de prononciation, export du 23 nov 14:01) : nouveaux mots pour cette voix / table commune.
+  'abbot': 'ébote',  // v341 : atelier du 23 nov
+  'amadeo': 'amadéo',  // v341 : atelier du 23 nov
+  'barlach': 'barlare',  // v341 : atelier du 23 nov
+  'benavente': 'bénâvenn-té',  // v341 : atelier du 23 nov
+  'bernardino': 'bérnardino',  // v341 : atelier du 23 nov
+  'cestello': 'chestello',  // v341 : atelier du 23 nov
+  'cortona': 'kortônâ',  // v341 : atelier du 23 nov
+  'crawford': 'crôforde',  // v341 : atelier du 23 nov
+  'danae': 'dâna-hé',  // v341 : atelier du 23 nov
+  'dee': 'dî',  // v341 : atelier du 23 nov
+  'eriksson': 'ériksone',  // v341 : atelier du 23 nov
+  'francavilla': 'frankâvilâ',  // v341 : atelier du 23 nov
+  'goyen': 'go-yenne',  // v341 : atelier du 23 nov
+  'harriet': 'ériète',  // v341 : atelier du 23 nov
+  'hogarth': 'ôggarfe',  // v341 : atelier du 23 nov
+  'hosmer': 'osmère',  // v341 : atelier du 23 nov
+  'junier': 'junié',  // v341 : atelier du 23 nov
+  'krylov': 'krilof',  // v341 : atelier du 23 nov
+  'leeuw': 'léou',  // v341 : atelier du 23 nov
+  'loyola': 'lohyôlâ',  // v341 : atelier du 23 nov
+  'luna': 'lounâ',  // v341 : atelier du 23 nov
+  'malevich': 'malévitch',  // v341 : atelier du 23 nov
+  'marsy': 'marsi',  // v341 : atelier du 23 nov
+  'minerva': 'minervâ',  // v341 : atelier du 23 nov
+  'montañés': 'montagnèsse',  // v341 : atelier du 23 nov
+  'nevinson': 'névinn-sone',  // v341 : atelier du 23 nov
+  'œillet': 'euyet',  // v341 : atelier du 23 nov
+  'romney': 'rommné',  // v341 : atelier du 23 nov
+  'sapienza': 'sâpienn-tzâ',  // v341 : atelier du 23 nov
+  'scapigliata': 'skapiliatâ',  // v341 : atelier du 23 nov
+  'simonetta': 'simonétâ',  // v341 : atelier du 23 nov
+  'taube': 'taobé',  // v341 : atelier du 23 nov
+  'yosemite': 'yossémite',  // v341 : atelier du 23 nov
+  // v338 (atelier de prononciation, export du 23 nov 22:12) : nouveaux mots pour cette voix / table commune.
+  'aelbert': 'alberte',  // v342 : atelier du 23 nov soir
+  'antonello': 'ann-tonélo',  // v342 : atelier du 23 nov soir
+  'baldung': 'baldoungue',  // v342 : atelier du 23 nov soir
+  'bazzi': 'bâtzi',  // v342 : atelier du 23 nov soir
+  'cattaneo': 'kat-tanéo',  // v342 : atelier du 23 nov soir
+  'cuyp': 'keuup',  // v342 : atelier du 23 nov soir
+  'lavinia': 'lâviniâ',  // v342 : atelier du 23 nov soir
+  'liebermann': 'libermane',  // v342 : atelier du 23 nov soir
+  'massena': 'mâssénâ',  // v342 : atelier du 23 nov soir
+  'melozzo': 'mélotzo',  // v342 : atelier du 23 nov soir
+  'nabuchodonosor': 'nabukodonosor',  // v342 : atelier du 23 nov soir
+  'preti': 'préti',  // v342 : atelier du 23 nov soir
+  'teucer': 'tious-soeur',  // v342 : atelier du 23 nov soir
+  'thècle': 'tècle',  // v342 : atelier du 23 nov soir
+  'trumbull': 'Treume-beul',  // v342 : atelier du 23 nov soir
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2898,6 +2955,13 @@ const PHONE_PRONUNCIATION = {
 
   // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
   'munch': 'münk',  // v338 : atelier du 18 nov
+  // v338 (atelier de prononciation, export du 23 nov 14:01) : nouveaux mots pour cette voix / table commune.
+  'cortona': 'kortonâ',  // v341 : atelier du 23 nov
+  'troubetzkoi': 'troubetzkoy',  // v341 : atelier du 23 nov
+  // v338 (atelier de prononciation, export du 23 nov 22:12) : nouveaux mots pour cette voix / table commune.
+  'baldung': 'baldoung',  // v342 : atelier du 23 nov soir
+  'cattaneo': 'kattanéo',  // v342 : atelier du 23 nov soir
+  'cuyp': 'keup',  // v342 : atelier du 23 nov soir
 };
 const PHONE_PRONUNCIATION_CA = {
   // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
@@ -2926,6 +2990,13 @@ const PHONE_PRONUNCIATION_CA = {
   // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
   'dinglinger': 'dinn-glinn-guère',  // v338 : atelier du 18 nov
   'munch': 'münk',  // v338 : atelier du 18 nov
+  // v338 (atelier de prononciation, export du 23 nov 14:01) : nouveaux mots pour cette voix / table commune.
+  'cortona': 'kortonâ',  // v341 : atelier du 23 nov
+  'sapienza': '',  // v341 : atelier du 23 nov
+  'troubetzkoi': 'troubetzkoy',  // v341 : atelier du 23 nov
+  // v338 (atelier de prononciation, export du 23 nov 22:12) : nouveaux mots pour cette voix / table commune.
+  'baldung': 'baldoung',  // v342 : atelier du 23 nov soir
+  'cattaneo': 'kattanéo',  // v342 : atelier du 23 nov soir
 };
 const PHONE_VOICE_KEYS = ['français france', 'français canada'];
 const PRONUNCIATION_BY_VOICE = {
@@ -3053,6 +3124,15 @@ const PRONUNCIATION_BY_VOICE = {
   'dinglinger': 'dinnglinnguère',  // v338 : atelier du 18 nov
   'jongkind': 'jon-kinde',  // v338 : atelier du 18 nov
   'pascin': 'pass-kine',  // v338 : atelier du 18 nov
+  // v338 (atelier de prononciation, export du 23 nov 14:01) : nouveaux mots pour cette voix / table commune.
+  'barlach': 'barlar',  // v341 : atelier du 23 nov
+  'montañés': 'montagnesse',  // v341 : atelier du 23 nov
+  // v338 (atelier de prononciation, export du 23 nov 22:12) : nouveaux mots pour cette voix / table commune.
+  'chassériau': 'Chas-sériau',  // v342 : atelier du 23 nov soir
+  'cuyp': 'koeup',  // v342 : atelier du 23 nov soir
+  'massena': 'massénâ',  // v342 : atelier du 23 nov soir
+  'thècle': 'tècl',  // v342 : atelier du 23 nov soir
+  'trumbull': 'Treume-beule',  // v342 : atelier du 23 nov soir
   },
   'charline': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3205,6 +3285,14 @@ const PRONUNCIATION_BY_VOICE = {
   'dinglinger': 'dinnglinnguère',  // v338 : atelier du 18 nov
   'jongkind': 'jon-kinde',  // v338 : atelier du 18 nov
   'pascin': 'passe-kine',  // v338 : atelier du 18 nov
+  // v338 (atelier de prononciation, export du 23 nov 14:01) : nouveaux mots pour cette voix / table commune.
+  'barlach': 'barlar',  // v341 : atelier du 23 nov
+  'montañés': 'montagnesse',  // v341 : atelier du 23 nov
+  // v338 (atelier de prononciation, export du 23 nov 22:12) : nouveaux mots pour cette voix / table commune.
+  'chassériau': 'Chas-sériau',  // v342 : atelier du 23 nov soir
+  'cuyp': 'koeup',  // v342 : atelier du 23 nov soir
+  'massena': 'massénâ',  // v342 : atelier du 23 nov soir
+  'thècle': 'tècl',  // v342 : atelier du 23 nov soir
   },
   'paul': {
   // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
@@ -3322,6 +3410,14 @@ const PRONUNCIATION_BY_VOICE = {
   'dinglinger': 'dinnglinnguère',  // v338 : atelier du 18 nov
   'jongkind': 'jon-kinde',  // v338 : atelier du 18 nov
   'pascin': 'passe-kine',  // v338 : atelier du 18 nov
+  // v338 (atelier de prononciation, export du 23 nov 14:01) : nouveaux mots pour cette voix / table commune.
+  'barlach': 'barlar',  // v341 : atelier du 23 nov
+  'montañés': 'montagnesse',  // v341 : atelier du 23 nov
+  // v338 (atelier de prononciation, export du 23 nov 22:12) : nouveaux mots pour cette voix / table commune.
+  'chassériau': 'Chas-sériau',  // v342 : atelier du 23 nov soir
+  'cuyp': 'koeup',  // v342 : atelier du 23 nov soir
+  'massena': 'massénâ',  // v342 : atelier du 23 nov soir
+  'thècle': 'tècl',  // v342 : atelier du 23 nov soir
   },
   'gerard': {
     'giusto di menabuoi': 'djousto di ménabw-oï',  // v276 : atelier du 2 nov
@@ -3502,6 +3598,8 @@ const PRONUNCIATION_BY_VOICE = {
     'caïn': 'ka-uns',  // v290 : atelier du 10 nov
     // v293 (atelier de prononciation, export du 11 nov 10:34) : nouveaux mots pour cette voix.
     'von': 'von',  // v293 : atelier du 11 nov
+  // v338 (atelier de prononciation, export du 23 nov 14:01) : nouveaux mots pour cette voix / table commune.
+  'poison': 'pwason',  // v341 : atelier du 23 nov
   },
   'rémy': {
     // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -3538,6 +3636,8 @@ const PRONUNCIATION_BY_VOICE = {
   // v338 (atelier de prononciation, export du 18 nov 09:09) : nouveaux mots pour cette voix / table commune.
   'aleijadinho': 'alé',  // v338 : atelier du 18 nov
   'vela': 'vél',  // v338 : atelier du 18 nov
+  // v338 (atelier de prononciation, export du 23 nov 14:01) : nouveaux mots pour cette voix / table commune.
+  'poison': 'pwason',  // v341 : atelier du 23 nov
   },
   'eloise': {
     'cassai': 'casaille',  // v319 : atelier du 14 nov
@@ -3553,6 +3653,9 @@ const PRONUNCIATION_BY_VOICE = {
     'montanes': 'mont',  // v285 : atelier du 7 nov    // v303 (atelier de prononciation, export du 12 nov 00:31) : nouveaux mots pour cette voix.
     'monteoliveto': 'monté',  // v303 : atelier du 12 nov
 
+  // v338 (atelier de prononciation, export du 23 nov 14:01) : nouveaux mots pour cette voix / table commune.
+  'danae': 'dâna-héé',  // v341 : atelier du 23 nov
+  'montañés': 'mont',  // v341 : atelier du 23 nov
   },
 };
 function currentPronunciationOverrides() {
