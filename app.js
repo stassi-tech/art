@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v342';
+const APP_VERSION = 'v343';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1967,6 +1967,7 @@ const PRONUNCIATION_FIXES = {
   'ariette': 'ariette',
   'xxiii': 'vingt-trois',
   'brueghel': 'breuguel',
+  'bruegel': 'breuguel',  // v343 : « Pieter BRUEGEL L'ANCIEN » (sans h) : la voix ne prononçait pas le g dur, comme pour « brueghel »
   'guglielmo': 'goulyélmo',  // v269 : atelier du 30 oct
   'tino di camaino': 'tino di kama-i-no',  // v269 : atelier du 30 oct
   // « van lo » tout court restait mal prononcé (« vané lo ») : le simple « n » de « van » se
