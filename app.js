@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v343';
+const APP_VERSION = 'v344';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -1902,6 +1902,8 @@ allFields.forEach(({ key, input }) => {
 // est collé au suivant dans un composé allemand (« Kunsthistorisches », « Kunstmuseum »...) — la
 // limite de mot n'est alors imposée qu'au début, pas à la fin.
 const PRONUNCIATION_FIXES = {
+  // v338 (atelier de prononciation, export du 25 nov 07:25) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'grinling gibbons': 'grinn-lingg guib-eunsse',  // v344 : atelier du 25 nov
   // v338 (atelier de prononciation, export du 23 nov 22:12) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'alfred gilbert': 'hall-frède guill-beurte',  // v342 : atelier du 23 nov soir
   'bohumil kubišta': 'bohoumil koubichtâ',  // v342 : atelier du 23 nov soir
@@ -2904,6 +2906,8 @@ const PRONUNCIATION_FIXES = {
   'teucer': 'tious-soeur',  // v342 : atelier du 23 nov soir
   'thècle': 'tècle',  // v342 : atelier du 23 nov soir
   'trumbull': 'Treume-beul',  // v342 : atelier du 23 nov soir
+  // v338 (atelier de prononciation, export du 25 nov 07:25) : nouveaux mots pour cette voix / table commune.
+  'gainsborough': 'gaine-sbeuro',  // v344 : atelier du 25 nov
 };
 // Corrections qui dépendent de la nationalité de l'artiste (ex. « Michael » se prononce à
 // l'anglaise pour un artiste anglais, mais pas pour un Michael allemand/autrichien/néerlandais).
@@ -2929,6 +2933,8 @@ function deArtist(name) {
 // (atelier de prononciation, 16 oct) : écritures communes aux deux voix + écritures propres, identiques pour les deux.
 // Voix du smartphone (« français France » et « français Canada ») : tables réglées à l'oreille dans l'atelier de prononciation (export du 26 oct 11:51, v235).
 const PHONE_PRONUNCIATION = {
+  // v338 (atelier de prononciation, export du 25 nov 07:25) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'grinling gibbons': 'grinn-lingg guibeunse',  // v344 : atelier du 25 nov
   // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
   // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
@@ -2965,6 +2971,8 @@ const PHONE_PRONUNCIATION = {
   'cuyp': 'keup',  // v342 : atelier du 23 nov soir
 };
 const PHONE_PRONUNCIATION_CA = {
+  // v338 (atelier de prononciation, export du 25 nov 07:25) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
+  'grinling gibbons': 'grinn-lingg guibeunse',  // v344 : atelier du 25 nov
   // v338 (atelier de prononciation, export du 18 nov 09:09) : nouvelles expressions de plusieurs mots, placées AVANT les mots seuls
   'giusto di menabuoi': 'djousto di ménabwoï',  // v276 : atelier du 2 nov
   // v269 : atelier du 30 oct 22:18 : table complète de la voix (remplace les écritures précédentes) ; les écritures « conservées » sont absentes de l'export.
