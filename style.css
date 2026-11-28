@@ -426,6 +426,8 @@ h1,h2,h3,p { margin-top:0; } h2 { font-size:1.7rem; font-weight:500; }
 .intrus-confusion-label { font-family:Arial,sans-serif; font-weight:700; font-size:1rem; text-align:center; }
 .intrus-confusion-ref { font-family:Georgia,serif; font-size:1rem; text-align:center; color:var(--ink); }
 .intrus-confusion-ref em { font-style:italic; }
+/* v345 (retour Stéphane : « sur l'écran noir on lit mal les noms d'artiste — Space Age, Renoir, Wedgwood ») : la légende (artiste — titre) se pose sur la carte noire #intrus-prompt-card ; var(--ink) y est foncé dans les ambiances claires, donc illisible. Blanc fixe, car le fond de cette carte est toujours noir. */
+#intrus-prompt-card .intrus-confusion-ref, #intrus-prompt-card .intrus-confusion-ref em { color:#fff; }
 /* v82 (retour Stéphane : « rajouter après artiste et titre, année et lieu de conservation ») :
    seconde ligne, sous la référence, plus discrète (comme .illustration-caption). */
 .intrus-confusion-extra { display:block; font-family:Arial,sans-serif; font-size:.85rem; color:var(--muted); text-align:center; margin-top:-4px; }

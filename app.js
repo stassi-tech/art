@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 // d'oublier d'en mettre un à jour et de finir avec deux numéros différents affichés selon l'écran. À
 // CHAQUE livraison : mettre à jour CETTE ligne (et elle seule pour le numéro affiché), plus les
 // paramètres ?v= de app.js/style.css dans le <head> de index.html (cache-busting, sujet séparé).
-const APP_VERSION = 'v344';
+const APP_VERSION = 'v345';
 // v257 (profilage sur téléphone : chaque case cochée reconstruit la liste des ~500 artistes, triée avec localeCompare(…, 'fr')) :
 // sur mobile, « a.localeCompare(b, 'fr') » recrée en interne un comparateur de langue à CHAQUE comparaison — très lent (des milliers
 // de comparisons par tri). Ce correctif garde un comparateur Intl.Collator par couple (langue, options) et le réutilise : même
@@ -17401,10 +17401,19 @@ $('cinema-search')?.addEventListener('input', cinemaRender);
 $('cinema-art')?.addEventListener('change', cinemaRender);
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && $('cinema-picker') && !$('cinema-picker').classList.contains('hidden')) closeCinemaPicker(); });
 
+// v345 (retour Stéphane : « quand on veut régler les paramètres à partir d'un jeu, on ne retrouve pas tout à fait la même page que le réglage général ») :
+// la flèche ← du bandeau (ou le retour arrière du téléphone) depuis un jeu ramenait à l'ANCIENNE page « Configurer l'exercice … » (cases propres à l'exercice,
+// bouton « Commencer le jeu »), parce que l'historique garde une halte « xxx-setup » posée au lancement du jeu. On redirige désormais cette halte vers la page
+// « Mes choix de configuration » en mode jeu (la même que le ⚙️ et que le réglage général). Le lancement d'un jeu depuis le menu, lui, n'est pas concerné
+// (il appelle showPanel directement, pas l'historique).
+const SETUP_PANEL_TO_PREFIX = {};
+Object.entries(EXERCISE_INFO).forEach(([prefix, info]) => { SETUP_PANEL_TO_PREFIX[String(info.panel).replace(/-panel$/, '')] = prefix; });
 window.addEventListener('popstate', (event) => {
   const wasCinema = cinemaActive;   // v263 : retour arrière du téléphone / du navigateur depuis un diaporama → la liste des diaporamas
   suppressHistoryPush = true;
-  showPanel(event.state?.panel || 'welcome');
+  const target = event.state?.panel || 'welcome';
+  const gamePrefix = SETUP_PANEL_TO_PREFIX[target];
+  if (gamePrefix && $('quick-config-panel')) openGameConfig(gamePrefix); else showPanel(target);
   suppressHistoryPush = false;
   if (wasCinema) openCinemaPicker();
 });
